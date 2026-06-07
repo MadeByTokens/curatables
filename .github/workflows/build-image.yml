@@ -41,6 +41,12 @@ jobs:
         with:
           platforms: arm64
 
+      # setup-qemu-action registers binfmt but does not provide the
+      # `qemu-aarch64` binary that pi-gen's build-docker.sh greps for with
+      # `which`. Install the static qemu so build.sh's shim can resolve it.
+      - name: Install static qemu binary
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-user-static
+
       - name: Build image
         run: ./pi-gen/build.sh
 

@@ -38,6 +38,23 @@ docker info >/dev/null 2>&1 || die "docker daemon not reachable (need permission
 [ -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ] || \
 	die "qemu-aarch64 binfmt not registered — see header for how to install ARM emulation"
 
+# pi-gen's build-docker.sh gates on `which qemu-aarch64` (the bare name).
+# Ubuntu's qemu-user-static ships it as `qemu-aarch64-static`, so the gate
+# fails even though the binfmt handler is registered and working. Provide a
+# `qemu-aarch64` shim on PATH pointing at whatever static qemu exists. The
+# actual ARM execution uses the kernel binfmt handler (which the container
+# self-registers), not this binary — the shim only satisfies the name check.
+if ! command -v qemu-aarch64 >/dev/null 2>&1; then
+	SHIM="${HERE}/.binshim"
+	mkdir -p "${SHIM}"
+	for q in /usr/bin/qemu-aarch64-static /usr/libexec/qemu-binfmt/aarch64-binfmt-P /usr/bin/qemu-aarch64; do
+		if [ -x "$q" ]; then ln -sf "$q" "${SHIM}/qemu-aarch64"; break; fi
+	done
+	[ -e "${SHIM}/qemu-aarch64" ] || die "no static qemu-aarch64 binary found to shim (install qemu-user-static)"
+	export PATH="${SHIM}:${PATH}"
+	say "Shimmed qemu-aarch64 -> $(readlink "${SHIM}/qemu-aarch64")"
+fi
+
 # 1. Fetch pi-gen.
 if [ ! -d "${PIGEN_DIR}" ]; then
 	say "Cloning pi-gen (${PIGEN_REF}) into ${PIGEN_DIR}"
