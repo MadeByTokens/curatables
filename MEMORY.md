@@ -44,6 +44,20 @@ from `CSRFMiddleware`. So new route tests don't need to fetch a token.
 - deno installs fine in the chroot with just `unzip` added; use
   `DENO_INSTALL=/usr/local` so the binary lands at `/usr/local/bin/deno`.
 
+## pi-gen arm64 = separate branch + trixie, and a qemu name gotcha
+- 64-bit images come from pi-gen's **`arm64` branch**, NOT `ARCH=arm64`
+  in config — build.sh hard-sets `export ARCH=armhf` (bookworm branch) /
+  `arm64` (arm64 branch) AFTER sourcing config, so the config ARCH is dead.
+- The arm64 branch targets **trixie** now. Forcing `RELEASE=bookworm` on
+  it debootstraps a base whose apt keyring fails GPG verification
+  (`NO_PUBKEY ...`) at stage0/00-configure-apt. Track the branch → build
+  trixie (Python 3.13; all our deps have aarch64 wheels there too).
+- pi-gen `build-docker.sh` gates on `which qemu-aarch64`. Ubuntu's
+  qemu-user-static ships it as `qemu-aarch64-static`, so the gate fails
+  even with binfmt working. build.sh symlinks a `qemu-aarch64` shim onto
+  PATH (the real execution uses the kernel binfmt the container
+  self-registers, not this binary).
+
 ## Wi-Fi firstboot must run AFTER NetworkManager
 `raspi-config nonint do_wifi_ssid_passphrase` / `do_wifi_country` drive
 `nmcli` on bookworm and require NetworkManager **active**, else they fail

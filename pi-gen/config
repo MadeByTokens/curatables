@@ -10,14 +10,17 @@
 IMG_NAME=curatables
 TARGET_HOSTNAME=curatables
 
-# Raspberry Pi OS Lite (bookworm), 64-bit. Lite = no desktop; this is a
-# headless server appliance.
+# Raspberry Pi OS Lite (trixie), 64-bit. Lite = no desktop; this is a
+# headless server appliance. trixie is the current Raspberry Pi OS and the
+# release pi-gen's arm64 branch targets — forcing the older bookworm on
+# that branch breaks apt keyring verification, so we track the branch.
 #
 # NOTE: the 64-bit ARCH is selected by building from pi-gen's `arm64`
 # BRANCH (see pi-gen/build.sh: PIGEN_REF=arm64), NOT by this line —
 # pi-gen's build.sh hard-sets ARCH after sourcing config, so ARCH here is
-# ignored. Kept only as documentation of intent.
-RELEASE=bookworm
+# ignored. Likewise RELEASE: the arm64 branch already defaults to trixie,
+# so this line just pins it explicitly. Both kept as documentation.
+RELEASE=trixie
 ARCH=arm64
 
 # Build only our final stage's image, not the intermediate Lite one.

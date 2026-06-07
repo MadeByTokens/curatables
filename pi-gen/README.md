@@ -1,6 +1,6 @@
 # Curatables Raspberry Pi appliance image
 
-Builds a flashable Raspberry Pi OS Lite (64-bit, bookworm) image with
+Builds a flashable Raspberry Pi OS Lite (64-bit, trixie) image with
 Curatables pre-installed and enabled — flash it, boot it, open
 `http://curatables.local`, set a parent password, and you're running. No
 terminal needed after flashing.
@@ -68,7 +68,7 @@ pushing anything.
 
 ## How it fits together
 
-- `config` — pi-gen settings (image name, Lite/arm64/bookworm, no baked
+- `config` — pi-gen settings (image name, Lite/arm64/trixie, no baked
   passwords, xz compression).
 - `build.sh` — clones pi-gen, stages the source, runs the Docker build.
 - `stage-curatables/` — the custom pi-gen stage:
