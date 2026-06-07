@@ -12,6 +12,11 @@ TARGET_HOSTNAME=curatables
 
 # Raspberry Pi OS Lite (bookworm), 64-bit. Lite = no desktop; this is a
 # headless server appliance.
+#
+# NOTE: the 64-bit ARCH is selected by building from pi-gen's `arm64`
+# BRANCH (see pi-gen/build.sh: PIGEN_REF=arm64), NOT by this line —
+# pi-gen's build.sh hard-sets ARCH after sourcing config, so ARCH here is
+# ignored. Kept only as documentation of intent.
 RELEASE=bookworm
 ARCH=arm64
 

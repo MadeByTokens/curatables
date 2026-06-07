@@ -14,14 +14,20 @@
 #
 # Env overrides:
 #   PIGEN_DIR   where to clone pi-gen      (default: pi-gen/.pi-gen)
-#   PIGEN_REF   pi-gen branch to build     (default: bookworm)
+#   PIGEN_REF   pi-gen branch to build     (default: arm64)
+#
+# NOTE: 64-bit images come from pi-gen's dedicated `arm64` BRANCH, not from
+# ARCH=arm64 in config. pi-gen's build.sh hard-sets `export ARCH=armhf`
+# after sourcing config, so the config var is ignored — the branch is what
+# selects the architecture. The default branch (bookworm) builds 32-bit
+# armhf, for which our deps (e.g. curl_cffi) may lack prebuilt wheels.
 
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${HERE}/.." && pwd)"
 PIGEN_DIR="${PIGEN_DIR:-${HERE}/.pi-gen}"
-PIGEN_REF="${PIGEN_REF:-bookworm}"
+PIGEN_REF="${PIGEN_REF:-arm64}"
 
 say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
