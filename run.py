@@ -48,7 +48,18 @@ def check_dependencies(verbose=False):
         for mod in ("fastapi", "uvicorn", "jinja2", "python_multipart", "yt_dlp", "curl_cffi", "zeroconf", "itsdangerous", "reportlab", "prometheus_client"):
             try:
                 m = __import__(mod)
-                v = getattr(m, "__version__", "?")
+                # yt-dlp keeps its version in yt_dlp.version.__version__, not
+                # on the top-level module; fall back to importlib metadata for
+                # anything else that doesn't expose __version__.
+                v = getattr(m, "__version__", None)
+                if v is None and mod == "yt_dlp":
+                    v = getattr(getattr(m, "version", None), "__version__", None)
+                if v is None:
+                    try:
+                        from importlib.metadata import version as _pkg_version
+                        v = _pkg_version(mod.replace("_", "-"))
+                    except Exception:
+                        v = "?"
                 print(f"{mod+':':<17}{v}")
             except ImportError:
                 print(f"{mod+':':<17}NOT INSTALLED")
