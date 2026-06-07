@@ -1,0 +1,43 @@
+# pi-gen configuration for the Curatables appliance image.
+#
+# Consumed by pi-gen's build (copied into the pi-gen checkout by
+# pi-gen/build.sh). See https://github.com/RPi-Distro/pi-gen for the full
+# list of knobs.
+
+# Image / hostname. The running server advertises itself over mDNS as
+# curatables.local regardless of hostname, but matching them avoids
+# confusion.
+IMG_NAME=curatables
+TARGET_HOSTNAME=curatables
+
+# Raspberry Pi OS Lite (bookworm), 64-bit. Lite = no desktop; this is a
+# headless server appliance.
+RELEASE=bookworm
+ARCH=arm64
+
+# Build only our final stage's image, not the intermediate Lite one.
+# pi-gen/build.sh additionally drops a SKIP_IMAGES flag in stage2.
+STAGE_LIST="stage0 stage1 stage2 stage-curatables"
+
+# Ship a compressed .img.xz. GitHub Releases caps single files at 2 GB;
+# xz keeps a Lite-based appliance well under that.
+DEPLOY_COMPRESSION=xz
+COMPRESSION_LEVEL=6
+DEPLOY_ZIP=0
+
+# Enable SSH, but DO NOT bake a login password. With FIRST_USER_PASS
+# unset and the first-boot rename enabled, the flasher MUST set the
+# login user (and Wi-Fi) in Raspberry Pi Imager's advanced options
+# before first boot. This is deliberate: a public image with a known SSH
+# password would be the same hole as a shared dashboard password.
+ENABLE_SSH=1
+FIRST_USER_NAME=admin
+# FIRST_USER_PASS=            # intentionally unset — set it at flash time
+DISABLE_FIRST_BOOT_USER_RENAME=0
+
+# Locale / keyboard / timezone defaults. Override at build time if you
+# want a different default; users can change these later with raspi-config.
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT="Etc/UTC"

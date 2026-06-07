@@ -39,3 +39,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# pi-gen image build: the cloned pi-gen tree and the staged source copy
+# (rsync of this repo) are build scratch, not source.
+pi-gen/.pi-gen/
+pi-gen/stage-curatables/01-install/files/

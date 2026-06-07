@@ -1,0 +1,18 @@
+[Unit]
+Description=Curatables first-boot Wi-Fi setup from boot-partition file
+Documentation=https://github.com/MadeByTokens/curatables
+# Apply Wi-Fi from curatables-wifi.txt on the FAT boot partition. Runs
+# before the network comes up so a configured Pi joins Wi-Fi on this same
+# boot. Wired Ethernet is independent (DHCP, automatic) and needs none of
+# this. Re-runs every boot so editing the file + rebooting changes Wi-Fi.
+After=local-fs.target
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/curatables/scripts/firstboot.sh
+
+[Install]
+WantedBy=multi-user.target

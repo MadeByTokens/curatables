@@ -1,0 +1,3 @@
+# Marks this stage as one pi-gen exports to a flashable .img. No suffix:
+# the artifact is named curatables-<date>-arm64.img(.xz).
+IMG_SUFFIX=""

@@ -1,0 +1,24 @@
+# ---------------------------------------------------------------------------
+#  Curatables Wi-Fi setup
+# ---------------------------------------------------------------------------
+#
+#  You can edit this file on Windows, macOS, or Linux: it lives on the
+#  small "boot" drive that appears when you plug the SD card into your
+#  computer. Fill in the three values below, save the file, put the card
+#  back in the Pi, and power it on.
+#
+#  USING WIRED ETHERNET INSTEAD?  Do nothing here. Plug the Pi into your
+#  router with a network cable and it gets an address automatically.
+#
+#  Then open  http://curatables.local  in a browser on the same network
+#  and set your parent password.
+#
+#  - country: your 2-letter country code (US, GB, DE, BR, ...). Required
+#             for Wi-Fi to turn on.
+#  - ssid:    your Wi-Fi network name, exactly as it appears.
+#  - psk:     your Wi-Fi password (leave empty only for open networks).
+# ---------------------------------------------------------------------------
+
+country=US
+ssid=
+psk=
