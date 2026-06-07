@@ -89,6 +89,12 @@ cp -a "${HERE}/stage-curatables" "${PIGEN_DIR}/stage-curatables"
 touch "${PIGEN_DIR}/stage2/SKIP_IMAGES"
 
 # 4. Build in Docker.
+# build-docker.sh refuses to start if a prior pigen_work container lingers
+# (e.g. from an interrupted run). Remove it so re-runs are clean. Use
+# CONTINUE=1 ./pi-gen/build.sh to instead resume an existing container.
+if [ "${CONTINUE:-0}" != "1" ]; then
+	docker rm -v -f pigen_work >/dev/null 2>&1 || true
+fi
 say "Starting pi-gen Docker build (this takes ~30-60 min and several GB)"
 cd "${PIGEN_DIR}"
 ./build-docker.sh
