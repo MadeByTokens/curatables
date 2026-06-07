@@ -1,0 +1,26 @@
+[Unit]
+Description=Curatables privileged updater (yt-dlp)
+Documentation=https://github.com/MadeByTokens/curatables
+# Triggered by curatables-updater.path when the unprivileged app drops a
+# request flag in the data dir. Intentionally NOT sandboxed like
+# curatables.service: it needs to write the venv and restart the server,
+# which the hardened app process is forbidden from doing. It only ever
+# acts on a flag the app wrote, and only does what scripts/updater.sh
+# encodes — read it before trusting it.
+
+[Service]
+Type=oneshot
+
+# Adjust these three to match your install if you did not use the
+# default /opt/curatables checkout + curatables service user.
+Environment=CURATABLES_ROOT=/opt/curatables
+Environment=CURATABLES_DATA=/home/curatables/curatables-data
+Environment=CURATABLES_USER=curatables
+
+# Runs as root: it pip-installs into the venv and runs `systemctl
+# restart curatables`, neither of which is possible from the sandboxed
+# app process.
+ExecStart=/opt/curatables/scripts/updater.sh
+
+# Don't let a hung pip wedge the unit forever.
+TimeoutStartSec=600

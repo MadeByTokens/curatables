@@ -43,6 +43,59 @@
   <button type="submit" class="btn">Save Settings</button>
 </form>
 
+{% if update_state %}
+<h2 class="mt-40">Updates</h2>
+<div class="mw-500">
+  <p class="fs-13 muted-2 mb-12">
+    yt-dlp is the engine that fetches videos. Sites like YouTube change
+    often, so yt-dlp needs frequent updates to keep working. Updating
+    happens in the background and the server restarts itself when it's
+    done — you don't need the command line.
+  </p>
+
+  <div class="form-group">
+    <label>Installed yt-dlp version</label>
+    <div><code>{{ update_state.current_version or 'unknown' }}</code></div>
+  </div>
+
+  {% if update_state.pending %}
+  <div class="flash mw-500">
+    An update was requested{% if update_state.pending.requested_at %}
+    at {{ update_state.pending.requested_at }}{% endif %} and is still
+    in progress. Reload this page in a moment to see the result.
+  </div>
+  {% elif update_state.result %}
+    {% if update_state.result.status == 'ok' %}
+    <div class="flash mw-500">
+      Last update: yt-dlp
+      {{ update_state.result.from_version or '?' }} →
+      <strong>{{ update_state.result.to_version or '?' }}</strong>
+      {% if update_state.result.finished_at %}
+      ({{ update_state.result.finished_at }}){% endif %}.
+    </div>
+    {% else %}
+    <div class="flash flash-error mw-500">
+      Last update failed: {{ update_state.result.message or 'see server logs' }}
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <form method="POST" action="/parent/settings/update" class="mw-500">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn"
+            {% if update_state.pending %}disabled{% endif %}>
+      Update yt-dlp now
+    </button>
+  </form>
+  <small class="muted">
+    Requires the <code>curatables-updater</code> background service
+    (installed by <code>install.sh --systemd</code>). On a manual /
+    non-systemd install, update yt-dlp with
+    <code>pip install -U yt-dlp</code> instead.
+  </small>
+</div>
+{% endif %}
+
 <details {% if advanced_open %}open{% endif %} class="mt-40 mw-500">
   <summary class="clickable fs-18 fw-bold txt">Advanced Settings</summary>
 

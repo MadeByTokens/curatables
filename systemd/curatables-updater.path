@@ -1,0 +1,15 @@
+[Unit]
+Description=Watch for Curatables update requests
+Documentation=https://github.com/MadeByTokens/curatables
+
+[Path]
+# Fires curatables-updater.service whenever the app drops this flag file.
+# The updater removes the flag when done, which re-arms this watcher for
+# the next request. Keep this path in sync with the data dir in
+# curatables-updater.service (CURATABLES_DATA) and the ReadWritePaths in
+# curatables.service. If you relocate the data dir, update all three.
+PathExists=/home/curatables/curatables-data/update-request.json
+Unit=curatables-updater.service
+
+[Install]
+WantedBy=multi-user.target

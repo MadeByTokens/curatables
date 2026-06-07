@@ -16,6 +16,60 @@ contract.
 
 ---
 
+## Updating yt-dlp from the dashboard (no command line)
+
+yt-dlp is the engine that fetches videos, and the sites it talks to
+(YouTube especially) change often — so yt-dlp is the one dependency you
+will need to update regularly, independent of Curatables releases. You
+can do it from **Settings → Updates** in the parent dashboard without
+touching a terminal: click **Update yt-dlp now**, and the page tells you
+the result on reload. The server restarts itself when the update lands.
+
+### How it works (and why it needs a helper)
+
+The Curatables service runs sandboxed (see
+[`systemd/curatables.service`](../systemd/curatables.service):
+`ProtectSystem=strict`, `NoNewPrivileges=true`) — by design it can write
+only its data directory and cannot `pip install` into its own venv or
+restart itself. So the button does **not** run pip directly. Instead:
+
+1. The app drops a small `update-request.json` flag in the data dir.
+2. A separate root-owned path-unit,
+   [`curatables-updater.path`](../systemd/curatables-updater.path),
+   notices the flag and runs
+   [`scripts/updater.sh`](../scripts/updater.sh) (as root, outside the
+   sandbox): it pip-upgrades yt-dlp, writes an `update-result.json` back,
+   removes the flag, and restarts `curatables`.
+3. The dashboard reads the result file and shows the old → new version.
+
+The helper does exactly one narrow thing — upgrade yt-dlp — and only ever
+acts on a flag the app wrote. It does **not** upgrade Curatables itself
+(that path stays manual + backup-first; see below).
+
+### Enabling it
+
+The updater units install with the systemd path:
+
+```bash
+sudo ./scripts/install.sh --systemd
+sudo systemctl enable --now curatables-updater.path
+```
+
+If you installed before this feature existed, copy the two new unit files
+(`systemd/curatables-updater.{service,path}`) into
+`/etc/systemd/system/`, `daemon-reload`, then `enable --now
+curatables-updater.path`. If your checkout, data dir, or service user
+differs from the defaults (`/opt/curatables`,
+`/home/curatables/curatables-data`, `curatables`), edit the
+`CURATABLES_ROOT`/`CURATABLES_DATA`/`CURATABLES_USER` lines in
+`curatables-updater.service` and the watched `PathExists` in
+`curatables-updater.path` to match.
+
+On a manual / non-systemd install the button has no helper to act on —
+update yt-dlp the old way: `pip install -U yt-dlp` in the venv.
+
+---
+
 ## Quick checklist
 
 ```text

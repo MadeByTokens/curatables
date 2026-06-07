@@ -10,6 +10,7 @@ from app.services.auth import AuthService
 from app.services.relocation import RelocationService, RelocationError
 from app.config import Config, ensure_directories
 from app.models import ViewerContext
+from app.services import updates
 
 router = APIRouter(prefix="/parent", tags=["parent-settings"])
 
@@ -28,7 +29,37 @@ def settings_page(request: Request,
                   config: Config = Depends(get_config)):
     return request.app.state.templates.TemplateResponse(request, "parent/settings.html", {
         "request": request, "config": config, "success": None, "error": None,
-        "advanced_open": False,
+        "advanced_open": False, "update_state": updates.update_state(config),
+    })
+
+
+@router.post("/settings/update")
+def settings_update(request: Request,
+                    viewer: ViewerContext = Depends(require_parent),
+                    config: Config = Depends(get_config)):
+    """Request a yt-dlp update.
+
+    The app cannot pip-install or restart itself from inside its sandbox
+    (see app/services/updates.py for why). It only drops a request flag
+    into the data dir; the root-owned curatables-updater path-unit does
+    the privileged work and writes a result the page shows on reload.
+    """
+    templates = request.app.state.templates
+    ctx = {"request": request, "config": config, "advanced_open": False,
+           "error": None}
+    try:
+        updates.request_update(config, kind=updates.KIND_YTDLP)
+    except OSError as e:
+        return templates.TemplateResponse(request, "parent/settings.html", {
+            **ctx, "success": None, "update_state": updates.update_state(config),
+            "error": f"Could not write the update request: {e}"})
+    return templates.TemplateResponse(request, "parent/settings.html", {
+        **ctx, "success": (
+            "Update requested. The updater runs in the background and the "
+            "server will restart when it finishes — reload this page in a "
+            "moment to see the result."
+        ),
+        "update_state": updates.update_state(config),
     })
 
 

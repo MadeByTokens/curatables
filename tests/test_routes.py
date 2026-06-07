@@ -66,6 +66,19 @@ class TestParentSettings:
         assert resp.status_code == 200
         assert b"Settings" in resp.content
 
+    def test_settings_page_shows_updates_section(self, authed_client):
+        resp = authed_client.get("/parent/settings")
+        assert resp.status_code == 200
+        assert b"Update yt-dlp now" in resp.content
+
+    def test_update_request_writes_flag(self, app, authed_client):
+        from app.services import updates
+
+        resp = authed_client.post("/parent/settings/update")
+        assert resp.status_code == 200
+        assert b"Update requested" in resp.content
+        assert updates.pending_request(app.state.config) is not None
+
 
 class TestParentChannels:
     def test_channels_page_loads(self, authed_client):

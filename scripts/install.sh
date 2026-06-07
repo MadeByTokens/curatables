@@ -134,9 +134,16 @@ if [[ $SYSTEMD -eq 1 ]]; then
         sudo useradd --system --home /home/curatables --create-home --shell /bin/bash curatables
     fi
     sudo cp systemd/curatables.service /etc/systemd/system/
+    # The updater path-unit + service back the in-app "Update yt-dlp"
+    # button: the sandboxed app drops a flag in the data dir, this
+    # root-owned helper does the pip-upgrade + restart it cannot do
+    # itself. See app/services/updates.py and scripts/updater.sh.
+    sudo cp systemd/curatables-updater.service /etc/systemd/system/
+    sudo cp systemd/curatables-updater.path /etc/systemd/system/
     sudo systemctl daemon-reload
-    say "Unit installed. Edit /etc/systemd/system/curatables.service to point at this checkout,"
-    say "then: sudo systemctl enable --now curatables"
+    say "Units installed. Edit /etc/systemd/system/curatables.service to point at this checkout"
+    say "(and the CURATABLES_ROOT/DATA/USER lines in curatables-updater.service if you changed paths),"
+    say "then: sudo systemctl enable --now curatables curatables-updater.path"
 fi
 
 say "Install complete."
