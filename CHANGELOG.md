@@ -8,6 +8,26 @@ Milestones are development phases, not released package versions — there
 is no PyPI/Docker release cadence yet (bare-metal Linux is the supported
 install, see [docs/deployment.md](docs/deployment.md)).
 
+## Unreleased — Appliance image & no-terminal updates
+
+- **In-app yt-dlp update:** a **Settings → Updates → Update yt-dlp** button
+  updates the downloader from the dashboard with no terminal. The sandboxed
+  app (`ProtectSystem=strict`, `NoNewPrivileges`) can't pip-install or
+  restart itself, so it drops a request flag in the data dir and a new
+  root-owned `curatables-updater.path`/`.service` does the pip-upgrade +
+  restart, writing a result the dashboard reads back
+  (`app/services/updates.py`, `scripts/updater.sh`). yt-dlp only by design.
+  Docs: [docs/upgrade.md](docs/upgrade.md).
+- **Pre-built Raspberry Pi appliance image:** `pi-gen/build.sh` builds a
+  flashable arm64 (Raspberry Pi OS Lite, trixie) image with Curatables, its
+  venv, ffmpeg, and Deno pre-installed and all systemd units enabled. No
+  baked passwords (OS login set at flash time; parent password set on first
+  visit via `/parent/setup`). Networking with no terminal: Ethernet DHCPs
+  automatically; Wi-Fi via an editable `curatables-wifi.txt` on the FAT boot
+  partition, applied each boot by `curatables-firstboot.service`. Build runs
+  in Docker via qemu; a `build-image` GitHub Actions workflow produces the
+  `.img.xz` on release. Docs: [pi-gen/README.md](pi-gen/README.md).
+
 ## Playback & GUI delivery
 
 - **Playback baseline:** every downloaded and uploaded video is normalized

@@ -79,7 +79,11 @@ history:
   dedup + codec allow-list), disk-quota guard + storage report, data-dir
   relocation.
 - **Ops** — `systemd` + mDNS (`curatables.local`), forward-only DB migrator,
-  CSRF, backup/restore scripts. Full design in [docs/architecture.md](docs/architecture.md).
+  CSRF, backup/restore scripts, **one-click yt-dlp update from the dashboard**
+  (no terminal — see [docs/upgrade.md](docs/upgrade.md)), and a **pre-built
+  Raspberry Pi appliance image** (flash → boot → set password — see
+  [pi-gen/README.md](pi-gen/README.md)). Full design in
+  [docs/architecture.md](docs/architecture.md).
 
 **Not yet implemented** (see [Roadmap](#roadmap)): AI content-safety agent and
 LLM usage export (v0.6), OAuth source authentication (v0.7), HTTPS via local CA
@@ -309,13 +313,18 @@ feature-by-feature history. What's still ahead:
   surface in parent settings.
 
 ### Future
-- Cross-platform host packaging — aspirational, not shipped. The
+- **Pre-built Raspberry Pi image — shipped.** A flashable arm64
+  Raspberry Pi OS image with Curatables pre-installed is built by
+  [`pi-gen/build.sh`](pi-gen/README.md) (and the
+  `build-image` GitHub Actions workflow on release). Flash it, boot,
+  open `curatables.local`, set a password — no terminal. The rest of
+  this bucket below is still aspirational.
+- Other cross-platform host packaging — aspirational, not shipped. The
   bare-metal Linux path is the supported one today. Things in this
   bucket: Docker image (the in-progress notes live in
   [docs/dependencies.md](docs/dependencies.md)), AppImage, NAS
   packages (Synology, QNAP), desktop installers for macOS/Windows,
-  pre-built Raspberry Pi image, Termux setup script for old Android
-  phones.
+  Termux setup script for old Android phones.
 - QR code for kid device setup (print/display a code that opens
   `http://curatables.local/` on any phone/tablet without typing)
 - QR-code import of shared curation lists (scan another parent's QR

@@ -50,10 +50,31 @@ You'll also need:
 
 ## Step 1 — Put Linux on the box
 
+> ### 🟢 Fastest path: the ready-made Raspberry Pi image
+>
+> If you have a Raspberry Pi, there's a pre-built image with Curatables
+> already installed — **no terminal, no install steps**. Flash it and you
+> can skip Steps 2, 3, and 4 entirely.
+>
+> 1. Get the image: `curatables-<date>.img.xz` from the project's
+>    Releases page (or build it yourself with
+>    [`pi-gen/build.sh`](../pi-gen/README.md)).
+> 2. In **Raspberry Pi Imager**, choose **"Use custom"** and select that
+>    `.img.xz`. Click the **gear** and set your **login username/password**
+>    (and Wi-Fi, if you like). Write the card.
+> 3. *(Wi-Fi alternative)* After writing, the card shows a small **boot**
+>    drive on your computer. Open **`curatables-wifi.txt`** on it and fill
+>    in `country`, `ssid`, `psk`. Wired Ethernet needs nothing.
+> 4. Put the card in the Pi, power on, wait ~2 minutes, then jump straight
+>    to [Step 5](#step-5--open-it-and-set-your-parent-password).
+>
+> The manual route below (plain Raspberry Pi OS + installer) still works
+> and is what to use on a laptop/mini-PC or if you prefer to see each step.
+
 **If you're using a spare laptop or mini-PC that already runs Ubuntu or
 Debian Linux, skip to [Step 2](#step-2--open-a-terminal-on-the-box).**
 
-For a Raspberry Pi:
+For a Raspberry Pi (manual route):
 
 1. On your normal laptop, download and install the
    **[Raspberry Pi Imager](https://www.raspberrypi.com/software/)**.
@@ -261,6 +282,16 @@ This is the [re-processing step](#why-does-a-new-video-take-a-while). On a
 Raspberry Pi 4, several minutes per video is expected. Give it time. If a
 specific video never finishes, check the server log (`journalctl` above,
 or the open SSH window) for an error about that video.
+
+### Adding videos suddenly fails (especially from YouTube)
+
+YouTube and other sites change often, and the downloader (**yt-dlp**) needs
+periodic updating to keep up. You don't need the terminal: open
+**Settings → Updates** in the parent dashboard and click **Update yt-dlp
+now**. It updates in the background and the server restarts itself; reload
+the page to see the result. (This needs the `curatables-updater` service,
+which the appliance image and `scripts/install.sh --systemd` install. See
+[upgrade.md](upgrade.md) for details.)
 
 ### I forgot the parent password
 

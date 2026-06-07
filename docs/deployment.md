@@ -131,11 +131,27 @@ sudo -u $(whoami) scripts/install.sh --systemd
 sudoedit /etc/systemd/system/curatables.service
 sudo systemctl enable --now curatables
 sudo systemctl status curatables
+
+# 4. (optional) Enable the in-dashboard yt-dlp updater
+sudo systemctl enable --now curatables-updater.path
 ```
 
 The installer creates the `curatables` service user, installs apt +
-Deno + Python deps, and drops the systemd unit. You only need to edit
+Deno + Python deps, and drops the systemd units. You only need to edit
 paths in the unit and enable it.
+
+`--systemd` also installs `curatables-updater.{service,path}`, which back
+the **Settings → Updates → Update yt-dlp** button in the dashboard (the
+sandboxed app can't pip-install or restart itself, so this root-owned
+helper does it on request). Enable the path unit to turn the button on;
+if your checkout/data-dir/user differ from the defaults, edit the
+`CURATABLES_ROOT`/`CURATABLES_DATA`/`CURATABLES_USER` lines in
+`curatables-updater.service` and the watched path in
+`curatables-updater.path`. Full flow: [upgrade.md](upgrade.md).
+
+> **Prefer not to install at all?** A pre-built Raspberry Pi image with
+> all of the above already set up is built by
+> [`pi-gen/build.sh`](../pi-gen/README.md) — flash, boot, done.
 
 Check the journal to confirm both the listener and the mDNS
 advertisement came up:
