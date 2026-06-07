@@ -1,0 +1,162 @@
+{% extends "parent/base.html" %}
+{% block content %}
+{% set has_pending = videos | selectattr("download_status", "in", ["pending", "downloading"]) | list | length > 0 %}
+{% if has_pending %}
+<meta http-equiv="refresh" content="5">
+{% endif %}
+<style>
+.card .thumb { width: 160px; }
+.card .thumb img { width: 100%; height: auto; }
+.card .bulk-check { float: left; margin-right: 8px; transform: scale(1.3); }
+.bulk-bar {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.bulk-bar select, .bulk-bar .btn { margin-right: 6px; }
+.bulk-bar label { font-size: 14px; }
+@media (max-width: 600px) {
+  .card .thumb { width: 100%; }
+}
+</style>
+
+<h1>Approved Content</h1>
+<p>{{ total }} video(s) total — page {{ page }} of {{ total_pages }}</p>
+
+{% if flash %}
+<div class="flash {% if flash_type == 'error' %}flash-error{% endif %}">{{ flash }}</div>
+{% endif %}
+
+{% if videos %}
+<div class="bulk-bar">
+  <form id="bulk-form" method="POST" action="/parent/content/bulk" onsubmit="return confirmBulk();">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    <label><input type="checkbox" id="select-all" onchange="toggleAll(this)"> Select all on this page</label>
+    &nbsp;&nbsp;
+    <select name="target_channel_id">
+      <option value="">(pick channel for move)</option>
+      {% for ch in channels %}
+      <option value="{{ ch.id }}">{{ ch.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="action" value="move" class="btn btn-sm">Move</button>
+    <button type="submit" name="action" value="hide" class="btn btn-sm btn-secondary">Hide</button>
+    <button type="submit" name="action" value="unhide" class="btn btn-sm btn-secondary">Unhide</button>
+    <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">Delete</button>
+  </form>
+</div>
+<script>
+function toggleAll(source) {
+  var boxes = document.querySelectorAll('input[form="bulk-form"][name="video_ids"]');
+  for (var i = 0; i < boxes.length; i++) { boxes[i].checked = source.checked; }
+}
+function confirmBulk() {
+  var btn = document.activeElement;
+  var action = btn && btn.name === 'action' ? btn.value : '';
+  var boxes = document.querySelectorAll('input[form="bulk-form"][name="video_ids"]:checked');
+  if (boxes.length === 0) {
+    alert('Pick at least one video first.');
+    return false;
+  }
+  if (action === 'delete') {
+    return confirm('Delete ' + boxes.length + ' video(s)? This removes the files on disk.');
+  }
+  return true;
+}
+</script>
+{% endif %}
+
+{% if videos %}
+  {% for v in videos %}
+  <div class="card">
+    <input type="checkbox" class="bulk-check" form="bulk-form" name="video_ids" value="{{ v.video_id }}">
+    <div class="thumb">
+      <img src="/media/thumb/{{ v.video_id }}" alt="{{ v.title }}">
+    </div>
+    <div class="info">
+      <div class="title-line">
+        <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>
+      </div>
+      <div class="meta">
+        {{ v.channel_name }}
+        {% if v.original_url %}
+        &middot; <a href="{{ v.original_url }}" target="_blank" rel="noopener noreferrer" class="fs-11 muted-3">original{% if v.extractor %} ({{ v.extractor }}){% endif %}</a>
+        {% endif %}
+        &middot;
+        {% if v.duration %}
+          {% set h = v.duration // 3600 %}
+          {% set m = (v.duration % 3600) // 60 %}
+          {% set s = v.duration % 60 %}
+          {% if h %}{{ h }}:{{ '%02d'|format(m) }}:{{ '%02d'|format(s) }}{% else %}{{ m }}:{{ '%02d'|format(s) }}{% endif %}
+        {% else %}
+          ?
+        {% endif %}
+        &middot;
+        <small>{{ v.video_id }}</small>
+      </div>
+      {% if v.description %}
+      <div class="desc">{{ v.description[:120] }}{% if v.description|length > 120 %}...{% endif %}</div>
+      {% endif %}
+      <div class="status-line">
+        <strong>{{ v.status }}</strong>
+        &middot;
+        {% if v.download_status == 'ready' %}
+          <span class="x-043">&#10003; downloaded</span>
+        {% elif v.download_status == 'downloading' %}
+          <span class="x-044">&#8635; downloading...</span>
+        {% elif v.download_status == 'error' %}
+          <span class="x-045">&#10007; error</span>
+          {% if v.download_error %}
+          <br><small class="danger-text">{{ v.download_error }}</small>
+          {% endif %}
+        {% elif v.download_status == 'evicted' %}
+          <span title="Cache expired; re-downloads on next play" class="muted">&#128465; evicted</span>
+        {% else %}
+          <span class="x-046">&#8987; pending</span>
+        {% endif %}
+        {% if v.keep_forever %}
+        &middot; <span title="Pinned — never auto-evicted" class="accent-text">&#128204; library</span>
+        {% endif %}
+      </div>
+      <div class="actions">
+        <a href="/parent/content/{{ v.video_id }}/edit" class="btn btn-sm x-047">Edit</a>
+        {% if v.status == 'active' %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/hide">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-secondary">Hide</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/activate">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm">Activate</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/delete"
+              onsubmit="return confirm('Delete this video?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+    <div class="clear"></div>
+  </div>
+  {% endfor %}
+{% else %}
+<p class="mt-24">No videos yet. <a href="/parent/add">Add some content</a>.</p>
+{% endif %}
+
+{% if total_pages > 1 %}
+<div class="mt-20 ta-c">
+  {% if page > 1 %}
+  <a href="/parent/content?page={{ page - 1 }}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+  {% endif %}
+  <span class="x-048">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="/parent/content?page={{ page + 1 }}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+:root {
+  --bg-color: #fffbe6;
+  --accent: #ff6b6b;
+  --accent-hover: #e55a5a;
+  --header-bg: #ff6b6b;
+  --card-bg: #fff;
+  --card-radius: 16px;
+  --card-shadow: 0 2px 10px rgba(255,107,107,0.15);
+  --font-size-title: 16px;
+  --font-size-header: 28px;
+}

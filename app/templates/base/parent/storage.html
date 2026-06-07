@@ -1,0 +1,80 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Storage</h1>
+
+{% set gb = 1073741824 %}
+{% set used_cur_gb = (report.used_by_curatables_bytes / gb) %}
+{% set total_gb = (report.total_bytes / gb) %}
+{% set free_gb = (report.free_bytes / gb) %}
+{% set used_gb = (report.used_bytes / gb) %}
+{% set threshold_gb = (report.min_free_bytes / gb) %}
+
+{% if report.status == "blocked" %}
+<div class="flash flash-error">
+  Free space is below the configured minimum of {{ "%.1f"|format(threshold_gb) }} GB.
+  New downloads and uploads will be refused until space is freed or the threshold is lowered in
+  <a href="/parent/settings">Settings</a>.
+</div>
+{% elif report.status == "warning" %}
+<div class="flash warn-bg warn-text">
+  Free space is getting close to the configured minimum of {{ "%.1f"|format(threshold_gb) }} GB.
+  Consider freeing up space or adjusting the threshold in
+  <a href="/parent/settings">Settings</a>.
+</div>
+{% endif %}
+
+<div>
+  <div class="stat-card">
+    <div class="number">{{ "%.1f"|format(total_gb) }}</div>
+    <div class="label">Total GB</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ "%.1f"|format(used_gb) }}</div>
+    <div class="label">Used GB (whole disk)</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ "%.1f"|format(free_gb) }}</div>
+    <div class="label">Free GB</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ "%.2f"|format(used_cur_gb) }}</div>
+    <div class="label">Used by Curatables GB</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ "%.1f"|format(threshold_gb) }}</div>
+    <div class="label">Minimum Free GB</div>
+  </div>
+</div>
+
+<h2 class="mt-32">Space by Channel</h2>
+{% if channels %}
+<table>
+  <thead>
+    <tr>
+      <th>Channel</th>
+      <th>Videos</th>
+      <th>Size (GB)</th>
+      <th>% of Curatables</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in channels %}
+    <tr>
+      <td>{{ c.channel_name }}</td>
+      <td>{{ c.video_count }}</td>
+      <td>{{ "%.2f"|format(c.total_bytes / gb) }}</td>
+      <td>
+        {% if report.used_by_curatables_bytes > 0 %}
+          {{ "%.1f"|format(100 * c.total_bytes / report.used_by_curatables_bytes) }}%
+        {% else %}
+          0.0%
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No videos stored yet.</p>
+{% endif %}
+{% endblock %}

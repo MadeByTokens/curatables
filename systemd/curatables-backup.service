@@ -1,0 +1,19 @@
+[Unit]
+Description=Curatables — daily SQLite DB backup snapshot
+After=curatables.service
+Wants=curatables.service
+
+[Service]
+Type=oneshot
+User=curatables
+Group=curatables
+Environment=CURATABLES_DATA_DIR=/home/curatables/curatables-data
+Environment=RETAIN=14
+ExecStart=/opt/curatables/scripts/backup.sh /home/curatables/curatables-data/backups
+
+# Hardening — same posture as the main service.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/curatables/curatables-data/backups
+PrivateTmp=true

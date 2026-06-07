@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who's watching?</title>
+<link rel="stylesheet" href="/static/kid/style.css">
+</head>
+<body>
+<div class="header">
+  <h1>Who's watching?</h1>
+</div>
+{% if profiles %}
+<div class="profile-grid">
+  {% for p in profiles %}
+  <form method="POST" action="/profiles/select" class="profile-card-form">
+    <input type="hidden" name="profile_id" value="{{ p.id }}">
+    <button type="submit" class="profile-card">
+      <div class="profile-avatar">{{ avatars.get(p.avatar, '👤') }}</div>
+      <div class="profile-name">{{ p.display_name or p.name }}</div>
+    </button>
+  </form>
+  {% endfor %}
+  <div class="clear"></div>
+</div>
+{% else %}
+<div class="mw-500 p-24 ta-c bd-ddd r-8 x-024">
+  <div class="fs-48 mb-12">👶</div>
+  <h2 class="mt-0">No kid profiles yet</h2>
+  <p class="muted-2 mb-20">
+    A grown-up needs to create at least one kid profile before you can watch videos.
+  </p>
+  <p>
+    <a href="/parent/login" class="tappable d-ib accent-bg on-dark no-underline r-4 fw-bold x-002">Grown-up sign in</a>
+  </p>
+  <p class="mt-16 fs-13 muted">
+    After signing in, go to <code>Profiles</code> in the parent dashboard to add a kid.
+  </p>
+</div>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,98 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Usage Statistics</h1>
+
+<div class="window-toggle mb-20">
+  <a href="?window=today" class="btn {% if window == 'today' %}btn-active{% else %}btn-secondary{% endif %} mr-4">Today</a>
+  <a href="?window=7d" class="btn {% if window == '7d' %}btn-active{% else %}btn-secondary{% endif %} mr-4">7 Days</a>
+  <a href="?window=all" class="btn {% if window == 'all' %}btn-active{% else %}btn-secondary{% endif %}">All Time</a>
+</div>
+
+<div>
+  <div class="stat-card">
+    <div class="number">{{ kpis.page_views }}</div>
+    <div class="label">Page Views</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ kpis.completions }}</div>
+    <div class="label">Videos Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ (kpis.watch_seconds // 3600) }}h {{ ((kpis.watch_seconds % 3600) // 60) }}m</div>
+    <div class="label">Time in Completed Videos</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ kpis.comment_count }}</div>
+    <div class="label">Comments</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ kpis.reaction_count }}</div>
+    <div class="label">Reactions</div>
+  </div>
+</div>
+
+<h2 class="mt-32">Top Videos</h2>
+{% if top_videos %}
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Video</th>
+      <th>Completed</th>
+      <th>Time</th>
+      <th>Reactions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in top_videos %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td><a href="/parent/content/{{ v.video_id }}">{{ v.video_title or v.video_id }}</a></td>
+      <td>{{ v.plays }}</td>
+      <td>{{ (v.secs // 60) }}m</td>
+      <td>
+        {% for name, count in (v.reactions or {}).items() %}
+          {{ emoji_lookup.get(name, name) }}&nbsp;{{ count }}{% if not loop.last %} &middot; {% endif %}
+        {% endfor %}
+        {% if not v.reactions %}&mdash;{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No completed videos in this window.</p>
+{% endif %}
+
+<h2 class="mt-32">Per Kid</h2>
+{% if profiles %}
+<table>
+  <thead>
+    <tr>
+      <th>Kid</th>
+      <th>Completed</th>
+      <th>Time</th>
+      <th>Reactions</th>
+      <th>Comments</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in profiles %}
+    <tr>
+      <td><a href="/parent/stats/profiles/{{ p.profile_id }}?window={{ window }}">{{ p.profile_name }}</a></td>
+      <td>{{ p.completions }}</td>
+      <td>{{ (p.secs // 60) }}m</td>
+      <td>{{ p.reaction_count }}</td>
+      <td>{{ p.comment_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No kid activity in this window.</p>
+{% endif %}
+
+<style>
+.btn-active { background: var(--accent); color: #fff; }
+</style>
+{% endblock %}

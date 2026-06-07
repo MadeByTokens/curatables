@@ -1,0 +1,16 @@
+{% extends "kid/base.html" %}
+{% block theme_css %}
+<meta http-equiv="refresh" content="15">
+{% endblock %}
+{% block content %}
+<div class="preparing">
+  <h2>Getting your video ready...</h2>
+  <p class="preparing-title">{{ video.title }}</p>
+  <p class="preparing-hint">This video needs to download again. It'll start playing on its own in a few seconds.</p>
+  <p class="preparing-meta">
+    <a href="/watch/{{ video.video_id }}">Refresh now</a>
+    &nbsp;&middot;&nbsp;
+    <a href="/">Back home</a>
+  </p>
+</div>
+{% endblock %}

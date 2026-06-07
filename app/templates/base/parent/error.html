@@ -1,0 +1,10 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>{{ heading or "Something went wrong" }}</h1>
+<p class="muted-2 mt-16">
+  {{ detail or "An unexpected error occurred. The details have been logged." }}
+</p>
+<p class="mt-24">
+  <a href="/parent/" class="btn">Back to Dashboard</a>
+</p>
+{% endblock %}

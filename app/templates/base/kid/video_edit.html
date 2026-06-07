@@ -1,0 +1,103 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="mw-600 mx-auto p-16">
+  <h2>Customize Video</h2>
+  <div class="mb-16">
+    <img id="thumb-preview" src="/media/thumb/{{ video.video_id }}" alt="" class="w-100 r-4 x-014">
+    <div class="mt-6">
+      <a href="/media/thumb/{{ video.video_id }}" download="thumb-{{ video.video_id }}.jpg" class="tappable d-ib txt r-4 no-underline fs-13 x-015">Download current</a>
+      {% if overrides and overrides.has_custom_thumb %}
+      <form method="POST" action="/video/{{ video.video_id }}/reset" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="field" value="thumbnail">
+        <button type="submit" class="txt bd-none r-4 fs-13 clickable x-015">Reset to original</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="mt-6 muted fs-13">Original: {{ video.original_title }}</div>
+  </div>
+
+  <!-- Reset-single-field forms. Sit outside the main edit form so
+       their Submit buttons can be associated via the HTML `form=`
+       attribute without being treated as a main-form submit. -->
+  <form id="reset-title" method="POST" action="/video/{{ video.video_id }}/reset" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="field" value="title">
+  </form>
+  <form id="reset-description" method="POST" action="/video/{{ video.video_id }}/reset" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="field" value="description">
+  </form>
+
+  <form method="POST" action="/video/{{ video.video_id }}/edit" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="mb-16">
+      <label for="title" class="d-flex jc-sb ai-c fw-bold mb-4">
+        <span>Title</span>
+        {% if overrides and overrides.title %}
+        <button type="submit" form="reset-title" class="txt bd-none r-3 fs-12 clickable fw-normal x-016">Reset to original</button>
+        {% endif %}
+      </label>
+      <input type="text" id="title" name="title" maxlength="200"
+             value="{{ overrides.title if overrides and overrides.title else video.title }}" class="w-100 p-8 fs-15 bd-ccc r-4 bb">
+      <div class="fs-12 muted mt-2">Leave blank to use the original title.</div>
+    </div>
+
+    <div class="mb-16">
+      <label for="description" class="d-flex jc-sb ai-c fw-bold mb-4">
+        <span>Description</span>
+        {% if overrides and overrides.description %}
+        <button type="submit" form="reset-description" class="txt bd-none r-3 fs-12 clickable fw-normal x-016">Reset to original</button>
+        {% endif %}
+      </label>
+      <textarea id="description" name="description" rows="4" maxlength="2000" class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans">{{ overrides.description if overrides and overrides.description else video.description }}</textarea>
+      <div class="fs-12 muted mt-2">Leave blank to use the original description.</div>
+    </div>
+
+    <div class="mb-16">
+      <label class="d-block fw-bold mb-4">Custom Thumbnail</label>
+      <input type="file" id="thumb-input" name="thumbnail" accept="image/*" class="fs-14">
+      <div class="mt-6 muted fs-12">Pick an image, then Save — the picture above updates once it's saved.</div>
+      {% if overrides and overrides.has_custom_thumb %}
+      <div class="mt-6">
+        <label class="fw-normal">
+          <input type="checkbox" name="clear_thumbnail" value="1">
+          Reset to original thumbnail
+        </label>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="mb-16">
+      <label for="tags" class="d-block fw-bold mb-4">Tags</label>
+      <input type="text" id="tags" name="tags" maxlength="500"
+             value="{{ tags | map(attribute='name') | join(', ') }}"
+             placeholder="science, funny, music" class="w-100 p-8 fs-15 bd-ccc r-4 bb">
+      <div class="fs-12 muted mt-2">Comma-separated. These are your personal tags.</div>
+    </div>
+
+    {% set owned_channels = kid_channels | selectattr('owner_profile_id', 'equalto', viewer.profile_id) | list %}
+    {% if owned_channels %}
+    <div class="mb-16">
+      <label class="d-block fw-bold mb-4">My Channels</label>
+      {% for ch in owned_channels %}
+      <label class="d-block x-017">
+        <input type="checkbox" name="channel_{{ ch.id }}" value="1"
+               {% if ch.id in bookmarked_channel_ids %}checked{% endif %}>
+        {{ ch.name }}
+      </label>
+      {% endfor %}
+      <div class="fs-12 muted mt-2">Add this video to your channels.</div>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-8">
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable x-018">Save</button>
+      <a href="/watch/{{ video.video_id }}" class="on-dark r-4 no-underline fs-15 x-019">Cancel</a>
+    </div>
+  </form>
+</div>
+{# Thumbnail preview is a server round-trip now (no client JS): the form
+   posts the image, the server stores it, and the reloaded page shows the
+   new thumbnail. Keeps this page in the zero-JS kid budget (M4/M7). #}
+{% endblock %}

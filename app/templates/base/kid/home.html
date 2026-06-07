@@ -1,0 +1,80 @@
+{% extends "kid/base.html" %}
+{% block content %}
+
+{% if channel %}
+<div class="channel-header" style="--ch: {{ channel.color or '' }}">
+  {% if channel.banner_filename %}
+  <img src="/media/channel/{{ channel.id }}/banner" class="channel-banner w-100 of-cover r-6 x-025">
+  {% endif %}
+  <div class="d-flex ai-c gap-12 x-026">
+    {% if channel.icon_filename %}
+    <img src="/media/channel/{{ channel.id }}/icon" class="r-circle of-cover x-027">
+    {% endif %}
+    <div>
+      <h2 class="m-0 on-dark">{{ channel.name }}</h2>
+      {% if channel.description %}
+      <p class="fs-14 x-028">{{ channel.description }}</p>
+      {% endif %}
+    </div>
+    {% if viewer and viewer.is_child and channel.owner_profile_id == viewer.profile_id %}
+    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-13 x-029">Edit Channel</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if tag_name %}
+<div class="fs-16 x-030">
+  Showing videos tagged <strong>{{ tag_name }}</strong>
+  &middot; <a href="/tags">All tags</a> &middot; <a href="/">Clear filter</a>
+</div>
+{% endif %}
+
+{% if channels %}
+<div class="channel-nav">
+  <a href="/" class="channel-link">All</a>
+  {% for ch in channels %}
+  <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}">
+    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" class="r-circle va-mid mr-4 x-031">{% endif %}{{ ch.name }}</a>
+  {% endfor %}
+  <a href="/tags" class="channel-link">Tags</a>
+</div>
+{% endif %}
+
+<div class="video-grid">
+{% if videos %}
+  {% for v in videos %}
+  <div class="video-card">
+    <a href="/watch/{{ v.video_id }}">
+      <span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt="{{ v.title }}"></span>
+      <div class="video-title">{{ v.title }}</div>
+      {% if reaction_counts and reaction_counts.get(v.video_id) %}
+      <div class="fs-12 muted x-032">
+        {% for emoji_name, cnt in reaction_counts[v.video_id].items() %}
+        <span class="mr-6">{{ cnt }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </a>
+  </div>
+  {% endfor %}
+  <div class="clear"></div>
+
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% set base_url = "/channel/" ~ current_channel_id if current_channel_id else "/" %}
+    {% if page > 1 %}
+    <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="{{ base_url }}?page={{ page + 1 }}" class="page-link">Next &rarr;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+{% else %}
+  <p class="empty">No videos yet. Ask a parent to add some!</p>
+{% endif %}
+</div>
+{% endblock %}

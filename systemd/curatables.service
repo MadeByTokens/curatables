@@ -1,0 +1,48 @@
+[Unit]
+Description=Curatables — local video curation server for parents and kids
+Documentation=https://github.com/MadeByTokens/curatables
+After=network-online.target avahi-daemon.service
+Wants=network-online.target avahi-daemon.service
+
+[Service]
+Type=simple
+
+# Run as an unprivileged user that owns the data directory. Replace
+# 'curatables' with the user that will host the installation.
+User=curatables
+Group=curatables
+
+# Where the code lives. Adjust to your checkout path.
+WorkingDirectory=/opt/curatables
+
+# The only thing this service needs root for is binding port 80, and
+# AmbientCapabilities grants that single capability to the process
+# without otherwise elevating it. CAP_NET_BIND_SERVICE lets a
+# non-root process bind TCP/UDP ports < 1024.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Hardening: sane defaults for a long-running network service. Remove
+# any that conflict with your setup (e.g. if you store data under /var).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/curatables/curatables-data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false  # yt-dlp's deno runtime may JIT
+
+# Start the server on port 80. The mDNS advertiser published by the
+# app lifespan will pick this port up from config.server.port.
+ExecStart=/usr/bin/python3 /opt/curatables/run.py --port 80
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

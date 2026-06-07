@@ -1,0 +1,75 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>{% if profile %}Edit Profile{% else %}Create Profile{% endif %}</h1>
+
+{% if error %}
+<div class="flash flash-error">{{ error }}</div>
+{% endif %}
+
+<form method="POST"
+      action="{% if profile %}/parent/profiles/{{ profile.id }}/edit{% else %}/parent/profiles/create{% endif %}" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="form-group">
+    <label for="display_name">Name</label>
+    <input type="text" id="display_name" name="display_name"
+           value="{{ (profile.display_name or profile.name) if profile else '' }}"
+           placeholder="e.g. Alice" required>
+    <small class="muted">Shown to the kid in the header.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="pin">PIN (optional, 4 digits)</label>
+    <input type="tel" id="pin" name="pin" maxlength="4" value="{{ profile.pin if profile else '' }}">
+    <small class="muted">If set, the kid must enter this PIN to use the profile.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="avatar">Avatar</label>
+    <select id="avatar" name="avatar">
+      {% for val, emoji in avatar_choices %}
+      <option value="{{ val }}" {% if (profile and profile.avatar == val) or (not profile and val == 'default') %}selected{% endif %}>{{ emoji }} {{ val }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="theme">Theme</label>
+    <select id="theme" name="theme">
+      {% for val, label in theme_choices %}
+      <option value="{{ val }}" {% if profile and profile.theme == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="search_mode">Search</label>
+    <select id="search_mode" name="search_mode">
+      {% for val, label in search_choices %}
+      <option value="{{ val }}" {% if profile and profile.search_mode == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if channels %}
+  <div class="form-group">
+    <label>Visible Channels</label>
+    <small class="muted d-block mb-6">If none selected, all channels are visible.</small>
+    {% for ch in channels %}
+    <div class="x-042">
+      <label class="fw-normal d-inline">
+        <input type="checkbox" name="channel_ids" value="{{ ch.id }}"
+               {% if ch.id in selected_channel_ids %}checked{% endif %}>
+        {{ ch.name }}
+      </label>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="mt-20">
+    <button type="submit" class="btn">{% if profile %}Save Changes{% else %}Create Profile{% endif %}</button>
+    <a href="/parent/profiles" class="ml-12">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Add Content</h1>
+<p>Paste a video, channel, or playlist URL from any source yt-dlp supports.</p>
+
+{% if error %}
+<div class="flash flash-error">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div id="success-overlay" onclick="if(event.target===this)this.remove()" class="w-100 d-flex ai-c jc-c x-054">
+  <div class="r-8 p-32 ta-c x-055">
+    <div class="fs-48 mb-12">&#10003;</div>
+    <p class="fs-16 mb-24 x-056">{{ success }}</p>
+    <button onclick="document.getElementById('success-overlay').remove()" class="btn x-057">OK</button>
+  </div>
+</div>
+{% endif %}
+
+<form method="POST" action="/parent/add" class="mw-600">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="url">Video URL</label>
+    <input type="url" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+  </div>
+  <p class="muted-2 fs-13 mb-16">
+    Supported formats:<br>
+    - Video: https://www.youtube.com/watch?v=..., https://vimeo.com/..., https://www.tiktok.com/..., etc.<br>
+    - Channel: https://www.youtube.com/@ChannelName<br>
+    - Playlist: https://www.youtube.com/playlist?list=...<br>
+    - Anything else yt-dlp recognises (Dailymotion, Peertube, X/Twitter, Instagram, Twitch clips, ...).
+  </p>
+  <button type="submit" class="btn">Add Content</button>
+</form>
+
+<p class="mt-24"><a href="/parent/content">View all content &rarr;</a></p>
+{% endblock %}

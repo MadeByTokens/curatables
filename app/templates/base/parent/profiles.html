@@ -1,0 +1,32 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Child Profiles</h1>
+<p><a href="/parent/profiles/create" class="btn">Create Profile</a></p>
+
+{% if profiles %}
+  {% for p in profiles %}
+  <div class="card">
+    <div class="thumb fs-40 lh-1">{{ avatars.get(p.avatar, '👤') }}</div>
+    <div class="info">
+      <div class="title-line">{{ p.display_name or p.name }}</div>
+      <div class="meta">
+        Theme: {{ p.theme }}
+        &middot; Search: {{ p.search_mode }}
+        {% if p.pin %}&middot; PIN set{% endif %}
+        {% if p.allowed_channel_ids %}&middot; {{ p.allowed_channel_ids|length }} channel(s){% else %}&middot; All channels{% endif %}
+      </div>
+      <div class="actions">
+        <a href="/parent/profiles/{{ p.id }}/edit" class="btn btn-sm x-047">Edit</a>
+        <form method="POST" action="/parent/profiles/{{ p.id }}/delete"
+              onsubmit="return confirm('Delete profile {{ p.display_name or p.name }}?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<p class="muted mt-16">No profiles yet. Create one to enable the profile picker for kids.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Help</h1>
+
+<h2>Getting Started</h2>
+<ol class="x-052">
+  <li><strong>Add content</strong> — Go to <a href="/parent/add">Add</a> and paste a YouTube (or other) video URL. You can add individual videos, entire channels, or playlists.</li>
+  <li><strong>Organize into channels</strong> — Go to <a href="/parent/channels/">Channels</a> to create categories (e.g. "Science", "Music"). Assign videos to channels when adding or editing them.</li>
+  <li><strong>Create child profiles</strong> — Go to <a href="/parent/profiles">Profiles</a> to create profiles for each child. Set a display name, optional PIN, theme, search permissions, and which channels they can see.</li>
+  <li><strong>Share the kid URL</strong> — Give your kids <code>http://{{ request.headers.get('host', 'localhost:8080') }}/</code> — they'll see the profile picker and can only watch approved content.</li>
+</ol>
+
+<h2>Key Concepts</h2>
+
+<h3>Channels</h3>
+<p>Channels are categories you create to organize videos (e.g. "Cartoons", "Science", "Music"). They control what each child profile can see. If a profile has no channels assigned, they see everything. If you assign specific channels, they only see videos in those channels.</p>
+
+<h3>Profiles</h3>
+<p>Each child gets a profile with their own name, avatar, theme, and permissions. Profiles control:</p>
+<ul>
+  <li><strong>Display name</strong> — what the child sees in the header</li>
+  <li><strong>PIN</strong> — optional, prevents siblings from using each other's profiles</li>
+  <li><strong>Theme</strong> — visual style (Default, Playful, Calm)</li>
+  <li><strong>Search</strong> — disabled (default) or curated (search within approved content only)</li>
+  <li><strong>Channels</strong> — which channels this child can see</li>
+</ul>
+
+<h3>Video Downloads</h3>
+<p>Videos are downloaded when you add them, not when a child watches. The <a href="/parent/content">Content</a> tab shows download status. Videos only appear in the kid UI after they're fully downloaded.</p>
+<p>Download resolution and cache duration can be configured in <a href="/parent/settings">Settings</a>. Set cache to 0 days to keep videos forever.</p>
+
+<h3>Comments & Reactions</h3>
+<p>Children can react to videos with emojis and post comments. Comments are only visible between profiles that share channels — a toddler won't see a teen's comments if they don't share any channels. You can delete any comment from the <a href="/parent/stats">Stats</a> page.</p>
+
+<h2>Anti-Bot</h2>
+<p>If adding videos fails with "bot detection" errors (most often when pasting YouTube URLs), go to <a href="/parent/settings">Settings</a> and configure browser impersonation (recommended) or cookie authentication. Browser impersonation works without any login. Other yt-dlp-supported sources generally don't need anti-bot configuration.</p>
+
+<h2>Troubleshooting</h2>
+
+<h3>Video won't download</h3>
+<ul>
+  <li>Check the error message in the <a href="/parent/content">Content</a> tab</li>
+  <li>If it says "bot detection" — enable browser impersonation in Settings</li>
+  <li>If it says "unavailable" — the video may be private or region-locked</li>
+  <li>Check your internet connection</li>
+</ul>
+
+<h3>Kid can't see a video</h3>
+<ul>
+  <li>The video must be fully downloaded (status: "ready")</li>
+  <li>The video must be in a channel assigned to the child's profile</li>
+  <li>The video status must be "active" (not hidden)</li>
+</ul>
+
+<h3>Server won't start</h3>
+<ul>
+  <li>Run <code>python run.py</code> and check the error messages</li>
+  <li>Make sure Python 3.10+, ffmpeg, and Deno are installed</li>
+  <li>Run <code>pip install -r requirements.txt</code></li>
+</ul>
+
+<h2>Data & Privacy</h2>
+<ul>
+  <li>All data stays on your machine — nothing is sent to any cloud service</li>
+  <li>Kids never connect to the original video source — all video streaming goes through your server</li>
+  <li>Data is stored in <code>~/curatables-data/</code> by default (configurable in Settings)</li>
+  <li>Database: <code>curatables.db</code> (SQLite). Videos: <code>videos/</code> directory</li>
+</ul>
+
+<p class="mt-32 txt fs-14">
+  <strong>Thank you!</strong> Curatables stands on the shoulders of
+  <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>, without which
+  none of the download or metadata features would be possible. If this
+  project is useful to your family, please also consider supporting
+  yt-dlp directly.
+</p>
+
+<p class="mt-12 muted fs-13">
+  Curatables — <a href="https://github.com/MadeByTokens/curatables" class="muted">GitHub</a>
+</p>
+{% endblock %}

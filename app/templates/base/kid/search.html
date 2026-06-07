@@ -1,0 +1,31 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="p-16 mw-600 mx-auto">
+  <form method="GET" action="/search">
+    <input type="text" name="q" value="{{ query }}"
+           placeholder="Search videos..."
+           autofocus class="w-70 p-10 fs-16 r-6 x-001">
+    <button type="submit" class="fs-16 accent-bg on-dark bd-none r-6 clickable x-002">
+      Search
+    </button>
+  </form>
+</div>
+
+<div class="video-grid">
+{% if query %}
+  {% if videos %}
+    {% for v in videos %}
+    <div class="video-card">
+      <a href="/watch/{{ v.video_id }}">
+        <span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt="{{ v.title }}"></span>
+        <div class="video-title">{{ v.title }}</div>
+      </a>
+    </div>
+    {% endfor %}
+    <div class="clear"></div>
+  {% else %}
+    <p class="empty">No videos found for "{{ query }}"</p>
+  {% endif %}
+{% endif %}
+</div>
+{% endblock %}

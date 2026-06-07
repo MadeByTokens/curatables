@@ -1,0 +1,335 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<style>
+.review-player {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  max-width: 640px;
+  margin: 0 auto 16px;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.review-player iframe,
+.review-player .placeholder {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: 0;
+}
+.review-player .placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 14px;
+  background: #111;
+  text-align: center;
+  padding: 0 16px;
+}
+.review-current {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+}
+.review-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.review-card.is-watched {
+  border-color: var(--accent);
+  background: #f3fbf9;
+}
+.review-card .thumb {
+  float: left;
+  width: 200px;
+  margin-right: 16px;
+}
+.review-card .thumb img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  display: block;
+}
+.review-card .watch-btn {
+  margin-top: 6px;
+  width: 100%;
+  background: #07c;
+}
+.review-card .info { overflow: hidden; }
+.review-watched-row {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff8e1;
+  border: 1px solid #f0d78a;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.review-card.is-watched .review-watched-row {
+  background: #e8f6f3;
+  border-color: var(--accent);
+}
+.review-watched-row label { font-weight: normal; display: inline; margin: 0; cursor: pointer; }
+.review-watched-row input[type=checkbox] { margin-right: 8px; transform: scale(1.3); vertical-align: middle; }
+#add-btn:disabled { background: #999; cursor: not-allowed; }
+
+/* Link-out fallback card shown when the platform has no clean iframe. */
+.review-fallback {
+  max-width: 640px;
+  margin: 0 auto 16px;
+  padding: 24px;
+  background: #fff8e1;
+  border: 1px solid #f0d78a;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  color: #555;
+}
+.review-fallback p { margin: 0 0 14px; line-height: 1.4; }
+.review-fallback .btn-linkout {
+  display: inline-block;
+  padding: 10px 18px;
+  background: #07c;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+}
+.review-fallback .btn-linkout:hover { background: #05a; }
+.review-fallback .ext { color: #888; font-size: 12px; margin-top: 8px; }
+</style>
+
+<h1>Review &amp; Add</h1>
+<p>{{ videos|length }} video(s) from {{ url_type }}: <strong>{{ source_title }}</strong></p>
+
+{% set is_multi = videos|length > 1 %}
+
+{% if is_multi %}
+<div class="review-player" id="review-player">
+  <div class="placeholder">Pick a video below and press <strong>Watch &#9654;</strong></div>
+</div>
+<div class="review-current" id="review-current">No video loaded</div>
+{% endif %}
+
+<form method="POST" action="/parent/add/confirm" id="review-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="url_type" value="{{ url_type }}">
+  <input type="hidden" name="source_url" value="{{ source_url }}">
+  <input type="hidden" name="source_title" value="{{ source_title }}">
+
+  <div class="p-16 r-6 mb-24 mw-600 x-049">
+    <h3 class="mt-0">Settings for all videos</h3>
+
+    <div class="form-group">
+      <label for="resolution">Download Resolution</label>
+      <select id="resolution" name="resolution">
+        <option value="360p" {% if default_resolution == '360p' %}selected{% endif %}>360p</option>
+        <option value="480p" {% if default_resolution == '480p' %}selected{% endif %}>480p</option>
+        <option value="720p" {% if default_resolution == '720p' %}selected{% endif %}>720p</option>
+        <option value="1080p" {% if default_resolution == '1080p' %}selected{% endif %}>1080p</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="channel_id">Add to Channel</label>
+      <select id="channel_id" name="channel_id">
+        <option value="">(none)</option>
+        {% for ch in channels %}
+        <option value="{{ ch.id }}">{{ ch.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="new_channel_name">Or create new channel</label>
+      <input type="text" id="new_channel_name" name="new_channel_name" placeholder="New channel name...">
+      <small class="muted">If filled, this overrides the selection above.</small>
+    </div>
+  </div>
+
+  {% for v in videos %}
+  {% set composite_id = make_video_id(v.extractor, v.video_id) %}
+  {% set embed = embed_url_for(v.extractor, v.video_id, v.original_url) %}
+  <div class="review-card" id="card-{{ v.video_id }}">
+    <input type="hidden" name="video_ids" value="{{ v.video_id }}">
+    <input type="hidden" name="extractor_{{ v.video_id }}" value="{{ v.extractor }}">
+    <input type="hidden" name="original_url_{{ v.video_id }}" value="{{ v.original_url }}">
+    <input type="hidden" name="channel_name_{{ v.video_id }}" value="{{ v.channel }}">
+    <input type="hidden" name="duration_{{ v.video_id }}" value="{{ v.duration }}">
+    <input type="hidden" name="upload_date_{{ v.video_id }}" value="{{ v.upload_date }}">
+    <input type="hidden" name="view_count_{{ v.video_id }}" value="{{ v.view_count }}">
+    <input type="hidden" name="thumb_{{ v.video_id }}" value="{{ v.thumbnail_url }}">
+    <input type="hidden" name="original_title_{{ v.video_id }}" value="{{ v.title }}">
+    <input type="hidden" name="original_desc_{{ v.video_id }}" value="{{ v.description[:500] if v.description else '' }}">
+
+    {% if not is_multi %}
+      {% if embed %}
+      <div class="review-player mb-14">
+        <iframe src="{{ embed }}"
+                allow="encrypted-media; fullscreen; picture-in-picture"
+                allowfullscreen></iframe>
+      </div>
+      {% else %}
+      <div class="review-fallback">
+        <p><strong>Embed video player not available.</strong><br>
+           Click the button below to watch the original URL (opens in a new tab).</p>
+        {% if v.original_url %}
+        <a class="btn-linkout" href="{{ v.original_url }}"
+           target="_blank" rel="noopener noreferrer">Watch on source &#8599;</a>
+        {% endif %}
+        {% if v.extractor %}<div class="ext">source: {{ v.extractor }}</div>{% endif %}
+      </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="thumb">
+      <img src="/media/thumb/{{ composite_id }}" alt="">
+      <div class="mt-4 fs-12 muted">
+        {{ v.channel }}
+        {% if v.duration %}
+        &middot;
+        {% set h = v.duration // 3600 %}
+        {% set m = (v.duration % 3600) // 60 %}
+        {% set s = v.duration % 60 %}
+        {% if h %}{{ h }}:{{ '%02d'|format(m) }}:{{ '%02d'|format(s) }}{% else %}{{ m }}:{{ '%02d'|format(s) }}{% endif %}
+        {% endif %}
+        {% if v.extractor %}&middot; {{ v.extractor }}{% endif %}
+      </div>
+      {% if is_multi %}
+      <button type="button" class="btn btn-sm watch-btn"
+              data-vid="{{ v.video_id }}"
+              data-title="{{ v.title }}"
+              data-embed="{{ embed or '' }}"
+              data-orig="{{ v.original_url }}"
+              data-extractor="{{ v.extractor }}">
+        Watch &#9654;
+      </button>
+      {% endif %}
+    </div>
+
+    <div class="info">
+      <div class="form-group">
+        <label for="title_{{ v.video_id }}">Title</label>
+        <input type="text" id="title_{{ v.video_id }}" name="title_{{ v.video_id }}" value="{{ v.title }}">
+      </div>
+
+      <div class="form-group">
+        <label for="desc_{{ v.video_id }}">Description</label>
+        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ v.description[:500] if v.description else '' }}</textarea>
+      </div>
+
+      <div class="review-watched-row">
+        <label>
+          <input type="checkbox" class="watched-cb" name="watched_{{ v.video_id }}" value="1">
+          I have already fully watched this video
+        </label>
+      </div>
+    </div>
+    <div class="clear"></div>
+  </div>
+  {% endfor %}
+
+  <div class="mt-24">
+    <button type="submit" id="add-btn" class="btn" disabled>
+      Add {{ videos|length }} Video(s)
+    </button>
+    <a href="/parent/add" class="ml-12">Cancel</a>
+    <div id="add-btn-hint" class="d-ib ml-12 muted fs-13">
+      Tick every &ldquo;I have already fully watched this video&rdquo; to enable.
+    </div>
+  </div>
+</form>
+
+<script>
+(function () {
+  var form = document.getElementById('review-form');
+  var addBtn = document.getElementById('add-btn');
+  var hint = document.getElementById('add-btn-hint');
+  var boxes = form.querySelectorAll('.watched-cb');
+
+  function refreshGate() {
+    var allChecked = true;
+    for (var i = 0; i < boxes.length; i++) {
+      var card = document.getElementById('card-' + extractVid(boxes[i]));
+      if (boxes[i].checked) {
+        if (card) card.classList.add('is-watched');
+      } else {
+        if (card) card.classList.remove('is-watched');
+        allChecked = false;
+      }
+    }
+    addBtn.disabled = !allChecked;
+    if (hint) hint.style.display = allChecked ? 'none' : 'inline-block';
+  }
+
+  function extractVid(cb) {
+    // name is "watched_<videoid>"
+    return cb.name.replace(/^watched_/, '');
+  }
+
+  for (var i = 0; i < boxes.length; i++) {
+    boxes[i].addEventListener('change', refreshGate);
+  }
+
+  // Multi-video: wire the "Watch" buttons to swap the shared player
+  // pane. For platforms in the Tier 1 iframe allow-list the button
+  // carries a data-embed URL and we render an iframe; for everything
+  // else we render a link-out card pointing at data-orig, opened in
+  // a new tab.
+  var player = document.getElementById('review-player');
+  var current = document.getElementById('review-current');
+  var watchBtns = form.querySelectorAll('.watch-btn');
+
+  function escapeHtml(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                     .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+                     .replace(/'/g, '&#39;');
+  }
+
+  for (var j = 0; j < watchBtns.length; j++) {
+    watchBtns[j].addEventListener('click', function () {
+      var title = this.getAttribute('data-title');
+      var embed = this.getAttribute('data-embed');
+      var orig = this.getAttribute('data-orig');
+      var ext = this.getAttribute('data-extractor');
+      if (!player) return;
+
+      if (embed) {
+        // Iframe path — append autoplay so clicking Watch feels
+        // responsive. Some sites (YouTube) ignore the param but
+        // most honour it.
+        var sep = embed.indexOf('?') === -1 ? '?' : '&';
+        player.innerHTML =
+          '<iframe src="' + escapeHtml(embed) + sep + 'autoplay=1" ' +
+          'allow="encrypted-media; fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>';
+      } else {
+        // Link-out fallback — no clean iframe for this platform.
+        var linkHtml = orig
+          ? '<a class="btn-linkout" href="' + escapeHtml(orig) +
+            '" target="_blank" rel="noopener noreferrer">Watch on source &#8599;</a>'
+          : '<em>No original URL recorded.</em>';
+        player.innerHTML =
+          '<div class="placeholder fd-col p-20">' +
+          '  <p class="x-050"><strong>Embed video player not available.</strong></p>' +
+          '  <p class="x-051">Click below to watch the original URL (opens in a new tab).</p>' +
+          linkHtml +
+          (ext ? '<div class="mt-10 fs-12 muted-5">source: ' + escapeHtml(ext) + '</div>' : '') +
+          '</div>';
+      }
+
+      if (current) current.textContent = 'Now playing: ' + title;
+      // Scroll the player into view so the parent doesn't have to hunt for it
+      player.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  refreshGate();
+})();
+</script>
+{% endblock %}

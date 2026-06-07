@@ -1,0 +1,11 @@
+[Unit]
+Description=Curatables — run daily DB backup at 03:00
+Requires=curatables-backup.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=curatables-backup.service
+
+[Install]
+WantedBy=timers.target

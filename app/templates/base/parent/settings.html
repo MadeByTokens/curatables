@@ -1,0 +1,206 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Settings</h1>
+
+{% if success %}
+<div class="flash">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div class="flash flash-error">{{ error }}</div>
+{% endif %}
+
+<h2>Storage</h2>
+<form method="POST" action="/parent/settings" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="data_dir">Data Directory</label>
+    <input type="text" id="data_dir" name="data_dir" value="{{ config.storage.path }}">
+    <small class="muted">Where videos, thumbnails, and database are stored.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="cache_days">Cache Duration (days)</label>
+    <input type="number" id="cache_days" name="cache_days" value="{{ config.storage.cache_days }}" min="0" max="365">
+    <small class="muted">Videos are auto-deleted after this many days. Set to 0 to keep videos forever.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="default_resolution">Default Resolution</label>
+    <select id="default_resolution" name="default_resolution">
+      <option value="360p" {% if config.storage.default_resolution == '360p' %}selected{% endif %}>360p (small files)</option>
+      <option value="480p" {% if config.storage.default_resolution == '480p' %}selected{% endif %}>480p (balanced)</option>
+      <option value="720p" {% if config.storage.default_resolution == '720p' %}selected{% endif %}>720p (recommended)</option>
+      <option value="1080p" {% if config.storage.default_resolution == '1080p' %}selected{% endif %}>1080p (high quality)</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="subtitle_langs">Subtitle Languages</label>
+    <input type="text" id="subtitle_langs" name="subtitle_langs" value="{{ config.storage.subtitle_langs }}">
+    <small class="muted">Comma-separated language codes (e.g. "en,pt,es"), "all" for all available, or empty for none.</small>
+  </div>
+
+  <button type="submit" class="btn">Save Settings</button>
+</form>
+
+<details {% if advanced_open %}open{% endif %} class="mt-40 mw-500">
+  <summary class="clickable fs-18 fw-bold txt">Advanced Settings</summary>
+
+  <div class="mt-12 warn-bg warn-text r-4 fs-13 x-053">
+    Changes to port, host, log level, and session timeout require a <strong>server restart</strong> to take effect.
+  </div>
+
+  <form method="POST" action="/parent/settings/advanced" class="mt-16">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Server</h3>
+
+    <div class="form-group">
+      <label for="port">Port</label>
+      <input type="number" id="port" name="port" value="{{ config.server.port }}" min="1" max="65535">
+      <small class="muted">TCP port the server listens on. Default: 8080.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="host">Host / Listen Address</label>
+      <input type="text" id="host" name="host" value="{{ config.server.host }}">
+      <small class="muted">0.0.0.0 = all interfaces, 127.0.0.1 = localhost only.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="log_level">Log Level</label>
+      <select id="log_level" name="log_level">
+        <option value="debug" {% if config.server.log_level == 'debug' %}selected{% endif %}>Debug (verbose)</option>
+        <option value="info" {% if config.server.log_level == 'info' %}selected{% endif %}>Info (recommended)</option>
+        <option value="warning" {% if config.server.log_level == 'warning' %}selected{% endif %}>Warning (quiet)</option>
+        <option value="error" {% if config.server.log_level == 'error' %}selected{% endif %}>Error (minimal)</option>
+      </select>
+      <small class="muted">Log verbosity. Logs are written to the data directory under logs/.</small>
+    </div>
+
+    <h3 class="mt-24">Storage</h3>
+
+    <div class="form-group">
+      <label for="default_mode">Default Storage Mode</label>
+      <select id="default_mode" name="default_mode">
+        <option value="cache" {% if config.storage.default_mode == 'cache' %}selected{% endif %}>Cache (auto-delete after expiry)</option>
+        <option value="library" {% if config.storage.default_mode == 'library' %}selected{% endif %}>Library (keep forever)</option>
+      </select>
+      <small class="muted">Default mode for newly added videos.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="min_free_disk_gb">Minimum Free Disk Space (GB)</label>
+      <input type="number" id="min_free_disk_gb" name="min_free_disk_gb"
+             value="{{ '%.2f'|format(config.storage.min_free_disk_bytes / 1073741824) }}"
+             min="0" step="0.1">
+      <small class="muted">Refuse new downloads and uploads when free disk space would drop below this value. Default: 2 GB.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="max_upload_gb">Maximum Upload Size (GB)</label>
+      <input type="number" id="max_upload_gb" name="max_upload_gb"
+             value="{{ '%.2f'|format(config.storage.max_upload_bytes / 1073741824) }}"
+             min="0" step="0.1">
+      <small class="muted">Absolute upper bound for a single uploaded video file. Default: 10 GB.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="max_kid_upload_gb">Maximum Kid Upload Size (GB)</label>
+      <input type="number" id="max_kid_upload_gb" name="max_kid_upload_gb"
+             value="{{ '%.2f'|format(config.storage.max_kid_upload_bytes / 1073741824) }}"
+             min="0" step="0.1">
+      <small class="muted">Per-upload ceiling for videos uploaded from kid profiles. Keeps kid uploads smaller than the parent ceiling. Default: 0.5 GB.</small>
+    </div>
+
+    <h3 class="mt-24">Anti-Bot</h3>
+    <p class="fs-13 muted-2 mb-12">Some video sources (YouTube in particular) block automated requests. Browser impersonation usually works without any login. Cookies are a fallback if impersonation alone isn't enough, and other yt-dlp-supported sources generally don't need either.</p>
+
+    <div class="form-group">
+      <label for="impersonate">Browser Impersonation (recommended)</label>
+      <select id="impersonate" name="impersonate">
+        <option value="" {% if not config.storage.impersonate %}selected{% endif %}>Disabled</option>
+        <option value="chrome" {% if config.storage.impersonate == 'chrome' %}selected{% endif %}>Chrome</option>
+        <option value="firefox" {% if config.storage.impersonate == 'firefox' %}selected{% endif %}>Firefox</option>
+        <option value="safari" {% if config.storage.impersonate == 'safari' %}selected{% endif %}>Safari</option>
+        <option value="edge" {% if config.storage.impersonate == 'edge' %}selected{% endif %}>Edge</option>
+      </select>
+      <small class="muted">Makes requests look like a real browser. Requires curl_cffi package.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="cookies_file">Cookie File (optional fallback)</label>
+      <input type="text" id="cookies_file" name="cookies_file" value="{{ config.storage.cookies_file }}"
+             placeholder="/path/to/cookies.txt">
+      <small class="muted">Netscape-format cookies.txt. Only needed if impersonation alone doesn't work.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="cookies_from_browser">Browser Cookies (desktop fallback)</label>
+      <select id="cookies_from_browser" name="cookies_from_browser">
+        <option value="" {% if not config.storage.cookies_from_browser %}selected{% endif %}>None</option>
+        <option value="chrome" {% if config.storage.cookies_from_browser == 'chrome' %}selected{% endif %}>Chrome</option>
+        <option value="firefox" {% if config.storage.cookies_from_browser == 'firefox' %}selected{% endif %}>Firefox</option>
+        <option value="brave" {% if config.storage.cookies_from_browser == 'brave' %}selected{% endif %}>Brave</option>
+      </select>
+      <small class="muted">Reads cookies from a browser installed on this machine. Only for desktops, not headless servers.</small>
+    </div>
+
+    <h3 class="mt-24">Session</h3>
+
+    <div class="form-group">
+      <label for="session_timeout_hours">Session Timeout (hours)</label>
+      <input type="number" id="session_timeout_hours" name="session_timeout_hours"
+             value="{{ config.parent.session_timeout_hours }}" min="1" max="8760">
+      <small class="muted">How long before the parent login session expires. Default: 24 hours.</small>
+    </div>
+
+    <button type="submit" class="btn">Save Advanced Settings</button>
+  </form>
+
+  <h3 class="mt-32">Move Data Directory</h3>
+  <div class="warn-bg warn-text r-4 fs-13 mb-12 x-053">
+    Moves every file — videos, uploads, database, config — to a new location.
+    Useful when the current disk is getting full and you want to relocate Curatables to a bigger drive.
+    Runs some safety checks first: target must be empty, must have enough free space, and no videos can be currently downloading.
+  </div>
+
+  {% if move_data_error %}
+  <div class="flash flash-error mw-500">{{ move_data_error }}</div>
+  {% endif %}
+  {% if move_data_success %}
+  <div class="flash mw-500">{{ move_data_success }}</div>
+  {% endif %}
+
+  <form method="POST" action="/parent/settings/move-data"
+        onsubmit="return confirm('Move data directory to ' + document.getElementById('new_data_dir').value + '? This can take a while depending on your library size.');" class="mw-500">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+      <label for="new_data_dir">New data directory (absolute path)</label>
+      <input type="text" id="new_data_dir" name="new_data_dir"
+             placeholder="/mnt/external/curatables-data" required>
+      <small class="muted">
+        Current: <code>{{ config.storage.path }}</code>
+      </small>
+    </div>
+    <button type="submit" class="btn btn-danger">Move Data Directory</button>
+  </form>
+</details>
+
+<h2 class="mt-40">Change Password</h2>
+<form method="POST" action="/parent/settings/password" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="current_password">Current Password</label>
+    <input type="password" id="current_password" name="current_password" required>
+  </div>
+  <div class="form-group">
+    <label for="new_password">New Password</label>
+    <input type="password" id="new_password" name="new_password" required minlength="4">
+  </div>
+  <div class="form-group">
+    <label for="new_password2">Confirm New Password</label>
+    <input type="password" id="new_password2" name="new_password2" required>
+  </div>
+  <button type="submit" class="btn">Change Password</button>
+</form>
+{% endblock %}

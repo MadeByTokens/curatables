@@ -1,0 +1,199 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% set ds = disk_status() %}
+
+{# ============ 1. NEEDS ATTENTION ============ #}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or ds.status != 'ok' %}
+{% if has_attention %}
+<div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
+  <h2>Needs your attention</h2>
+  <ul>
+    {% if ds.status != 'ok' %}
+    <li>
+      {% if ds.status == 'blocked' %}
+        <strong>Disk space blocked</strong> — only {{ "%.1f"|format(ds.free_gb) }} GB free.
+        New downloads/uploads are paused.
+        <a href="/parent/storage">Open storage report →</a>
+      {% else %}
+        <strong>Low disk space</strong> — {{ "%.1f"|format(ds.free_gb) }} GB free.
+        <a href="/parent/storage">Open storage report →</a>
+      {% endif %}
+    </li>
+    {% endif %}
+
+    {% if attention.failed_downloads %}
+    <li>
+      <strong>{{ attention.failed_downloads|length }}
+        download{% if attention.failed_downloads|length != 1 %}s{% endif %} failed</strong> —
+      {% for v in attention.failed_downloads[:3] %}
+        <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>{% if not loop.last %}, {% endif %}
+      {% endfor %}
+      {% if attention.failed_downloads|length > 3 %}
+      and {{ attention.failed_downloads|length - 3 }} more…
+      {% endif %}
+    </li>
+    {% endif %}
+
+    {% if attention.stuck_pending %}
+    <li>
+      <strong>{{ attention.stuck_pending|length }}
+        video{% if attention.stuck_pending|length != 1 %}s{% endif %} stuck pending</strong>
+      (pending for over 1 hour — possible yt-dlp bot block).
+      <a href="/parent/content?page=1">Review →</a>
+    </li>
+    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+{# ============ 2. TODAY AT A GLANCE ============ #}
+<div class="dash-section">
+  <h2>Today</h2>
+  <div>
+    <div class="stat-card">
+      <div class="number">{{ kpis_today.completions }}</div>
+      <div class="label">Videos Completed</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ (kpis_today.watch_seconds // 3600) }}h {{ ((kpis_today.watch_seconds % 3600) // 60) }}m</div>
+      <div class="label">Watch Time</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ kpis_today.comment_count }}</div>
+      <div class="label">Comments</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ kpis_today.reaction_count }}</div>
+      <div class="label">Reactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ video_count }}</div>
+      <div class="label">Approved Videos</div>
+    </div>
+  </div>
+</div>
+
+{# ============ 3. PER-KID ROW ============ #}
+{% if per_kid %}
+<div class="dash-section">
+  <h2>Per kid (today)</h2>
+  <div class="kid-row">
+    {% for k in per_kid %}
+    {% set p = k.profile %}
+    <div class="kid-card">
+      <div class="avatar">{{ (p.display_name or p.name)[:1]|upper }}</div>
+      <div class="info">
+        <div class="name">{{ p.display_name or p.name }}</div>
+        <div class="summary">
+          {{ k.completions_today }} completed ·
+          {{ (k.watch_seconds_today // 60) }} min ·
+          {{ k.comments_today }} comment{% if k.comments_today != 1 %}s{% endif %}
+        </div>
+        {% if k.last_watched %}
+        <div class="last">
+          <span class="last-label">Last watched:</span>
+          <a href="/parent/content/{{ k.last_watched.video_id }}">{{ k.last_watched.title }}</a>
+        </div>
+        {% endif %}
+        {% if k.last_comment %}
+        <div class="last">
+          <span class="last-label">Last comment:</span>
+          "{{ k.last_comment.body[:60] }}{% if k.last_comment.body|length > 60 %}…{% endif %}"
+        </div>
+        {% endif %}
+        <div class="actions">
+          <a href="/parent/stats/profiles/{{ p.id }}">View stats →</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ============ 4. RECENT ACTIVITY ============ #}
+<div class="dash-section">
+  <h2>Recent activity</h2>
+  <div class="recent-row">
+    <div class="recent-col card x-035">
+      <div class="fw-bold muted-4 x-036">Recently added</div>
+      {% if recent_videos %}
+        {% for v in recent_videos %}
+        <div class="recent-item">
+          <img src="/media/thumb/{{ v.video_id }}" alt="">
+          <div class="meta">
+            <div class="title-line">
+              <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>
+              {% if v.download_status == 'ready' %}
+                <span class="badge badge-ready">ready</span>
+              {% elif v.download_status == 'downloading' %}
+                <span class="badge badge-downloading">downloading</span>
+              {% elif v.download_status == 'error' %}
+                <span class="badge badge-error">error</span>
+              {% else %}
+                <span class="badge badge-pending">pending</span>
+              {% endif %}
+            </div>
+            <div class="sub">{{ v.channel_name or 'no channel' }} · {{ v.added_at }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="muted fs-13 x-037">No videos yet. <a href="/parent/add">Add some →</a></div>
+      {% endif %}
+    </div>
+
+    <div class="recent-col card x-035">
+      <div class="fw-bold muted-4 x-036">
+        Recent comments
+        {% if attention.new_comments_count %}
+        <span class="fw-normal fs-12 accent-text">
+          ({{ attention.new_comments_count }} since yesterday)
+        </span>
+        {% endif %}
+      </div>
+      {% if recent_comments %}
+        {% for c in recent_comments %}
+        <div class="recent-item ai-fs">
+          <div class="meta">
+            <div class="title-line x-038">
+              <strong>{{ c.author_name }}{% if c.is_parent_user %} (Parent){% endif %}:</strong>
+              "{{ c.body[:80] }}{% if c.body|length > 80 %}…{% endif %}"
+            </div>
+            <div class="sub">
+              on <a href="/parent/content/{{ c.video_id }}#comments" class="muted">{{ c.video_id }}</a>
+              · {{ c.created_at }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="muted fs-13 x-037">No comments yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ============ 5. QUICK ACTIONS ============ #}
+<div class="dash-section">
+  <h2>Quick add</h2>
+  <form method="POST" action="/parent/add" class="mw-600 d-flex gap-8">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="url" id="url" name="url" placeholder="Paste a video URL (YouTube, Vimeo, TikTok, …)"
+           required class="flex-1">
+    <button type="submit" class="btn">Add</button>
+  </form>
+
+  <div class="shortcut-grid">
+    <a href="/parent/content">Browse all content</a>
+    <a href="/parent/add">Add from URL</a>
+    <a href="/parent/upload">Upload files</a>
+    <a href="/parent/channels/">Channels</a>
+    <a href="/parent/profiles">Kid profiles</a>
+    <a href="/parent/stats">Full stats</a>
+    <a href="/parent/settings">Settings</a>
+  </div>
+</div>
+{% endblock %}

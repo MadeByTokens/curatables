@@ -1,0 +1,52 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Import shared channel</h1>
+<p class="muted-2 mt-4">
+  Upload a <code>.ytc</code> or <code>.txt</code> file another parent
+  shared with you, or paste a URL list below. Nothing is added to your
+  library until you tick "I have already fully watched this video" on
+  the review page.
+</p>
+
+{% if error %}
+<div class="flash flash-error x-064">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="/parent/channels/import" enctype="multipart/form-data" class="mt-16 x-065">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="form-group">
+    <label for="file">File (.ytc or .txt)</label>
+    <input type="file" id="file" name="file" accept=".ytc,.txt,.json,application/json,text/plain">
+    <small class="muted">Max {{ (max_bytes // 1024 // 1024) }} MB.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="pasted">...or paste a URL list</label>
+    <textarea id="pasted" name="pasted" rows="6"
+              placeholder="https://www.youtube.com/watch?v=...&#10;# comments start with a hash&#10;https://vimeo.com/..." class="w-100 p-10 ff-mono fs-13 bd-ccc r-3 bb"></textarea>
+    <small class="muted">One URL per line. Blank lines and <code>#</code> comments are ignored.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="target_channel_id">Target channel</label>
+    <select id="target_channel_id" name="target_channel_id">
+      <option value="">(none — pick on the next page)</option>
+      {% for ch in channels %}
+      <option value="{{ ch.id }}">{{ ch.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="new_channel_name">Or create new channel</label>
+    <input type="text" id="new_channel_name" name="new_channel_name"
+           placeholder="(defaults to the imported channel's name)">
+  </div>
+
+  <div class="mt-16">
+    <button type="submit" class="btn">Review imported URLs &rarr;</button>
+    <a href="/parent/channels/" class="ml-12">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="help-page">
+  <h2>How it works</h2>
+
+  <div class="help-grid">
+    <div class="help-item">
+      <div class="help-icon">&#127968;</div>
+      <div class="help-text">Home<br>All your videos</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-icon">&#127916;</div>
+      <div class="help-text">Tap a video<br>to watch it</div>
+    </div>
+
+    {% if viewer and viewer.is_child %}
+    <div class="help-item">
+      <div class="help-icon">&#128522;</div>
+      <div class="help-text">React with<br>an emoji</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-icon">&#128172;</div>
+      <div class="help-text">Write a<br>comment</div>
+    </div>
+    {% endif %}
+
+    {% if viewer and viewer.search_mode != 'disabled' %}
+    <div class="help-item">
+      <div class="help-icon">&#128269;</div>
+      <div class="help-text">Search<br>for videos</div>
+    </div>
+    {% endif %}
+
+    {% if viewer and viewer.is_child %}
+    <div class="help-item">
+      <div class="help-icon">&#128228;</div>
+      <div class="help-text">Upload a<br>video or photo</div>
+    </div>
+    {% endif %}
+
+    {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
+    <div class="help-item">
+      <div class="help-icon">&#128101;</div>
+      <div class="help-text">Switch to<br>another kid</div>
+    </div>
+    {% endif %}
+
+    <div class="help-item">
+      <div class="help-icon">&#127968;</div>
+      <div class="help-text">Lost? Tap Home<br>to start over</div>
+    </div>
+  </div>
+  <div class="clear"></div>
+
+  <div class="ta-c mt-20">
+    <a href="/" class="back-link">&larr; Back to videos</a>
+  </div>
+</div>
+{% endblock %}

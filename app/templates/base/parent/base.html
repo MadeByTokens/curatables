@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>curatables - Parent Dashboard</title>
+<link rel="stylesheet" href="/static/parent/style.css">
+</head>
+<body>
+<div class="topnav">
+  <a href="/parent/" class="brand">curatables</a>
+  <a href="/parent/">Dashboard</a>
+  <a href="/parent/content">Content</a>
+  <a href="/parent/add">Add</a>
+  <a href="/parent/upload">Upload</a>
+  <a href="/parent/channels/">Channels</a>
+  <a href="/parent/profiles">Profiles</a>
+  <a href="/parent/stats">Stats</a>
+  <a href="/parent/settings">Settings</a>
+  <a href="/parent/help">Help</a>
+  <span class="right">
+    {% set ds = disk_status() %}
+    <span class="disk-chip {{ ds.status }}" title="Click for storage report">
+      <a href="/parent/storage">Free: {{ "%.1f"|format(ds.free_gb) }} GB{% if ds.status == "blocked" %} (blocked){% elif ds.status == "warning" %} (low){% endif %}</a>
+    </span>
+    <a href="/parent/logout">Logout</a>
+  </span>
+</div>
+<div class="container">
+{% block content %}{% endblock %}
+</div>
+</body>
+</html>

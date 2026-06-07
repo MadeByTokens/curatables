@@ -1,0 +1,71 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Channels</h1>
+
+<p class="x-066">
+  <a href="/parent/channels/import" class="btn btn-sm btn-secondary">&#128228; Import shared channel</a>
+</p>
+
+<div class="p-16 r-6 mb-24 mw-500 x-049">
+  <h3 class="mt-0">Create Channel</h3>
+  <form method="POST" action="/parent/channels/create">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required placeholder="e.g. Science, Music, Cartoons...">
+    </div>
+    <div class="form-group">
+      <label for="description">Description (optional)</label>
+      <input type="text" id="description" name="description" placeholder="What this channel is about">
+    </div>
+    <button type="submit" class="btn">Create</button>
+  </form>
+</div>
+
+{% if channels_with_counts %}
+  {% for ch, count in channels_with_counts %}
+  <div class="card">
+    <div class="info">
+      <div class="title-line">
+        {{ ch.name }}
+        {% if ch.owner_profile_id and owner_names.get(ch.owner_profile_id) %}
+        <span class="fw-normal fs-13 accent-text ml-6">(by {{ owner_names[ch.owner_profile_id] }})</span>
+        {% endif %}
+      </div>
+      {% if ch.description %}
+      <div class="desc">{{ ch.description }}</div>
+      {% endif %}
+      <div class="meta">
+        {{ count }} video(s) &middot; Position: {{ ch.position }}
+      </div>
+      <div class="actions">
+        <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm x-047">Edit</a>
+        <span class="export-group">
+          <a href="/parent/channels/{{ ch.id }}/export?format=ytc"
+             class="btn btn-sm btn-secondary" title="Machine-readable format for import into another Curatables">Export .ytc</a>
+          <a href="/parent/channels/{{ ch.id }}/export?format=txt"
+             class="btn btn-sm btn-secondary" title="Plain-text URL list">.txt</a>
+          <a href="/parent/channels/{{ ch.id }}/export?format=pdf"
+             class="btn btn-sm btn-secondary" title="Printable PDF">.pdf</a>
+        </span>
+        <form method="POST" action="/parent/channels/{{ ch.id }}/delete"
+              onsubmit="return confirm('Delete channel {{ ch.name }}? This cannot be undone.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <select name="reassign_to">
+            <option value="">Orphan videos (uncategorized)</option>
+            {% for other in all_channels %}
+              {% if other.id != ch.id %}
+              <option value="{{ other.id }}">Move videos to "{{ other.name }}"</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<p class="muted">No channels yet. Create one above, or channels are created automatically when adding videos.</p>
+{% endif %}
+{% endblock %}

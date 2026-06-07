@@ -1,0 +1,28 @@
+# curatables production dependencies
+#
+# Upper bounds are pinned below the next-major on every package where the
+# project relies on current-signature behaviour. Raise them deliberately as
+# part of an upgrade (and a test run), not implicitly.
+fastapi>=0.100,<1.0
+# Starlette 1.0 removed the deprecated `TemplateResponse(name, context)`
+# signature; app/ uses the new `TemplateResponse(request, name, context)`
+# signature everywhere, so it works on both 0.x and 1.x.
+starlette>=0.29,<2.0
+uvicorn>=0.20,<1.0
+jinja2>=3.1,<4.0
+python-multipart>=0.0.6,<1.0
+yt-dlp>=2024.0
+curl_cffi>=0.10,<0.15
+itsdangerous>=2.0,<3.0
+zeroconf>=0.130,<1.0
+# reportlab powers the PDF export in the shared-curation feature. It's
+# optional: if missing, only .ytc / .txt export works and the PDF route
+# returns a clean "install reportlab" error. Gated as warn-and-degrade
+# in run.py:check_dependencies.
+reportlab>=4.0,<5.0
+# prometheus_client powers /metrics for operational monitoring. Opt-in
+# via config.server.prometheus_enabled (default False); when disabled
+# /metrics returns 404 and no counters are collected. The dependency is
+# tiny (~64 KB wheel, no transitive deps) so it ships always rather
+# than gating the import.
+prometheus_client>=0.20,<1.0

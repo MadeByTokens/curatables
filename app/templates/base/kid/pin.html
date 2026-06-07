@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enter PIN</title>
+<link rel="stylesheet" href="/static/kid/style.css">
+</head>
+<body>
+<div class="header">
+  <h1>Enter PIN</h1>
+</div>
+<div class="pin-page">
+  <div class="profile-avatar fs-64 ta-c mt-32">{{ avatar_emoji }}</div>
+  <div class="ta-c fs-20 x-020">{{ profile.display_name or profile.name }}</div>
+  {% if error %}
+  <div class="ta-c danger-text fw-bold x-021">{{ error }}</div>
+  {% endif %}
+  <form method="POST" action="/profiles/pin" class="ta-c mt-16">
+    <input type="hidden" name="profile_id" value="{{ profile.id }}">
+    <input type="tel" name="pin" maxlength="4" placeholder="PIN"
+           autofocus class="tappable ta-c p-12 r-8 x-022">
+    <br>
+    <button type="submit" class="tappable mt-16 fs-18 accent-bg on-dark bd-none r-6 clickable x-023">Go</button>
+  </form>
+  <div class="ta-c mt-24">
+    <a href="/profiles" class="back-link">Back to profiles</a>
+  </div>
+</div>
+</body>
+</html>

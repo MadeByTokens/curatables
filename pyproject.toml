@@ -1,0 +1,86 @@
+[project]
+name = "curatables"
+version = "0.5.0"
+description = "Local, self-hosted video curation server for parents and kids — ad-free, recommendation-free, powered by yt-dlp."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Ricardo de Azambuja", email = "ricardo.azambuja@gmail.com" },
+]
+keywords = ["yt-dlp", "video", "curation", "parental-controls", "self-hosted", "kids", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "fastapi>=0.100,<1.0",
+    "starlette>=0.29,<2.0",
+    "uvicorn>=0.20,<1.0",
+    "jinja2>=3.1,<4.0",
+    "python-multipart>=0.0.6,<1.0",
+    "yt-dlp>=2024.0",
+    "curl_cffi>=0.10,<0.15",
+    "itsdangerous>=2.0,<3.0",
+    "zeroconf>=0.130,<1.0",
+    "reportlab>=4.0,<5.0",
+    "prometheus_client>=0.20,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "httpx>=0.24",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/MadeByTokens/curatables"
+Source = "https://github.com/MadeByTokens/curatables"
+Issues = "https://github.com/MadeByTokens/curatables/issues"
+
+[project.scripts]
+curatables = "run:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "docs*", "scripts*", "systemd*"]
+
+[tool.setuptools.package-data]
+app = ["templates/**/*.html", "static/**/*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests using async use explicit @pytest.mark.asyncio; keep strict mode.
+asyncio_mode = "strict"
+markers = [
+    "smoke: end-to-end smoke test that boots a real uvicorn subprocess (slow; deselected by default — run with `pytest -m smoke`).",
+]
+# Skip the smoke suite in the default fast unit run. Re-enable explicitly
+# with `pytest -m smoke` (or override addopts) for E2E coverage.
+addopts = "-m 'not smoke'"

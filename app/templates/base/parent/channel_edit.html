@@ -1,0 +1,35 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Edit Channel</h1>
+
+<form method="POST" action="/parent/channels/{{ channel.id }}/edit" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="{{ channel.name }}" required>
+  </div>
+  <div class="form-group">
+    <label for="description">Description</label>
+    <input type="text" id="description" name="description" value="{{ channel.description }}">
+  </div>
+  <div class="form-group">
+    <label for="position">Position (display order)</label>
+    <input type="number" id="position" name="position" value="{{ channel.position }}" min="0">
+    <small class="muted">Lower numbers appear first.</small>
+  </div>
+  <div class="form-group">
+    <label for="owner_profile_id">Owner</label>
+    <select id="owner_profile_id" name="owner_profile_id">
+      <option value="" {% if not channel.owner_profile_id %}selected{% endif %}>Parent (no owner)</option>
+      {% for p in profiles %}
+      <option value="{{ p.id }}" {% if channel.owner_profile_id == p.id %}selected{% endif %}>{{ p.display_name or p.name }}</option>
+      {% endfor %}
+    </select>
+    <small class="muted">Parent-owned channels are visible to everyone subject to per-profile whitelists. Kid-owned channels are only visible to the kid who owns them until you assign them to other profiles.</small>
+  </div>
+  <div class="mt-20">
+    <button type="submit" class="btn">Save</button>
+    <a href="/parent/channels/" class="ml-12">Cancel</a>
+  </div>
+</form>
+{% endblock %}

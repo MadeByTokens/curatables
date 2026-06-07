@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ viewer.kid_header_name if viewer else 'curatables' }}</title>
+<link rel="stylesheet" href="/static/kid/style.css">
+{% if viewer and viewer.theme and viewer.theme != 'base' %}
+<link rel="stylesheet" href="/static/kid/theme-{{ viewer.theme }}.css">
+{% endif %}
+{% block theme_css %}{% endblock %}
+</head>
+<body>
+<div class="header">
+  {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
+  <a href="/profiles/switch" class="header-corner" title="Switch profile">switch &rarr;</a>
+  {% endif %}
+  <h1>{{ viewer.kid_header_name if viewer else 'curatables' }}</h1>
+  <div class="header-nav">
+    <a href="/" class="header-btn" title="Home">
+      <span class="header-btn-icon">&#127968;</span>
+      <span class="header-btn-label">Home</span>
+    </a>
+    {% if viewer and viewer.search_mode != 'disabled' %}
+    <a href="/search" class="header-btn" title="Search">
+      <span class="header-btn-icon">&#128269;</span>
+      <span class="header-btn-label">Search</span>
+    </a>
+    {% endif %}
+    {% if viewer and viewer.is_child %}
+    <a href="/tags" class="header-btn" title="Tags">
+      <span class="header-btn-icon">&#127991;</span>
+      <span class="header-btn-label">Tags</span>
+    </a>
+    <a href="/upload" class="header-btn" title="Upload">
+      <span class="header-btn-icon">&#128228;</span>
+      <span class="header-btn-label">Upload</span>
+    </a>
+    {% endif %}
+    <a href="/help" class="header-btn" title="Help">
+      <span class="header-btn-icon">&#10067;</span>
+      <span class="header-btn-label">Help</span>
+    </a>
+  </div>
+</div>
+{% block content %}{% endblock %}
+</body>
+</html>

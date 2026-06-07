@@ -1,0 +1,135 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<div class="mb-16">
+  <a href="/parent/content">&larr; Back to Content</a>
+</div>
+
+<div class="mw-720">
+  <div class="w-100 r-4 x-059">
+    <video controls playsinline preload="metadata"
+           poster="/media/thumb/{{ video.video_id }}" class="w-100 x-060">
+      <source src="/media/video/{{ video.video_id }}" type="video/mp4">
+    </video>
+  </div>
+</div>
+<h1 class="x-061">{{ video.title }}</h1>
+<div class="muted-2 fs-14">{{ video.channel_name or 'No channel' }}</div>
+<div class="mt-8">
+  <a href="/parent/content/{{ video.video_id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+</div>
+
+<div class="mt-24">
+  <div class="stat-card">
+    <div class="number">{{ page_views }}</div>
+    <div class="label">Page Views</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ completions }}</div>
+    <div class="label">Times Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ (secs // 60) }}m</div>
+    <div class="label">Total Time</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ unique_watchers }}</div>
+    <div class="label">Unique Watchers</div>
+  </div>
+</div>
+
+<h2 class="mt-32">Reactions</h2>
+{% if reaction_counts %}
+<div class="mb-8">
+  {% for name, count in reaction_counts.items() %}
+    <span class="fs-20 mr-12">{{ emoji_lookup.get(name, name) }} <span class="fs-14 muted-2">{{ count }}</span></span>
+  {% endfor %}
+</div>
+{% if reactions_with_names %}
+<table>
+  <thead><tr><th>Kid</th><th>Reaction</th></tr></thead>
+  <tbody>
+    {% for r in reactions_with_names %}
+    <tr>
+      <td>{{ r.profile_name }}</td>
+      <td>{{ emoji_lookup.get(r.emoji, r.emoji) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% else %}
+<p class="muted">No reactions yet.</p>
+{% endif %}
+
+<h2 id="comments" class="mt-32">Comments{% if comments_total %} ({{ comments_total }}){% endif %}</h2>
+
+<form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mb-20 mw-600">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <textarea name="body" rows="2" maxlength="500" placeholder="Write a comment..."
+            required class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans"></textarea>
+  <button type="submit" class="btn mt-4">Post Comment</button>
+</form>
+
+{% if comments %}
+  {% for c in comments %}
+  <div class="card mb-8 x-041">
+    <div class="d-flex jc-sb ai-c">
+      <div>
+        <strong>{{ c.author_name }}{% if c.is_parent_user %} (Parent){% endif %}</strong>
+        <span class="muted fs-12 ml-8">{{ c.created_at }}</span>
+      </div>
+      <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" onsubmit="return confirm('Delete this comment and its replies?');" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+      </form>
+    </div>
+    <div class="x-062">{{ c.body }}</div>
+
+    <form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mt-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="parent_comment_id" value="{{ c.id }}">
+      <input type="text" name="body" maxlength="500" placeholder="Reply..." class="w-70 fs-13 bd-ddd r-3 d-ib x-012">
+      <button type="submit" class="btn btn-sm va-mid">Reply</button>
+    </form>
+
+    {% for reply in c.replies %}
+    <div class="ml-24 mt-8 r-4 x-063">
+      <div class="d-flex jc-sb ai-c">
+        <div>
+          <strong>{{ reply.author_name }}{% if reply.is_parent_user %} (Parent){% endif %}</strong>
+          <span class="muted fs-12 ml-8">{{ reply.created_at }}</span>
+        </div>
+        <form method="POST" action="/parent/comments/{{ reply.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" onsubmit="return confirm('Delete this comment?');" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+      <div class="mt-4">{{ reply.body }}</div>
+
+      <form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mt-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="parent_comment_id" value="{{ reply.id }}">
+        <input type="text" name="body" maxlength="500" placeholder="Reply..." class="w-70 fs-13 bd-ddd r-3 d-ib x-012">
+        <button type="submit" class="btn btn-sm va-mid">Reply</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+<p class="muted">No comments yet.</p>
+{% endif %}
+
+{% if comments_total_pages and comments_total_pages > 1 %}
+<div class="mt-16 ta-c">
+  {% if comments_page > 1 %}
+  <a href="/parent/content/{{ video.video_id }}?cp={{ comments_page - 1 }}#comments" class="btn btn-sm btn-secondary">&larr; Newer</a>
+  {% endif %}
+  <span class="x-048">Page {{ comments_page }} of {{ comments_total_pages }}</span>
+  {% if comments_page < comments_total_pages %}
+  <a href="/parent/content/{{ video.video_id }}?cp={{ comments_page + 1 }}#comments" class="btn btn-sm btn-secondary">Older &rarr;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

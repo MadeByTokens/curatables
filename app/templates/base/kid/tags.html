@@ -1,0 +1,25 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="mw-700 mx-auto p-16">
+  <h2>My Tags</h2>
+
+  {% if tag_cloud %}
+  <div class="tag-cloud x-003">
+    {% set max_count = tag_cloud[0].count if tag_cloud else 1 %}
+    {% for t in tag_cloud %}
+      {% set scale = 0.8 + 1.2 * (t.count / max_count) %}
+      <a href="/tags/{{ t.name }}" class="tag-chip"
+         style="font-size:{{ (scale * 100)|int }}%;">
+        {{ t.name }} <span class="muted-3 x-004">{{ t.count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted mt-16">
+    No tags yet. Open a video and tap "Customize" to add tags!
+  </p>
+  {% endif %}
+
+  <a href="/" class="back-link mt-20">&larr; Back to videos</a>
+</div>
+{% endblock %}

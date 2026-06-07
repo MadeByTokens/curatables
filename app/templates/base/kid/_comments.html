@@ -1,0 +1,28 @@
+{# Single source of truth for a comment node. Rendered both in the
+   watch-page comment list and as the XHR response when a kid/parent
+   posts a comment or reply (so the new node can be inserted in place
+   without reloading and restarting the video). The macro is recursive:
+   a top-level comment renders its own reply form plus a .replies
+   container holding its (one-level-deep) replies. data-comment-id and
+   data-parent-id are the anchors the watch-page JS uses to place a
+   newly-posted node. #}
+{% macro comment_node(comment, video_id, viewer, csrf_token) %}
+<div class="comment{% if comment.parent_comment_id %} reply{% endif %}" data-comment-id="{{ comment.id }}"{% if comment.parent_comment_id %} data-parent-id="{{ comment.parent_comment_id }}"{% endif %}>
+  <div class="comment-author">{{ comment.author_name }}{% if comment.is_parent_user %} (Parent){% endif %}</div>
+  <div class="comment-body">{{ comment.body }}</div>
+  <div class="comment-meta">{{ comment.created_at }}</div>
+  {% if viewer and (viewer.is_child or viewer.is_parent) %}
+  <form method="POST" action="/watch/{{ video_id }}/comment" class="mt-6" onsubmit="return submitComment(this)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+    <input type="text" name="body" maxlength="500" placeholder="Reply..." class="w-70 fs-13 bd-ddd r-3 x-012">
+    <button type="submit" class="comment-reply-btn">Reply</button>
+  </form>
+  {% endif %}
+  {% if not comment.parent_comment_id %}
+  <div class="replies" data-replies-for="{{ comment.id }}">
+    {% for reply in comment.replies %}{{ comment_node(reply, video_id, viewer, csrf_token) }}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}

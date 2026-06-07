@@ -1,0 +1,347 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="player-page">
+  <div class="video-frame">
+    <video id="player" controls playsinline preload="metadata"
+           poster="/media/thumb/{{ video.video_id }}">
+      <source src="/media/video/{{ video.video_id }}" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+
+  <div class="d-flex jc-sb ai-fs gap-12 mt-10">
+    <div class="flex-1 x-005">
+      <h2 class="m-0">{{ video.title }}</h2>
+      <div class="channel">{{ video.channel_name }}</div>
+    </div>
+    {% if viewer and viewer.is_child %}
+    <a href="/video/{{ video.video_id }}/edit" class="customize-btn ai-c gap-6 accent-bg on-dark r-4 no-underline fs-14 fw-500 x-006">
+      <span class="fs-16 lh-1">&#9881;</span>
+      <span>Customize</span>
+    </a>
+    {% endif %}
+  </div>
+
+  {% if viewer and viewer.is_child %}
+  <div id="tags" class="mt-10 x-007">
+    <span class="fs-13 muted-2">Tags:</span>
+    {% for t in tags %}
+    <span class="tag-item d-ib r-12 fs-13 x-008">
+      <a href="/tags/{{ t.name }}" class="tag-link accent-text no-underline">{{ t.name }}</a>
+      <form method="POST" action="/video/{{ video.video_id }}/tags/remove" class="d-inline m-0" onsubmit="return submitTagRemove(this)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="tag_id" value="{{ t.id }}">
+        <button type="submit" title="Remove" class="tag-remove bd-none muted-3 clickable fs-14 lh-1 x-009">&times;</button>
+      </form>
+    </span>
+    {% endfor %}
+    <form id="tag-add-form" method="POST" action="/video/{{ video.video_id }}/tags/add" class="d-ib ml-4" onsubmit="return submitTagAdd(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="text" name="tag" maxlength="40" placeholder="+ add tag" class="tag-add-input fs-13 bd-ccc r-12 x-010">
+      <button type="submit" class="tag-add-btn accent-bg on-dark bd-none r-12 fs-13 clickable x-011">Add</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if viewer and viewer.is_child and reactions_list %}
+  <div class="reaction-bar" id="reaction-bar">
+    {% for name, emoji_char in reactions_list %}
+    <button type="button"
+            class="reaction-btn{% if my_reaction == name %} active{% endif %}"
+            onclick="doReact('{{ name }}', this)"
+            title="{{ name }}">
+      {{ emoji_char }}
+      <span class="reaction-label">{{ name }}</span>
+      {% if reaction_counts.get(name) %}
+      <span class="reaction-count">{{ reaction_counts[name] }}</span>
+      {% endif %}
+    </button>
+    {% endfor %}
+  </div>
+  {% elif viewer and viewer.is_parent and reactions_list %}
+  <div class="reaction-bar reaction-bar-readonly">
+    {% for name, emoji_char in reactions_list %}
+    <span class="reaction-btn cur-default" title="{{ name }}">
+      {{ emoji_char }}
+      <span class="reaction-label">{{ name }}</span>
+      <span class="reaction-count">{{ reaction_counts.get(name, 0) }}</span>
+    </span>
+    {% endfor %}
+    <div class="reaction-hint">
+      Viewing as parent. <a href="/profiles">Pick a kid profile</a> to tap a reaction.
+    </div>
+  </div>
+  {% endif %}
+
+  {% if video.description %}
+  <div class="description">{{ video.description[:500] }}</div>
+  {% endif %}
+
+  {% from "kid/_comments.html" import comment_node %}
+  <div id="comments" class="comments-section">
+    <h3>Comments <span id="comment-count">{% if comments_total %}({{ comments_total }}){% endif %}</span></h3>
+
+    {% if viewer and (viewer.is_child or viewer.is_parent) %}
+    <form method="POST" action="/watch/{{ video.video_id }}/comment" class="comment-form" onsubmit="return submitComment(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <textarea name="body" rows="2" maxlength="500" placeholder="Write a comment..." required class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans"></textarea>
+      <button type="submit" class="comment-submit">Post</button>
+    </form>
+    {% endif %}
+
+    <p id="no-comments" class="muted fs-14{% if comments %} d-none{% endif %}">No comments yet.</p>
+    <div id="comment-list">
+      {% for c in comments %}{{ comment_node(c, video.video_id, viewer, csrf_token) }}{% endfor %}
+    </div>
+
+    {% if comments_total_pages and comments_total_pages > 1 %}
+    <div class="mt-12 ta-c fs-14">
+      {% if comments_page > 1 %}
+      <a href="/watch/{{ video.video_id }}?cp={{ comments_page - 1 }}#comments" class="accent-text">&larr; Newer</a>
+      {% endif %}
+      <span class="muted x-013">Page {{ comments_page }} of {{ comments_total_pages }}</span>
+      {% if comments_page < comments_total_pages %}
+      <a href="/watch/{{ video.video_id }}?cp={{ comments_page + 1 }}#comments" class="accent-text">Older &rarr;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <a href="/" class="back-link">&larr; Back to videos</a>
+</div>
+
+<script>
+/* ES3-compatible logging */
+(function() {
+  var video = document.getElementById('player');
+  var videoId = {{ video.video_id | tojson }};
+  var csrfToken = {{ csrf_token | tojson }};
+  var loggedPlay = false;
+
+  function sendLog(event, extra) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/log', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    var body = 'event=' + encodeURIComponent(event) + '&video_id=' + encodeURIComponent(videoId);
+    if (extra) {
+      for (var key in extra) {
+        if (extra.hasOwnProperty(key)) {
+          body += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(extra[key]);
+        }
+      }
+    }
+    xhr.send(body);
+  }
+
+  /* Emoji reaction handler (ES3-compatible). Exposed on window so
+     the inline onclick="doReact(...)" handlers on the reaction buttons
+     can find it — the IIFE wrapper would otherwise hide it. */
+  window.doReact = function(emoji, btn) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/react', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    xhr.send('video_id=' + encodeURIComponent(videoId) + '&emoji=' + encodeURIComponent(emoji));
+    /* Toggle visual state */
+    var btns = document.getElementsByClassName('reaction-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].className = 'reaction-btn';
+    }
+    if (btn) {
+      btn.className = 'reaction-btn active';
+    }
+  };
+
+  /* Inline tag editor — XHR so adding/removing a tag updates the chips
+     in place. A full reload (the no-JS fallback) re-creates the <video>
+     element and restarts playback, which is exactly what we avoid here.
+     Tokens go in the X-CSRF-Token header (same as doReact). */
+  function postTag(url, body, onOk) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+        onOk(xhr);
+      }
+    };
+    xhr.send(body);
+  }
+
+  function tagChipExists(id) {
+    var inputs = document.getElementsByName('tag_id');
+    for (var i = 0; i < inputs.length; i++) {
+      if (String(inputs[i].value) === String(id)) return true;
+    }
+    return false;
+  }
+
+  function addTagChip(id, name) {
+    var container = document.getElementById('tags');
+    var addForm = document.getElementById('tag-add-form');
+    if (!container || !addForm || tagChipExists(id)) return;
+    var span = document.createElement('span');
+    span.className = 'tag-item d-ib r-12 fs-13 x-008';
+    var a = document.createElement('a');
+    a.href = '/tags/' + encodeURIComponent(name);
+    a.className = 'tag-link accent-text no-underline';
+    a.appendChild(document.createTextNode(name));
+    span.appendChild(a);
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = '/video/' + encodeURIComponent(videoId) + '/tags/remove';
+    f.className = 'd-inline m-0';
+    f.onsubmit = function() { return submitTagRemove(f); };
+    var c = document.createElement('input');
+    c.type = 'hidden'; c.name = 'csrf_token'; c.value = csrfToken;
+    f.appendChild(c);
+    var t = document.createElement('input');
+    t.type = 'hidden'; t.name = 'tag_id'; t.value = id;
+    f.appendChild(t);
+    var b = document.createElement('button');
+    b.type = 'submit'; b.title = 'Remove';
+    b.className = 'tag-remove bd-none muted-3 clickable fs-14 lh-1 x-009';
+    b.innerHTML = '&times;';
+    f.appendChild(b);
+    span.appendChild(document.createTextNode(' '));
+    span.appendChild(f);
+    container.insertBefore(span, addForm);
+  }
+
+  window.submitTagAdd = function(form) {
+    var input = form.tag;
+    var val = input.value.replace(/^\s+|\s+$/g, '');
+    if (!val) { input.value = ''; return false; }
+    postTag(form.action, 'tag=' + encodeURIComponent(val), function(xhr) {
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (e) {}
+      if (data && data.id) { addTagChip(data.id, data.name); }
+      input.value = '';
+    });
+    return false;
+  };
+
+  window.submitTagRemove = function(form) {
+    var span = form;
+    while (span && (!span.className ||
+                    span.className.indexOf('tag-item') === -1)) {
+      span = span.parentNode;
+    }
+    postTag(form.action, 'tag_id=' + encodeURIComponent(form.tag_id.value),
+            function() {
+      if (span && span.parentNode) { span.parentNode.removeChild(span); }
+    });
+    return false;
+  };
+
+  /* Inline comments — same XHR-no-reload approach as tags/reactions. The
+     server returns the rendered comment/reply node; we drop it where it
+     belongs and clear the box, so a comment never restarts the video.
+     Reply forms inside the inserted node already carry onsubmit, so
+     replying to a fresh comment works too. */
+  function insertCommentNode(html) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    var node = tmp.firstChild;
+    while (node && node.nodeType !== 1) { node = node.nextSibling; }
+    if (!node) { return; }
+    var parentId = node.getAttribute('data-parent-id');
+    var target = null;
+    if (parentId) {
+      target = document.querySelector('.replies[data-replies-for="' + parentId + '"]');
+    }
+    if (!target) { target = document.getElementById('comment-list'); }
+    if (target) { target.appendChild(node); }
+    var empty = document.getElementById('no-comments');
+    if (empty && empty.className.indexOf('d-none') === -1) {
+      empty.className += ' d-none';
+    }
+    var count = document.getElementById('comment-count');
+    if (count) {
+      var n = document.querySelectorAll('#comment-list .comment').length;
+      count.innerHTML = n ? '(' + n + ')' : '';
+    }
+  }
+
+  function showCommentRateLimit(form) {
+    var hint = form.parentNode.getElementsByClassName('comment-rl')[0];
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'comment-rl reaction-hint';
+      form.parentNode.insertBefore(hint, form.nextSibling);
+    }
+    hint.innerHTML = '';
+    hint.appendChild(document.createTextNode(
+      'Too many comments in a short time — try again in a minute.'));
+  }
+
+  window.submitComment = function(form) {
+    var field = form.elements['body'];
+    var text = field.value.replace(/^\s+|\s+$/g, '');
+    if (!text) { return false; }
+    var body = 'body=' + encodeURIComponent(text);
+    var parent = form.elements['parent_comment_id'];
+    if (parent && parent.value) {
+      body += '&parent_comment_id=' + encodeURIComponent(parent.value);
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status === 200) {
+        insertCommentNode(xhr.responseText);
+        field.value = '';
+      } else if (xhr.status === 429) {
+        showCommentRateLimit(form);
+      }
+      /* 204 = empty/invalid body: ignore */
+    };
+    xhr.send(body);
+    return false;
+  };
+
+  sendLog('video_view');
+
+  if (video) {
+    video.onplay = function() {
+      if (!loggedPlay) {
+        sendLog('video_play');
+        loggedPlay = true;
+      }
+    };
+
+    video.onended = function() {
+      var watchSeconds = 0;
+      try { watchSeconds = Math.floor(video.duration); } catch(e) {}
+      sendLog('video_complete', { watch_seconds: watchSeconds });
+    };
+
+    /* Load subtitle tracks dynamically (ES3-compatible) */
+    var subXhr = new XMLHttpRequest();
+    subXhr.open('GET', '/media/subs/' + videoId, true);
+    subXhr.onreadystatechange = function() {
+      if (subXhr.readyState === 4 && subXhr.status === 200) {
+        try {
+          var subs = JSON.parse(subXhr.responseText);
+          for (var i = 0; i < subs.length; i++) {
+            var track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.label = subs[i].lang;
+            track.srclang = subs[i].lang;
+            track.src = subs[i].url;
+            if (i === 0) { track.default = true; }
+            video.appendChild(track);
+          }
+        } catch(e) {}
+      }
+    };
+    subXhr.send();
+  }
+})();
+</script>
+{% endblock %}

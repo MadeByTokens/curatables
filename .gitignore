@@ -1,0 +1,41 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+
+# virtualenvs / editors / caches
+.venv/
+venv/
+.env
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# runtime data
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# tooling scratch
+.playwright-mcp/
+.antigravitycli/
+# Claude Code per-project state. settings.local.json holds personal
+# allowlists (paths, shell commands) that should never be committed.
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

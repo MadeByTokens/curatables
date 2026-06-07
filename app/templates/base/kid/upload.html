@@ -1,0 +1,126 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<h1 class="upload-page-title">Upload a Video</h1>
+
+<p class="upload-intro">
+  Add a video from this device. You can send a video you recorded or
+  one that a grown-up saved for you.
+</p>
+
+{% if error %}
+<div class="upload-error">{{ error }}</div>
+{% endif %}
+
+<form id="upload-form" class="upload-form" method="POST" action="/upload" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="channel_id">Channel</label>
+  <select id="channel_id" name="channel_id">
+    {% for c in channels %}
+    <option value="{{ c.id }}" {% if selected_channel_id and c.id == selected_channel_id %}selected{% endif %}>{{ c.name }}{% if c.owner_profile_id == viewer.profile_id %} (yours){% endif %}</option>
+    {% endfor %}
+  </select>
+
+  <label for="title">Title (optional)</label>
+  <input type="text" id="title" name="title" placeholder="What is this video about?">
+
+  <label for="file">Video file</label>
+  <input type="file" id="file" name="file" accept="video/*" required>
+
+  <button type="submit" class="upload-btn" id="start-btn">Send it</button>
+
+  <div class="upload-progress d-none" id="progress-wrap">
+    <progress id="bar" value="0" max="100"></progress>
+    <div id="status" class="upload-status"></div>
+  </div>
+</form>
+
+<form id="new-channel-form" class="new-channel-form" method="POST" action="/upload/new-channel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2>Make a new channel</h2>
+  <label for="new_name">Name</label>
+  <input type="text" id="new_name" name="name" required maxlength="64" placeholder="e.g. My Drawings">
+  <button type="submit" class="upload-btn">Create channel</button>
+</form>
+
+<script>
+/* Kid upload: plain XHR multipart with progress. ES3 only — no fetch,
+   no const/let, no arrow functions. Runs on iOS 9 Safari. */
+(function () {
+  var MAX_BYTES = {{ max_upload_bytes }};
+  var form = document.getElementById('upload-form');
+  var fileInput = document.getElementById('file');
+  var progressWrap = document.getElementById('progress-wrap');
+  var bar = document.getElementById('bar');
+  var status = document.getElementById('status');
+  var startBtn = document.getElementById('start-btn');
+
+  function humanMB(n) {
+    return Math.round(n / 1048576) + ' MB';
+  }
+
+  function setStatus(msg) {
+    if (status) { status.innerHTML = ''; status.appendChild(document.createTextNode(msg)); }
+  }
+
+  form.onsubmit = function (e) {
+    if (e && e.preventDefault) { e.preventDefault(); }
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) {
+      progressWrap.style.display = '';
+      setStatus('Pick a file first.');
+      return false;
+    }
+    if (file.size > MAX_BYTES) {
+      progressWrap.style.display = '';
+      setStatus('That file is too big (' + humanMB(file.size) + '). Maximum is ' + humanMB(MAX_BYTES) + '.');
+      return false;
+    }
+
+    progressWrap.style.display = '';
+    startBtn.disabled = true;
+    setStatus('Sending...');
+    bar.value = 0;
+
+    var fd = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload', true);
+
+    if (xhr.upload) {
+      xhr.upload.onprogress = function (evt) {
+        if (evt.lengthComputable) {
+          var pct = Math.floor((evt.loaded / evt.total) * 100);
+          bar.value = pct;
+          setStatus('Sending: ' + pct + '%');
+        }
+      };
+    }
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      startBtn.disabled = false;
+      /* Browsers follow 302 automatically on XHR, so a success comes
+         back as 200 with the final page HTML. Navigate manually. */
+      if (xhr.status === 200) {
+        /* Server re-rendered the upload page on error, or redirected
+           and we got the watch page. If the final URL contains
+           /watch/ we go there; otherwise we show the server message. */
+        var finalUrl = xhr.responseURL || '';
+        if (finalUrl.indexOf('/watch/') !== -1) {
+          window.location = finalUrl;
+          return;
+        }
+        /* Server re-rendered upload page with an error. Replace page. */
+        document.open();
+        document.write(xhr.responseText);
+        document.close();
+        return;
+      }
+      setStatus('Upload failed (status ' + xhr.status + ').');
+    };
+
+    xhr.send(fd);
+    return false;
+  };
+})();
+</script>
+{% endblock %}
