@@ -29,6 +29,7 @@ and may lag the implementation.
 | [v0.6-safety-agent.md](v0.6-safety-agent.md) | RFC for the AI content-safety agent (v0.6 roadmap); not yet implemented. |
 | [ui-and-playback-plan.md](ui-and-playback-plan.md) | Playback-baseline + GUI refresh plan — **executed** (see its final metric snapshot); kept as the design + verification record. |
 | [filtered-search-and-proxy.md](filtered-search-and-proxy.md) | Exploratory design for wishlist search + real-time proxy (future). |
+| [offline-web-pages.md](offline-web-pages.md) | Idea capture: expanding the library to offline web pages; prior art in [kage](https://github.com/tamnd/kage) (render → strip JS → ZIM). Not a commitment. |
 
 ## Research & historical (reference only, not maintained)
 

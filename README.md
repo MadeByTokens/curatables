@@ -325,6 +325,11 @@ feature-by-feature history. What's still ahead:
   [docs/dependencies.md](docs/dependencies.md)), AppImage, NAS
   packages (Synology, QNAP), desktop installers for macOS/Windows,
   Termux setup script for old Android phones.
+- **Offline web pages in the library.** Curate articles/pages the way we
+  curate videos: snapshot a page at ingest with the JavaScript stripped,
+  store it locally, serve it to kid devices that never touch the origin.
+  Idea capture and prior art (kage, ZIM/Kiwix) in
+  [docs/offline-web-pages.md](docs/offline-web-pages.md).
 - QR code for kid device setup (print/display a code that opens
   `http://curatables.local/` on any phone/tablet without typing)
 - QR-code import of shared curation lists (scan another parent's QR
