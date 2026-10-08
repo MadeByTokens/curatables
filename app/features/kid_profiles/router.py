@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import get_profile_service
+from app.services.auth import PIN_LIMITER
 from app.services.profiles import ProfileService
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
@@ -74,10 +75,18 @@ def profile_pin(request: Request,
     profile = profiles_svc.get(profile_id)
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
-    if pin.strip() == profile.pin:
+    viewer = _viewer_for_profile(profile)
+    if not PIN_LIMITER.check(profile.id):
+        return render_kid_template(request, viewer, "kid/pin.html", {
+            "profile": profile,
+            "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
+            "error": "Too many tries. Wait a little, then try again.",
+            "locked": True,
+        })
+    if profiles_svc.check_pin(profile, pin):
+        PIN_LIMITER.reset(profile.id)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url="/", status_code=302)
-    viewer = _viewer_for_profile(profile)
     return render_kid_template(request, viewer, "kid/pin.html", {
         "profile": profile,
         "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),

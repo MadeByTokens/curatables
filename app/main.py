@@ -20,6 +20,7 @@ from app.middleware import (
     RequestLoggingMiddleware, BodySizeLimitMiddleware, RequestIDMiddleware,
     CSRFMiddleware, PrometheusMiddleware,
 )
+from app.services.auth import AuthService
 from app.services.csrf import CSRFService
 from app.services.metrics import MetricsService
 
@@ -334,7 +335,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         # Only redirect truly anonymous sessions — parent or kid
         # logged in skip through.
         session = request.session
-        if session.get("parent_authenticated") or session.get("profile_id"):
+        if session.get("profile_id") or AuthService(app.state.config).is_parent_session(session):
             return await call_next(request)
         # Kid home is exactly "/". Everything else is matched by prefix.
         is_kid_page = path == "/" or any(path.startswith(p) for p in _KID_PATH_PREFIXES)

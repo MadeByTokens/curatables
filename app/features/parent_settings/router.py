@@ -6,7 +6,7 @@ from starlette.responses import HTMLResponse
 from app.dependencies import (
     require_parent, get_auth_service, get_config, get_relocation_service,
 )
-from app.services.auth import AuthService
+from app.services.auth import AuthService, MIN_PASSWORD_LENGTH
 from app.services.relocation import RelocationService, RelocationError
 from app.config import Config, ensure_directories
 from app.models import ViewerContext
@@ -172,16 +172,19 @@ def change_password(request: Request,
     if not auth.verify_password(current_password):
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "error": "Current password is incorrect."})
-    if len(new_password) < 4:
+    if len(new_password) < MIN_PASSWORD_LENGTH:
         return templates.TemplateResponse(request, "parent/settings.html", {
-            **ctx, "error": "New password must be at least 4 characters."})
+            **ctx,
+            "error": f"New password must be at least {MIN_PASSWORD_LENGTH} characters."})
     if new_password != new_password2:
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "error": "New passwords do not match."})
 
     auth.set_password(new_password)
+    auth.start_parent_session(request.session)
     return templates.TemplateResponse(request, "parent/settings.html", {
-        **ctx, "success": "Password changed.", "error": None})
+        **ctx, "success": "Password changed. Other devices have been signed out.",
+        "error": None})
 
 
 @router.post("/settings/move-data")

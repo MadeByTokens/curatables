@@ -1,7 +1,7 @@
 from __future__ import annotations
 """Parent profile management: create, edit, delete child profiles."""
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import require_parent, get_profile_service, get_content_service
@@ -30,6 +30,26 @@ def _profile_fields(form) -> dict:
     }
 
 
+def _pin_error(pin: str) -> str | None:
+    if pin and not (pin.isdigit() and 4 <= len(pin) <= 6):
+        return "PIN must be 4 to 6 digits."
+    return None
+
+
+def _render_form(request: Request, content: ContentService, profile=None,
+                 error: str | None = None, status_code: int = 200):
+    return request.app.state.templates.TemplateResponse(request, "parent/profile_form.html", {
+        "request": request,
+        "profile": profile,
+        "channels": content.list_channels(),
+        "avatar_choices": AVATAR_CHOICES,
+        "theme_choices": THEME_CHOICES,
+        "search_choices": SEARCH_CHOICES,
+        "selected_channel_ids": (profile.allowed_channel_ids or []) if profile else [],
+        "error": error,
+    }, status_code=status_code)
+
+
 @router.get("/", response_class=HTMLResponse)
 def list_profiles(request: Request,
                   viewer: ViewerContext = Depends(require_parent),
@@ -47,17 +67,7 @@ def list_profiles(request: Request,
 def create_form(request: Request,
                 viewer: ViewerContext = Depends(require_parent),
                 content: ContentService = Depends(get_content_service)):
-    channels = content.list_channels()
-    return request.app.state.templates.TemplateResponse(request, "parent/profile_form.html", {
-        "request": request,
-        "profile": None,
-        "channels": channels,
-        "avatar_choices": AVATAR_CHOICES,
-        "theme_choices": THEME_CHOICES,
-        "search_choices": SEARCH_CHOICES,
-        "selected_channel_ids": [],
-        "error": None,
-    })
+    return _render_form(request, content)
 
 
 @router.post("/create")
@@ -67,23 +77,15 @@ async def create_submit(request: Request,
                         content: ContentService = Depends(get_content_service)):
     form = await request.form()
     display_name = form.get("display_name", "").strip()
-    if not display_name:
-        channels = content.list_channels()
-        return request.app.state.templates.TemplateResponse(request, "parent/profile_form.html", {
-            "request": request,
-            "profile": None,
-            "channels": channels,
-            "avatar_choices": AVATAR_CHOICES,
-            "theme_choices": THEME_CHOICES,
-            "search_choices": SEARCH_CHOICES,
-            "selected_channel_ids": [],
-            "error": "Name is required.",
-        })
+    pin = form.get("pin", "").strip()
+    error = "Name is required." if not display_name else _pin_error(pin)
+    if error:
+        return _render_form(request, content, error=error, status_code=400)
 
     profiles_svc.create(
         name=profiles_svc.unique_slug(display_name),
         display_name=display_name,
-        pin=form.get("pin", "").strip()[:10],
+        pin=pin,
         **_profile_fields(form),
     )
     return RedirectResponse(url="/parent/profiles", status_code=302)
@@ -97,32 +99,34 @@ def edit_form(request: Request, profile_id: int,
     profile = profiles_svc.get(profile_id)
     if not profile:
         return RedirectResponse(url="/parent/profiles", status_code=302)
-    channels = content.list_channels()
-    return request.app.state.templates.TemplateResponse(request, "parent/profile_form.html", {
-        "request": request,
-        "profile": profile,
-        "channels": channels,
-        "avatar_choices": AVATAR_CHOICES,
-        "theme_choices": THEME_CHOICES,
-        "search_choices": SEARCH_CHOICES,
-        "selected_channel_ids": profile.allowed_channel_ids or [],
-        "error": None,
-    })
+    return _render_form(request, content, profile)
 
 
 @router.post("/{profile_id}/edit")
 async def edit_submit(request: Request, profile_id: int,
                       viewer: ViewerContext = Depends(require_parent),
-                      profiles_svc: ProfileService = Depends(get_profile_service)):
+                      profiles_svc: ProfileService = Depends(get_profile_service),
+                      content: ContentService = Depends(get_content_service)):
+    profile = profiles_svc.get(profile_id)
+    if not profile:
+        return RedirectResponse(url="/parent/profiles", status_code=302)
     form = await request.form()
+    pin = form.get("pin", "").strip()
+    error = _pin_error(pin)
+    if error:
+        return _render_form(request, content, profile, error=error, status_code=400)
+
     # The slug (profiles.name) stays stable across edits; only the
     # friendly display_name is editable from the form.
-    profiles_svc.update(
-        profile_id,
-        display_name=form.get("display_name", "").strip(),
-        pin=form.get("pin", "").strip()[:10],
+    fields = {
+        "display_name": form.get("display_name", "").strip() or profile.display_name,
         **_profile_fields(form),
-    )
+    }
+    if form.get("remove_pin") == "1":
+        fields["pin"] = ""
+    elif pin:
+        fields["pin"] = pin
+    profiles_svc.update(profile_id, **fields)
     return RedirectResponse(url="/parent/profiles", status_code=302)
 
 

@@ -47,6 +47,7 @@ class ParentConfig:
     password_hash: str | None = None
     session_secret: str | None = None
     session_timeout_hours: int = 24
+    session_epoch: int = 0
 
 
 @dataclass

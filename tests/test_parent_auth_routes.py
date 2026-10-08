@@ -44,13 +44,13 @@ class TestSetupSubmit:
             data={"password": "ab", "password2": "ab"},
         )
         assert resp.status_code == 200
-        assert b"at least 4 characters" in resp.content
+        assert b"at least 8 characters" in resp.content
 
     def test_rejects_mismatched_passwords(self, client, app):
         _clear_password(app)
         resp = client.post(
             "/parent/setup",
-            data={"password": "abcd", "password2": "wxyz"},
+            data={"password": "abcd1234", "password2": "wxyz1234"},
         )
         assert resp.status_code == 200
         assert b"do not match" in resp.content
@@ -59,7 +59,7 @@ class TestSetupSubmit:
         _clear_password(app)
         resp = client.post(
             "/parent/setup",
-            data={"password": "abcd", "password2": "abcd"},
+            data={"password": "abcd1234", "password2": "abcd1234"},
         )
         assert resp.status_code == 302
         assert resp.headers["location"] == "/parent/"
@@ -87,7 +87,7 @@ class TestSetupSubmit:
         _clear_password(app)
         resp = client.post(
             "/parent/setup",
-            data={"password": "abcd", "password2": "abcd"},
+            data={"password": "abcd1234", "password2": "abcd1234"},
         )
         assert resp.status_code == 302
 

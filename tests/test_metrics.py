@@ -101,7 +101,7 @@ class TestParentLoginCounter:
         app.state.config.save()
         client.post(
             "/parent/setup",
-            data={"password": "abcd", "password2": "abcd"},
+            data={"password": "abcd1234", "password2": "abcd1234"},
         )
         body = client.get("/metrics").content.decode()
         line = next(

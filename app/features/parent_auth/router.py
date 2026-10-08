@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import get_auth_service, get_config, get_viewer
-from app.services.auth import AuthService
+from app.services.auth import AuthService, LOGIN_LIMITER, MIN_PASSWORD_LENGTH
 from app.config import Config
 from app.models import ViewerContext
 
@@ -30,9 +30,10 @@ def setup_submit(request: Request,
         return RedirectResponse(url="/parent/login", status_code=302)
 
     templates = request.app.state.templates
-    if len(password) < 4:
+    if len(password) < MIN_PASSWORD_LENGTH:
         return templates.TemplateResponse(request, "parent/setup.html", {
-            "request": request, "error": "Password must be at least 4 characters.",
+            "request": request,
+            "error": f"Password must be at least {MIN_PASSWORD_LENGTH} characters.",
         })
     if password != password2:
         return templates.TemplateResponse(request, "parent/setup.html", {
@@ -40,8 +41,7 @@ def setup_submit(request: Request,
         })
 
     auth.set_password(password)
-    request.session.pop("profile_id", None)
-    request.session["parent_authenticated"] = True
+    auth.start_parent_session(request.session)
     request.app.state.metrics.record_parent_login("setup")
     return RedirectResponse(url="/parent/", status_code=302)
 
@@ -63,15 +63,16 @@ def login_page(request: Request,
 def login_submit(request: Request,
                  password: str = Form(...),
                  auth: AuthService = Depends(get_auth_service)):
+    client_key = request.client.host if request.client else "unknown"
+    if not LOGIN_LIMITER.check(client_key):
+        return request.app.state.templates.TemplateResponse(request, "parent/login.html", {
+            "request": request,
+            "error": "Too many attempts. Wait a few minutes and try again.",
+        }, status_code=429)
     if auth.verify_password(password):
-        # Clear any child profile from the session. get_viewer prefers
-        # profile_id over parent_authenticated, so without this step
-        # a parent logging in while a kid profile is still selected
-        # would be resolved as that kid (and redirected out of every
-        # parent route). Signing in with the parent password is an
-        # explicit "I'm the parent now" action.
-        request.session.pop("profile_id", None)
-        request.session["parent_authenticated"] = True
+        # get_viewer prefers profile_id over the parent flag, so
+        # signing in also clears any selected kid profile.
+        auth.start_parent_session(request.session)
         request.app.state.metrics.record_parent_login("success")
         return RedirectResponse(url="/parent/", status_code=302)
     request.app.state.metrics.record_parent_login("failure")

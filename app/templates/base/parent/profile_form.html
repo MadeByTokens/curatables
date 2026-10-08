@@ -19,9 +19,17 @@
   </div>
 
   <div class="form-group">
-    <label for="pin">PIN (optional, 4 digits)</label>
-    <input type="tel" id="pin" name="pin" maxlength="4" value="{{ profile.pin if profile else '' }}">
-    <small class="muted">If set, the kid must enter this PIN to use the profile.</small>
+    <label for="pin">{% if profile and profile.pin %}New PIN{% else %}PIN (optional, 4–6 digits){% endif %}</label>
+    <input type="text" inputmode="numeric" pattern="[0-9]{4,6}" autocomplete="off"
+           id="pin" name="pin" maxlength="6" value="">
+    {% if profile and profile.pin %}
+    <small class="muted d-block">A PIN is set. Leave this blank to keep it.</small>
+    <label class="fw-normal d-block">
+      <input type="checkbox" name="remove_pin" value="1"> Remove the PIN
+    </label>
+    {% else %}
+    <small class="muted">If set, the kid must enter this PIN to use the profile. A PIN keeps siblings out of each other's profiles; it is not a strong lock.</small>
+    {% endif %}
   </div>
 
   <div class="form-group">

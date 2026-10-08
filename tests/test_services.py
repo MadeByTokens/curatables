@@ -64,7 +64,7 @@ class TestProfileService:
                        search_mode="curated")
         prof = service.get(pid)
         assert prof.display_name == "Renamed"
-        assert prof.pin == "0000"
+        assert service.check_pin(prof, "0000")
         assert prof.theme == "playful"
         assert prof.search_mode == "curated"
 

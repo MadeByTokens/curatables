@@ -13,6 +13,14 @@ from app.dependencies import get_db
 from app.services.auth import AuthService
 
 
+@pytest.fixture(autouse=True)
+def _reset_auth_limiters():
+    from app.services.auth import LOGIN_LIMITER, PIN_LIMITER
+    LOGIN_LIMITER.reset()
+    PIN_LIMITER.reset()
+    yield
+
+
 @pytest.fixture
 def db():
     """In-memory SQLite connection with full schema applied."""

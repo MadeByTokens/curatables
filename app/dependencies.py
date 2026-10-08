@@ -257,6 +257,7 @@ def get_stats_service(
 def get_viewer(
     request: Request,
     profile_repo=Depends(get_profile_repo),
+    auth=Depends(get_auth_service),
 ) -> ViewerContext:
     """Build a ViewerContext from the session.
 
@@ -284,7 +285,7 @@ def get_viewer(
                 has_multiple_profiles=profile_repo.count() > 1,
             )
 
-    if session.get("parent_authenticated"):
+    if auth.is_parent_session(session):
         return ViewerContext(viewer_type="parent")
 
     return ViewerContext(viewer_type="anonymous")

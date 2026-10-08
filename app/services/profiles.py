@@ -6,6 +6,7 @@ import unicodedata
 
 from app.models import Profile
 from app.repositories import ProfileRepository
+from app.services.auth import hash_pin, verify_pin
 
 
 def slugify(text: str) -> str:
@@ -47,7 +48,8 @@ class ProfileService:
                allowed_channel_ids: list[int] | None = None,
                channels_restricted: bool | None = None) -> int:
         profile = Profile(
-            name=name, display_name=display_name, pin=pin,
+            name=name, display_name=display_name,
+            pin=hash_pin(pin) if pin else "",
             avatar=avatar, theme=theme, search_mode=search_mode,
             allowed_channel_ids=allowed_channel_ids or [],
             channels_restricted=(bool(allowed_channel_ids)
@@ -57,7 +59,12 @@ class ProfileService:
         return self.profile_repo.create(profile)
 
     def update(self, profile_id: int, **fields) -> None:
+        if fields.get("pin"):
+            fields["pin"] = hash_pin(fields["pin"])
         self.profile_repo.update(profile_id, **fields)
+
+    def check_pin(self, profile: Profile, attempt: str) -> bool:
+        return verify_pin(profile.pin, attempt.strip())
 
     def delete(self, profile_id: int) -> None:
         self.profile_repo.delete(profile_id)

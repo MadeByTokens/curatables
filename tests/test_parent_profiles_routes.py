@@ -1,9 +1,11 @@
 """Coverage for app/features/parent_profiles/router.py.
 
 Targets the create / edit / delete flows: form rendering, the
-empty-name validation branch, channel-id wiring, PIN truncation,
+empty-name validation branch, channel-id wiring, PIN validation,
 the missing-profile redirect on edit, and delete.
 """
+
+from app.services.profiles import ProfileService
 
 
 def _create_profile(app, name="Frank", **kwargs) -> int:
@@ -41,7 +43,7 @@ class TestProfilesCreateSubmit:
             "/parent/profiles/create",
             data={"display_name": "   "},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 400
         assert b"Name is required" in resp.content
 
     def test_happy_path_persists_profile(self, authed_client, app):
@@ -64,7 +66,8 @@ class TestProfilesCreateSubmit:
         conn = next(app.dependency_overrides[get_db]())
         profiles = ProfileRepository(conn).list()
         charlie = next(p for p in profiles if p.display_name == "Charlie")
-        assert charlie.pin == "1234"
+        assert charlie.pin.startswith("pbkdf2$")
+        assert ProfileService(ProfileRepository(conn)).check_pin(charlie, "1234")
         assert charlie.avatar == "default"
 
     def test_channel_ids_are_persisted(self, authed_client, app):
@@ -119,26 +122,19 @@ class TestProfilesCreateSubmit:
                     if p.display_name == "Drew")
         assert drew.allowed_channel_ids == [ch_id]
 
-    def test_pin_is_truncated_to_ten_chars(self, authed_client, app):
+    def test_non_digit_or_long_pin_is_rejected(self, authed_client, app):
         from app.dependencies import get_db
         from app.repositories import ProfileRepository
 
         resp = authed_client.post(
             "/parent/profiles/create",
-            data={
-                "display_name": "Eve",
-                "pin": "1" * 50,
-                "avatar": "default",
-                "theme": "base",
-                "search_mode": "disabled",
-            },
+            data={"display_name": "Eve", "pin": "1" * 50},
         )
-        assert resp.status_code == 302
-
+        assert resp.status_code == 400
+        assert b"4 to 6 digits" in resp.content
         conn = next(app.dependency_overrides[get_db]())
-        eve = next(p for p in ProfileRepository(conn).list()
-                   if p.display_name == "Eve")
-        assert len(eve.pin) <= 10
+        assert not any(p.display_name == "Eve"
+                       for p in ProfileRepository(conn).list())
 
 
 class TestProfilesEditForm:
@@ -175,7 +171,7 @@ class TestProfilesEditSubmit:
         conn = next(app.dependency_overrides[get_db]())
         prof = ProfileRepository(conn).get(pid)
         assert prof.display_name == "Hugo the Great"
-        assert prof.pin == "9999"
+        assert ProfileService(ProfileRepository(conn)).check_pin(prof, "9999")
         assert prof.theme == "calm"
         assert prof.search_mode == "curated"
 
@@ -235,6 +231,41 @@ class TestProfilesEditSubmit:
         assert prof.theme == "base"
         assert prof.search_mode == "disabled"
         assert prof.avatar == "default"
+
+
+class TestPinHandling:
+    def test_blank_pin_keeps_existing_pin(self, authed_client, app):
+        from app.dependencies import get_db
+        from app.repositories import ProfileRepository
+
+        conn = next(app.dependency_overrides[get_db]())
+        svc = ProfileService(ProfileRepository(conn))
+        pid = svc.create(name="pia", display_name="Pia", pin="2468")
+        authed_client.post(f"/parent/profiles/{pid}/edit",
+                           data={"display_name": "Pia", "pin": ""})
+        assert svc.check_pin(svc.get(pid), "2468")
+
+    def test_remove_pin_box_clears_pin(self, authed_client, app):
+        from app.dependencies import get_db
+        from app.repositories import ProfileRepository
+
+        conn = next(app.dependency_overrides[get_db]())
+        svc = ProfileService(ProfileRepository(conn))
+        pid = svc.create(name="quin", display_name="Quin", pin="2468")
+        authed_client.post(f"/parent/profiles/{pid}/edit",
+                           data={"display_name": "Quin", "remove_pin": "1"})
+        assert svc.get(pid).pin == ""
+
+    def test_edit_form_never_echoes_pin(self, authed_client, app):
+        from app.dependencies import get_db
+        from app.repositories import ProfileRepository
+
+        conn = next(app.dependency_overrides[get_db]())
+        pid = ProfileService(ProfileRepository(conn)).create(
+            name="ron", display_name="Ron", pin="1357")
+        page = authed_client.get(f"/parent/profiles/{pid}/edit").text
+        assert "1357" not in page
+        assert "pbkdf2" not in page
 
 
 class TestProfilesDelete:
