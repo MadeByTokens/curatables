@@ -8,7 +8,8 @@ from app.dependencies import (
 )
 from app.services.auth import AuthService, MIN_PASSWORD_LENGTH
 from app.services.relocation import RelocationService, RelocationError
-from app.config import Config, ensure_directories
+from app.config import Config
+from app.services.storage import RESOLUTION_MAP
 from app.models import ViewerContext
 from app.services import updates
 
@@ -65,31 +66,20 @@ def settings_update(request: Request,
 
 @router.post("/settings")
 def settings_save(request: Request,
-                  data_dir: str = Form(...),
                   cache_days: int = Form(...),
                   default_resolution: str = Form(...),
                   subtitle_langs: str = Form("en"),
+                  keep_forever_default: str = Form(""),
                   viewer: ViewerContext = Depends(require_parent),
                   config: Config = Depends(get_config)):
     templates = request.app.state.templates
     ctx = {"request": request, "config": config, "success": None, "advanced_open": False}
 
-    data_dir = data_dir.strip()
-    if not data_dir:
-        return templates.TemplateResponse(request, "parent/settings.html", {
-            **ctx, "error": "Data directory is required."})
-
-    cache_days = max(0, cache_days)
-    config.storage.path = data_dir
-    config.storage.cache_days = cache_days
-    if default_resolution in ("360p", "480p", "720p", "1080p"):
+    config.storage.cache_days = max(0, cache_days)
+    if default_resolution in RESOLUTION_MAP:
         config.storage.default_resolution = default_resolution
     config.storage.subtitle_langs = subtitle_langs.strip()
-    try:
-        ensure_directories(config)
-    except OSError as e:
-        return templates.TemplateResponse(request, "parent/settings.html", {
-            **ctx, "error": f"Cannot create data directory: {e}"})
+    config.storage.default_mode = "library" if keep_forever_default == "1" else "cache"
     config.save()
     return templates.TemplateResponse(request, "parent/settings.html", {
         **ctx, "success": "Settings saved.", "error": None,
@@ -100,8 +90,9 @@ def settings_save(request: Request,
 def settings_save_advanced(request: Request,
                            port: int = Form(...),
                            host: str = Form(...),
-                           default_mode: str = Form("cache"),
                            min_free_disk_gb: float = Form(2.0),
+                           max_download_gb: float = Form(4.0),
+                           max_concurrent_downloads: int = Form(1),
                            max_upload_gb: float = Form(10.0),
                            max_kid_upload_gb: float = Form(0.5),
                            impersonate: str = Form("chrome"),
@@ -122,9 +113,12 @@ def settings_save_advanced(request: Request,
     if not host or " " in host:
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "error": "Host address is required and must not contain spaces."})
-    if default_mode not in ("cache", "library"):
+    if max_download_gb <= 0:
         return templates.TemplateResponse(request, "parent/settings.html", {
-            **ctx, "error": "Invalid storage mode."})
+            **ctx, "error": "Maximum download size must be above zero."})
+    if not (1 <= max_concurrent_downloads <= 4):
+        return templates.TemplateResponse(request, "parent/settings.html", {
+            **ctx, "error": "Downloads at once must be between 1 and 4."})
     if min_free_disk_gb < 0:
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "error": "Minimum free disk space cannot be negative."})
@@ -143,7 +137,8 @@ def settings_save_advanced(request: Request,
     config.server.port = port
     config.server.host = host
     config.server.log_level = log_level
-    config.storage.default_mode = default_mode
+    config.storage.max_download_bytes = int(max_download_gb * 1_073_741_824)
+    config.storage.max_concurrent_downloads = max_concurrent_downloads
     config.storage.min_free_disk_bytes = int(min_free_disk_gb * 1_073_741_824)
     config.storage.max_upload_bytes = int(max_upload_gb * 1_073_741_824)
     config.storage.max_kid_upload_bytes = int(max_kid_upload_gb * 1_073_741_824)

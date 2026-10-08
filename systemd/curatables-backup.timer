@@ -1,6 +1,5 @@
 [Unit]
-Description=Curatables — run daily DB backup at 03:00
-Requires=curatables-backup.service
+Description=Curatables — run the daily backup at 03:00
 
 [Timer]
 OnCalendar=*-*-* 03:00:00

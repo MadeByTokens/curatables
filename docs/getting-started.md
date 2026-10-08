@@ -222,29 +222,47 @@ mini-PC will process videos noticeably faster than a Pi 4.
 ## Step 6 (optional) — make it start automatically
 
 So far the server only runs while your SSH window is open. To make it
-start on boot and stay running — and to use the nicer address
-`http://curatables.local/` with **no `:8080`** — install it as a system
-service:
+start on boot and stay running, and to use the nicer address
+`http://curatables.local/` with **no `:8080`**, install it as a system
+service. First stop the test server with **Ctrl-C**, then:
 
 ```sh
 # From inside the curatables folder
-scripts/install.sh --systemd
+sudo scripts/install.sh --systemd
 ```
 
-This sets up the background service. Then follow
-[deployment.md](deployment.md) to point the service at your install
-folder and switch it on with `systemctl enable --now curatables`. That
-doc also explains how port 80 (the "no `:8080`" address) works safely
-without running as the all-powerful root user.
+This copies Curatables to `/opt/curatables`, creates a `curatables`
+user for it to run as, **moves over everything you already set up**
+(password, profiles, videos from `~/curatables-data`), turns on nightly
+backups, and starts it. When it finishes, open:
 
-Once it's a service, you can check on it any time with:
+- parents: `http://curatables.local/parent/`
+- kids: `http://curatables.local/`
+
+Your original `~/curatables-data` folder is left in place; delete it once
+you've checked everything is there.
+
+Check on the service any time with:
 
 ```sh
 sudo journalctl -u curatables -f      # live log; Ctrl-C to stop watching
 ```
 
-And **set up backups** — see [backup.md](backup.md). Do this before you
-put in a lot of content you'd hate to re-add.
+### Using an external hard drive for the videos
+
+On a Raspberry Pi it's worth keeping the videos on a USB hard drive or
+SSD: SD cards are small and wear out. With the drive plugged in:
+
+```sh
+lsblk -f                                            # find it, e.g. sda1
+sudo mkfs.ext4 -L curatables /dev/sda1              # ERASES the drive; skip if already ext4
+sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sda1
+```
+
+The last command moves your library onto the drive and sets the Pi up
+to mount it on every boot. If the drive is ever unplugged, Curatables
+waits for it instead of starting with an empty library. Details:
+[deployment.md → Media on an external drive](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk).
 
 ---
 
@@ -295,10 +313,26 @@ which the appliance image and `scripts/install.sh --systemd` install. See
 
 ### I forgot the parent password
 
-The password is stored in the database under your data folder
-(`~/curatables-data/`). Recovery is a maintenance task — see
-[backup.md](backup.md) for how the data is laid out, or open an issue if
-you're stuck.
+The password hash is stored in `config.json` in your data folder
+(`/home/curatables/curatables-data/` for a permanent install,
+`~/curatables-data/` for a try-out). Clearing it puts Curatables back
+into first-run mode so you can set a new one; nothing else is lost:
+
+```sh
+sudo systemctl stop curatables
+sudo -u curatables /opt/curatables/.venv/bin/python -c '
+import json
+p = "/home/curatables/curatables-data/config.json"
+cfg = json.load(open(p))
+cfg["parent"]["password_hash"] = None
+json.dump(cfg, open(p, "w"), indent=2)
+'
+sudo systemctl start curatables
+```
+
+Then open `http://curatables.local/parent/` straight away and set a new
+password. Until you do, anyone on your network who opens that page
+could set it.
 
 ### The server won't start: "ffmpeg not found" or similar
 

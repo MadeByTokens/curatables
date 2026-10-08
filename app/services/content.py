@@ -276,6 +276,9 @@ class ContentService:
             download_status="pending",
         )
         self.video_repo.insert(video)
+        if self.config.storage.default_mode == "library":
+            self.video_repo.update(stored_id, keep_forever=1)
+            video.keep_forever = True
         self._start_download(stored_id, info.original_url, res)
         return video
 

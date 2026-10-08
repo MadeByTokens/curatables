@@ -518,7 +518,7 @@ class TestParentStatsPage:
 class TestSettingsMaxKidUpload:
     def test_max_kid_upload_gb_round_trip(self, authed_client, app):
         resp = authed_client.post("/parent/settings/advanced", data={
-            "port": 8080, "host": "0.0.0.0", "default_mode": "cache",
+            "port": 8080, "host": "0.0.0.0",
             "min_free_disk_gb": "2.0",
             "max_upload_gb": "10.0",
             "max_kid_upload_gb": "0.75",
@@ -532,7 +532,7 @@ class TestSettingsMaxKidUpload:
     def test_max_kid_upload_gb_negative_rejected(self, authed_client, app):
         original = app.state.config.storage.max_kid_upload_bytes
         resp = authed_client.post("/parent/settings/advanced", data={
-            "port": 8080, "host": "0.0.0.0", "default_mode": "cache",
+            "port": 8080, "host": "0.0.0.0",
             "min_free_disk_gb": "2.0",
             "max_upload_gb": "10.0",
             "max_kid_upload_gb": "-1",

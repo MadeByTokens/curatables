@@ -1,7 +1,7 @@
 [Unit]
-Description=Curatables — daily SQLite DB backup snapshot
+Description=Curatables — daily database + config backup snapshot
 After=curatables.service
-Wants=curatables.service
+RequiresMountsFor=/home/curatables/curatables-data
 
 [Service]
 Type=oneshot
@@ -9,11 +9,15 @@ User=curatables
 Group=curatables
 Environment=CURATABLES_DATA_DIR=/home/curatables/curatables-data
 Environment=RETAIN=14
-ExecStart=/opt/curatables/scripts/backup.sh /home/curatables/curatables-data/backups
+# Snapshots go to /var/lib/curatables-backups (systemd creates it, owned
+# by the service user). That is on the SD card / system disk, so with an
+# external media drive the backups survive the drive failing, and vice versa.
+StateDirectory=curatables-backups
+StateDirectoryMode=0700
+ExecStart=/opt/curatables/scripts/backup.sh /var/lib/curatables-backups
 
 # Hardening — same posture as the main service.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/curatables/curatables-data/backups
 PrivateTmp=true

@@ -3,8 +3,8 @@
 #   - create the unprivileged 'curatables' service user + data dir
 #   - build the venv and install Python deps (pulls a fresh yt-dlp)
 #   - install Deno (yt-dlp's JS runtime for YouTube extraction)
-#   - install + enable the systemd units (server + updater watcher)
-#   - point the service unit at the venv python
+#   - install + enable the systemd units (server, updater watcher,
+#     nightly backup)
 #   - acceptance-test with run.py --check
 #
 # First boot is handled by the OS + the app itself: Raspberry Pi OS
@@ -40,22 +40,20 @@ elif [ -x /usr/local/deno ]; then
 fi
 
 # --- systemd units -----------------------------------------------------
-cp "${ROOT}/systemd/curatables.service" /etc/systemd/system/
-cp "${ROOT}/systemd/curatables-updater.service" /etc/systemd/system/
-cp "${ROOT}/systemd/curatables-updater.path" /etc/systemd/system/
-
-# The shipped unit runs system python on port 80; the appliance runs the
-# venv python (where the deps live). Patch the ExecStart in place.
-sed -i \
-	's#^ExecStart=/usr/bin/python3 /opt/curatables/run.py#ExecStart=/opt/curatables/.venv/bin/python /opt/curatables/run.py#' \
-	/etc/systemd/system/curatables.service
+for unit in curatables.service curatables-updater.service curatables-updater.path \
+            curatables-backup.service curatables-backup.timer; do
+	install -m 0644 "${ROOT}/systemd/${unit}" /etc/systemd/system/
+done
 
 systemctl enable curatables.service
 systemctl enable curatables-updater.path
+systemctl enable curatables-backup.timer
 
 # --- acceptance test ---------------------------------------------------
 # Non-fatal on deno/mDNS warnings; fails the build only if a REQUIRED dep
 # is missing (run.py --check exits non-zero in that case).
 "${ROOT}/.venv/bin/python" "${ROOT}/run.py" --check
 
-chown -R curatables:curatables "${ROOT}"
+# Code and venv stay root-owned: the service only needs to read them, and
+# the root-run updater must never execute files the service user can edit.
+chown -R root:root "${ROOT}"

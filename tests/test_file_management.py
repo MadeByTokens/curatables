@@ -460,12 +460,28 @@ class TestRelocationService:
             result = svc.move(str(target))
 
         assert result == target
-        assert not source.exists()
+        assert sorted(p.name for p in source.iterdir()) == ["config.json"]
         assert target.exists()
         assert (target / "db" / "curatables.db").exists()
         assert (target / "videos" / "abc" / "video.mp4").exists()
         assert (target / "config.json").exists()
         assert svc.config.storage.path == str(target)
+
+    def test_restart_follows_pointer_left_at_old_location(self, db, tmp_path, monkeypatch):
+        from app.config import load_config
+        source = tmp_path / "src"
+        source.mkdir()
+        svc = self._make_service(db, source)
+        svc.config.parent.password_hash = "kept"
+        target = tmp_path / "dest"
+        with patch("app.services.relocation.shutil.disk_usage",
+                   return_value=_Usage(100 * _GB, 10 * _GB, 90 * _GB)):
+            svc.move(str(target))
+        monkeypatch.setattr("app.config.Path.home", lambda: tmp_path)
+        (tmp_path / "curatables-data").symlink_to(source)
+        reloaded = load_config()
+        assert reloaded.storage.path == str(target)
+        assert reloaded.parent.password_hash == "kept"
 
 
 # ---------------------------------------------------------------------------
@@ -473,8 +489,12 @@ class TestRelocationService:
 # ---------------------------------------------------------------------------
 
 class TestRelocationRoute:
+    @pytest.fixture(autouse=True)
+    def _unpinned(self, app):
+        app.state.data_dir_pinned = False
+
     def test_route_happy_path(self, authed_client, app, tmp_path):
-        target = tmp_path / "new-data-dir"
+        target = tmp_path.parent / (tmp_path.name + "-moved")
 
         with patch("app.services.relocation.shutil.disk_usage",
                    return_value=_Usage(100 * _GB, 10 * _GB, 90 * _GB)):
@@ -498,7 +518,7 @@ class TestRelocationRoute:
             channel_id=ChannelRepository(conn).get(1).id,
             download_status="downloading",
         ))
-        target = tmp_path / "new-data-dir"
+        target = tmp_path.parent / (tmp_path.name + "-moved")
 
         resp = authed_client.post(
             "/parent/settings/move-data",
@@ -506,6 +526,21 @@ class TestRelocationRoute:
         )
         assert resp.status_code == 200
         assert b"downloading" in resp.content.lower()
+
+    def test_route_refuses_when_data_dir_pinned(self, authed_client, app, tmp_path):
+        app.state.data_dir_pinned = True
+        resp = authed_client.post(
+            "/parent/settings/move-data",
+            data={"new_data_dir": str(tmp_path.parent / "elsewhere")},
+        )
+        assert b"setup-external-drive.sh" in resp.content
+
+    def test_route_refuses_target_inside_current(self, authed_client, app, tmp_path):
+        resp = authed_client.post(
+            "/parent/settings/move-data",
+            data={"new_data_dir": str(tmp_path / "nested")},
+        )
+        assert b"inside the current" in resp.content
 
     def test_route_refuses_relative_path(self, authed_client, app):
         resp = authed_client.post(

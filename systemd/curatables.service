@@ -3,6 +3,10 @@ Description=Curatables — local video curation server for parents and kids
 Documentation=https://github.com/MadeByTokens/curatables
 After=network-online.target avahi-daemon.service
 Wants=network-online.target avahi-daemon.service
+# Waits for (and requires) the filesystem holding the data dir. When the
+# data dir is an external drive (scripts/setup-external-drive.sh), the
+# service does not start until the drive is mounted.
+RequiresMountsFor=/home/curatables/curatables-data
 
 [Service]
 Type=simple
@@ -35,11 +39,13 @@ ProtectControlGroups=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 RestrictNamespaces=true
 LockPersonality=true
-MemoryDenyWriteExecute=false  # yt-dlp's deno runtime may JIT
+# yt-dlp's deno runtime may JIT, so W^X memory stays allowed.
+MemoryDenyWriteExecute=false
 
-# Start the server on port 80. The mDNS advertiser published by the
-# app lifespan will pick this port up from config.server.port.
-ExecStart=/usr/bin/python3 /opt/curatables/run.py --port 80
+# Start the server on port 80 from the install's virtualenv. The data
+# dir is passed explicitly so it never depends on $HOME. The mDNS
+# advertiser picks the port up from the running server.
+ExecStart=/opt/curatables/.venv/bin/python /opt/curatables/run.py --port 80 --data-dir /home/curatables/curatables-data
 
 Restart=on-failure
 RestartSec=5

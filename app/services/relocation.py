@@ -8,6 +8,7 @@ checks before doing anything and raises RelocationError with a clear
 message on any refusal.
 """
 
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -26,9 +27,11 @@ class RelocationError(Exception):
 
 
 class RelocationService:
-    def __init__(self, config: Config, video_repo: VideoRepository):
+    def __init__(self, config: Config, video_repo: VideoRepository,
+                 pinned: bool = False):
         self.config = config
         self.video_repo = video_repo
+        self.pinned = pinned
 
     def move(self, new_data_dir: str) -> Path:
         """Validate and move the data directory to a new path.
@@ -36,6 +39,13 @@ class RelocationService:
         Returns the resolved new Path on success. Raises
         RelocationError on any preflight failure.
         """
+        if self.pinned:
+            raise RelocationError(
+                "This server was started with a fixed data directory "
+                "(--data-dir, e.g. by the systemd service), so it cannot be "
+                "moved from here. To put the library on an external drive, "
+                "run scripts/setup-external-drive.sh (see docs/deployment.md)."
+            )
         old_path = Path(self.config.storage.path)
         target_raw = (new_data_dir or "").strip()
         if not target_raw:
@@ -51,6 +61,10 @@ class RelocationService:
         if new_path == old_path:
             raise RelocationError(
                 "New data directory is the same as the current one."
+            )
+        if old_path in new_path.parents:
+            raise RelocationError(
+                "New data directory cannot be inside the current one."
             )
 
         # Target must not exist, or must be an empty directory.
@@ -117,6 +131,14 @@ class RelocationService:
         # automatically. Then persist config.json at the new location.
         self.config.storage.path = str(new_path)
         self.config.save()
+        # Leave a pointer behind so a restart without --data-dir, which
+        # looks in the old default location, finds the library.
+        try:
+            old_path.mkdir(parents=True, exist_ok=True)
+            (old_path / "config.json").write_text(
+                json.dumps({"storage": {"path": str(new_path)}}, indent=2))
+        except OSError:
+            logger.warning("Could not leave a pointer config at %s", old_path)
         logger.info("Relocation complete; config.json saved at %s",
                     new_path / "config.json")
         return new_path

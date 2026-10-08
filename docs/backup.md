@@ -1,123 +1,147 @@
 # Curatables — Backup & Restore
 
-> **tl;dr** — run `scripts/backup.sh` to snapshot the DB. Restore with
-> `scripts/restore.sh <snapshot.db>` after stopping the server. A
-> systemd timer in `systemd/` wires this as a daily job.
+> **tl;dr** — a permanent install (`install.sh --systemd` or the Pi
+> image) backs up the database and `config.json` every night at 03:00
+> into `/var/lib/curatables-backups`, keeping 14 days. Restore with
+> `scripts/restore.sh <snapshot.db>` after stopping the server. Copy
+> that folder somewhere else now and then (USB stick, another computer).
 
 ## What's at stake
 
-`~/curatables-data/db/curatables.db` is **the entire curation history**:
-every approved video, kid profile, channel (including banners/icons),
-custom thumbnail override, tag, bookmark, reaction, comment, and usage
-event. Downloaded video files can always be re-fetched from their
-source URLs; the DB is the one thing you cannot reproduce.
+`db/curatables.db` in the data dir is **the entire curation history**:
+every approved video, kid profile, channel, custom title, tag,
+bookmark, reaction, comment, and usage event. `config.json` next to it
+holds the parent password hash, the session secret and every setting.
+These two files are what the nightly backup copies.
 
-If your deployment is on spinning rust or a consumer-grade SSD, a
-single hardware failure takes the DB with it. Curatables can't mitigate
-that — **you need off-device backups**.
+Downloaded video files can usually be fetched again from their source
+URL. Not always: a video the uploader deleted is gone, which is one
+reason to mark favourites **keep forever**.
 
-## What you can afford to lose
+## What the backup does not cover
 
-- `videos/<id>/video.mp4` — re-downloadable from `video.original_url`
-  via yt-dlp. The DB retains the URL; lose the file, re-fetch.
-- `uploads/<id>/video.<ext>` — kid uploads. These **are** original
-  content and can't be re-fetched. Back them up separately if they
-  matter (tar the `uploads/` tree).
-- `thumbnails/profiles/<id>/...` — per-kid custom thumbnails. Lose
-  them, lose the customizations; the DB flag `has_custom_thumb=1`
-  would then point at a missing file and the media route would fall
-  back to the canonical thumbnail silently.
-- `channels/<id>/{banner,icon}.*` — kid channel art. Same story.
+- `videos/<id>/video.*` — downloaded videos. Re-downloadable while the
+  source still exists.
+- `uploads/<id>/video.*` — videos uploaded by you or the kids. These are
+  originals and can't be re-fetched.
+- `thumbnails/` — thumbnails you or the kids picked.
+- `channels/<id>/{banner,icon}.*` — kid channel art.
 
-The default backup script covers **just the DB**, which is the single
-most valuable artifact. If you want full-fidelity backup including
-uploads and customizations, tar the full `~/curatables-data/` tree.
+For a full copy, stop the server and copy the whole data dir (see
+"Full copy" below).
+
+## Where backups go
+
+| Install | Data dir | Backups |
+|---|---|---|
+| `install.sh --systemd`, Pi image | `/home/curatables/curatables-data` | `/var/lib/curatables-backups` |
+| try-out (`.venv/bin/python run.py`) | `~/curatables-data` | `~/curatables-data/backups` (manual runs) |
+
+`/var/lib/curatables-backups` is on the system disk (the SD card on a
+Pi). With the library on an external drive
+([deployment.md](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)),
+losing either the card or the drive leaves the other copy.
 
 ## Manual backup (one-off)
 
 ```bash
-./scripts/backup.sh                      # → $HOME/curatables-data/backups/
-./scripts/backup.sh /mnt/usb/backups/    # → custom output dir
+# systemd install
+sudo -u curatables CURATABLES_DATA_DIR=/home/curatables/curatables-data \
+    /opt/curatables/scripts/backup.sh /var/lib/curatables-backups
+
+# try-out install
+./scripts/backup.sh                      # → ~/curatables-data/backups/
+./scripts/backup.sh /media/usb/backups/  # → custom output dir
 ```
 
-The script uses SQLite's `.backup` command, which is a proper online
-snapshot (WAL-aware, handles concurrent readers/writers). It's safe to
-run while the server is processing requests.
+The script uses SQLite's online backup API through Python's built-in
+`sqlite3` module (no extra package needed). It is safe to run while the
+server is processing requests and checks the snapshot with
+`PRAGMA integrity_check`.
 
-**Do NOT** just `cp curatables.db elsewhere`. A live WAL DB needs
-`-wal` and `-shm` siblings copied atomically; `cp` races with the
-writer and produces a corrupt snapshot ~1 time in 100. The sqlite3
-backup API is the only correct way.
+**Do NOT** just `cp curatables.db elsewhere` while the server runs. A
+live WAL database needs its `-wal` and `-shm` siblings copied
+atomically; `cp` races with the writer.
 
-Each snapshot is named `curatables-YYYY-MM-DD-HHMMSS.db`. The script
-keeps the most recent 14 (configurable via `RETAIN=N`).
+Each run writes `curatables-YYYY-MM-DD-HHMMSS.db` and
+`curatables-YYYY-MM-DD-HHMMSS.config.json` (mode 0600, it contains the
+password hash and session secret). The newest 14 pairs are kept
+(`RETAIN=N` to change).
 
 ## Daily automated backup (systemd timer)
 
-```bash
-# Copy the service + timer into systemd. Adjust paths in the .service
-# file if your install doesn't live at /opt/curatables.
-sudo cp systemd/curatables-backup.service /etc/systemd/system/
-sudo cp systemd/curatables-backup.timer   /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now curatables-backup.timer
-```
+`install.sh --systemd` and the Pi image install and enable
+`curatables-backup.timer`. Check it with:
 
-Verify:
 ```bash
 systemctl list-timers curatables-backup.timer
-# Next scheduled run, last run, etc.
+journalctl -u curatables-backup -n 20
+ls -l /var/lib/curatables-backups
 ```
 
-The timer runs at 03:00 local time daily. Retention is 14 days in the
-service unit's `Environment=RETAIN=14` — adjust to taste.
+## Off-device copies (recommended)
 
-## Off-device rotation (recommended)
+The timer protects against mistakes and a corrupted database, not
+against losing the whole box. Copy the backups elsewhere now and then:
 
-The systemd timer snapshots to disk; it doesn't protect against disk
-failure. For that, pair it with anything that rotates the `backups/`
-directory off the device:
-
-- **USB stick**: rsync once a week:
+- **USB stick**:
+  ```bash
+  sudo rsync -a /var/lib/curatables-backups/ /media/usb/curatables-backups/
   ```
-  rsync -a --delete ~/curatables-data/backups/ /mnt/usb/curatables/
-  ```
-- **Another machine on the LAN**: scp / rsync over SSH.
+- **Another machine on the LAN**: `scp`/`rsync` over SSH.
 - **Cloud storage** (Backblaze B2, S3): `rclone sync` on a second timer.
 
 ## Restore
 
-The server **must** be stopped first (a running writer will corrupt
-the DB mid-swap):
+Stop the server first (a running writer corrupts the database
+mid-swap), and run the restore as the user that owns the data dir so
+file ownership stays right:
 
 ```bash
 sudo systemctl stop curatables
-./scripts/restore.sh ~/curatables-data/backups/curatables-2026-04-12-030000.db
+sudo -u curatables CURATABLES_DATA_DIR=/home/curatables/curatables-data \
+    /opt/curatables/scripts/restore.sh /var/lib/curatables-backups/curatables-2026-04-12-030000.db
 sudo systemctl start curatables
 ```
 
-`restore.sh` does three safety things:
-1. Verifies the backup file passes `PRAGMA integrity_check` before
-   touching the live DB.
-2. Refuses to run if it detects a live server process (best-effort;
-   rely on your process manager, but the check catches the common
-   "I forgot to stop it" mistake).
-3. Preserves the pre-restore DB as
-   `curatables.db.pre-restore-YYYYMMDD-HHMMSS` so you can roll back
-   the restore itself if it turns out to be the wrong backup.
+`restore.sh`:
+
+1. checks the snapshot with `PRAGMA integrity_check` before touching
+   anything;
+2. refuses to run if it sees a running server;
+3. keeps the current files as `*.pre-restore-YYYYMMDD-HHMMSS` so you
+   can undo the restore;
+4. restores the matching `.config.json` too (password and settings),
+   with `storage.path` set to the target data dir. Set `SKIP_CONFIG=1`
+   to restore only the database.
+
+## Full copy (videos and uploads included)
+
+```bash
+sudo systemctl stop curatables
+sudo rsync -a /home/curatables/curatables-data/ /media/usb/curatables-data-full/
+sudo systemctl start curatables
+```
 
 ## Testing that your backups actually work
 
-A backup you've never restored from is a hope, not a backup. Every
-few months:
+A backup you've never restored from is a hope, not a backup. Every few
+months, start a throwaway server on a copy of the latest snapshot and
+check you can log in and see your library:
 
 ```bash
-# Dry-run on a sandbox copy — don't overwrite the live DB.
-mkdir -p /tmp/curatables-restore-test
-cp ~/curatables-data/backups/curatables-*-030000.db /tmp/curatables-restore-test/
-sqlite3 /tmp/curatables-restore-test/curatables-*.db "PRAGMA integrity_check;"
-sqlite3 /tmp/curatables-restore-test/curatables-*.db \
-    "SELECT COUNT(*) FROM videos; SELECT COUNT(*) FROM profiles;"
+LATEST="$(ls -1t /var/lib/curatables-backups/curatables-*.db | head -n1)"
+TEST=/tmp/curatables-restore-test
+rm -rf "$TEST" && mkdir -p "$TEST/db"
+sudo cp "$LATEST" "$TEST/db/curatables.db"
+sudo cp "${LATEST%.db}.config.json" "$TEST/config.json"
+sudo chown -R "$(id -un)" "$TEST"
+/opt/curatables/.venv/bin/python /opt/curatables/run.py --data-dir "$TEST" --port 8099
 ```
 
-Confirms the snapshot is readable and has the data you expect.
+Open `http://curatables.local:8099/parent/`, log in with your usual
+password, and check the profiles and the content list. Videos show as
+missing files, which is expected: only the database and settings were
+restored (with only a handful of videos, the test server may start
+re-downloading them into the test folder; that's harmless). Stop it with
+Ctrl-C and delete `/tmp/curatables-restore-test`.

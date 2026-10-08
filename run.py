@@ -154,6 +154,24 @@ def check_dependencies(verbose=False):
             print(f"({len(warnings)} optional dependency warnings above.)")
 
 
+def check_data_mount(data_dir):
+    """With CURATABLES_REQUIRE_MOUNT=1 (set by
+    scripts/setup-external-drive.sh), refuse to start unless the data dir
+    is a mounted filesystem. Without this, a drive that failed to mount
+    leaves an empty directory on the SD card: the app would start fresh,
+    offer first-run setup to anyone on the network, and download new
+    videos onto the SD card."""
+    import os
+    if os.environ.get("CURATABLES_REQUIRE_MOUNT") != "1":
+        return
+    path = os.path.abspath(data_dir or os.path.expanduser("~/curatables-data"))
+    if not os.path.ismount(path):
+        print(f"ERROR: {path} is not a mounted drive (CURATABLES_REQUIRE_MOUNT=1).\n"
+              "Plug in / mount the media drive, then restart curatables.",
+              file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="curatables",
@@ -188,6 +206,7 @@ def main():
         return
 
     check_dependencies()
+    check_data_mount(args.data_dir)
 
     import uvicorn
     from app.main import create_app

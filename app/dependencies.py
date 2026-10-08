@@ -156,10 +156,12 @@ def get_upload_service(
 
 
 def get_relocation_service(
+    request: Request,
     config=Depends(get_config),
     video_repo=Depends(get_video_repo),
 ) -> RelocationService:
-    return RelocationService(config, video_repo)
+    return RelocationService(config, video_repo,
+                             pinned=getattr(request.app.state, "data_dir_pinned", False))
 
 
 def get_content_service(

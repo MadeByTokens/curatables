@@ -27,17 +27,16 @@ python run.py --port 80    # requires CAP_NET_BIND_SERVICE (see below)
 python run.py --check      # verify dependencies + print versions, then exit
 ```
 
-### One-shot installer (Debian/Ubuntu)
+### One-shot installer (Debian/Ubuntu/Raspberry Pi OS)
 
-`scripts/install.sh` automates the full setup: apt-installs the system
-packages (ffmpeg, python3-venv, avahi-daemon, libnss-mdns, ...), pulls
-Deno under your user, creates `.venv/`, `pip install -r
-requirements.txt`, and finally runs `run.py --check` as an acceptance
-test.
+`scripts/install.sh` apt-installs the system packages (ffmpeg,
+python3-venv, avahi-daemon, libnss-mdns, ...), installs Deno to
+`/usr/local`, builds a virtualenv, `pip install -r requirements.txt`,
+and runs `run.py --check` as an acceptance test.
 
 ```sh
-scripts/install.sh                # full install
-scripts/install.sh --systemd      # also install the systemd unit + user
+scripts/install.sh                # try-out install: .venv/ in this checkout, data in ~/curatables-data
+sudo scripts/install.sh --systemd # permanent install (see "Option A" below)
 scripts/install.sh --dry-run      # validate without touching the system
 ```
 
@@ -99,55 +98,55 @@ fix that; **option A is the one we ship a template for.**
 
 #### Option A: systemd unit with `AmbientCapabilities` (recommended)
 
-A ready-to-edit unit file lives at `systemd/curatables.service`. The
-important lines are:
+`systemd/curatables.service` is installed as-is by
+`scripts/install.sh --systemd`. The important lines are:
 
 ```ini
 User=curatables
 Group=curatables
+RequiresMountsFor=/home/curatables/curatables-data
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/python3 /opt/curatables/run.py --port 80
+ExecStart=/opt/curatables/.venv/bin/python /opt/curatables/run.py --port 80 --data-dir /home/curatables/curatables-data
 ```
 
 `AmbientCapabilities=CAP_NET_BIND_SERVICE` grants the single
 capability the process actually needs (binding a privileged port)
-without elevating it in any other way. The service still runs as the
-unprivileged `curatables` user, can't modify system files (thanks to
-`ProtectSystem=strict`), and drops every capability *except* the one
-it uses.
+without elevating it in any other way. The service runs as the
+unprivileged `curatables` user, can write only its data dir
+(`ProtectSystem=strict` + `ReadWritePaths`), and drops every capability
+*except* the one it uses.
 
-To install:
+To install, from any checkout (your home directory is fine):
 
 ```sh
-# 1. Drop the code somewhere the service can read
-sudo git clone <repo> /opt/curatables
-cd /opt/curatables
-
-# 2. Run the installer, which sets everything up and installs the unit
-sudo -u $(whoami) scripts/install.sh --systemd
-
-# 3. Edit the unit file to point at /opt/curatables, then enable it
-sudoedit /etc/systemd/system/curatables.service
-sudo systemctl enable --now curatables
-sudo systemctl status curatables
-
-# 4. (optional) Enable the in-dashboard yt-dlp updater
-sudo systemctl enable --now curatables-updater.path
+git clone https://github.com/MadeByTokens/curatables.git
+cd curatables
+sudo scripts/install.sh --systemd
 ```
 
-The installer creates the `curatables` service user, installs apt +
-Deno + Python deps, and drops the systemd units. You only need to edit
-paths in the unit and enable it.
+`--systemd`:
 
-`--systemd` also installs `curatables-updater.{service,path}`, which back
-the **Settings → Updates → Update yt-dlp** button in the dashboard (the
-sandboxed app can't pip-install or restart itself, so this root-owned
-helper does it on request). Enable the path unit to turn the button on;
-if your checkout/data-dir/user differ from the defaults, edit the
-`CURATABLES_ROOT`/`CURATABLES_DATA`/`CURATABLES_USER` lines in
-`curatables-updater.service` and the watched path in
-`curatables-updater.path`. Full flow: [upgrade.md](upgrade.md).
+- creates the `curatables` service user;
+- copies the checkout to `/opt/curatables` (root-owned; the service only
+  reads it) and builds `/opt/curatables/.venv`;
+- if you already tried curatables from this checkout, copies
+  `~/curatables-data` (your password, profiles, videos) to
+  `/home/curatables/curatables-data`;
+- installs and enables `curatables.service`, the yt-dlp updater
+  (`curatables-updater.{service,path}`) and the nightly backup
+  (`curatables-backup.{service,timer}`);
+- starts the server on port 80.
+
+Re-running the same command from an updated checkout upgrades the
+install; it takes a backup first when the service is running. See
+[upgrade.md](upgrade.md).
+
+The updater backs the **Settings → Updates → Update yt-dlp** button: the
+sandboxed app can't pip-install or restart itself, so the root-owned
+helper does it on request. It reads and writes the data dir only as the
+service user and runs pip as the owner of the venv. Full flow:
+[upgrade.md](upgrade.md).
 
 > **Prefer not to install at all?** A pre-built Raspberry Pi image with
 > all of the above already set up is built by
@@ -160,23 +159,15 @@ advertisement came up:
 sudo journalctl -u curatables -f
 ```
 
-Once the service is up, wire up nightly backups via the systemd timer
-and scripts documented in [`backup.md`](backup.md). Restoring from a
-backup is a one-command operation; ops should set this up before the
-first real content goes in.
-
-When a new release lands, follow [`upgrade.md`](upgrade.md) — backup,
-pull, `pip install --upgrade`, `run.py --check`, restart, then
-confirm via `/healthz`. Multi-version leaps (e.g. v0.3 → v0.5) are
-supported in a single boot; the migrator walks every pending file in
-order.
-
 You should see:
 
 ```
 curatables server starting on http://0.0.0.0:80
 mDNS advertisement registered: http://curatables.local:80/  (service: Curatables._http._tcp.local.)
 ```
+
+Backups run every night at 03:00 into `/var/lib/curatables-backups`
+(see [backup.md](backup.md)).
 
 #### Option B: grant the capability to the Python binary
 
@@ -204,6 +195,60 @@ Catch: localhost traffic skips `PREROUTING`, so the redirect only
 works for clients on other machines. You need an `OUTPUT`-chain rule
 for local requests, and you have to persist the rules across reboots
 yourself (`iptables-persistent`, `nftables` restore service, etc.).
+
+---
+
+## Media on an external drive (Raspberry Pi + USB disk)
+
+An SD card is small and wears out under constant video writes, so on a
+Pi it is worth keeping the library on a USB hard drive or SSD. The
+drive is mounted **at** the data dir (`/home/curatables/curatables-data`),
+so no paths change anywhere.
+
+1. Plug the drive in and find its partition:
+
+    ```sh
+    lsblk -f
+    ```
+
+    Look for the USB disk (usually `sda`) and its partition (`sda1`).
+
+2. It must be formatted **ext4**. A brand-new drive usually comes as
+   exFAT or NTFS; reformat it (this **erases everything on it**):
+
+    ```sh
+    sudo mkfs.ext4 -L curatables /dev/sda1
+    ```
+
+3. Move the library onto it:
+
+    ```sh
+    sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sda1
+    ```
+
+The script stops curatables, copies the current library onto the drive
+(or reuses a library already on it), keeps the old SD-card copy as
+`curatables-data.before-external-<date>`, adds an `/etc/fstab` entry by
+UUID with `nofail` (the Pi still boots without the drive), and adds a
+systemd drop-in that sets `CURATABLES_REQUIRE_MOUNT=1`.
+
+With that flag, and the unit's `RequiresMountsFor=`, curatables will
+not start if the drive is missing. Otherwise it would come up with an
+empty library on the SD card, offer first-run password setup to anyone
+on the network, and start downloading onto the card. Crash recovery also
+refuses to reset the library if most videos suddenly have no file.
+
+Tips for a Pi 4:
+
+- A 2.5" USB hard drive can draw more power than the Pi's USB ports
+  supply reliably. Use the official 3 A power supply, an SSD, or a
+  drive/hub with its own power. Undervoltage shows up as
+  `dmesg | grep -i voltage`.
+- Keep **Settings → Advanced → Downloads at once** at 1. Transcoding a
+  video to the playback baseline takes minutes on a Pi 4, and jobs queue
+  up instead of competing.
+- Nightly backups stay on the SD card (`/var/lib/curatables-backups`),
+  so the database survives the drive failing and the other way round.
 
 ---
 

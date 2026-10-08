@@ -93,6 +93,10 @@ def load_config(data_dir: str | None = None) -> Config:
     if config_path.exists():
         with open(config_path) as f:
             data = json.load(f)
+        moved_to = _relocation_target(data, config_path)
+        if moved_to is not None and not data_dir:
+            with open(moved_to) as f:
+                data = json.load(f)
         config.server = ServerConfig(**data.get("server", {}))
         config.storage = StorageConfig(**data.get("storage", {}))
         config.parent = ParentConfig(**data.get("parent", {}))
@@ -100,6 +104,18 @@ def load_config(data_dir: str | None = None) -> Config:
             config.storage.path = data_dir
 
     return config
+
+
+def _relocation_target(data: dict, config_path: Path) -> Path | None:
+    """After the library is moved from the dashboard, the old location
+    keeps a pointer config.json holding only the new storage.path.
+    Return the real config.json it points to, if there is one."""
+    if set(data) != {"storage"}:
+        return None
+    target = Path(data["storage"].get("path", "")) / "config.json"
+    if target == config_path or not target.exists():
+        return None
+    return target
 
 
 def ensure_directories(config: Config) -> None:

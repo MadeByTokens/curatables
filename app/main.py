@@ -223,6 +223,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # middleware reads it.
 
     app.state.config = config
+    app.state.data_dir_pinned = data_dir is not None
 
     # Process start time used by /healthz to report uptime. monotonic()
     # is immune to wall-clock jumps, which matters for an appliance that

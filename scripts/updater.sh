@@ -56,20 +56,22 @@ as_venv_owner() {
 
 # Write the result file atomically (temp + mv) as the service user.
 write_result() {
-    local status="$1" message="$2" from_v="$3" to_v="$4"
-    "$PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF' |
+    local status="$1" message="$2" from_v="$3" to_v="$4" json
+    json="$("$PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF'
 import json, sys
 status, message, from_v, to_v, finished_at = sys.argv[1:6]
-json.dump({
+print(json.dumps({
     "kind": "yt-dlp",
     "status": status,
     "message": message,
     "from_version": from_v or None,
     "to_version": to_v or None,
     "finished_at": finished_at,
-}, sys.stdout, indent=2)
+}, indent=2))
 PYEOF
-    as_svc sh -c 'umask 022; cat > "$1.tmp" && mv -f "$1.tmp" "$1"' _ "$RES"
+)"
+    # shellcheck disable=SC2016  # $1 is expanded by the inner sh
+    printf '%s\n' "$json" | as_svc sh -c 'umask 022; cat > "$1.tmp" && mv -f "$1.tmp" "$1"' _ "$RES"
 }
 
 # Parse the requested kind without trusting it as code.

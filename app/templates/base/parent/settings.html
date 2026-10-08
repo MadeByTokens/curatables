@@ -13,15 +13,24 @@
 <form method="POST" action="/parent/settings" class="mw-500">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="form-group">
-    <label for="data_dir">Data Directory</label>
-    <input type="text" id="data_dir" name="data_dir" value="{{ config.storage.path }}">
-    <small class="muted">Where videos, thumbnails, and database are stored.</small>
+    <label>Library location</label>
+    <div><code>{{ config.storage.path }}</code></div>
+    <small class="muted">Where videos, thumbnails and the database live. See "Move Data Directory" under Advanced, or docs/deployment.md for an external drive.</small>
   </div>
 
   <div class="form-group">
     <label for="cache_days">Cache Duration (days)</label>
     <input type="number" id="cache_days" name="cache_days" value="{{ config.storage.cache_days }}" min="0" max="365">
     <small class="muted">A downloaded video nobody has watched for this many days is removed from disk to save space, and downloads again the next time someone taps it. Videos marked "keep forever" and uploads are never removed. Set to 0 to keep everything. When the disk gets full, the least recently watched videos are removed first.</small>
+  </div>
+
+  <div class="form-group">
+    <label class="fw-normal">
+      <input type="checkbox" name="keep_forever_default" value="1"
+             {% if config.storage.default_mode == 'library' %}checked{% endif %}>
+      Keep newly added videos forever
+    </label>
+    <small class="muted d-block">Ticked: new videos are never removed to save space (you can still change each video). Unticked: they follow the rule above.</small>
   </div>
 
   <div class="form-group">
@@ -133,12 +142,18 @@
     <h3 class="mt-24">Storage</h3>
 
     <div class="form-group">
-      <label for="default_mode">Default Storage Mode</label>
-      <select id="default_mode" name="default_mode">
-        <option value="cache" {% if config.storage.default_mode == 'cache' %}selected{% endif %}>Cache (auto-delete after expiry)</option>
-        <option value="library" {% if config.storage.default_mode == 'library' %}selected{% endif %}>Library (keep forever)</option>
-      </select>
-      <small class="muted">Default mode for newly added videos.</small>
+      <label for="max_concurrent_downloads">Downloads at once</label>
+      <input type="number" id="max_concurrent_downloads" name="max_concurrent_downloads"
+             value="{{ config.storage.max_concurrent_downloads }}" min="1" max="4">
+      <small class="muted">How many videos download and convert at the same time. Keep 1 on a Raspberry Pi; extra videos wait in line. Applies once the current queue is empty.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="max_download_gb">Maximum Download Size (GB)</label>
+      <input type="number" id="max_download_gb" name="max_download_gb"
+             value="{{ '%.2f'|format(config.storage.max_download_bytes / 1073741824) }}"
+             min="0.1" step="0.1">
+      <small class="muted">Videos whose source file is bigger than this are not downloaded (protects the disk from very long streams). Default: 4 GB.</small>
     </div>
 
     <div class="form-group">
@@ -211,6 +226,14 @@
   </form>
 
   <h3 class="mt-32">Move Data Directory</h3>
+  {% if request.app.state.data_dir_pinned %}
+  <div class="warn-bg warn-text r-4 fs-13 mb-12 x-053">
+    This server runs as a system service with a fixed library location, so the
+    library can't be moved from here. To put it on an external drive, plug the
+    drive in and run <code>sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sdX1</code>
+    (see docs/deployment.md, "Media on an external drive").
+  </div>
+  {% else %}
   <div class="warn-bg warn-text r-4 fs-13 mb-12 x-053">
     Moves every file — videos, uploads, database, config — to a new location.
     Useful when the current disk is getting full and you want to relocate Curatables to a bigger drive.
@@ -225,7 +248,7 @@
   {% endif %}
 
   <form method="POST" action="/parent/settings/move-data"
-        onsubmit="return confirm('Move data directory to ' + document.getElementById('new_data_dir').value + '? This can take a while depending on your library size.');" class="mw-500">
+        data-confirm="Move the data directory? This can take a while depending on your library size." class="mw-500">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
       <label for="new_data_dir">New data directory (absolute path)</label>
@@ -237,6 +260,7 @@
     </div>
     <button type="submit" class="btn btn-danger">Move Data Directory</button>
   </form>
+  {% endif %}
 </details>
 
 <h2 class="mt-40">Change Password</h2>
