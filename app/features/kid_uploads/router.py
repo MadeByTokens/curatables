@@ -44,7 +44,8 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
                         channels_svc: ChannelService, config: Config,
                         error: str | None = None,
                         selected_channel_id: int | None = None,
-                        status_code: int = 200):
+                        status_code: int = 200,
+                        sent_for_review: bool = False):
     channels = channels_svc.visible_to_kid(
         viewer.profile_id, viewer.allowed_channel_ids)
     if selected_channel_id is None and channels:
@@ -56,6 +57,7 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
         "selected_channel_id": selected_channel_id,
         "max_upload_bytes": _effective_max(config),
         "error": error,
+        "sent_for_review": sent_for_review,
     }, status_code=status_code)
 
 
@@ -69,7 +71,8 @@ def upload_page(request: Request,
     if selected and selected.isdigit():
         selected_id = int(selected)
     return _render_upload_page(request, viewer, channels_svc, config,
-                               selected_channel_id=selected_id)
+                               selected_channel_id=selected_id,
+                               sent_for_review=request.query_params.get("sent") == "1")
 
 
 @router.post("/upload/new-channel")
@@ -109,8 +112,8 @@ async def kid_upload(request: Request,
     #    through list_visible_to.
     visible_channels = channels_svc.visible_to_kid(
         viewer.profile_id, viewer.allowed_channel_ids)
-    visible_ids = {c.id for c in visible_channels}
-    if channel_id not in visible_ids:
+    visible_by_id = {c.id: c for c in visible_channels}
+    if channel_id not in visible_by_id:
         logger.info("Kid %s tried to upload to channel %s outside their visible set",
                     viewer.profile_id, channel_id)
         return _render_upload_page(
@@ -171,8 +174,10 @@ async def kid_upload(request: Request,
     # 5. Finalize. Kid-friendly error messages replace the technical
     #    ffmpeg conversion command — the full hint still lands in the
     #    server log for the parent to see.
+    owns_channel = visible_by_id[channel_id].owner_profile_id == viewer.profile_id
     try:
-        video = uploads.finalize(session.token)
+        video = uploads.finalize(
+            session.token, status="active" if owns_channel else "review")
     except UnsupportedCodec as e:
         logger.info("Kid %s upload rejected: unsupported codec '%s'. Hint: %s",
                     viewer.profile_id, e.codec_name, e.conversion_hint)
@@ -211,4 +216,6 @@ async def kid_upload(request: Request,
         profile_id=viewer.profile_id,
         data={"title": video.title, "channel_id": channel_id},
     )
+    if video.status != "active":
+        return RedirectResponse(url="/upload?sent=1", status_code=302)
     return RedirectResponse(url=f"/watch/{video.video_id}", status_code=302)

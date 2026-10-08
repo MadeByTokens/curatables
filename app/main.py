@@ -378,22 +378,50 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     async def not_a_child_handler(request: Request, exc: NotAChild):
         return RedirectResponse(url="/profiles", status_code=302)
 
-    @app.exception_handler(Exception)
-    async def global_error_handler(request: Request, exc: Exception):
-        _error_logger.exception("Unhandled error on %s %s", request.method, request.url.path)
-        from starlette.responses import HTMLResponse
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.exception_handlers import (
+        http_exception_handler, request_validation_exception_handler,
+    )
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from starlette.responses import HTMLResponse
+
+    def _error_page(request: Request, status_code: int, heading: str | None = None):
         if request.url.path.startswith("/parent/"):
             try:
                 return app.state.templates.TemplateResponse(request,
-                    "parent/error.html", {"request": request}, status_code=500)
+                    "parent/error.html", {"request": request, "heading": heading},
+                    status_code=status_code)
             except Exception:
                 pass
         try:
             tpl_path = os.path.join(os.path.dirname(__file__), "templates", "base", "kid", "error.html")
             with open(tpl_path) as f:
-                return HTMLResponse(content=f.read(), status_code=500)
+                return HTMLResponse(content=f.read(), status_code=status_code)
         except Exception:
-            return HTMLResponse(content="<h1>Something went wrong</h1>", status_code=500)
+            return HTMLResponse(content="<h1>Something went wrong</h1>", status_code=status_code)
+
+    def _wants_html(request: Request) -> bool:
+        path = request.url.path
+        if path.startswith(("/api/", "/media/", "/healthz", "/metrics", "/parent/uploads/tus")):
+            return False
+        return "text/html" in request.headers.get("accept", "") or request.method == "GET"
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error_handler(request: Request, exc: StarletteHTTPException):
+        if exc.status_code in (404, 405) and _wants_html(request):
+            return _error_page(request, exc.status_code, "Page not found")
+        return await http_exception_handler(request, exc)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError):
+        if _wants_html(request):
+            return _error_page(request, 400, "That request didn't look right")
+        return await request_validation_exception_handler(request, exc)
+
+    @app.exception_handler(Exception)
+    async def global_error_handler(request: Request, exc: Exception):
+        _error_logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return _error_page(request, 500)
 
     # --- Wire feature routers ---
     from app.features.parent_auth.router import router as auth_router

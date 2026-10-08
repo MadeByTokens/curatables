@@ -42,31 +42,38 @@ ytdlp_ver() {
     "$PY" -c 'import yt_dlp; print(yt_dlp.version.__version__)' 2>/dev/null || echo ""
 }
 
-# Write the result file atomically (temp + mv) and hand ownership to the
-# service user so the app can read it back through ReadWritePaths.
+# The data dir is owned by the service user, so anything root does there
+# by path could be redirected with a planted symlink. Every read and
+# write inside it therefore runs as the service user.
+as_svc() { runuser -u "$SVC_USER" -- "$@"; }
+
+# pip runs as whoever owns the venv, so root never executes code a less
+# privileged account could have modified.
+VENV_OWNER="$(stat -c %U "$ROOT/.venv")"
+as_venv_owner() {
+    if [[ "$VENV_OWNER" == "root" ]]; then "$@"; else runuser -u "$VENV_OWNER" -- "$@"; fi
+}
+
+# Write the result file atomically (temp + mv) as the service user.
 write_result() {
     local status="$1" message="$2" from_v="$3" to_v="$4"
-    local tmp="$RES.tmp"
-    "$PY" - "$tmp" "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF'
+    "$PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF' |
 import json, sys
-tmp, status, message, from_v, to_v, finished_at = sys.argv[1:7]
-with open(tmp, "w") as f:
-    json.dump({
-        "kind": "yt-dlp",
-        "status": status,
-        "message": message,
-        "from_version": from_v or None,
-        "to_version": to_v or None,
-        "finished_at": finished_at,
-    }, f, indent=2)
+status, message, from_v, to_v, finished_at = sys.argv[1:6]
+json.dump({
+    "kind": "yt-dlp",
+    "status": status,
+    "message": message,
+    "from_version": from_v or None,
+    "to_version": to_v or None,
+    "finished_at": finished_at,
+}, sys.stdout, indent=2)
 PYEOF
-    mv -f "$tmp" "$RES"
-    chown "$SVC_USER":"$SVC_USER" "$RES" 2>/dev/null || true
-    chmod 0644 "$RES"
+    as_svc sh -c 'umask 022; cat > "$1.tmp" && mv -f "$1.tmp" "$1"' _ "$RES"
 }
 
 # Parse the requested kind without trusting it as code.
-kind="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("kind",""))' "$REQ" 2>/dev/null || echo "")"
+kind="$(as_svc "$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("kind",""))' "$REQ" 2>/dev/null || echo "")"
 
 if [[ "$kind" != "yt-dlp" ]]; then
     write_result "error" "unsupported update kind: ${kind:-<none>}" "" ""
@@ -78,7 +85,7 @@ before="$(ytdlp_ver)"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
-if "$PIP" install --upgrade 'yt-dlp>=2024.0' >"$log" 2>&1; then
+if as_venv_owner "$PIP" install --upgrade 'yt-dlp>=2024.0' >"$log" 2>&1; then
     after="$(ytdlp_ver)"
     if [[ "$before" == "$after" ]]; then
         write_result "ok" "Already up to date." "$before" "$after"

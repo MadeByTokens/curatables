@@ -16,7 +16,7 @@ from app.services.content import ContentService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
 from app.services.kid_library import KidLibraryService
-from app.services.channels import ChannelService
+from app.services.channels import ASSET_KINDS, ChannelService, valid_color
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 
@@ -55,7 +55,7 @@ def home(request: Request,
             if len(profiles) == 1 and not profiles[0].pin:
                 request.session["profile_id"] = profiles[0].id
                 return RedirectResponse(url="/", status_code=302)
-            return RedirectResponse(url="/profiles", status_code=302)
+        return RedirectResponse(url="/profiles", status_code=302)
 
     videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
     if viewer.is_child and viewer.profile_id:
@@ -133,9 +133,12 @@ async def video_edit_save(request: Request, video_id: str,
     thumbnail = form.get("thumbnail")
     if thumbnail and hasattr(thumbnail, "read"):
         data = await thumbnail.read()
-        if data and len(data) > 0:
-            kid_lib.upload_thumbnail(
-                viewer.profile_id, video_id, data, thumbnail.filename)
+        if data:
+            try:
+                kid_lib.upload_thumbnail(
+                    viewer.profile_id, video_id, data, thumbnail.filename)
+            except ValueError:
+                pass
 
     if form.get("clear_thumbnail"):
         kid_lib.clear_thumbnail(viewer.profile_id, video_id)
@@ -230,44 +233,30 @@ def channel_edit_page(request: Request, channel_id: int,
 @router.post("/channel/{channel_id}/edit")
 async def channel_edit_save(request: Request, channel_id: int,
                             viewer: ViewerContext = Depends(require_child),
-                            channels_svc: ChannelService = Depends(get_channel_service),
-                            config=Depends(get_config)):
+                            channels_svc: ChannelService = Depends(get_channel_service)):
     channel = channels_svc.get(channel_id)
     if not channel or channel.owner_profile_id != viewer.profile_id:
         return RedirectResponse(url="/", status_code=302)
 
     form = await request.form()
-    name = (form.get("name") or "").strip() or channel.name
-    description = (form.get("description") or "").strip()
-    color = (form.get("color") or "").strip() or channel.color
+    name = (form.get("name") or "").strip()[:64] or channel.name
+    description = (form.get("description") or "").strip()[:1000]
+    color = (form.get("color") or "").strip()
+    if not valid_color(color):
+        color = channel.color
 
     updates = {"name": name, "description": description, "color": color}
 
-    channel_dir = config.data_dir / "channels" / str(channel_id)
-
-    banner = form.get("banner")
-    if banner and hasattr(banner, "read"):
-        data = await banner.read()
-        if data:
-            import os
-            ext = os.path.splitext(banner.filename)[1].lower() or ".jpg"
-            channel_dir.mkdir(parents=True, exist_ok=True)
-            for old in channel_dir.glob("banner.*"):
-                old.unlink(missing_ok=True)
-            (channel_dir / f"banner{ext}").write_bytes(data)
-            updates["banner_filename"] = f"banner{ext}"
-
-    icon = form.get("icon")
-    if icon and hasattr(icon, "read"):
-        data = await icon.read()
-        if data:
-            import os
-            ext = os.path.splitext(icon.filename)[1].lower() or ".jpg"
-            channel_dir.mkdir(parents=True, exist_ok=True)
-            for old in channel_dir.glob("icon.*"):
-                old.unlink(missing_ok=True)
-            (channel_dir / f"icon{ext}").write_bytes(data)
-            updates["icon_filename"] = f"icon{ext}"
+    for kind in ASSET_KINDS:
+        upload = form.get(kind)
+        if upload and hasattr(upload, "read"):
+            data = await upload.read()
+            if data:
+                try:
+                    updates[f"{kind}_filename"] = channels_svc.save_asset(
+                        channel_id, kind, data)
+                except ValueError:
+                    pass
 
     channels_svc.update(channel_id, **updates)
     return RedirectResponse(url=f"/channel/{channel_id}", status_code=302)

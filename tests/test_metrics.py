@@ -145,15 +145,28 @@ def _scrape_counter(client, name: str, label_filter: str | None = None) -> float
     return 0.0
 
 
+def _kid_with_video(app, client):
+    from app.dependencies import get_db
+    from app.models import Profile, Video
+    from app.repositories import ChannelRepository, ProfileRepository, VideoRepository
+    conn = next(app.dependency_overrides[get_db]())
+    ch = ChannelRepository(conn).create("Fun")
+    VideoRepository(conn).insert(Video(
+        video_id="youtube_abcdef", title="T", original_title="T",
+        channel_id=ch, status="active", download_status="ready"))
+    pid = ProfileRepository(conn).create(Profile(name="kid", display_name="Kid"))
+    client.post("/profiles/select", data={"profile_id": pid})
+
+
 class TestKidPlayCounter:
     def test_play_event_ticks_kid_plays(self, client, app):
-        """Posting an event=play to /api/log must bump the
+        """Posting event=video_play to /api/log must bump the
         curatables_kid_plays_total counter via EventService."""
         _enable_metrics(app)
-        # /api/log accepts unauthenticated POSTs (kid telemetry).
+        _kid_with_video(app, client)
         for _ in range(4):
             client.post("/api/log", data={
-                "event": "play",
+                "event": "video_play",
                 "video_id": "youtube_abcdef",
             })
         assert _scrape_counter(client, "curatables_kid_plays_total") >= 4.0
@@ -162,10 +175,17 @@ class TestKidPlayCounter:
         """Other event types (complete, react, etc.) must not bump
         the kid_plays counter — that one is play-specific."""
         _enable_metrics(app)
+        _kid_with_video(app, client)
         client.post("/api/log", data={
-            "event": "complete",
+            "event": "video_complete",
             "video_id": "youtube_abcdef",
         })
+        assert _scrape_counter(client, "curatables_kid_plays_total") == 0.0
+
+    def test_anonymous_and_unknown_events_are_dropped(self, client, app):
+        _enable_metrics(app)
+        client.post("/api/log", data={"event": "video_play",
+                                      "video_id": "youtube_abcdef"})
         assert _scrape_counter(client, "curatables_kid_plays_total") == 0.0
 
 

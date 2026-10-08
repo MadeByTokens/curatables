@@ -131,11 +131,11 @@ function confirmBulk() {
         {% else %}
         <form method="POST" action="/parent/content/{{ v.video_id }}/activate">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="btn btn-sm">Activate</button>
+          <button type="submit" class="btn btn-sm">{% if v.status == 'review' %}Approve{% else %}Activate{% endif %}</button>
         </form>
         {% endif %}
         <form method="POST" action="/parent/content/{{ v.video_id }}/delete"
-              onsubmit="return confirm('Delete this video?');">
+              data-confirm="Delete this video?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>

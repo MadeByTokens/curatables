@@ -113,7 +113,10 @@ def serve_video(request: Request, video_id: str,
                 content: ContentService = Depends(get_content_service),
                 storage: StorageService = Depends(get_storage_service)):
     try:
-        video = content.get_video_for_viewer(video_id, viewer)
+        if viewer.is_parent:
+            video = content.get_video(video_id)
+        else:
+            video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404, content="Video not found")
 

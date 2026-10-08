@@ -45,6 +45,8 @@ class StatsService:
                  if self.video_repo else [])
         recent_videos = (self.video_repo.list_recent(limit=5)
                          if self.video_repo else [])
+        awaiting_review = (self.video_repo.list_awaiting_review(limit=10)
+                           if self.video_repo else [])
 
         yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
         new_comments_count = self.comment_repo.count_since(since=yesterday_iso)
@@ -81,6 +83,7 @@ class StatsService:
             "attention": {
                 "failed_downloads": failed,
                 "stuck_pending": stuck,
+                "awaiting_review": awaiting_review,
                 "new_comments_count": new_comments_count,
             },
             "kpis_today": kpis_today,

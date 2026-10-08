@@ -5,7 +5,7 @@
 {% set ds = disk_status() %}
 
 {# ============ 1. NEEDS ATTENTION ============ #}
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or ds.status != 'ok' %}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or ds.status != 'ok' %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
@@ -19,6 +19,19 @@
       {% else %}
         <strong>Low disk space</strong> — {{ "%.1f"|format(ds.free_gb) }} GB free.
         <a href="/parent/storage">Open storage report →</a>
+      {% endif %}
+    </li>
+    {% endif %}
+
+    {% if attention.awaiting_review %}
+    <li>
+      <strong>{{ attention.awaiting_review|length }}
+        kid upload{% if attention.awaiting_review|length != 1 %}s{% endif %} waiting for your OK</strong> —
+      {% for v in attention.awaiting_review[:3] %}
+        <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>{% if not loop.last %}, {% endif %}
+      {% endfor %}
+      {% if attention.awaiting_review|length > 3 %}
+      and {{ attention.awaiting_review|length - 3 }} more…
       {% endif %}
     </li>
     {% endif %}

@@ -18,7 +18,7 @@
       <div class="actions">
         <a href="/parent/profiles/{{ p.id }}/edit" class="btn btn-sm x-047">Edit</a>
         <form method="POST" action="/parent/profiles/{{ p.id }}/delete"
-              onsubmit="return confirm('Delete profile {{ p.display_name or p.name }}?');">
+              data-confirm="Delete profile {{ p.display_name or p.name }}?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>

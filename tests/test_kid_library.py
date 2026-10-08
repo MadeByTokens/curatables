@@ -197,7 +197,7 @@ class TestIndividualReset:
         svc = _mk_service(db, tmp_path)
         svc.set_title(alice, "v1", "custom")
         svc.set_description(alice, "v1", "desc")
-        svc.upload_thumbnail(alice, "v1", b"xx", "a.jpg")
+        svc.upload_thumbnail(alice, "v1", b"\xff\xd8\xffJPEG", "a.jpg")
 
         svc.clear_thumbnail(alice, "v1")
 
@@ -229,7 +229,7 @@ class TestThumbnailOverrides:
         alice = _mk_kid(db, "alice")
         _mk_video(db, "v1")
         svc = _mk_service(db, tmp_path)
-        svc.upload_thumbnail(alice, "v1", b"xxx", "pic.png")
+        svc.upload_thumbnail(alice, "v1", b"\x89PNG\r\n\x1a\nPNG", "pic.png")
         assert svc.has_custom_thumb(alice, "v1") is True
 
         svc.clear_thumbnail(alice, "v1")
@@ -240,15 +240,24 @@ class TestThumbnailOverrides:
         alice = _mk_kid(db, "alice")
         _mk_video(db, "v1")
         svc = _mk_service(db, tmp_path)
-        svc.upload_thumbnail(alice, "v1", b"first", "a.jpg")
-        svc.upload_thumbnail(alice, "v1", b"second", "b.png")
+        svc.upload_thumbnail(alice, "v1", b"\xff\xd8\xffJPEG", "a.jpg")
+        svc.upload_thumbnail(alice, "v1", b"\x89PNG\r\n\x1a\nPNG", "b.png")
 
         # Only one file remains, with the new extension
         thumb_dir = tmp_path / "thumbnails" / "profiles" / str(alice)
         files = list(thumb_dir.glob("v1.*"))
         assert len(files) == 1
         assert files[0].suffix == ".png"
-        assert files[0].read_bytes() == b"second"
+        assert files[0].read_bytes() == b"\x89PNG\r\n\x1a\nPNG"
+
+    def test_upload_rejects_non_image_bytes(self, db, tmp_path):
+        import pytest
+        alice = _mk_kid(db, "alice")
+        _mk_video(db, "v1")
+        svc = _mk_service(db, tmp_path)
+        with pytest.raises(ValueError):
+            svc.upload_thumbnail(alice, "v1", b"<html><script>", "evil.html")
+        assert svc.has_custom_thumb(alice, "v1") is False
 
 
 # ---------------------------------------------------------------------------

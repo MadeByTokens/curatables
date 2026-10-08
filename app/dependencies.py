@@ -190,8 +190,9 @@ def get_profile_service(
 
 def get_channel_service(
     channel_repo=Depends(get_channel_repo),
+    config=Depends(get_config),
 ) -> ChannelService:
-    return ChannelService(channel_repo)
+    return ChannelService(channel_repo, config.data_dir)
 
 
 def get_reaction_repo(db=Depends(get_db)) -> ReactionRepository:

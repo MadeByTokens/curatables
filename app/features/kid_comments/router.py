@@ -10,7 +10,8 @@ restart playback.
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import RedirectResponse, PlainTextResponse
 
-from app.dependencies import get_viewer, get_comment_service
+from app.dependencies import get_viewer, get_comment_service, get_content_service
+from app.services.content import ContentService, VideoNotFound
 from app.services.comments import CommentService
 from app.services.rate_limit import RateLimitExceeded
 from app.models import ViewerContext
@@ -28,8 +29,13 @@ def post_comment(request: Request, video_id: str,
                  body: str = Form(...),
                  parent_comment_id: int = Form(None),
                  viewer: ViewerContext = Depends(get_viewer),
+                 content: ContentService = Depends(get_content_service),
                  comments: CommentService = Depends(get_comment_service)):
     xhr = _is_xhr(request)
+    try:
+        content.get_video_for_viewer(video_id, viewer)
+    except VideoNotFound:
+        return PlainTextResponse("", status_code=404)
     if viewer.profile_id or viewer.is_parent:
         try:
             comment_id = comments.post(video_id, body, viewer, parent_comment_id)

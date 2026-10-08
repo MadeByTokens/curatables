@@ -352,7 +352,7 @@ class TestKidUploadRoutes:
                     files={"file": ("hello.mp4", content, "video/mp4")},
                 )
         assert resp.status_code == 302
-        assert resp.headers["location"].startswith("/watch/up_")
+        assert resp.headers["location"] == "/upload?sent=1"
 
         # Verify the video row
         import hashlib
@@ -360,11 +360,12 @@ class TestKidUploadRoutes:
         from app.dependencies import get_db
         conn = next(app.dependency_overrides[get_db]())
         row = conn.execute(
-            "SELECT video_id, storage_mode, download_status, channel_id, title "
+            "SELECT video_id, storage_mode, download_status, channel_id, title, status "
             "FROM videos WHERE video_id = ?",
             (expected_id,),
         ).fetchone()
         assert row is not None
+        assert row["status"] == "review"
         assert row["storage_mode"] == "uploaded"
         assert row["download_status"] == "ready"
         assert row["channel_id"] == family
@@ -378,6 +379,50 @@ class TestKidUploadRoutes:
         assert len(events) == 1
         assert events[0]["profile_id"] == alice
         assert events[0]["video_id"] == expected_id
+
+    def test_kid_upload_to_own_channel_goes_live(self, client, app):
+        alice = _make_kid_in_app(app, "alice")
+        mine = _make_channel_in_app(app, "Alice Art", owner_profile_id=alice)
+        _login_kid(client, app, alice)
+
+        with patch("app.services.uploads.MediaProbeService.validate",
+                   return_value=ProbeResult(codec_name="h264", width=320,
+                                            height=240, duration_seconds=1.0,
+                                            container="mov")):
+            with patch("app.services.uploads.ThumbnailService.extract_frame",
+                       return_value=None):
+                resp = client.post(
+                    "/upload",
+                    data={"channel_id": str(mine), "title": "Mine"},
+                    files={"file": ("mine.mp4", b"m" * 200, "video/mp4")},
+                )
+        assert resp.status_code == 302
+        assert resp.headers["location"].startswith("/watch/up_")
+
+    def test_review_upload_hidden_from_sibling_until_approved(
+            self, client, app, authed_client):
+        alice = _make_kid_in_app(app, "alice")
+        bob = _make_kid_in_app(app, "bob")
+        family = _make_channel_in_app(app, "Family")
+        _login_kid(client, app, alice)
+        with patch("app.services.uploads.MediaProbeService.validate",
+                   return_value=ProbeResult(codec_name="h264", width=320,
+                                            height=240, duration_seconds=1.0,
+                                            container="mov")):
+            with patch("app.services.uploads.ThumbnailService.extract_frame",
+                       return_value=None):
+                client.post(
+                    "/upload",
+                    data={"channel_id": str(family), "title": "Surprise"},
+                    files={"file": ("s.mp4", b"s" * 200, "video/mp4")},
+                )
+        from fastapi.testclient import TestClient
+        sibling = TestClient(app, follow_redirects=False)
+        _login_kid(sibling, app, bob)
+        assert "Surprise" not in sibling.get("/").text
+
+        dash = authed_client.get("/parent/")
+        assert "waiting for your OK" in dash.text
 
     def test_kid_upload_refuses_sibling_channel(self, client, app):
         alice = _make_kid_in_app(app, "alice")

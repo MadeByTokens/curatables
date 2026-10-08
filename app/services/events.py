@@ -26,7 +26,7 @@ class EventService:
             data_json=json.dumps(data or {}),
         )
         self.event_repo.insert(event)
-        if event_type == "play":
+        if event_type == "video_play":
             self.metrics.record_kid_play()
 
     def get_watch_time_today(self, profile_id: int | None = None) -> int:

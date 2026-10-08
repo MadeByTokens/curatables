@@ -227,6 +227,14 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
+    def list_awaiting_review(self, limit: int = 20) -> list[Video]:
+        rows = self.db.execute(
+            "SELECT * FROM videos WHERE status = 'review' "
+            "ORDER BY added_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [self._to_model(r) for r in rows]
+
     def list_failed_downloads(self, limit: int = 20) -> list[Video]:
         rows = self.db.execute(
             "SELECT * FROM videos WHERE download_status = 'error' "

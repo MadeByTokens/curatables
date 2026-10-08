@@ -92,7 +92,7 @@
     <div class="x-042">{{ c.body }}</div>
     <div class="fs-12 muted-3">on {{ c.video_id }}</div>
     <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/stats/profiles/{{ profile.id }}%3Fwindow%3D{{ window }}"
-          onsubmit="return confirm('Delete this comment?');" class="d-inline mt-4">
+          data-confirm="Delete this comment?" class="d-inline mt-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="btn btn-sm btn-danger">Delete</button>
     </form>

@@ -22,13 +22,19 @@ def _viewer_for_profile(profile):
     )
 
 
+def _enter_kid_mode(request: Request, profile_id: int) -> None:
+    """Select a kid profile and drop any parent login on this device."""
+    request.session.pop("parent_authenticated", None)
+    request.session["profile_id"] = profile_id
+
+
 @router.get("/profiles", response_class=HTMLResponse)
 def profile_picker(request: Request,
                    profiles_svc: ProfileService = Depends(get_profile_service)):
     profiles = profiles_svc.list()
     if len(profiles) == 1 and not profiles[0].pin:
         # Single-kid household with no PIN: zero-click auto-select.
-        request.session["profile_id"] = profiles[0].id
+        _enter_kid_mode(request, profiles[0].id)
         return RedirectResponse(url="/", status_code=302)
     # Picker has no viewer context (pre-login), use base templates.
     # When profiles is empty the template renders an empty-state
@@ -56,7 +62,7 @@ def profile_select(request: Request,
             "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
             "error": None,
         })
-    request.session["profile_id"] = profile.id
+    _enter_kid_mode(request, profile.id)
     return RedirectResponse(url="/", status_code=302)
 
 
@@ -69,7 +75,7 @@ def profile_pin(request: Request,
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
     if pin.strip() == profile.pin:
-        request.session["profile_id"] = profile.id
+        _enter_kid_mode(request, profile.id)
         return RedirectResponse(url="/", status_code=302)
     viewer = _viewer_for_profile(profile)
     return render_kid_template(request, viewer, "kid/pin.html", {

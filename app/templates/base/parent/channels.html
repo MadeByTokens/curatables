@@ -49,7 +49,7 @@
              class="btn btn-sm btn-secondary" title="Printable PDF">.pdf</a>
         </span>
         <form method="POST" action="/parent/channels/{{ ch.id }}/delete"
-              onsubmit="return confirm('Delete channel {{ ch.name }}? This cannot be undone.');">
+              data-confirm="Delete channel {{ ch.name }}? This cannot be undone.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <select name="reassign_to">
             <option value="">Orphan videos (uncategorized)</option>

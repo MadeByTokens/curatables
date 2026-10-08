@@ -111,3 +111,65 @@ def test_parent_can_view_uncategorized(app):
                              app.state.config)
     assert content.can_view(video, ViewerContext(viewer_type="parent"))
     assert not content.can_view(video, ViewerContext(viewer_type="anonymous"))
+
+
+def test_picking_kid_profile_logs_parent_out(app, authed_client):
+    conn = _conn(app)
+    pid = _kid(conn, "fay")
+    _kid(conn, "gus")
+    authed_client.post("/profiles/select", data={"profile_id": pid})
+    authed_client.get("/profiles/switch")
+    resp = authed_client.get("/parent/")
+    assert resp.status_code == 302
+    assert "/parent/login" in resp.headers["location"]
+
+
+def test_kid_channel_color_rejects_css_injection(app):
+    conn = _conn(app)
+    pid = _kid(conn, "hal")
+    ch = ChannelRepository(conn).create("Hal's", owner_profile_id=pid)
+    kid = _as_kid(app, pid)
+    kid.post(f"/channel/{ch}/edit", data={
+        "name": "Hal's", "color": "red;background:url(//evil.example)"})
+    assert ChannelRepository(conn).get(ch).color == "#2a9d8f"
+    kid.post(f"/channel/{ch}/edit", data={"name": "Hal's", "color": "#123abc"})
+    assert ChannelRepository(conn).get(ch).color == "#123abc"
+
+
+def test_parent_delete_confirm_uses_data_attribute(app, authed_client):
+    conn = _conn(app)
+    ChannelRepository(conn).create("x');alert(1);('")
+    page = authed_client.get("/parent/channels/").text
+    assert "confirm('Delete channel" not in page
+    assert 'data-confirm="Delete channel x&#39;);alert(1);(&#39;?' in page
+
+
+def test_unknown_page_shows_friendly_error(app):
+    resp = _as_kid(app, _kid(_conn(app), "jay")).get("/watch/does-not-exist/nope")
+    assert resp.status_code == 404
+    assert "Home" in resp.text
+    assert '"detail"' not in resp.text
+
+
+def test_bad_query_param_shows_friendly_error(app):
+    resp = _as_kid(app, _kid(_conn(app), "kai")).get("/channel/abc")
+    assert resp.status_code == 400
+    assert "Home" in resp.text
+
+
+def test_api_errors_stay_json(client):
+    resp = client.post("/api/react", data={})
+    assert resp.status_code == 422
+    assert resp.json()["detail"]
+
+
+def test_comment_on_hidden_video_is_refused(app):
+    conn = _conn(app)
+    channels = ChannelRepository(conn)
+    hidden = channels.create("Hidden")
+    allowed = channels.create("Allowed")
+    _video(conn, "yt_secret", hidden)
+    pid = _kid(conn, "ivy", allowed=[allowed])
+    resp = _as_kid(app, pid).post("/watch/yt_secret/comment", data={"body": "hi"})
+    assert resp.status_code == 404
+    assert conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0] == 0

@@ -124,7 +124,7 @@ class UploadService:
         (tmp_dir / token).unlink(missing_ok=True)
         (tmp_dir / f"{token}.json").unlink(missing_ok=True)
 
-    def finalize(self, token: str) -> Video:
+    def finalize(self, token: str, status: str = "active") -> Video:
         """Validate, move, and register a completed upload.
 
         On UnsupportedCodec or validation failure, the tmp file and
@@ -208,7 +208,7 @@ class UploadService:
             view_count=0,
             thumbnail_url="",
             thumbnail_type="frame",
-            status="active",
+            status=status,
             download_status="ready",
             storage_mode="uploaded",
             resolution=f"{probe.height}p" if probe.height else "",

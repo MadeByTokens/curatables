@@ -628,15 +628,16 @@ body {
     color: #555;
 }
 
-.upload-error {
-    background: #fde2e2;
-    border: 1px solid #f5b0b0;
-    color: #8a1c1c;
-    padding: 10px 14px;
-    border-radius: 6px;
-    margin: 0 16px 16px 16px;
+.upload-sent {
     max-width: 560px;
-    font-size: 14px;
+    margin: 0 auto 16px auto;
+    padding: 14px;
+    background: #e6f6ee;
+    color: #145c36;
+    border: 1px solid #9fd8b8;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
 }
 
 .preparing {

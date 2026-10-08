@@ -5,6 +5,7 @@ import dataclasses
 import os
 from pathlib import Path
 
+from app.services.images import validate_image
 from app.models.tag import Tag
 from app.models.video import Video
 from app.repositories.override_repo import ProfileVideoOverrideRepository
@@ -50,7 +51,7 @@ class KidLibraryService:
 
     def upload_thumbnail(self, profile_id: int, video_id: str,
                          file_data: bytes, filename: str) -> None:
-        ext = os.path.splitext(filename)[1].lower() or ".jpg"
+        ext = validate_image(file_data)
         thumb_dir = self.data_dir / "thumbnails" / "profiles" / str(profile_id)
         thumb_dir.mkdir(parents=True, exist_ok=True)
         for old in thumb_dir.glob(f"{video_id}.*"):

@@ -82,7 +82,9 @@ class CommentService:
         # whose reply this was answering.
         if parent_comment_id:
             target = self.comment_repo.get_by_id(parent_comment_id)
-            if target and target.parent_comment_id:
+            if target is None or target.video_id != video_id:
+                return None
+            if target.parent_comment_id:
                 mention = f"@{target.author_name} "
                 if not body.startswith(mention):
                     body = (mention + body)[:MAX_COMMENT_LENGTH]

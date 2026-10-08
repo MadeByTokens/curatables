@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from app.services.images import MAX_IMAGE_BYTES, image_extension
 import urllib.request
 from pathlib import Path
 
@@ -35,7 +36,7 @@ class ThumbnailService:
         if self.is_cached(video_id):
             return self.get_path(video_id)
 
-        if not thumbnail_url:
+        if not thumbnail_url or not thumbnail_url.lower().startswith(("http://", "https://")):
             return None
 
         thumb_path = self.get_path(video_id)
@@ -46,8 +47,11 @@ class ThumbnailService:
                 thumbnail_url, headers={"User-Agent": "Mozilla/5.0"}
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
-                with open(thumb_path, "wb") as f:
-                    f.write(resp.read())
+                data = resp.read(MAX_IMAGE_BYTES + 1)
+            if len(data) > MAX_IMAGE_BYTES or image_extension(data) is None:
+                logger.warning("Rejected thumbnail for %s from %s", video_id, thumbnail_url)
+                return None
+            thumb_path.write_bytes(data)
             return thumb_path
         except Exception as e:
             logger.warning("Error downloading thumbnail for %s: %s", video_id, e)
