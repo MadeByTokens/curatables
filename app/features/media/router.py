@@ -127,8 +127,14 @@ def serve_video(request: Request, video_id: str,
 
 @router.get("/subs/{video_id}")
 def list_subtitles(request: Request, video_id: str,
+                   viewer: ViewerContext = Depends(get_viewer),
+                   content: ContentService = Depends(get_content_service),
                    storage: StorageService = Depends(get_storage_service)):
     """Return available subtitle tracks as JSON."""
+    try:
+        content.get_video_for_viewer(video_id, viewer)
+    except VideoNotFound:
+        return Response(status_code=404)
     subs = storage.list_subtitles(video_id)
     return [{"lang": s["lang"], "url": f"/media/subs/{video_id}/{s['filename']}"} for s in subs]
 
@@ -158,6 +164,8 @@ def _normalize_vtt(raw: str) -> str:
 
 @router.get("/subs/{video_id}/{filename}")
 def serve_subtitle(request: Request, video_id: str, filename: str,
+                   viewer: ViewerContext = Depends(get_viewer),
+                   content: ContentService = Depends(get_content_service),
                    storage: StorageService = Depends(get_storage_service)):
     """Serve a subtitle file.
 
@@ -166,6 +174,10 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
     yt-dlp downloaded from the source.
     """
     from pathlib import Path
+    try:
+        content.get_video_for_viewer(video_id, viewer)
+    except VideoNotFound:
+        return Response(status_code=404)
     # Sanitize filename to prevent path traversal
     safe_name = Path(filename).name
     sub_path = storage.video_dir(video_id) / safe_name
@@ -183,8 +195,12 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
     return FileResponse(str(sub_path), media_type="application/x-subrip")
 
 
-def _serve_channel_asset(config, channel_id: int, asset_prefix: str):
+def _serve_channel_asset(config, content: ContentService, viewer: ViewerContext,
+                         channel_id: int, asset_prefix: str):
     """Serve a channel banner or icon from {data_dir}/channels/{id}/{prefix}.*"""
+    visible = content.visible_channel_ids(viewer)
+    if visible is not None and channel_id not in visible:
+        return Response(status_code=404)
     channel_dir = config.data_dir / "channels" / str(channel_id)
     if channel_dir.exists():
         for f in channel_dir.glob(f"{asset_prefix}.*"):
@@ -194,11 +210,15 @@ def _serve_channel_asset(config, channel_id: int, asset_prefix: str):
 
 @router.get("/channel/{channel_id}/banner")
 def serve_channel_banner(channel_id: int,
+                         viewer: ViewerContext = Depends(get_viewer),
+                         content: ContentService = Depends(get_content_service),
                          config: Config = Depends(get_config)):
-    return _serve_channel_asset(config, channel_id, "banner")
+    return _serve_channel_asset(config, content, viewer, channel_id, "banner")
 
 
 @router.get("/channel/{channel_id}/icon")
 def serve_channel_icon(channel_id: int,
+                       viewer: ViewerContext = Depends(get_viewer),
+                       content: ContentService = Depends(get_content_service),
                        config: Config = Depends(get_config)):
-    return _serve_channel_asset(config, channel_id, "icon")
+    return _serve_channel_asset(config, content, viewer, channel_id, "icon")

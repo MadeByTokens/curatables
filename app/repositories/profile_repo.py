@@ -35,10 +35,12 @@ class ProfileRepository(BaseRepository):
 
     def create(self, profile: Profile) -> int:
         cur = self.db.execute(
-            "INSERT INTO profiles (name, display_name, pin, avatar, theme, search_mode) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO profiles (name, display_name, pin, avatar, theme, "
+            "search_mode, channels_restricted) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (profile.name, profile.display_name, profile.pin,
-             profile.avatar, profile.theme, profile.search_mode),
+             profile.avatar, profile.theme, profile.search_mode,
+             int(profile.channels_restricted or bool(profile.allowed_channel_ids))),
         )
         self.db.commit()
         profile_id = cur.lastrowid
@@ -48,14 +50,19 @@ class ProfileRepository(BaseRepository):
 
     _UPDATABLE_FIELDS = {
         "name", "display_name", "pin", "avatar", "theme", "search_mode",
+        "channels_restricted",
     }
 
     def update(self, profile_id: int, **fields) -> None:
         channel_ids = fields.pop("allowed_channel_ids", None)
+        if channel_ids is not None and "channels_restricted" not in fields:
+            fields["channels_restricted"] = bool(channel_ids)
         if fields:
             bad = set(fields) - self._UPDATABLE_FIELDS
             if bad:
                 raise ValueError(f"Invalid fields for profile update: {bad}")
+            if "channels_restricted" in fields:
+                fields["channels_restricted"] = int(bool(fields["channels_restricted"]))
             set_clause = ", ".join(f"{k} = ?" for k in fields)
             values = list(fields.values())
             values.append(profile_id)
@@ -99,4 +106,5 @@ class ProfileRepository(BaseRepository):
             theme=d.get("theme", "base"),
             search_mode=d.get("search_mode", "disabled"),
             created_at=d.get("created_at", ""),
+            channels_restricted=bool(d.get("channels_restricted", 0)),
         )

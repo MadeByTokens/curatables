@@ -252,6 +252,14 @@ class TestSubtitleNormalization:
     def test_serve_subtitle_returns_normalized_vtt(self, authed_client, app, tmp_path):
         """End-to-end: place a VTT with cue settings in the videos dir,
         request it via /media/subs/, verify the response strips them."""
+        from app.dependencies import get_db
+        from app.repositories import VideoRepository
+        from app.models import Video
+        conn = next(app.dependency_overrides[get_db]())
+        VideoRepository(conn).insert(Video(
+            video_id="vidsubtest01", title="Subs", original_title="Subs",
+            status="active", download_status="ready",
+        ))
         data_dir = app.state.config.data_dir
         vdir = data_dir / "videos" / "vidsubtest01"
         vdir.mkdir(parents=True, exist_ok=True)

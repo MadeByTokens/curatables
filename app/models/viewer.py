@@ -8,7 +8,7 @@ class ViewerContext:
     profile_id: int | None = None
     profile_name: str = ""
     display_name: str = ""                        # shown in kid UI header
-    allowed_channel_ids: list[int] | None = None  # None = all channels visible
+    allowed_channel_ids: list[int] | None = None  # None = unrestricted profile
     search_mode: str = "disabled"
     theme: str = "base"
     has_multiple_profiles: bool = False  # drives "Switch profile" affordance visibility
@@ -25,11 +25,3 @@ class ViewerContext:
     @property
     def is_child(self) -> bool:
         return self.viewer_type == "child"
-
-    def can_see_channel(self, channel_id: int | None) -> bool:
-        """Check if this viewer can see content from a given channel."""
-        if self.allowed_channel_ids is None:
-            return True  # unrestricted profile sees everything
-        if channel_id is None:
-            return False  # restricted profile cannot see uncategorized videos
-        return channel_id in self.allowed_channel_ids

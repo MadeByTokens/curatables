@@ -270,9 +270,8 @@ def get_viewer(
     if profile_id:
         profile = profile_repo.get(profile_id)
         if profile:
-            # [] (no rows in profile_channels) = no restriction, see all.
-            # Non-empty list = restricted to those channels only.
-            allowed = profile.allowed_channel_ids or None
+            allowed = (list(profile.allowed_channel_ids)
+                       if profile.channels_restricted else None)
             return ViewerContext(
                 viewer_type="child",
                 profile_id=profile.id,

@@ -13,3 +13,4 @@ class Profile:
     created_at: str = ""
     id: int | None = None
     allowed_channel_ids: list[int] = field(default_factory=list)
+    channels_restricted: bool = False

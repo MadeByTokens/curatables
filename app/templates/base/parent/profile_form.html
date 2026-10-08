@@ -54,7 +54,12 @@
   {% if channels %}
   <div class="form-group">
     <label>Visible Channels</label>
-    <small class="muted d-block mb-6">If none selected, all channels are visible.</small>
+    <label class="fw-normal d-block mb-6">
+      <input type="checkbox" name="channels_restricted" value="1"
+             {% if profile and profile.channels_restricted %}checked{% endif %}>
+      Only show the channels ticked below
+    </label>
+    <small class="muted d-block mb-6">Ticking any channel limits the kid to those channels. Untick everything to show all channels. Tick only this box to hide every parent channel.</small>
     {% for ch in channels %}
     <div class="x-042">
       <label class="fw-normal d-inline">

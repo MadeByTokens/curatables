@@ -10,7 +10,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 from app.config import Config
-from app.models import Video, ViewerContext
+from app.models import Channel, Video, ViewerContext
 from app.repositories import VideoRepository, SourceRepository, ChannelRepository
 from app.models.source import Source
 from app.backends.base import VideoMetadata
@@ -65,28 +65,42 @@ class ContentService:
             raise VideoNotFound(f"Video {video_id} not found")
         return video
 
-    def _kid_visible_channel_ids(self, viewer: ViewerContext) -> list[int]:
-        """Effective set of channel IDs visible to a kid viewer.
+    def visible_channel_ids(self, viewer: ViewerContext) -> list[int] | None:
+        """Channel IDs whose videos the viewer may watch.
 
-        Union of parent-created channels (respecting whitelist) and
-        channels owned by this kid profile. Sibling-owned channels are
-        not included unless the parent explicitly whitelisted them.
+        None means every channel, including uncategorized videos, and is
+        returned only for the parent. A kid gets the parent-created
+        channels allowed by their profile plus the channels they own;
+        sibling-owned channels only when explicitly whitelisted.
+        Anyone else gets an empty list.
         """
-        return self.channel_repo.list_visible_to(
-            viewer.profile_id, viewer.allowed_channel_ids,
-        )
+        if viewer.is_parent:
+            return None
+        if viewer.is_child and viewer.profile_id:
+            return self.channel_repo.list_visible_to(
+                viewer.profile_id, viewer.allowed_channel_ids)
+        return []
+
+    def can_view(self, video: Video, viewer: ViewerContext) -> bool:
+        visible = self.visible_channel_ids(viewer)
+        if visible is None:
+            return True
+        return video.channel_id is not None and video.channel_id in visible
+
+    def channels_for_viewer(self, viewer: ViewerContext) -> list[Channel]:
+        visible = self.visible_channel_ids(viewer)
+        channels = self.channel_repo.list()
+        if visible is None:
+            return channels
+        allowed = set(visible)
+        return [c for c in channels if c.id in allowed]
 
     def get_video_for_viewer(self, video_id: str, viewer: ViewerContext) -> Video:
         """Get a video if the viewer is allowed to see it and it's ready."""
         video = self.get_video(video_id)
         if video.status != "active" or video.download_status != "ready":
             raise VideoNotFound(f"Video {video_id} not available")
-
-        if viewer.is_child:
-            visible = self._kid_visible_channel_ids(viewer)
-            if video.channel_id is None or video.channel_id not in visible:
-                raise VideoNotFound(f"Video {video_id} not available")
-        elif not viewer.can_see_channel(video.channel_id):
+        if not self.can_view(video, viewer):
             raise VideoNotFound(f"Video {video_id} not available")
         return video
 
@@ -95,40 +109,21 @@ class ContentService:
                         channel_id: int | None = None) -> tuple[list[Video], int]:
         """List videos the viewer can see (active + downloaded only)."""
         offset = (page - 1) * per_page
-
-        # Kid viewers always go through the visible-channels union so
-        # their own owned channels and parent channels are both shown,
-        # while sibling-owned channels stay hidden.
-        if viewer.is_child:
-            visible_ids = self._kid_visible_channel_ids(viewer)
-            if channel_id is not None:
-                if channel_id not in visible_ids:
-                    return [], 0
-                videos = self.video_repo.list_ready(
-                    channel_id=channel_id, limit=per_page, offset=offset)
-                total = self.video_repo.count_ready(channel_id=channel_id)
-            else:
-                videos = self.video_repo.list_ready_by_channels(
-                    visible_ids, limit=per_page, offset=offset)
-                total = self.video_repo.count_ready_by_channels(visible_ids)
-            return videos, total
+        visible = self.visible_channel_ids(viewer)
 
         if channel_id is not None:
-            # Verify restricted viewer is allowed to see this channel
-            if not viewer.can_see_channel(channel_id):
+            if visible is not None and channel_id not in visible:
                 return [], 0
             videos = self.video_repo.list_ready(
                 channel_id=channel_id, limit=per_page, offset=offset)
             total = self.video_repo.count_ready(channel_id=channel_id)
-        elif viewer.allowed_channel_ids is not None:
-            videos = self.video_repo.list_ready_by_channels(
-                viewer.allowed_channel_ids, limit=per_page, offset=offset)
-            total = self.video_repo.count_ready_by_channels(
-                viewer.allowed_channel_ids)
-        else:
+        elif visible is None:
             videos = self.video_repo.list_ready(limit=per_page, offset=offset)
             total = self.video_repo.count_ready()
-
+        else:
+            videos = self.video_repo.list_ready_by_channels(
+                visible, limit=per_page, offset=offset)
+            total = self.video_repo.count_ready_by_channels(visible)
         return videos, total
 
     def search_for_viewer(self, query: str, viewer: ViewerContext,
@@ -138,13 +133,8 @@ class ContentService:
         if viewer.search_mode == "disabled":
             return []
         offset = (page - 1) * per_page
-        if viewer.is_child:
-            visible_ids = self._kid_visible_channel_ids(viewer)
-            return self.video_repo.search_ready(
-                query, channel_ids=visible_ids,
-                limit=per_page, offset=offset)
         return self.video_repo.search_ready(
-            query, channel_ids=viewer.allowed_channel_ids,
+            query, channel_ids=self.visible_channel_ids(viewer),
             limit=per_page, offset=offset)
 
     def fetch_previews_for_urls(self, urls: list[str]) -> tuple[list[VideoMetadata], list[str]]:
@@ -420,11 +410,7 @@ class ContentService:
             return None
         if video.status != "active":
             return None
-        if viewer.is_child:
-            visible = self._kid_visible_channel_ids(viewer)
-            if video.channel_id is None or video.channel_id not in visible:
-                return None
-        elif not viewer.can_see_channel(video.channel_id):
+        if not self.can_view(video, viewer):
             return None
         self.video_repo.update(video_id, download_status="pending")
         self._start_download(video_id, video.original_url, video.resolution)

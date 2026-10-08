@@ -13,6 +13,23 @@ from app.constants import AVATAR_CHOICES, THEME_CHOICES, SEARCH_CHOICES
 router = APIRouter(prefix="/parent/profiles", tags=["parent-profiles"])
 
 
+def _choice(value, choices, default: str) -> str:
+    allowed = {key for key, _label in choices}
+    return value if value in allowed else default
+
+
+def _profile_fields(form) -> dict:
+    channel_ids = [int(x) for x in form.getlist("channel_ids") if x.isdigit()]
+    return {
+        "avatar": _choice(form.get("avatar"), AVATAR_CHOICES, "default"),
+        "theme": _choice(form.get("theme"), THEME_CHOICES, "base"),
+        "search_mode": _choice(form.get("search_mode"), SEARCH_CHOICES, "disabled"),
+        "channels_restricted": (form.get("channels_restricted") == "1"
+                                or bool(channel_ids)),
+        "allowed_channel_ids": channel_ids,
+    }
+
+
 @router.get("/", response_class=HTMLResponse)
 def list_profiles(request: Request,
                   viewer: ViewerContext = Depends(require_parent),
@@ -63,15 +80,11 @@ async def create_submit(request: Request,
             "error": "Name is required.",
         })
 
-    channel_ids = [int(x) for x in form.getlist("channel_ids") if x.isdigit()]
     profiles_svc.create(
         name=profiles_svc.unique_slug(display_name),
         display_name=display_name,
         pin=form.get("pin", "").strip()[:10],
-        avatar=form.get("avatar", "default"),
-        theme=form.get("theme", "base"),
-        search_mode=form.get("search_mode", "disabled"),
-        allowed_channel_ids=channel_ids or None,
+        **_profile_fields(form),
     )
     return RedirectResponse(url="/parent/profiles", status_code=302)
 
@@ -102,17 +115,13 @@ async def edit_submit(request: Request, profile_id: int,
                       viewer: ViewerContext = Depends(require_parent),
                       profiles_svc: ProfileService = Depends(get_profile_service)):
     form = await request.form()
-    channel_ids = [int(x) for x in form.getlist("channel_ids") if x.isdigit()]
     # The slug (profiles.name) stays stable across edits; only the
     # friendly display_name is editable from the form.
     profiles_svc.update(
         profile_id,
         display_name=form.get("display_name", "").strip(),
         pin=form.get("pin", "").strip()[:10],
-        avatar=form.get("avatar", "default"),
-        theme=form.get("theme", "base"),
-        search_mode=form.get("search_mode", "disabled"),
-        allowed_channel_ids=channel_ids or None,
+        **_profile_fields(form),
     )
     return RedirectResponse(url="/parent/profiles", status_code=302)
 

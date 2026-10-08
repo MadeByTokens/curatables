@@ -44,11 +44,15 @@ class ProfileService:
     def create(self, name: str, display_name: str = "", pin: str = "",
                avatar: str = "default", theme: str = "base",
                search_mode: str = "disabled",
-               allowed_channel_ids: list[int] | None = None) -> int:
+               allowed_channel_ids: list[int] | None = None,
+               channels_restricted: bool | None = None) -> int:
         profile = Profile(
             name=name, display_name=display_name, pin=pin,
             avatar=avatar, theme=theme, search_mode=search_mode,
             allowed_channel_ids=allowed_channel_ids or [],
+            channels_restricted=(bool(allowed_channel_ids)
+                                 if channels_restricted is None
+                                 else channels_restricted),
         )
         return self.profile_repo.create(profile)
 

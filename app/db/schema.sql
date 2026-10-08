@@ -79,7 +79,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     avatar      TEXT DEFAULT 'default',
     theme       TEXT DEFAULT 'base',
     search_mode TEXT DEFAULT 'disabled',
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    -- channels_restricted=1: only profile_channels rows (+ owned) are visible.
+    channels_restricted INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (

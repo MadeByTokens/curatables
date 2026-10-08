@@ -179,13 +179,8 @@ class TestProfilesEditSubmit:
         assert prof.theme == "calm"
         assert prof.search_mode == "curated"
 
-    def test_existing_channel_restriction_is_preserved_when_form_omits_ids(
+    def test_unticking_every_channel_removes_restriction(
             self, authed_client, app):
-        """The router computes `channel_ids or None` and the repo
-        treats `None` as 'do not touch profile_channels'. So an edit
-        form that submits nothing under the `channel_ids` key keeps
-        the existing restriction intact rather than wiping it.
-        """
         from app.dependencies import get_db
         from app.repositories import ChannelRepository, ProfileRepository
 
@@ -193,6 +188,7 @@ class TestProfilesEditSubmit:
         ch_id = ChannelRepository(conn).create("Animals")
         pid = _create_profile(app, name="Iris")
         ProfileRepository(conn).update(pid, allowed_channel_ids=[ch_id])
+        assert ProfileRepository(conn).get(pid).channels_restricted
 
         resp = authed_client.post(
             f"/parent/profiles/{pid}/edit",
@@ -207,7 +203,38 @@ class TestProfilesEditSubmit:
         assert resp.status_code == 302
 
         prof = ProfileRepository(conn).get(pid)
-        assert prof.allowed_channel_ids == [ch_id]
+        assert prof.allowed_channel_ids == []
+        assert not prof.channels_restricted
+
+    def test_restrict_box_alone_restricts_to_nothing(self, authed_client, app):
+        from app.dependencies import get_db
+        from app.repositories import ProfileRepository
+
+        conn = next(app.dependency_overrides[get_db]())
+        pid = _create_profile(app, name="Jo")
+        authed_client.post(
+            f"/parent/profiles/{pid}/edit",
+            data={"display_name": "Jo", "channels_restricted": "1"},
+        )
+        prof = ProfileRepository(conn).get(pid)
+        assert prof.channels_restricted
+        assert prof.allowed_channel_ids == []
+
+    def test_unknown_choices_fall_back_to_defaults(self, authed_client, app):
+        from app.dependencies import get_db
+        from app.repositories import ProfileRepository
+
+        conn = next(app.dependency_overrides[get_db]())
+        pid = _create_profile(app, name="Kim")
+        authed_client.post(
+            f"/parent/profiles/{pid}/edit",
+            data={"display_name": "Kim", "theme": "../../etc",
+                  "search_mode": "open", "avatar": "<b>"},
+        )
+        prof = ProfileRepository(conn).get(pid)
+        assert prof.theme == "base"
+        assert prof.search_mode == "disabled"
+        assert prof.avatar == "default"
 
 
 class TestProfilesDelete:

@@ -28,7 +28,7 @@ ITEMS_PER_PAGE = 24
 def _build_home_context(videos, content, reactions, viewer, page, total,
                         current_channel_id=None):
     total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
-    channels = content.list_channels()
+    channels = content.channels_for_viewer(viewer)
     video_ids = [v.video_id for v in videos]
     bulk_counts = reactions.get_bulk_counts(video_ids) if video_ids else {}
     return {
@@ -79,6 +79,9 @@ def channel_view(request: Request, channel_id: int,
                  kid_lib: KidLibraryService = Depends(get_kid_library_service),
                  channels_svc: ChannelService = Depends(get_channel_service)):
     channel = channels_svc.get(channel_id)
+    visible = content.visible_channel_ids(viewer)
+    if channel is None or (visible is not None and channel_id not in visible):
+        return RedirectResponse(url="/", status_code=302)
     videos, total = content.list_for_viewer(
         viewer, page=page, per_page=ITEMS_PER_PAGE, channel_id=channel_id)
     if viewer.is_child and viewer.profile_id:
@@ -279,7 +282,7 @@ def tags_page(request: Request,
               kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     if not viewer.is_child or not viewer.profile_id:
         return RedirectResponse(url="/", status_code=302)
-    visible_ids = content._kid_visible_channel_ids(viewer)
+    visible_ids = content.visible_channel_ids(viewer) or []
     cloud = kid_lib.tag_cloud(viewer.profile_id, visible_ids)
     return render_kid_template(request, viewer, "kid/tags.html", {
         "tag_cloud": cloud,
@@ -295,7 +298,7 @@ def tag_videos(request: Request, tag_name: str,
                reactions: ReactionService = Depends(get_reaction_service)):
     if not viewer.is_child or not viewer.profile_id:
         return RedirectResponse(url="/", status_code=302)
-    visible_ids = content._kid_visible_channel_ids(viewer)
+    visible_ids = content.visible_channel_ids(viewer) or []
     video_ids, total = kid_lib.videos_by_tag(
         viewer.profile_id, tag_name, visible_ids, page, ITEMS_PER_PAGE)
     videos = [content.get_video(vid) for vid in video_ids]
@@ -304,7 +307,7 @@ def tag_videos(request: Request, tag_name: str,
     bulk_counts = reactions.get_bulk_counts(video_ids) if video_ids else {}
     return render_kid_template(request, viewer, "kid/home.html", {
         "videos": videos,
-        "channels": content.list_channels(),
+        "channels": content.channels_for_viewer(viewer),
         "page": page,
         "total_pages": total_pages,
         "reaction_counts": bulk_counts,

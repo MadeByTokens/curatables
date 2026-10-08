@@ -131,9 +131,14 @@ class VideoRepository(BaseRepository):
 
     def search_ready(self, query: str, channel_ids: list[int] | None = None,
                      limit: int = 24, offset: int = 0) -> list[Video]:
-        """Search within ready videos by title and description."""
+        """Search within ready videos by title and description.
+
+        channel_ids=None searches every video; an empty list matches nothing.
+        """
         like = f"%{query}%"
-        if channel_ids is not None and len(channel_ids) > 0:
+        if channel_ids is not None and not channel_ids:
+            return []
+        if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
             params: list = list(channel_ids)
             params.extend([like, like, limit, offset])
