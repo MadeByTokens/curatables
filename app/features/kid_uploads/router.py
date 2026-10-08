@@ -13,6 +13,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.config import Config
@@ -176,8 +177,9 @@ async def kid_upload(request: Request,
     #    server log for the parent to see.
     owns_channel = visible_by_id[channel_id].owner_profile_id == viewer.profile_id
     try:
-        video = uploads.finalize(
-            session.token, status="active" if owns_channel else "review")
+        video = await run_in_threadpool(
+            uploads.finalize, session.token,
+            status="active" if owns_channel else "review")
     except UnsupportedCodec as e:
         logger.info("Kid %s upload rejected: unsupported codec '%s'. Hint: %s",
                     viewer.profile_id, e.codec_name, e.conversion_hint)

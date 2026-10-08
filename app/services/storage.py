@@ -8,6 +8,7 @@ paths, locking, subtitle listing, and cache management.
 import logging
 import shutil
 import threading
+import weakref
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -26,9 +27,12 @@ RESOLUTION_MAP = {
 
 _GB = 1_073_741_824
 
-# Per-video download locks to prevent duplicate concurrent downloads
-_download_locks: dict[str, threading.Lock] = {}
+# Per-video locks so a download and an eviction never touch the same
+# directory at once. Weak values let unused locks be collected.
+_download_locks: "weakref.WeakValueDictionary[str, threading.Lock]" = weakref.WeakValueDictionary()
 _locks_lock = threading.Lock()
+
+_VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov", ".m4v")
 
 
 class InsufficientDiskSpace(Exception):
@@ -45,10 +49,12 @@ class EvictionReport:
 
 class StorageService:
     def __init__(self, data_dir: Path, backend: VideoBackend, min_free_bytes: int = 0,
-                 normalizer: MediaNormalizer | None = None):
+                 normalizer: MediaNormalizer | None = None,
+                 max_download_bytes: int | None = None):
         self.data_dir = data_dir
         self.backend = backend
         self.min_free_bytes = min_free_bytes
+        self.max_download_bytes = max_download_bytes
         # When set, every freshly downloaded file is brought to the
         # client playback baseline (H.264/AAC ≤720p30 +faststart) before
         # download() returns. Optional so unit tests can construct a bare
@@ -83,6 +89,20 @@ class StorageService:
     def video_path(self, video_id: str) -> Path:
         return self.video_dir(video_id) / "video.mp4"
 
+    def downloaded_file(self, video_id: str) -> Path | None:
+        """The downloaded video file, whatever container it ended up in
+        (normally video.mp4; a source the normalizer could not convert
+        keeps its original .webm/.mkv)."""
+        mp4 = self.video_path(video_id)
+        if mp4.exists():
+            return mp4
+        vdir = self.video_dir(video_id)
+        if vdir.exists():
+            for entry in sorted(vdir.iterdir()):
+                if entry.stem == "video" and entry.suffix in _VIDEO_SUFFIXES:
+                    return entry
+        return None
+
     def uploads_dir(self) -> Path:
         path = self.data_dir / "uploads"
         path.mkdir(parents=True, exist_ok=True)
@@ -113,7 +133,7 @@ class StorageService:
                         return entry
             # Caller will get a non-existent path and handle the 404.
             return vdir / "video.missing"
-        return self.video_path(video.video_id)
+        return self.downloaded_file(video.video_id) or self.video_path(video.video_id)
 
     def delete_video_files(self, video) -> None:
         """Remove the on-disk directory backing a video.
@@ -123,19 +143,19 @@ class StorageService:
         filesystem errors so a partial cleanup still lets the DB
         row be removed.
         """
+        targets = [self.video_dir(video.video_id)]
         if getattr(video, "storage_mode", "") == "uploaded":
-            target = self.upload_video_dir(video.video_id)
-        else:
-            target = self.video_dir(video.video_id)
-        if target.exists():
-            shutil.rmtree(target, ignore_errors=True)
+            targets.append(self.upload_video_dir(video.video_id))
+        for target in targets:
+            if target.exists():
+                shutil.rmtree(target, ignore_errors=True)
 
     def is_cached(self, video_id: str) -> bool:
-        return self.video_path(video_id).exists()
+        return self.downloaded_file(video_id) is not None
 
     def file_size(self, video_id: str) -> int:
-        path = self.video_path(video_id)
-        return path.stat().st_size if path.exists() else 0
+        path = self.downloaded_file(video_id)
+        return path.stat().st_size if path else 0
 
     def list_subtitles(self, video_id: str) -> list[dict]:
         """List available subtitle files for a video."""
@@ -164,8 +184,9 @@ class StorageService:
             return None
 
         try:
-            if self.is_cached(video_id):
-                return self.video_path(video_id)
+            existing = self.downloaded_file(video_id)
+            if existing is not None:
+                return existing
 
             allowed, reason = self.check_can_write()
             if not allowed:
@@ -184,6 +205,7 @@ class StorageService:
                 output_dir=self.video_dir(video_id),
                 resolution=height,
                 subtitle_langs=sub_list,
+                max_filesize=self.max_download_bytes,
             )
             if path and self.normalizer is not None:
                 # Bring the pulled stream into the client playback
@@ -196,52 +218,60 @@ class StorageService:
 
     def _get_lock(self, video_id: str) -> threading.Lock:
         with _locks_lock:
-            if video_id not in _download_locks:
-                _download_locks[video_id] = threading.Lock()
-            return _download_locks[video_id]
+            lock = _download_locks.get(video_id)
+            if lock is None:
+                lock = threading.Lock()
+                _download_locks[video_id] = lock
+            return lock
+
+    def _evict(self, video_repo, video_id: str, report: EvictionReport) -> None:
+        """Delete one cached video's files and mark it evicted, re-checking
+        eligibility under the per-video lock."""
+        lock = self._get_lock(video_id)
+        if not lock.acquire(blocking=True, timeout=5):
+            logger.warning("evict: lock contention on %s, skipping", video_id)
+            return
+        try:
+            video = video_repo.get(video_id)
+            if (video is None or video.storage_mode != "cache"
+                    or video.keep_forever or video.download_status != "ready"):
+                return
+            size_before = video.file_size or self.file_size(video_id)
+            self.delete_video_files(video)
+            video_repo.mark_evicted(video_id)
+            report.evicted_count += 1
+            report.freed_bytes += int(size_before)
+            report.video_ids.append(video_id)
+            logger.info("evicted cache video %s (%s) — freed %d bytes",
+                        video_id, video.title, size_before)
+        except Exception:
+            logger.exception("evict failed for %s", video_id)
+        finally:
+            lock.release()
 
     def evict_expired(self, video_repo, cache_days: float) -> EvictionReport:
-        """Delete cached video files whose cache has expired.
+        """Delete cached videos nobody has watched for `cache_days`.
 
-        Called by the hourly background sweeper in app/main.py. The
-        eligibility query lives in the repository (`list_expired_cache`);
-        this method owns the filesystem + state-transition half.
-
-        Returns an EvictionReport; caller is responsible for logging
-        the summary. Individual evictions are logged at INFO here.
-
-        No-op when `cache_days <= 0` (cache-forever mode).
+        Called by the background sweeper in app/main.py. A video's age is
+        measured from when it was last played, or from when it was
+        downloaded if it has never been played, so favourites watched
+        every day are never evicted. No-op when `cache_days <= 0`.
         """
         report = EvictionReport()
         if cache_days <= 0:
             return report
+        for video in video_repo.list_expired_cache(cache_days):
+            self._evict(video_repo, video.video_id, report)
+        return report
 
-        expired = video_repo.list_expired_cache(cache_days)
-        for video in expired:
-            # Cooperate with the downloader lock: if a download is
-            # in flight for this video_id (shouldn't be, since the
-            # query filters on download_status='ready', but defend
-            # against races), wait briefly then give up.
-            lock = self._get_lock(video.video_id)
-            if not lock.acquire(blocking=True, timeout=5):
-                logger.warning("evict_expired: lock contention on %s, skipping",
-                               video.video_id)
-                continue
-            try:
-                size_before = video.file_size or self.file_size(video.video_id)
-                self.delete_video_files(video)
-                video_repo.mark_evicted(video.video_id)
-                report.evicted_count += 1
-                report.freed_bytes += int(size_before)
-                report.video_ids.append(video.video_id)
-                logger.info(
-                    "evicted cache video %s (%s) — freed %d bytes",
-                    video.video_id, video.title, size_before,
-                )
-            except Exception:
-                # Don't let one rotten row stop the sweep.
-                logger.exception("evict_expired failed for %s", video.video_id)
-            finally:
-                lock.release()
-
+    def evict_for_space(self, video_repo, required_bytes: int = 0) -> EvictionReport:
+        """Evict least-recently-watched cached videos until a write of
+        `required_bytes` fits above the free-space floor."""
+        report = EvictionReport()
+        if self.check_can_write(required_bytes)[0]:
+            return report
+        for video in video_repo.list_evictable_lru():
+            self._evict(video_repo, video.video_id, report)
+            if self.check_can_write(required_bytes)[0]:
+                break
         return report

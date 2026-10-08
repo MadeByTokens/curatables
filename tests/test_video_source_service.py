@@ -14,7 +14,7 @@ class _StubBackend:
     def fetch_channel_videos(self, url, max_results=50): return ("", [])
     def fetch_playlist(self, url, max_results=50): return ("", [])
     def download_video(self, url, output_dir, resolution=720,
-                       subtitle_langs=None): return None
+                       subtitle_langs=None, max_filesize=None): return None
 
 
 def _svc():

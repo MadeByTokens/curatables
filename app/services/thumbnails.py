@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import logging
 import subprocess
-from app.services.images import MAX_IMAGE_BYTES, image_extension
 import urllib.request
 from pathlib import Path
+
+from app.services.images import MAX_IMAGE_BYTES, image_extension
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,22 @@ class ThumbnailService:
         self.data_dir = data_dir
 
     def get_path(self, video_id: str) -> Path:
+        """Canonical thumbnail location. It lives outside videos/<id>/ so
+        cache eviction (which deletes that directory) keeps the picture
+        the parent chose. Thumbnails left in the old videos/<id>/thumb.jpg
+        location are moved over on first access."""
+        path = self.data_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
+        if not path.exists():
+            legacy = self._legacy_path(video_id)
+            if legacy.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    legacy.replace(path)
+                except OSError:
+                    return legacy
+        return path
+
+    def _legacy_path(self, video_id: str) -> Path:
         return self.data_dir / "videos" / video_id / "thumb.jpg"
 
     def is_cached(self, video_id: str) -> bool:
@@ -92,25 +109,17 @@ class ThumbnailService:
             return None
 
     def delete(self, video_id: str) -> None:
-        """Remove any thumbnails for this video.
-
-        Covers the primary `videos/<id>/thumb.jpg` location as well as
-        any custom uploaded thumbnail under `thumbnails/custom/<id>.*`.
-        Silent on missing files.
-        """
-        thumb = self.get_path(video_id)
-        try:
-            thumb.unlink(missing_ok=True)
-        except OSError as e:
-            logger.warning("Could not remove thumbnail for %s: %s", video_id, e)
-
-        custom_dir = self.data_dir / "thumbnails" / "custom"
-        if custom_dir.exists():
-            for entry in custom_dir.glob(f"{video_id}.*"):
-                try:
-                    entry.unlink(missing_ok=True)
-                except OSError as e:
-                    logger.warning("Could not remove custom thumbnail %s: %s", entry, e)
+        """Remove the canonical thumbnail and every kid's custom thumbnail
+        for this video. Silent on missing files."""
+        targets = [self.get_path(video_id), self._legacy_path(video_id)]
+        profiles_dir = self.data_dir / "thumbnails" / "profiles"
+        if profiles_dir.exists():
+            targets.extend(profiles_dir.glob(f"*/{video_id}.*"))
+        for target in targets:
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as e:
+                logger.warning("Could not remove thumbnail %s: %s", target, e)
 
     def ensure_thumbnail(self, video_id: str, thumbnail_url: str | None = None) -> bool:
         """Try to get a thumbnail by any means available.

@@ -28,11 +28,9 @@ def watch(request: Request, video_id: str,
     try:
         video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
-        # Evicted (cache-expired) videos arrive here because they're
-        # not 'ready'. Trigger an on-demand re-download and show a
-        # "preparing" page that auto-refreshes; on the next tick the
-        # download has either completed (→ normal watch page) or is
-        # still pending (→ same preparing page).
+        # Not ready yet: an evicted video is queued for re-download and
+        # one already on its way keeps showing the self-refreshing
+        # "preparing" page until it is ready.
         rehydrating = content.try_rehydrate_evicted(video_id, viewer)
         if rehydrating is not None:
             return render_kid_template(request, viewer, "kid/preparing.html", {

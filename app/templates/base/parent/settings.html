@@ -21,7 +21,7 @@
   <div class="form-group">
     <label for="cache_days">Cache Duration (days)</label>
     <input type="number" id="cache_days" name="cache_days" value="{{ config.storage.cache_days }}" min="0" max="365">
-    <small class="muted">Videos are auto-deleted after this many days. Set to 0 to keep videos forever.</small>
+    <small class="muted">A downloaded video nobody has watched for this many days is removed from disk to save space, and downloads again the next time someone taps it. Videos marked "keep forever" and uploads are never removed. Set to 0 to keep everything. When the disk gets full, the least recently watched videos are removed first.</small>
   </div>
 
   <div class="form-group">

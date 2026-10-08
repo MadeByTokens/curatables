@@ -57,8 +57,10 @@ def serve_thumbnail(request: Request, video_id: str,
     # Kids can only see thumbnails for videos they're allowed to access.
     if not viewer.is_parent:
         try:
-            content.get_video_for_viewer(video_id, viewer)
+            video = content.get_video(video_id)
         except VideoNotFound:
+            return Response(content=_TRANSPARENT_PIXEL, media_type="image/png")
+        if video.status != "active" or not content.can_view(video, viewer):
             return Response(content=_TRANSPARENT_PIXEL, media_type="image/png")
 
     # The thumbnail URL is stable, but the bytes behind it change when a

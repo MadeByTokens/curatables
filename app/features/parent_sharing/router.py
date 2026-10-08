@@ -12,6 +12,7 @@ import logging
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
@@ -191,7 +192,7 @@ async def import_submit(request: Request,
     resolved_channel_id_str = (target_channel_id or "").strip()
 
     urls = [entry.url for entry in payload.entries]
-    videos, failed = content.fetch_previews_for_urls(urls)
+    videos, failed = await run_in_threadpool(content.fetch_previews_for_urls, urls)
 
     if not videos:
         err = (

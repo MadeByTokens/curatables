@@ -92,7 +92,9 @@ class VideoBackend(ABC):
     @abstractmethod
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
-                       subtitle_langs: list[str] | None = None) -> Path | None:
+                       subtitle_langs: list[str] | None = None,
+                       max_filesize: int | None = None) -> Path | None:
         """Download a video from its full URL to output_dir.
-        Returns the path to the downloaded file, or None on failure."""
+        Returns the path to the downloaded file, or None on failure
+        (including a source file larger than `max_filesize` bytes)."""
         ...

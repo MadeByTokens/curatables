@@ -30,6 +30,8 @@ def log_event(request: Request,
         content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=204)
+    if event == "video_play":
+        content.mark_played(video_id)
     data = {}
     if watch_seconds:
         data["watch_seconds"] = max(0, min(watch_seconds, 86400))

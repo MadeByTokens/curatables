@@ -27,6 +27,7 @@ class Video:
     cache_expires_at: str | None = None
     file_size: int = 0
     keep_forever: bool = False
+    last_played_at: str | None = None
     id: int | None = None
 
     @property

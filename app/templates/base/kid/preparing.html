@@ -1,16 +1,14 @@
 {% extends "kid/base.html" %}
-{% block theme_css %}
-<meta http-equiv="refresh" content="15">
+{% block head_extra %}
+<meta http-equiv="refresh" content="10">
 {% endblock %}
 {% block content %}
-<div class="preparing">
-  <h2>Getting your video ready...</h2>
+<div class="preparing" role="status">
+  <img class="preparing-thumb" src="/media/thumb/{{ video.video_id }}" alt="">
+  <div class="preparing-icon" aria-hidden="true">&#8987;</div>
+  <h2>Getting your video ready&hellip;</h2>
   <p class="preparing-title">{{ video.title }}</p>
-  <p class="preparing-hint">This video needs to download again. It'll start playing on its own in a few seconds.</p>
-  <p class="preparing-meta">
-    <a href="/watch/{{ video.video_id }}">Refresh now</a>
-    &nbsp;&middot;&nbsp;
-    <a href="/">Back home</a>
-  </p>
+  <p class="preparing-hint">It will start by itself. You can wait here.</p>
+  <a class="big-home-btn" href="/"><span aria-hidden="true">&#127968;</span> Home</a>
 </div>
 {% endblock %}

@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS videos (
     cache_expires_at TEXT,
     file_size       INTEGER DEFAULT 0,
     -- keep_forever=1 exempts the video from cache auto-eviction.
-    keep_forever    INTEGER NOT NULL DEFAULT 0
+    keep_forever    INTEGER NOT NULL DEFAULT 0,
+    -- last_played_at drives least-recently-watched cache eviction.
+    last_played_at  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS profiles (

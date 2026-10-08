@@ -11,6 +11,7 @@ from app.dependencies import (
     require_parent, get_content_service, get_channel_service,
     get_stats_service, get_comment_service, get_thumbnail_service,
 )
+from app.services.storage import RESOLUTION_MAP
 from app.services.content import ContentService, ContentError
 from app.services.channels import ChannelService
 from app.services.thumbnails import ThumbnailService
@@ -105,7 +106,9 @@ async def add_confirm(request: Request,
         form.get("channel_id", ""),
         form.get("new_channel_name", ""),
     )
-    resolution = form.get("resolution", content.config.storage.default_resolution)
+    resolution = form.get("resolution", "")
+    if resolution not in RESOLUTION_MAP:
+        resolution = content.config.storage.default_resolution
 
     video_ids = form.getlist("video_ids")
     import re

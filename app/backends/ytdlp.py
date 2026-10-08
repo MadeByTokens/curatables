@@ -10,6 +10,7 @@ video came from.
 
 import logging
 import re
+import threading
 from pathlib import Path
 
 from app.backends.base import VideoBackend, VideoMetadata, BackendError, BackendErrorType
@@ -32,14 +33,23 @@ class YtdlpBackend(VideoBackend):
         self.cookies_from_browser = cookies_from_browser
         self.cookies_file = cookies_file
         self.impersonate = impersonate
-        self.last_error: BackendError | None = None
+        self._local = threading.local()
+
+    @property
+    def last_error(self) -> BackendError | None:
+        """Error from the most recent call made on the current thread."""
+        return getattr(self._local, "last_error", None)
+
+    @last_error.setter
+    def last_error(self, value: BackendError | None) -> None:
+        self._local.last_error = value
 
     def classify_error(self, error: Exception) -> BackendError:
         """Classify a yt-dlp exception into a structured error."""
         msg = str(error)
         details = msg
 
-        if "Sign in to confirm" in msg or "bot" in msg.lower():
+        if "Sign in to confirm" in msg or re.search(r"\bbots?\b", msg.lower()):
             return BackendError(
                 error_type=BackendErrorType.BOT_BLOCKED,
                 message="The source blocked the request (bot detection).",
@@ -112,6 +122,7 @@ class YtdlpBackend(VideoBackend):
     def fetch_video_info(self, url: str) -> VideoMetadata | None:
         import yt_dlp
 
+        self.last_error = None
         opts = {**self._base_opts(), "skip_download": True}
 
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -132,6 +143,7 @@ class YtdlpBackend(VideoBackend):
                              max_results: int = 50) -> tuple[str, list[VideoMetadata]]:
         import yt_dlp
 
+        self.last_error = None
         # Legacy convenience: callers used to be able to pass a bare
         # "@handle" for a YouTube channel. Keep the convenience, but
         # anything that already looks like a URL is passed through
@@ -168,6 +180,7 @@ class YtdlpBackend(VideoBackend):
                        max_results: int = 50) -> tuple[str, list[VideoMetadata]]:
         import yt_dlp
 
+        self.last_error = None
         opts = {
             **self._base_opts(),
             "extract_flat": True, "skip_download": True,
@@ -190,9 +203,11 @@ class YtdlpBackend(VideoBackend):
 
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
-                       subtitle_langs: list[str] | None = None) -> Path | None:
+                       subtitle_langs: list[str] | None = None,
+                       max_filesize: int | None = None) -> Path | None:
         import yt_dlp
 
+        self.last_error = None
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Prefer H.264 video (avc1) + AAC audio (mp4a) so the result is in
@@ -211,7 +226,10 @@ class YtdlpBackend(VideoBackend):
             "format": fmt,
             "merge_output_format": "mp4",
             "outtmpl": str(output_dir / "video.%(ext)s"),
+            "noplaylist": True,
         }
+        if max_filesize:
+            opts["max_filesize"] = max_filesize
 
         if subtitle_langs:
             opts["writesubtitles"] = True
@@ -239,6 +257,15 @@ class YtdlpBackend(VideoBackend):
         for f in sorted(output_dir.iterdir()):
             if f.stem == "video" and f.suffix in (".webm", ".mkv", ".mov", ".m4v"):
                 return f
+        if max_filesize:
+            self.last_error = BackendError(
+                error_type=BackendErrorType.FORMAT,
+                message="No file was downloaded. The video may be larger "
+                        "than the download size limit.",
+                details=f"max_filesize={max_filesize}",
+                suggestion="Pick a lower resolution, or raise the maximum "
+                           "download size in Settings.",
+            )
         return None
 
 

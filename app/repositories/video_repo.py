@@ -243,49 +243,57 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
+    _EVICTABLE = (
+        "storage_mode = 'cache' AND keep_forever = 0 "
+        "AND download_status = 'ready' AND cached_at IS NOT NULL"
+    )
+
     def list_expired_cache(self, cache_days: float,
                            now_iso: str | None = None) -> list[Video]:
-        """Videos whose cached_at is older than `cache_days` and are
-        eligible for eviction.
+        """Cached videos not played (or, if never played, not downloaded)
+        within the last `cache_days`, oldest first.
 
-        Eligibility:
-          - storage_mode = 'cache' (uploads are never auto-evicted)
-          - keep_forever = 0       (library-mode videos are pinned)
-          - download_status = 'ready' (don't touch in-flight downloads)
-          - cached_at IS NOT NULL AND cached_at < cutoff
-
-        `cache_days` is a float so tests can pass fractional values
-        (e.g. 0.0001 ≈ 8 seconds) without fighting datetime math.
-        `now_iso` lets tests inject a deterministic cutoff; production
-        omits it and SQLite uses `datetime('now')` (UTC).
+        Uploads and keep_forever videos are never eligible, nor is
+        anything mid-download. `cache_days` is a float so tests can pass
+        fractional values; `now_iso` lets tests pin the clock (production
+        uses SQLite's UTC `datetime('now')`).
         """
         if cache_days <= 0:
             return []
-        if now_iso is None:
-            # Use SQLite's own clock so the comparison stays in the
-            # same UTC baseline as added_at / cached_at defaults.
-            cutoff_expr = f"datetime('now', '-{float(cache_days)} days')"
-            rows = self.db.execute(
-                "SELECT * FROM videos "
-                "WHERE storage_mode = 'cache' "
-                "AND keep_forever = 0 "
-                "AND download_status = 'ready' "
-                "AND cached_at IS NOT NULL "
-                f"AND cached_at < {cutoff_expr} "
-                "ORDER BY cached_at ASC"
-            ).fetchall()
-        else:
-            rows = self.db.execute(
-                "SELECT * FROM videos "
-                "WHERE storage_mode = 'cache' "
-                "AND keep_forever = 0 "
-                "AND download_status = 'ready' "
-                "AND cached_at IS NOT NULL "
-                "AND cached_at < datetime(?, ?) "
-                "ORDER BY cached_at ASC",
-                (now_iso, f"-{float(cache_days)} days"),
-            ).fetchall()
+        rows = self.db.execute(
+            f"SELECT * FROM videos WHERE {self._EVICTABLE} "
+            "AND COALESCE(last_played_at, cached_at) < datetime(?, ?) "
+            "ORDER BY COALESCE(last_played_at, cached_at) ASC",
+            (now_iso or "now", f"-{float(cache_days)} days"),
+        ).fetchall()
         return [self._to_model(r) for r in rows]
+
+    def list_evictable_lru(self, limit: int = 200) -> list[Video]:
+        """Every evictable cached video, least recently watched first."""
+        rows = self.db.execute(
+            f"SELECT * FROM videos WHERE {self._EVICTABLE} "
+            "ORDER BY COALESCE(last_played_at, cached_at) ASC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [self._to_model(r) for r in rows]
+
+    def touch_played(self, video_id: str) -> None:
+        self.db.execute(
+            "UPDATE videos SET last_played_at = datetime('now') WHERE video_id = ?",
+            (video_id,),
+        )
+        self.db.commit()
+
+    def claim_evicted(self, video_id: str) -> bool:
+        """Atomically flip an evicted video back to pending. Returns True
+        for exactly one caller when several race to re-download it."""
+        cur = self.db.execute(
+            "UPDATE videos SET download_status = 'pending' "
+            "WHERE video_id = ? AND download_status = 'evicted'",
+            (video_id,),
+        )
+        self.db.commit()
+        return cur.rowcount == 1
 
     def mark_evicted(self, video_id: str) -> None:
         """Transition a ready video to 'evicted' — files gone, row kept.
@@ -373,4 +381,5 @@ class VideoRepository(BaseRepository):
             cache_expires_at=d.get("cache_expires_at"),
             file_size=d.get("file_size", 0),
             keep_forever=bool(d.get("keep_forever", 0)),
+            last_played_at=d.get("last_played_at"),
         )

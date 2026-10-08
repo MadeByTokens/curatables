@@ -130,6 +130,7 @@ def get_storage_service(config=Depends(get_config),
         config.data_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,
         normalizer=MediaNormalizer(probe),
+        max_download_bytes=config.storage.max_download_bytes,
     )
 
 

@@ -2,10 +2,7 @@ from __future__ import annotations
 """Content service — business logic for managing approved content."""
 
 import logging
-import threading
-from datetime import datetime, timedelta
-
-from pathlib import Path
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +14,7 @@ from app.backends.base import VideoMetadata
 from app.services.video_source import VideoSourceService, ParsedURL
 from app.services.thumbnails import ThumbnailService
 from app.services.storage import StorageService, InsufficientDiskSpace
+from app.services.download_queue import get_download_queue
 from app.services.ids import make_video_id
 from app.db.connection import get_db_path
 
@@ -283,83 +281,71 @@ class ContentService:
 
     def _start_download(self, video_id: str, original_url: str,
                         resolution: str) -> None:
-        """Launch a background thread to download a video.
-        The thread opens its own SQLite connection to avoid sharing
-        the request-scoped connection across threads."""
-        db_path = get_db_path(self.config.data_dir)
+        """Queue a background download on the shared DownloadQueue."""
+        queue = get_download_queue(self.config.storage.max_concurrent_downloads)
+        queue.submit(video_id, lambda: self._run_download(
+            video_id, original_url, resolution))
+
+    def _run_download(self, video_id: str, original_url: str,
+                      resolution: str) -> None:
+        """Download job body. Runs on a queue worker with its own SQLite
+        connection; the request that queued it is long gone."""
+        from app.db.connection import create_connection
+        conn = create_connection(get_db_path(self.config.data_dir))
+        repo = VideoRepository(conn)
         storage = self.storage
-        thumbnails = self.thumbnails
-        subtitle_langs = self.config.storage.subtitle_langs
-        cache_days = self.config.storage.cache_days
-        metrics = self.metrics
-
-        def _download():
-            from app.db.connection import create_connection
-            conn = create_connection(db_path)
-            repo = VideoRepository(conn)
-            try:
-                repo.update(video_id, download_status="downloading")
-                path = storage.download(
-                    video_id, original_url, resolution,
-                    subtitle_langs=subtitle_langs)
-                if path:
-                    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-                    if cache_days > 0:
-                        expires = (datetime.utcnow() + timedelta(
-                            days=cache_days)).strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        expires = None
-                    repo.update(
-                        video_id,
-                        download_status="ready",
-                        cached_at=now,
-                        cache_expires_at=expires,
-                        file_size=storage.file_size(video_id),
-                    )
-                    # Extract first frame as thumbnail if none exists
-                    if not thumbnails.is_cached(video_id):
-                        thumbnails.extract_frame(video_id)
-                    metrics.record_download("success")
+        try:
+            if repo.get(video_id) is None:
+                return
+            repo.update(video_id, download_status="downloading")
+            if not storage.check_can_write()[0]:
+                freed = storage.evict_for_space(repo)
+                if freed.evicted_count:
+                    logger.info("Evicted %d video(s) to make room for %s",
+                                freed.evicted_count, video_id)
+            path = storage.download(
+                video_id, original_url, resolution,
+                subtitle_langs=self.config.storage.subtitle_langs)
+            if repo.get(video_id) is None:
+                storage.delete_video_files(Video(video_id=video_id, title=""))
+                return
+            if path:
+                repo.update(
+                    video_id,
+                    download_status="ready",
+                    download_error="",
+                    cached_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    file_size=storage.file_size(video_id),
+                )
+                if not self.thumbnails.is_cached(video_id):
+                    self.thumbnails.extract_frame(video_id, source_path=path)
+                self.metrics.record_download("success")
+            else:
+                backend_err = storage.backend.last_error
+                if backend_err:
+                    error_msg = f"[{backend_err.error_type.value}] {backend_err.message}"
                 else:
-                    # Check if backend has a classified error
-                    backend_err = storage.backend.last_error
-                    if backend_err:
-                        error_msg = f"[{backend_err.error_type.value}] {backend_err.message}"
-                    else:
-                        error_msg = "Download returned no file"
-                    repo.update(
-                        video_id,
-                        download_status="error",
-                        download_error=error_msg,
-                    )
-                    metrics.record_download("failure")
-            except InsufficientDiskSpace as e:
-                logger.warning("Disk quota blocked download of %s: %s", video_id, e)
-                try:
-                    repo.update(
-                        video_id,
-                        download_status="error",
-                        download_error=f"[disk_full] {str(e)[:500]}",
-                    )
-                except Exception:
-                    logger.exception("Failed to record disk-full error for %s", video_id)
-                metrics.record_download("disk_full")
-            except Exception as e:
-                logger.exception("Download thread error for %s", video_id)
-                try:
-                    repo.update(
-                        video_id,
-                        download_status="error",
-                        download_error=f"[unknown] {str(e)[:500]}",
-                    )
-                except Exception:
-                    logger.exception("Failed to record download error for %s", video_id)
-                metrics.record_download("failure")
-            finally:
-                conn.close()
+                    error_msg = "Download returned no file"
+                repo.update(video_id, download_status="error",
+                            download_error=error_msg)
+                self.metrics.record_download("failure")
+        except InsufficientDiskSpace as e:
+            logger.warning("Disk quota blocked download of %s: %s", video_id, e)
+            self._record_error(repo, video_id, f"[disk_full] {str(e)[:500]}")
+            self.metrics.record_download("disk_full")
+        except Exception as e:
+            logger.exception("Download error for %s", video_id)
+            self._record_error(repo, video_id, f"[unknown] {str(e)[:500]}")
+            self.metrics.record_download("failure")
+        finally:
+            conn.close()
 
-        thread = threading.Thread(target=_download, daemon=True)
-        thread.start()
+    @staticmethod
+    def _record_error(repo: VideoRepository, video_id: str, message: str) -> None:
+        try:
+            repo.update(video_id, download_status="error", download_error=message)
+        except Exception:
+            logger.exception("Failed to record download error for %s", video_id)
 
     def create_source(self, source_type: str, extractor: str,
                       external_id: str, title: str, url: str) -> int:
@@ -389,33 +375,34 @@ class ContentService:
             self._start_download(v.video_id, v.original_url, v.resolution)
         return len(pending)
 
+    def mark_played(self, video_id: str) -> None:
+        self.video_repo.touch_played(video_id)
+
     def update_video(self, video_id: str, **fields) -> Video:
         self.video_repo.update(video_id, **fields)
         return self.get_video(video_id)
 
     def try_rehydrate_evicted(self, video_id: str, viewer: ViewerContext) -> Video | None:
-        """If the video is evicted and the viewer is allowed to see it,
-        flip it back to 'pending' and queue a re-download.
+        """Return the video if it is on its way to the viewer: an evicted
+        video is flipped back to 'pending' and queued for re-download,
+        and one already pending/downloading is returned as is.
 
-        Returns the updated Video on success, else None.
-
-        This is the on-demand counterpart to the cache sweeper: the
-        kid tapping an evicted bookmark pays a download wait, but the
-        disk stayed free in the meantime. Skips the action if the
-        video isn't evicted, isn't visible to this viewer, or its
-        channel isn't accessible.
+        Returns None if the video doesn't exist, isn't active, isn't
+        visible to this viewer, or is in any other state (e.g. error).
         """
         video = self.video_repo.get(video_id)
-        if not video or video.download_status != "evicted":
+        if not video or video.status != "active" or not self.can_view(video, viewer):
             return None
-        if video.status != "active":
-            return None
-        if not self.can_view(video, viewer):
-            return None
-        self.video_repo.update(video_id, download_status="pending")
-        self._start_download(video_id, video.original_url, video.resolution)
-        video.download_status = "pending"
-        return video
+        if video.download_status == "evicted":
+            if self.video_repo.claim_evicted(video_id):
+                self._start_download(video_id, video.original_url, video.resolution)
+            video.download_status = "pending"
+            return video
+        if video.download_status in ("pending", "downloading"):
+            if video.download_status == "pending" and video.storage_mode == "cache":
+                self._start_download(video_id, video.original_url, video.resolution)
+            return video
+        return None
 
     def hide_video(self, video_id: str) -> None:
         self.video_repo.update(video_id, status="hidden")

@@ -76,7 +76,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             ThumbnailService(config.data_dir),
             StorageService(config.data_dir, _resume_backend,
                            min_free_bytes=config.storage.min_free_disk_bytes,
-                           normalizer=MediaNormalizer(MediaProbeService())),
+                           normalizer=MediaNormalizer(MediaProbeService()),
+                           max_download_bytes=config.storage.max_download_bytes),
             config,
         )
         _resumed = _resume_content.resume_pending_downloads()
@@ -212,14 +213,6 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # Added OUTSIDE RequestLoggingMiddleware (via later add_middleware
     # ordering) so the logging middleware itself sees the set ID.
     app.add_middleware(RequestIDMiddleware)
-    # BodySizeLimitMiddleware caps request body size early so a malicious
-    # POST to /watch/<id>/comment with a 500MB body can't OOM the server.
-    # Legitimate upload endpoints (video/thumbnail uploads) get the larger
-    # max_upload_bytes ceiling.
-    app.add_middleware(
-        BodySizeLimitMiddleware,
-        upload_limit=config.storage.max_upload_bytes,
-    )
     # SessionMiddleware is added below, AFTER the @app.middleware("http")
     # decorators. Starlette builds the middleware stack by inserting each
     # new add_middleware at index 0 and then wrapping outside-in in
@@ -366,6 +359,15 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # exception handlers and middleware short-circuits). When
     # prometheus_enabled=False the middleware skips its work in O(1).
     app.add_middleware(PrometheusMiddleware, metrics=app.state.metrics)
+
+    # Outermost of all: reject oversized bodies before any other layer
+    # (CSRF parses form bodies) can read them into memory.
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        upload_limit=lambda: config.storage.max_upload_bytes,
+        kid_upload_limit=lambda: min(config.storage.max_upload_bytes,
+                                     config.storage.max_kid_upload_bytes),
+    )
 
     # --- Exception handlers ---
     import logging

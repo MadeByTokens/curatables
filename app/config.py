@@ -32,6 +32,8 @@ class StorageConfig:
     min_free_disk_bytes: int = 2_147_483_648  # refuse writes when free space would drop below this (2 GB default)
     max_upload_bytes: int = 10_737_418_240    # absolute upper bound per upload (10 GB default)
     max_kid_upload_bytes: int = 524_288_000   # per-upload ceiling for kid uploads (500 MB default)
+    max_download_bytes: int = 4_294_967_296   # yt-dlp refuses source files larger than this (4 GB default)
+    max_concurrent_downloads: int = 1         # download + transcode jobs run at once (1 suits a Raspberry Pi)
     # Cache auto-cleanup: a background task in app/main.py lifespan runs
     # StorageService.evict_expired every N minutes. Set to 0 to disable
     # the sweep entirely; cache_days<=0 also short-circuits (keep forever).

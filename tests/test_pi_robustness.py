@@ -1,0 +1,163 @@
+"""Download queue, LRU eviction, crash recovery and re-download behaviour."""
+
+import threading
+import time
+from datetime import datetime, timedelta
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+
+from app.db.schema import recover_from_crash
+from app.dependencies import get_db
+from app.models import Profile, Video
+from app.repositories import ChannelRepository, ProfileRepository, VideoRepository
+from app.services.download_queue import DownloadQueue
+from app.services.storage import StorageService
+from app.services.thumbnails import ThumbnailService
+
+
+def _ready(db, video_id, cached_days_ago=40, played_days_ago=None, file_size=100):
+    VideoRepository(db).insert(Video(video_id=video_id, title=video_id,
+                                      original_title=video_id))
+    fmt = "%Y-%m-%d %H:%M:%S"
+    cached = (datetime.utcnow() - timedelta(days=cached_days_ago)).strftime(fmt)
+    played = (None if played_days_ago is None else
+              (datetime.utcnow() - timedelta(days=played_days_ago)).strftime(fmt))
+    db.execute("UPDATE videos SET download_status='ready', cached_at=?, "
+               "last_played_at=?, file_size=? WHERE video_id=?",
+               (cached, played, file_size, video_id))
+    db.commit()
+
+
+class TestDownloadQueue:
+    def test_runs_one_job_at_a_time(self):
+        queue = DownloadQueue(max_workers=1)
+        running = []
+        peak = []
+        lock = threading.Lock()
+
+        def job():
+            with lock:
+                running.append(1)
+                peak.append(len(running))
+            time.sleep(0.02)
+            with lock:
+                running.pop()
+
+        for i in range(5):
+            assert queue.submit(f"v{i}", job)
+        queue.wait_idle(timeout=5)
+        assert max(peak) == 1
+
+    def test_duplicate_video_is_not_queued_twice(self):
+        queue = DownloadQueue(max_workers=1)
+        gate = threading.Event()
+        assert queue.submit("same", gate.wait)
+        assert not queue.submit("same", gate.wait)
+        gate.set()
+        queue.wait_idle(timeout=5)
+        assert queue.submit("same", lambda: None)
+        queue.wait_idle(timeout=5)
+
+
+class TestLruEviction:
+    def test_recently_played_video_is_kept(self, db):
+        _ready(db, "old_unplayed", cached_days_ago=40)
+        _ready(db, "old_favourite", cached_days_ago=40, played_days_ago=1)
+        expired = VideoRepository(db).list_expired_cache(cache_days=30)
+        assert [v.video_id for v in expired] == ["old_unplayed"]
+
+    def test_evict_for_space_frees_least_recently_watched_first(self, db, tmp_path):
+        _ready(db, "watched_yesterday", cached_days_ago=10, played_days_ago=1)
+        _ready(db, "watched_long_ago", cached_days_ago=10, played_days_ago=9)
+        storage = StorageService(tmp_path, backend=None)
+        calls = {"n": 0}
+
+        def fake_check(required_bytes=0):
+            calls["n"] += 1
+            return (calls["n"] > 1, "full")
+
+        with patch.object(storage, "check_can_write", side_effect=fake_check):
+            report = storage.evict_for_space(VideoRepository(db))
+        assert report.video_ids == ["watched_long_ago"]
+
+    def test_eviction_keeps_thumbnail(self, db, tmp_path):
+        _ready(db, "thumbkeep", cached_days_ago=40)
+        thumbs = ThumbnailService(tmp_path)
+        thumbs.get_path("thumbkeep").parent.mkdir(parents=True, exist_ok=True)
+        thumbs.get_path("thumbkeep").write_bytes(b"\xff\xd8\xff")
+        vdir = tmp_path / "videos" / "thumbkeep"
+        vdir.mkdir(parents=True)
+        (vdir / "video.mp4").write_bytes(b"x")
+        StorageService(tmp_path, backend=None).evict_expired(VideoRepository(db), 30)
+        assert not vdir.exists()
+        assert thumbs.is_cached("thumbkeep")
+
+    def test_legacy_thumbnail_is_moved(self, tmp_path):
+        legacy = tmp_path / "videos" / "lv" / "thumb.jpg"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_bytes(b"\xff\xd8\xff")
+        path = ThumbnailService(tmp_path).get_path("lv")
+        assert path == tmp_path / "thumbnails" / "videos" / "lv.jpg"
+        assert path.exists() and not legacy.exists()
+
+
+class TestStorageFiles:
+    def test_non_mp4_download_counts_as_cached(self, tmp_path):
+        vdir = tmp_path / "videos" / "webm1"
+        vdir.mkdir(parents=True)
+        (vdir / "video.webm").write_bytes(b"12345")
+        storage = StorageService(tmp_path, backend=None)
+        assert storage.is_cached("webm1")
+        assert storage.file_size("webm1") == 5
+
+
+class TestCrashRecovery:
+    def test_missing_drive_does_not_reset_library(self, db, tmp_path):
+        for i in range(6):
+            _ready(db, f"v{i}")
+        recover_from_crash(db, tmp_path)
+        statuses = {r[0] for r in db.execute("SELECT download_status FROM videos")}
+        assert statuses == {"ready"}
+
+    def test_single_missing_file_is_reset(self, db, tmp_path):
+        for i in range(6):
+            _ready(db, f"v{i}")
+            if i:
+                d = tmp_path / "videos" / f"v{i}"
+                d.mkdir(parents=True)
+                (d / "video.mp4").write_bytes(b"x")
+        recover_from_crash(db, tmp_path)
+        row = db.execute("SELECT download_status FROM videos WHERE video_id='v0'").fetchone()
+        assert row[0] == "pending"
+
+
+class TestRedownload:
+    def _setup(self, app, status):
+        conn = next(app.dependency_overrides[get_db]())
+        ch = ChannelRepository(conn).create("Fun")
+        VideoRepository(conn).insert(Video(
+            video_id="yt_evicted", title="Dino song", original_title="Dino song",
+            channel_id=ch, status="active", download_status=status,
+            original_url="https://example.com/v"))
+        pid = ProfileRepository(conn).create(Profile(name="k", display_name="K"))
+        client = TestClient(app, follow_redirects=False)
+        client.post("/profiles/select", data={"profile_id": pid})
+        return conn, client
+
+    def test_preparing_page_survives_refresh(self, app):
+        conn, client = self._setup(app, "evicted")
+        with patch("app.services.content.ContentService._start_download") as start:
+            first = client.get("/watch/yt_evicted")
+            second = client.get("/watch/yt_evicted")
+        assert first.status_code == 200 and "Getting your video ready" in first.text
+        assert second.status_code == 200 and "Getting your video ready" in second.text
+        assert VideoRepository(conn).get("yt_evicted").download_status == "pending"
+        assert start.call_count >= 1
+
+    def test_claim_evicted_is_exclusive(self, db):
+        VideoRepository(db).insert(Video(video_id="c1", title="c", original_title="c",
+                                         download_status="evicted"))
+        repo = VideoRepository(db)
+        assert repo.claim_evicted("c1") is True
+        assert repo.claim_evicted("c1") is False

@@ -57,48 +57,62 @@ def recover_from_crash(conn: sqlite3.Connection, data_dir: Path) -> None:
                     f.unlink()
 
     # 3. Verify "ready" videos actually have files on disk.
-    #    Downloaded videos live at videos/<id>/video.mp4; uploaded
-    #    videos live at uploads/<id>/video.<ext>. If the file is
-    #    missing, reset downloaded videos to "pending" for re-download.
-    #    Uploaded videos have no re-download path, so mark them as an
-    #    "error" instead and leave the parent to delete or re-upload.
+    #    Downloaded videos live at videos/<id>/video.<ext>; uploaded
+    #    videos at uploads/<id>/video.<ext>. A missing download goes back
+    #    to "pending" for re-download; a missing upload has no source, so
+    #    it is marked "error" for the parent to deal with.
     uploads_dir = data_dir / "uploads"
     ready = conn.execute(
         "SELECT video_id, storage_mode FROM videos WHERE download_status = 'ready'"
     ).fetchall()
-    missing_downloads = 0
-    missing_uploads = 0
+    missing_downloads: list[str] = []
+    missing_uploads: list[str] = []
     for row in ready:
         vid = row["video_id"]
-        mode = row["storage_mode"]
-        if mode == "uploaded":
-            vdir = uploads_dir / vid
-            exists = vdir.exists() and any(
-                f.is_file() and f.stem == "video" for f in vdir.iterdir()
-            )
-            if not exists:
-                conn.execute(
-                    "UPDATE videos SET download_status = 'error', "
-                    "download_error = 'Uploaded file missing after restart' "
-                    "WHERE video_id = ?",
-                    (vid,),
-                )
-                missing_uploads += 1
-        else:
-            if not (videos_dir / vid / "video.mp4").exists():
-                conn.execute(
-                    "UPDATE videos SET download_status = 'pending', "
-                    "cached_at = NULL, file_size = 0, "
-                    "download_error = 'File missing after restart' "
-                    "WHERE video_id = ?",
-                    (vid,),
-                )
-                missing_downloads += 1
-    if missing_downloads or missing_uploads:
+        base = uploads_dir if row["storage_mode"] == "uploaded" else videos_dir
+        if not _has_video_file(base / vid):
+            (missing_uploads if row["storage_mode"] == "uploaded"
+             else missing_downloads).append(vid)
+
+    missing = len(missing_downloads) + len(missing_uploads)
+    if missing >= MASS_MISSING_MIN and missing * 2 >= len(ready):
+        logger.error(
+            "Recovery: %d of %d ready videos have no file in %s. That looks "
+            "like a missing or unmounted drive, so nothing was reset. "
+            "Mount the drive and restart curatables.",
+            missing, len(ready), data_dir)
+        return
+
+    for vid in missing_downloads:
+        conn.execute(
+            "UPDATE videos SET download_status = 'pending', "
+            "cached_at = NULL, file_size = 0, "
+            "download_error = 'File missing after restart' "
+            "WHERE video_id = ?",
+            (vid,),
+        )
+    for vid in missing_uploads:
+        conn.execute(
+            "UPDATE videos SET download_status = 'error', "
+            "download_error = 'Uploaded file missing after restart' "
+            "WHERE video_id = ?",
+            (vid,),
+        )
+    if missing:
         conn.commit()
         if missing_downloads:
             logger.info("Recovery: %d downloaded video(s) missing, reset to pending",
-                        missing_downloads)
+                        len(missing_downloads))
         if missing_uploads:
             logger.info("Recovery: %d uploaded video(s) missing, marked as error",
-                        missing_uploads)
+                        len(missing_uploads))
+
+
+MASS_MISSING_MIN = 5
+_VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi", ".mpg", ".mpeg")
+
+
+def _has_video_file(vdir: Path) -> bool:
+    return vdir.is_dir() and any(
+        f.is_file() and f.stem == "video" and f.suffix.lower() in _VIDEO_SUFFIXES
+        for f in vdir.iterdir())

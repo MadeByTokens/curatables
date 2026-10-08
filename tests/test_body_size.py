@@ -61,3 +61,28 @@ class TestBodySizeLimit:
         # (framework rejected earlier) — both are correct, both stop
         # the request.
         assert resp.status_code in (400, 413)
+
+
+class TestRouteLimits:
+    def _mw(self, **kw):
+        from app.middleware.body_size import BodySizeLimitMiddleware
+        return BodySizeLimitMiddleware(app=None, upload_limit=10_000_000_000,
+                                       kid_upload_limit=lambda: 500, **kw)
+
+    def test_picture_routes_get_image_limit(self):
+        mw = self._mw()
+        assert mw._limit_for("/video/abc/edit") == 6 * 1024 * 1024
+        assert mw._limit_for("/channel/3/edit") == 6 * 1024 * 1024
+
+    def test_kid_upload_uses_kid_limit(self):
+        assert self._mw()._limit_for("/upload") == 500 + 1_000_000
+
+    def test_parent_tus_uses_upload_limit(self):
+        assert self._mw()._limit_for("/parent/upload/tus/x") == 10_000_000_000
+
+    def test_kid_upload_over_limit_rejected_before_csrf(self, client, app):
+        app.state.config.storage.max_kid_upload_bytes = 10
+        resp = client.post(
+            "/upload", content=b"x" * 2_000_000,
+            headers={"Content-Type": "application/octet-stream"})
+        assert resp.status_code == 413

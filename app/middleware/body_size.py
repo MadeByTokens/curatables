@@ -7,37 +7,56 @@ full body into memory to run the service-layer 500-char check. On a
 16 GB mini-PC, a handful of such requests is an OOM. The middleware
 drops them at the Content-Length check — no body is read.
 
-Legitimate upload endpoints have a separate, larger ceiling drawn from
-`config.storage.max_upload_bytes` so parent video uploads (gigabytes)
-still work. Everything else is capped at 1 MB — comments, forms, POST
-bodies for the kid/parent UIs never legitimately exceed that.
+Each route class gets its own ceiling:
+- parent video uploads (tus, under /parent/upload): `upload_limit`;
+- the kid's single multipart upload (POST /upload): `kid_upload_limit`
+  plus a little multipart overhead;
+- picture uploads (kid/parent edit forms) and curation-list imports:
+  `image_limit`;
+- everything else: 1 MB.
+Limits are callables so a change in Settings applies without a restart.
+
+This middleware must be the outermost one: anything that reads the body
+before it (CSRF reads form bodies) would buffer an oversized request
+into memory first.
 """
+
+from typing import Callable, Union
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 _SMALL_LIMIT = 1_000_000  # 1 MB default for all non-upload endpoints
+_IMAGE_LIMIT = 6 * 1024 * 1024
+_MULTIPART_SLACK = 1_000_000
+
+Limit = Union[int, Callable[[], int]]
+
+
+def _value(limit: Limit) -> int:
+    return limit() if callable(limit) else limit
 
 
 class BodySizeLimitMiddleware:
-    def __init__(self, app: ASGIApp, upload_limit: int,
-                 upload_path_prefixes: tuple[str, ...] = (
-                     "/upload",
-                     "/parent/upload",
-                     "/tus",
-                     "/parent/content/",   # custom thumbnail upload (/edit)
-                     "/video/",            # kid thumbnail upload (/edit)
-                     "/channel/",          # kid banner/icon upload (/edit)
-                 ),
+    def __init__(self, app: ASGIApp, upload_limit: Limit,
+                 kid_upload_limit: Limit | None = None,
+                 image_limit: Limit = _IMAGE_LIMIT,
                  default_limit: int = _SMALL_LIMIT):
         self.app = app
         self.upload_limit = upload_limit
-        self.upload_path_prefixes = upload_path_prefixes
+        self.kid_upload_limit = kid_upload_limit if kid_upload_limit is not None else upload_limit
+        self.image_limit = image_limit
         self.default_limit = default_limit
 
     def _limit_for(self, path: str) -> int:
-        if any(path.startswith(p) for p in self.upload_path_prefixes):
-            return self.upload_limit
+        if path.startswith("/parent/upload"):
+            return _value(self.upload_limit)
+        if path == "/upload":
+            return _value(self.kid_upload_limit) + _MULTIPART_SLACK
+        if path.endswith("/edit") and path.startswith(("/video/", "/channel/", "/parent/content/")):
+            return _value(self.image_limit)
+        if path.startswith("/parent/channels/import"):
+            return _value(self.image_limit)
         return self.default_limit
 
     async def __call__(self, scope: Scope, receive: Receive,
