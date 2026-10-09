@@ -114,3 +114,31 @@ def test_kid_address_replaces_loopback_with_lan_name(app):
     app.state.config.server.mdns_name = "Curatables"
     assert kid_address(req("127.0.0.1")) == "http://curatables.local:8080/"
     assert kid_address(req("192.0.2.9")) == "http://192.0.2.9:8080/"
+
+
+def _fake_playlist(n):
+    from app.backends.base import VideoMetadata
+    return ("Songs", [VideoMetadata(video_id=f"vid{i:08d}x", title=f"Song {i}", channel="Ch",
+                                    duration=60, view_count=0, upload_date="", description="",
+                                    thumbnail_url="", extractor="youtube")
+                      for i in range(n)])
+
+
+def test_playlist_preview_shows_review_progress(authed_client):
+    from unittest.mock import patch
+    with patch("app.services.content.ContentService.fetch_preview",
+               return_value=_fake_playlist(3)):
+        resp = authed_client.post("/parent/add", data={
+            "url": "https://www.youtube.com/playlist?list=PL1234567890abcdef"})
+    assert resp.status_code == 200
+    assert 'id="review-progress" data-total="3"' in resp.text
+    assert 'id="next-unwatched"' in resp.text
+    js = authed_client.get("/static/parent/content_preview.js").text
+    assert "watched video(s)" in js
+
+
+def test_settings_page_has_section_nav(authed_client):
+    page = authed_client.get("/parent/settings").text
+    for anchor in ("settings-storage", "settings-password", "settings-advanced"):
+        assert f'href="#{anchor}"' in page and f'id="{anchor}"' in page
+    assert page.index('id="settings-password"') < page.index('id="settings-advanced"')

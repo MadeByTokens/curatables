@@ -61,12 +61,17 @@
     <label class="inline-check">
       <input type="checkbox" id="keep_forever" name="keep_forever" value="1"
              {% if video.keep_forever %}checked{% endif %}>
-      Keep forever (never auto-evict from cache)
+      Keep forever (never removed to save space)
     </label>
     <small class="muted d-block">
-      When unchecked, this video's files are deleted after
-      {{ request.app.state.config.storage.cache_days }} days and
-      re-downloaded on demand if a kid re-opens it.
+      {% if request.app.state.config.storage.cache_days > 0 %}
+      When unticked, it is removed from disk after nobody watched it for
+      {{ request.app.state.config.storage.cache_days }} days, and downloads
+      again the next time someone taps it.
+      {% else %}
+      Removing unwatched videos is turned off in Settings, so this only
+      matters if the disk gets full.
+      {% endif %}
     </small>
   </div>
 

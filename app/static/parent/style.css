@@ -623,3 +623,10 @@ label {
 .tablet-qr { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .tablet-qr img, .tablet-qr-img { background: #fff; border-radius: 6px; flex-shrink: 0; }
 .tablet-setup { align-items: center; margin-top: 24px; }
+
+.settings-nav {
+  position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 4px 16px;
+  padding: 10px 0; margin-bottom: 8px; background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+}
+.settings-nav a { font-weight: 600; }

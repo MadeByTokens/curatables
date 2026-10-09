@@ -29,4 +29,11 @@
     if (e.target.name === 'pin_style') { showPinPanel(); }
   });
   showPinPanel();
+
+  function openTargetDetails() {
+    var target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target && target.tagName === 'DETAILS') { target.open = true; }
+  }
+  window.addEventListener('hashchange', openTargetDetails);
+  openTargetDetails();
 })();

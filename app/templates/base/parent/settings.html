@@ -9,7 +9,14 @@
 <div class="flash flash-error">{{ error }}</div>
 {% endif %}
 
-<h2>Storage</h2>
+<nav class="settings-nav" aria-label="Settings sections">
+  <a href="#settings-storage">Storage</a>
+  {% if update_state %}<a href="#settings-updates">Updates</a>{% endif %}
+  <a href="#settings-password">Password</a>
+  <a href="#settings-advanced">Advanced</a>
+</nav>
+
+<h2 id="settings-storage">Storage</h2>
 <form method="POST" action="/parent/settings" class="mw-500">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="form-group">
@@ -18,20 +25,18 @@
     <small class="muted">Where videos, thumbnails and the database live. See "Move Data Directory" under Advanced, or docs/deployment.md for an external drive.</small>
   </div>
 
-  <div class="form-group">
-    <label for="cache_days">Cache Duration (days)</label>
+  <fieldset class="form-group">
+    <legend>Removing videos to save space</legend>
+    <label for="cache_days">Remove a video nobody has watched for (days)</label>
     <input type="number" id="cache_days" name="cache_days" value="{{ config.storage.cache_days }}" min="0" max="365">
-    <small class="muted">A downloaded video nobody has watched for this many days is removed from disk to save space, and downloads again the next time someone taps it. Videos marked "keep forever" and uploads are never removed. Set to 0 to keep everything. When the disk gets full, the least recently watched videos are removed first.</small>
-  </div>
-
-  <div class="form-group">
-    <label class="fw-normal">
+    <small class="muted d-block">It downloads again the next time someone taps it. 0 = never remove. When the disk gets full, the least recently watched videos go first. Uploads and videos set to <strong>Keep forever</strong> are never removed.</small>
+    <label class="fw-normal mt-6">
       <input type="checkbox" name="keep_forever_default" value="1"
              {% if config.storage.default_mode == 'library' %}checked{% endif %}>
-      Keep newly added videos forever
+      Set newly added videos to <strong>Keep forever</strong>
     </label>
-    <small class="muted d-block">Ticked: new videos are never removed to save space (you can still change each video). Unticked: they follow the rule above.</small>
-  </div>
+    <small class="muted d-block">You can change it for each video on its edit page.</small>
+  </fieldset>
 
   <div class="form-group">
     <label for="default_resolution">Default Resolution</label>
@@ -53,7 +58,7 @@
 </form>
 
 {% if update_state %}
-<h2 class="mt-40">Updates</h2>
+<h2 class="mt-40" id="settings-updates">Updates</h2>
 <div class="mw-500">
   <p class="fs-13 muted-2 mb-12">
     yt-dlp is the engine that fetches videos. Sites like YouTube change
@@ -105,7 +110,25 @@
 </div>
 {% endif %}
 
-<details {% if advanced_open %}open{% endif %} class="mt-40 mw-500">
+<h2 class="mt-40" id="settings-password">Change Password</h2>
+<form method="POST" action="/parent/settings/password" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="current_password">Current Password</label>
+    <input type="password" id="current_password" name="current_password" required>
+  </div>
+  <div class="form-group">
+    <label for="new_password">New Password</label>
+    <input type="password" id="new_password" name="new_password" required minlength="8">
+  </div>
+  <div class="form-group">
+    <label for="new_password2">Confirm New Password</label>
+    <input type="password" id="new_password2" name="new_password2" required>
+  </div>
+  <button type="submit" class="btn">Change Password</button>
+</form>
+
+<details {% if advanced_open %}open{% endif %} class="mt-40 mw-500" id="settings-advanced">
   <summary class="clickable fs-18 fw-bold txt">Advanced Settings</summary>
 
   <div class="mt-12 warn-bg warn-text r-4 fs-13 warn-box">
@@ -263,21 +286,4 @@
   {% endif %}
 </details>
 
-<h2 class="mt-40">Change Password</h2>
-<form method="POST" action="/parent/settings/password" class="mw-500">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <div class="form-group">
-    <label for="current_password">Current Password</label>
-    <input type="password" id="current_password" name="current_password" required>
-  </div>
-  <div class="form-group">
-    <label for="new_password">New Password</label>
-    <input type="password" id="new_password" name="new_password" required minlength="8">
-  </div>
-  <div class="form-group">
-    <label for="new_password2">Confirm New Password</label>
-    <input type="password" id="new_password2" name="new_password2" required>
-  </div>
-  <button type="submit" class="btn">Change Password</button>
-</form>
 {% endblock %}
