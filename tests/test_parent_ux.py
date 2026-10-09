@@ -64,3 +64,9 @@ def test_friendly_download_error():
     assert "disk is full" in friendly_download_error("[disk_full] no space")
     assert "Retry" in friendly_download_error("weird thing")
     assert friendly_download_error("") == ""
+
+
+def test_security_headers(client):
+    resp = client.get("/profiles")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"

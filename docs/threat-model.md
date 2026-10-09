@@ -260,8 +260,10 @@ the login) before handing it over.
 
 ### Browser-side hardening
 
-No `Content-Security-Policy`, `X-Frame-Options` or
-`X-Content-Type-Options` headers are sent. Inline `<script>` blocks
+Every response carries `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY` and `Referrer-Policy:
+strict-origin-when-cross-origin`. There is no `Content-Security-Policy`.
+Inline `<script>` blocks
 remain in `parent/content.html`, `content_edit.html`, `upload.html`,
 `content_preview.html` and `kid/upload.html`, plus a few inline
 `onsubmit`/`onchange` handlers in parent templates, so a strict CSP
@@ -395,7 +397,7 @@ addresses (a GET whose response is discarded unless it is an image).
 | `yt-dlp` extractors, Deno and `ffmpeg` parse untrusted media in-process / unsandboxed beyond systemd | Medium | Out of scope (upstream) |
 | Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
 | Re-download check compares length only | Low | Documented; use keep forever for favourites |
-| No CSP / framing / nosniff headers; inline scripts remain in some templates | Low | Known gap |
+| No CSP; inline scripts remain in some templates | Low | Known gap |
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
 | Wi-Fi PSK left in plaintext on the image's boot partition | Low (physical access) | Documented |

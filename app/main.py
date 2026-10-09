@@ -135,6 +135,15 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     static_dir = os.path.join(os.path.dirname(__file__), "static")
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        # YouTube embeds in the parent preview need an origin referrer.
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return response
+
     # First-run redirect
     @app.middleware("http")
     async def first_run_redirect(request: Request, call_next):
