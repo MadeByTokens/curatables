@@ -24,6 +24,9 @@ install, see [docs/deployment.md](docs/deployment.md)).
 - Media on any drive: `setup-external-drive.sh --media-only` keeps the
   database on the SD card and puts the videos on an exFAT, NTFS or ext4
   drive without formatting it.
+- Pi image: with an Ethernet cable plugged in, the Pi uses only the cable
+  and disconnects Wi-Fi; unplugging the cable brings Wi-Fi back. A Wi-Fi
+  network that doesn't show up in a scan is tried once as hidden.
 
 **Fixes that also help uploads and downloads**
 - Conversions had a one-hour limit a Pi 4 can hit on a movie; they now
