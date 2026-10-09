@@ -1,17 +1,17 @@
 {% extends "kid/base.html" %}
-{% from "kid/_video_grid.html" import video_grid %}
+{% from "kid/_video_grid.html" import video_grid with context %}
 {% set nav_active = "search" %}
 {% block content %}
 <div class="p-16 mw-600 mx-auto">
   <form method="GET" action="/search" role="search" class="search-form">
-    <label for="q" class="sr-only">Search videos</label>
+    <label for="q" class="sr-only">{{ _("Search videos") }}</label>
     <input type="search" id="q" name="q" value="{{ query }}" autocomplete="off"
            placeholder="&#128269;" class="search-input">
-    <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> Search</button>
+    <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> {{ _("Search") }}</button>
   </form>
 </div>
 
 {% if query %}
-{{ video_grid(videos, "&#129300;"|safe, "Nothing found. Try another word!") }}
+{{ video_grid(videos, "&#129300;"|safe, _("Nothing found. Try another word!")) }}
 {% endif %}
 {% endblock %}

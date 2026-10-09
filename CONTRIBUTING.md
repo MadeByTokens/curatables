@@ -177,6 +177,14 @@ Other conventions worth knowing:
   scripts from `app/static/`, so no `<script>` blocks, `on…=`
   attributes or `javascript:` links in templates (a test checks).
   Pass server values to scripts through `data-` attributes.
+- **Kid text is translated:** wrap new kid-screen text in
+  `{{ _("...") }}` (placeholders as `{{ _("Hi {name}", name=x) }}`),
+  kid-script text in `kidT('...')` plus an entry in
+  `app.i18n.JS_MESSAGES`, and kid-facing Python messages in
+  `app.i18n.SERVER_MESSAGES`. Add the translation to every
+  `app/i18n/<lang>.json`; `tests/test_i18n.py` fails on a missing
+  or unused entry. A new language is a new catalog plus a row in
+  `app.i18n.LANGUAGES`. The parent dashboard is English only.
 
 [`docs/architecture.md`](docs/architecture.md) documents the
 project conventions and layering; if you change one, update the

@@ -11,6 +11,7 @@ class Profile:
     theme: str = "base"
     search_mode: str = "disabled"   # "disabled" | "curated" | "open"
     pin_style: str = "digits"       # "digits" | "pictures"
+    language: str = "en"            # app.i18n.LANGUAGE_CODES
     created_at: str = ""
     id: int | None = None
     allowed_channel_ids: list[int] = field(default_factory=list)

@@ -1,6 +1,6 @@
 {% extends "kid/base.html" %}
-{% from "kid/_comments.html" import comment_node %}
-{% from "kid/_tag_chip.html" import tag_chip %}
+{% from "kid/_comments.html" import comment_node with context %}
+{% from "kid/_tag_chip.html" import tag_chip with context %}
 {% set kid = viewer and viewer.is_child %}
 {% block content %}
 <div class="player-page" id="watch"
@@ -14,8 +14,8 @@
       <source src="/media/video/{{ video.video_id }}" type="video/mp4">
     </video>
     <div class="end-card d-none" id="end-card">
-      <button type="button" class="end-btn" id="play-again"><span aria-hidden="true">&#128257;</span> Again</button>
-      <a href="/" class="end-btn"><span aria-hidden="true">&#127968;</span> Home</a>
+      <button type="button" class="end-btn" id="play-again"><span aria-hidden="true">&#128257;</span> {{ _("Again") }}</button>
+      <a href="/" class="end-btn"><span aria-hidden="true">&#127968;</span> {{ _("Home") }}</a>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
     {% if kid and viewer.allow_customize %}
     <a href="/video/{{ video.video_id }}/edit" class="customize-btn ai-c gap-6 accent-bg on-dark r-4 no-underline fs-14 fw-500 pill-btn">
       <span class="fs-16 lh-1" aria-hidden="true">&#9881;</span>
-      <span>Customize</span>
+      <span>{{ _("Customize") }}</span>
     </a>
     {% endif %}
   </div>
@@ -41,7 +41,7 @@
             class="reaction-btn{% if my_reaction == name %} active{% endif %}"
             aria-pressed="{{ 'true' if my_reaction == name else 'false' }}">
       <span aria-hidden="true">{{ emoji_char }}</span>
-      <span class="reaction-label">{{ name }}</span>
+      <span class="reaction-label">{{ _(name) }}</span>
       <span class="reaction-count" data-count-for="{{ name }}">{{ reaction_counts.get(name) or '' }}</span>
     </button>
     {% endfor %}
@@ -51,25 +51,25 @@
     {% for name, emoji_char in reactions_list %}
     <span class="reaction-btn cur-default">
       <span aria-hidden="true">{{ emoji_char }}</span>
-      <span class="reaction-label">{{ name }}</span>
+      <span class="reaction-label">{{ _(name) }}</span>
       <span class="reaction-count">{{ reaction_counts.get(name, 0) }}</span>
     </span>
     {% endfor %}
     <div class="reaction-hint">
-      Viewing as parent. <a href="/profiles">Pick a kid profile</a> to tap a reaction.
+      {{ _("Viewing as parent.") }} <a href="/profiles">{{ _("Pick a kid profile") }}</a> {{ _("to tap a reaction.") }}
     </div>
   </div>
   {% endif %}
 
   {% if kid and viewer.allow_tags %}
   <div id="tags" class="tags-row">
-    <span class="tags-label"><span aria-hidden="true">&#127991;</span> Tags:</span>
+    <span class="tags-label"><span aria-hidden="true">&#127991;</span> {{ _("Tags:") }}</span>
     <span id="tag-list">{% for t in tags %}{{ tag_chip(t, video.video_id, csrf_token) }}{% endfor %}</span>
     <form id="tag-add-form" method="POST" action="/video/{{ video.video_id }}/tags/add" class="d-ib ml-4" data-xhr="tag-add">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label for="tag-input" class="sr-only">New tag</label>
-      <input type="text" id="tag-input" name="tag" maxlength="40" placeholder="+ tag" class="tag-add-input">
-      <button type="submit" class="tag-add-btn">Add</button>
+      <label for="tag-input" class="sr-only">{{ _("New tag") }}</label>
+      <input type="text" id="tag-input" name="tag" maxlength="40" placeholder="{{ _('+ tag') }}" class="tag-add-input">
+      <button type="submit" class="tag-add-btn">{{ _("Add") }}</button>
     </form>
   </div>
   {% endif %}
@@ -80,16 +80,16 @@
 
   {% if (kid and viewer.allow_comments) or (viewer and viewer.is_parent) %}
   <div id="comments" class="comments-section">
-    <h3><span aria-hidden="true">&#128172;</span> Comments <span id="comment-count" data-total="{{ comments_total or 0 }}">{% if comments_total %}({{ comments_total }}){% endif %}</span></h3>
+    <h3><span aria-hidden="true">&#128172;</span> {{ _("Comments") }} <span id="comment-count" data-total="{{ comments_total or 0 }}">{% if comments_total %}({{ comments_total }}){% endif %}</span></h3>
 
     <form method="POST" action="/watch/{{ video.video_id }}/comment" class="comment-form" data-xhr="comment">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label for="comment-body" class="sr-only">Write a comment</label>
-      <textarea id="comment-body" name="body" rows="2" maxlength="500" placeholder="Write a comment..." required class="w-100 p-8 fs-16 bd-ccc r-4 bb ff-inherit"></textarea>
-      <button type="submit" class="comment-submit">Post</button>
+      <label for="comment-body" class="sr-only">{{ _("Write a comment") }}</label>
+      <textarea id="comment-body" name="body" rows="2" maxlength="500" placeholder="{{ _('Write a comment...') }}" required class="w-100 p-8 fs-16 bd-ccc r-4 bb ff-inherit"></textarea>
+      <button type="submit" class="comment-submit">{{ _("Post") }}</button>
     </form>
 
-    <p id="no-comments" class="muted fs-14{% if comments %} d-none{% endif %}">No comments yet.</p>
+    <p id="no-comments" class="muted fs-14{% if comments %} d-none{% endif %}">{{ _("No comments yet.") }}</p>
     <div id="comment-list">
       {% for c in comments %}{{ comment_node(c, video.video_id, viewer, csrf_token) }}{% endfor %}
     </div>
@@ -97,11 +97,11 @@
     {% if comments_total_pages and comments_total_pages > 1 %}
     <div class="mt-12 ta-c fs-14">
       {% if comments_page > 1 %}
-      <a href="/watch/{{ video.video_id }}?cp={{ comments_page - 1 }}#comments" class="accent-text tappable">&larr; Newer</a>
+      <a href="/watch/{{ video.video_id }}?cp={{ comments_page - 1 }}#comments" class="accent-text tappable">&larr; {{ _("Newer") }}</a>
       {% endif %}
       <span class="muted page-indicator">{{ comments_page }} / {{ comments_total_pages }}</span>
       {% if comments_page < comments_total_pages %}
-      <a href="/watch/{{ video.video_id }}?cp={{ comments_page + 1 }}#comments" class="accent-text tappable">Older &rarr;</a>
+      <a href="/watch/{{ video.video_id }}?cp={{ comments_page + 1 }}#comments" class="accent-text tappable">{{ _("Older") }} &rarr;</a>
       {% endif %}
     </div>
     {% endif %}

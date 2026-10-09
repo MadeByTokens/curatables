@@ -64,6 +64,16 @@
   </div>
 
   <div class="form-group">
+    <label for="language">Language</label>
+    <select id="language" name="language">
+      {% for code, name in language_choices %}
+      <option value="{{ code }}" {% if (profile and profile.language == code) or (not profile and code == request.app.state.config.server.kid_language) %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <small class="muted">Language of this kid's screens. Video titles stay as they are.</small>
+  </div>
+
+  <div class="form-group">
     <label for="theme">Theme</label>
     <select id="theme" name="theme">
       {% for val, label in theme_choices %}

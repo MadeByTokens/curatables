@@ -45,7 +45,7 @@ class ProfileService:
         return f"{base}-{n}"
 
     def create(self, name: str, display_name: str = "", pin: str = "",
-               pin_style: str = "digits",
+               pin_style: str = "digits", language: str = "en",
                avatar: str = "default", theme: str = "base",
                search_mode: str = "disabled",
                allowed_channel_ids: builtins.list[int] | None = None,
@@ -53,7 +53,7 @@ class ProfileService:
                **features: Any) -> int:
         profile = Profile(
             name=name, display_name=display_name,
-            pin=hash_pin(pin) if pin else "", pin_style=pin_style,
+            pin=hash_pin(pin) if pin else "", pin_style=pin_style, language=language,
             avatar=avatar, theme=theme, search_mode=search_mode,
             allowed_channel_ids=allowed_channel_ids or [],
             channels_restricted=(bool(allowed_channel_ids)

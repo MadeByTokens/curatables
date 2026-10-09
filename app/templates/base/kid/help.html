@@ -8,27 +8,27 @@
 {% endmacro %}
 {% block content %}
 <div class="help-page">
-  <h2>How it works</h2>
+  <h2>{{ _("How it works") }}</h2>
 
   <div class="help-grid">
-    {{ tile("&#127968;"|safe, "Home shows all your videos") }}
-    {{ tile("&#127916;"|safe, "Tap a video to watch it") }}
+    {{ tile("&#127968;"|safe, _("Home shows all your videos")) }}
+    {{ tile("&#127916;"|safe, _("Tap a video to watch it")) }}
     {% if viewer and viewer.is_child and viewer.allow_reactions %}
-    {{ tile("&#128522;"|safe, "Tap a face to say how you liked it") }}
+    {{ tile("&#128522;"|safe, _("Tap a face to say how you liked it")) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_comments %}
-    {{ tile("&#128172;"|safe, "Write a comment") }}
+    {{ tile("&#128172;"|safe, _("Write a comment")) }}
     {% endif %}
     {% if viewer and viewer.search_mode != 'disabled' %}
-    {{ tile("&#128269;"|safe, "Search for videos") }}
+    {{ tile("&#128269;"|safe, _("Search for videos")) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_upload %}
-    {{ tile("&#128228;"|safe, "Upload a video") }}
+    {{ tile("&#128228;"|safe, _("Upload a video")) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
-    {{ tile("&#128101;"|safe, "Switch to another kid") }}
+    {{ tile("&#128101;"|safe, _("Switch to another kid")) }}
     {% endif %}
-    {{ tile("&#129517;"|safe, "Lost? Tap Home to start over") }}
+    {{ tile("&#129517;"|safe, _("Lost? Tap Home to start over")) }}
   </div>
   <div class="clear"></div>
 </div>

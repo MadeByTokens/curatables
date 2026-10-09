@@ -9,6 +9,7 @@ from app.services.profiles import ProfileService
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 from app.constants import AVATAR_EMOJIS, PICTURE_PIN_LENGTH, PIN_PICTURES
+from app.i18n import gettext
 
 router = APIRouter(tags=["kid-profiles"])
 
@@ -20,6 +21,7 @@ def _viewer_for_profile(profile):
         profile_name=profile.name,
         display_name=profile.display_name,
         theme=profile.theme,
+        language=profile.language,
     )
 
 
@@ -56,10 +58,11 @@ def _pin_page(request: Request, profile, error: str | None = None,
     return render_kid_template(request, _viewer_for_profile(profile), "kid/pin.html", {
         "profile": profile,
         "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
-        "error": error,
+        "error": gettext(profile.language, error) if error else None,
         "locked": locked,
         "pin_pictures": PIN_PICTURES,
         "picture_pin_length": PICTURE_PIN_LENGTH,
+        "lang": profile.language,
     })
 
 

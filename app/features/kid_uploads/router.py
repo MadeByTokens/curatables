@@ -20,6 +20,7 @@ from app.dependencies import (
     get_channel_service, get_config, get_event_service,
     get_storage_service, get_upload_service, require_kid_feature,
 )
+from app.i18n import gettext
 from app.web import is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
@@ -57,7 +58,7 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
         "channels": channels,
         "selected_channel_id": selected_channel_id,
         "max_upload_bytes": _effective_max(config),
-        "error": error,
+        "error": gettext(viewer.language, error) if error else None,
         "sent_for_review": sent_for_review,
     })
     response.status_code = status_code
@@ -116,7 +117,8 @@ async def kid_upload(request: Request,
 
     def fail(message: str, status_code: int):
         if xhr:
-            return JSONResponse({"error": message}, status_code=status_code)
+            return JSONResponse({"error": gettext(viewer.language, message)},
+                                status_code=status_code)
         return _render_upload_page(
             request, viewer, channels_svc, config, error=message,
             selected_channel_id=channel_id, status_code=status_code)

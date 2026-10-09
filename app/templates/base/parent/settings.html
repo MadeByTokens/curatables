@@ -49,6 +49,16 @@
   </div>
 
   <div class="form-group">
+    <label for="kid_language">Kid screen language</label>
+    <select id="kid_language" name="kid_language">
+      {% for code, name in kid_languages %}
+      <option value="{{ code }}" {% if config.server.kid_language == code %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <small class="muted">Used on "Who's watching?" before a kid is picked. Each kid's own language is set under Kids → Edit.</small>
+  </div>
+
+  <div class="form-group">
     <label for="subtitle_langs">Subtitle Languages</label>
     <input type="text" id="subtitle_langs" name="subtitle_langs" value="{{ config.storage.subtitle_langs }}">
     <small class="muted">Comma-separated language codes (e.g. "en,pt,es"), "all" for all available, or empty for none.</small>

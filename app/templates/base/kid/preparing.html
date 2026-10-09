@@ -6,9 +6,9 @@
 <div class="preparing" role="status">
   <img class="preparing-thumb" src="/media/thumb/{{ video.video_id }}" alt="">
   <div class="preparing-icon" aria-hidden="true">&#8987;</div>
-  <h2>Getting your video ready&hellip;</h2>
+  <h2>{{ _("Getting your video ready…") }}</h2>
   <p class="preparing-title">{{ video.title }}</p>
-  <p class="preparing-hint">It will start by itself. You can wait here.</p>
-  <a class="big-home-btn" href="/"><span aria-hidden="true">&#127968;</span> Home</a>
+  <p class="preparing-hint">{{ _("It will start by itself. You can wait here.") }}</p>
+  <a class="big-home-btn" href="/"><span aria-hidden="true">&#127968;</span> {{ _("Home") }}</a>
 </div>
 {% endblock %}

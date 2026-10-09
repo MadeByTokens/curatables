@@ -8,20 +8,20 @@
 {% block body %}
 <header class="header">
   <h1>{{ viewer.kid_header_name if viewer else 'curatables' }}</h1>
-  <nav class="header-nav" aria-label="Main">
-    {{ nav_btn("/", "home", "&#127968;"|safe, "Home", nav_active) }}
+  <nav class="header-nav" aria-label="{{ _('Main') }}">
+    {{ nav_btn("/", "home", "&#127968;"|safe, _("Home"), nav_active) }}
     {% if viewer and viewer.search_mode != 'disabled' %}
-    {{ nav_btn("/search", "search", "&#128269;"|safe, "Search", nav_active) }}
+    {{ nav_btn("/search", "search", "&#128269;"|safe, _("Search"), nav_active) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_tags %}
-    {{ nav_btn("/tags", "tags", "&#127991;"|safe, "Tags", nav_active) }}
+    {{ nav_btn("/tags", "tags", "&#127991;"|safe, _("Tags"), nav_active) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_upload %}
-    {{ nav_btn("/upload", "upload", "&#128228;"|safe, "Upload", nav_active) }}
+    {{ nav_btn("/upload", "upload", "&#128228;"|safe, _("Upload"), nav_active) }}
     {% endif %}
-    {{ nav_btn("/help", "help", "&#10067;"|safe, "Help", nav_active) }}
+    {{ nav_btn("/help", "help", "&#10067;"|safe, _("Help"), nav_active) }}
     {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
-    {{ nav_btn("/profiles/switch", "switch", "&#128101;"|safe, "Switch", nav_active) }}
+    {{ nav_btn("/profiles/switch", "switch", "&#128101;"|safe, _("Switch"), nav_active) }}
     {% endif %}
   </nav>
 </header>

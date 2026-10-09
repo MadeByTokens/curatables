@@ -1,8 +1,8 @@
 {% extends "kid/_shell.html" %}
-{% block title %}Who's watching?{% endblock %}
+{% block title %}{{ _("Who's watching?") }}{% endblock %}
 {% block body %}
 <header class="header">
-  <h1>Who's watching?</h1>
+  <h1>{{ _("Who's watching?") }}</h1>
 </header>
 <main id="main">
 {% if profiles %}
@@ -13,7 +13,7 @@
     <button type="submit" class="profile-card">
       <span class="profile-avatar" aria-hidden="true">{{ avatars.get(p.avatar, '👤') }}</span>
       <span class="profile-name">{{ p.display_name or p.name }}</span>
-      {% if p.pin %}<span class="profile-lock" aria-label="needs a PIN">&#128274;</span>{% endif %}
+      {% if p.pin %}<span class="profile-lock" aria-label="{{ _('needs a PIN') }}">&#128274;</span>{% endif %}
     </button>
   </form>
   {% endfor %}
@@ -22,15 +22,15 @@
 {% else %}
 <div class="mw-500 p-24 ta-c bd-ddd r-8 picker-card">
   <div class="fs-48 mb-12" aria-hidden="true">👶</div>
-  <h2 class="mt-0">No kid profiles yet</h2>
+  <h2 class="mt-0">{{ _("No kid profiles yet") }}</h2>
   <p class="muted-2 mb-20">
-    A grown-up needs to create at least one kid profile before you can watch videos.
+    {{ _("A grown-up needs to create at least one kid profile before you can watch videos.") }}
   </p>
   <p>
-    <a href="/parent/login" class="tappable d-ib accent-bg on-dark no-underline r-4 fw-bold grownup-link">Grown-up sign in</a>
+    <a href="/parent/login" class="tappable d-ib accent-bg on-dark no-underline r-4 fw-bold grownup-link">{{ _("Grown-up sign in") }}</a>
   </p>
   <p class="mt-16 fs-13 muted-2">
-    After signing in, go to <code>Kids</code> in the parent dashboard to add a kid.
+    {{ _("After signing in, go to Kids in the parent dashboard to add a kid.") }}
   </p>
 </div>
 {% endif %}

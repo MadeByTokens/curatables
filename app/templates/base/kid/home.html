@@ -1,5 +1,5 @@
 {% extends "kid/base.html" %}
-{% from "kid/_video_grid.html" import video_grid %}
+{% from "kid/_video_grid.html" import video_grid with context %}
 {% set nav_active = "tags" if tag_name else ("home" if not channel else "") %}
 {% block content %}
 
@@ -19,7 +19,7 @@
       {% endif %}
     </div>
     {% if viewer and viewer.is_child and viewer.allow_customize and channel.owner_profile_id == viewer.profile_id %}
-    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-14 tappable channel-edit-btn">Edit Channel</a>
+    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-14 tappable channel-edit-btn">{{ _("Edit Channel") }}</a>
     {% endif %}
   </div>
 </div>
@@ -28,13 +28,13 @@
 {% if tag_name %}
 <div class="tag-filter">
   <span aria-hidden="true">&#127991;</span> <strong>{{ tag_name }}</strong>
-  <a href="/" class="tappable">&#10005; Clear</a>
+  <a href="/" class="tappable">&#10005; {{ _("Clear") }}</a>
 </div>
 {% endif %}
 
 {% if channels %}
-<nav class="channel-nav" aria-label="Channels">
-  <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>All</a>
+<nav class="channel-nav" aria-label="{{ _('Channels') }}">
+  <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>{{ _("All") }}</a>
   {% for ch in channels %}
   <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
     {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
@@ -42,17 +42,17 @@
 </nav>
 {% endif %}
 
-{{ video_grid(videos, "&#128250;"|safe, "No videos here yet. Ask a grown-up to add some!", reaction_counts, emojis) }}
+{{ video_grid(videos, "&#128250;"|safe, _("No videos here yet. Ask a grown-up to add some!"), reaction_counts, emojis) }}
 
 {% if total_pages > 1 %}
 <div class="pagination">
   {% set base_url = ("/tags/" ~ tag_name|urlencode) if tag_name else ("/channel/" ~ current_channel_id if current_channel_id else "/") %}
   {% if page > 1 %}
-  <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link" aria-label="Previous page">&larr;</a>
+  <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link" aria-label="{{ _('Previous page') }}">&larr;</a>
   {% endif %}
   <span class="page-info">{{ page }} / {{ total_pages }}</span>
   {% if page < total_pages %}
-  <a href="{{ base_url }}?page={{ page + 1 }}" class="page-link" aria-label="Next page">&rarr;</a>
+  <a href="{{ base_url }}?page={{ page + 1 }}" class="page-link" aria-label="{{ _('Next page') }}">&rarr;</a>
   {% endif %}
 </div>
 {% endif %}

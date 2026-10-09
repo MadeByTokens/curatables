@@ -11,7 +11,7 @@
       {% if reaction_counts and emojis and reaction_counts.get(v.video_id) %}
       <span class="card-reactions">
         {% for name, cnt in reaction_counts[v.video_id].items() if name in emojis %}
-        <span class="card-reaction"><span aria-hidden="true">{{ emojis[name] }}</span> {{ cnt }}<span class="sr-only"> {{ name }}</span></span>
+        <span class="card-reaction"><span aria-hidden="true">{{ emojis[name] }}</span> {{ cnt }}<span class="sr-only"> {{ _(name) }}</span></span>
         {% endfor %}
       </span>
       {% endif %}

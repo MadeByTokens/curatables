@@ -18,6 +18,9 @@ class ServerConfig:
     # vanilla installs don't ship a public counter surface; flip it on
     # in config.json on hosts that wire Curatables into Prometheus.
     prometheus_enabled: bool = False
+    # Language of the kid screens before a kid is picked (profile picker);
+    # each profile has its own.
+    kid_language: str = "en"
 
 
 @dataclass

@@ -11,6 +11,7 @@ class ViewerContext:
     allowed_channel_ids: list[int] | None = None  # None = unrestricted profile
     search_mode: str = "disabled"
     theme: str = "base"
+    language: str = "en"
     has_multiple_profiles: bool = False  # drives "Switch profile" affordance visibility
     allow_comments: bool = True
     allow_reactions: bool = True

@@ -60,7 +60,8 @@ _A demo library (generated test clips, no real data)._
   and approve each one; organise them into channels; share a channel's
   list with another family (`.ytc`, text or PDF) and import theirs.
 - **Per-child rules** — each kid gets a profile with an avatar, optional
-  PIN, theme (including a large-text, high-contrast one), the channels
+  PIN (digits or three pictures), language (English, Portuguese,
+  Spanish), theme (including a large-text, high-contrast one), the channels
   they may see, and switches for reactions, comments, tags, customizing,
   uploads, search and subtitles. New profiles start with "watch + react".
 - **Kid screen** — big picture buttons, an on-screen PIN pad, no ads, no
@@ -113,9 +114,9 @@ the server itself runs on Linux.
   silently. Design: [docs/design/v0.6-safety-agent.md](docs/design/v0.6-safety-agent.md).
 - **Sign in to video sites (v0.7).** Pair a YouTube account from a phone
   so downloads stop hitting bot checks and age gates.
-- **Later:** QR code to set up a kid's tablet, subscribe to another
-  family's shared lists, HTTPS with a local certificate, other
-  languages, Docker and NAS packages, offline web pages in the library
+- **Later:** subscribe to another family's shared lists, HTTPS with a
+  local certificate, the parent dashboard in other languages, Docker and
+  NAS packages, offline web pages in the library
   ([idea](docs/design/offline-web-pages.md)).
 
 ## Contributing

@@ -67,7 +67,7 @@ include = ["app*"]
 exclude = ["tests*", "docs*", "scripts*", "systemd*"]
 
 [tool.setuptools.package-data]
-app = ["templates/**/*.html", "static/**/*"]
+app = ["templates/**/*.html", "static/**/*", "i18n/*.json", "db/schema.sql", "db/migrations/*.sql", "db/migrations/*.py"]
 
 [tool.mypy]
 python_version = "3.11"

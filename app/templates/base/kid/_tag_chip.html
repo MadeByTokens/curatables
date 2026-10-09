@@ -4,7 +4,7 @@
   <form method="POST" action="/video/{{ video_id }}/tags/remove" class="d-inline m-0" data-xhr="tag-remove">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="tag_id" value="{{ tag.id }}">
-    <button type="submit" class="tag-remove" aria-label="Remove tag {{ tag.name }}">&times;</button>
+    <button type="submit" class="tag-remove" aria-label="{{ _('Remove tag {name}', name=tag.name) }}">&times;</button>
   </form>
 </span>
 {% endmacro %}

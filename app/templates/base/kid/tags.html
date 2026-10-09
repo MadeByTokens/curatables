@@ -2,7 +2,7 @@
 {% set nav_active = "tags" %}
 {% block content %}
 <div class="mw-700 mx-auto p-16">
-  <h2><span aria-hidden="true">&#127991;</span> My Tags</h2>
+  <h2><span aria-hidden="true">&#127991;</span> {{ _("My Tags") }}</h2>
 
   {% if tag_cloud %}
   <div class="tag-cloud tag-cloud-roomy">
@@ -18,7 +18,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-icon" aria-hidden="true">&#127991;</div>
-    <p>No tags yet. Open a video and add a tag under it!</p>
+    <p>{{ _("No tags yet. Open a video and add a tag under it!") }}</p>
   </div>
   {% endif %}
 </div>

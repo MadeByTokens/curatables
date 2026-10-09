@@ -1,36 +1,35 @@
 {% extends "kid/base.html" %}
 {% block content %}
-<h1 class="upload-page-title">Upload a Video</h1>
+<h1 class="upload-page-title">{{ _("Upload a Video") }}</h1>
 
 <p class="upload-intro">
-  Add a video from this device. You can send a video you recorded or
-  one that a grown-up saved for you.
+  {{ _("Add a video from this device. You can send a video you recorded or one that a grown-up saved for you.") }}
 </p>
 
 {% if error %}
 <div class="upload-error">{{ error }}</div>
 {% endif %}
 {% if sent_for_review %}
-<div class="upload-sent" role="status"><span aria-hidden="true">&#128236;</span> Sent! A grown-up will look at it first.</div>
+<div class="upload-sent" role="status"><span aria-hidden="true">&#128236;</span> {{ _("Sent! A grown-up will look at it first.") }}</div>
 {% endif %}
 
 <form id="upload-form" class="upload-form" method="POST" action="/upload" enctype="multipart/form-data" data-max-bytes="{{ max_upload_bytes }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label for="channel_id">Channel</label>
+  <label for="channel_id">{{ _("Channel") }}</label>
   <select id="channel_id" name="channel_id">
     {% for c in channels %}
-    <option value="{{ c.id }}" {% if selected_channel_id and c.id == selected_channel_id %}selected{% endif %}>{{ c.name }}{% if c.owner_profile_id == viewer.profile_id %} (yours){% endif %}</option>
+    <option value="{{ c.id }}" {% if selected_channel_id and c.id == selected_channel_id %}selected{% endif %}>{{ c.name }}{% if c.owner_profile_id == viewer.profile_id %} ({{ _("yours") }}){% endif %}</option>
     {% endfor %}
   </select>
-  <small class="upload-hint">Videos sent to a channel that isn't yours wait for a grown-up to look first.</small>
+  <small class="upload-hint">{{ _("Videos sent to a channel that isn't yours wait for a grown-up to look first.") }}</small>
 
-  <label for="title">Title (optional)</label>
-  <input type="text" id="title" name="title" placeholder="What is this video about?">
+  <label for="title">{{ _("Title (optional)") }}</label>
+  <input type="text" id="title" name="title" placeholder="{{ _('What is this video about?') }}">
 
-  <label for="file">Video file</label>
+  <label for="file">{{ _("Video file") }}</label>
   <input type="file" id="file" name="file" accept="video/*" required>
 
-  <button type="submit" class="upload-btn" id="start-btn">Send it</button>
+  <button type="submit" class="upload-btn" id="start-btn">{{ _("Send it") }}</button>
 
   <div class="upload-progress d-none" id="progress-wrap">
     <progress id="bar" value="0" max="100"></progress>
@@ -40,10 +39,10 @@
 
 <form id="new-channel-form" class="new-channel-form" method="POST" action="/upload/new-channel">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <h2>Make a new channel</h2>
-  <label for="new_name">Name</label>
-  <input type="text" id="new_name" name="name" required maxlength="64" placeholder="e.g. My Drawings">
-  <button type="submit" class="upload-btn">Create channel</button>
+  <h2>{{ _("Make a new channel") }}</h2>
+  <label for="new_name">{{ _("Name") }}</label>
+  <input type="text" id="new_name" name="name" required maxlength="64" placeholder="{{ _('e.g. My Drawings') }}">
+  <button type="submit" class="upload-btn">{{ _("Create channel") }}</button>
 </form>
 
 <script src="/static/kid/upload.js?v={{ asset_v }}"></script>

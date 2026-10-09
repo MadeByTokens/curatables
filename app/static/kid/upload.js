@@ -27,17 +27,17 @@
     if (e && e.preventDefault) { e.preventDefault(); }
     var file = fileInput.files && fileInput.files[0];
     if (!file) {
-      setStatus('Pick a video first.');
+      setStatus(kidT('Pick a video first.'));
       return false;
     }
     if (file.size > MAX_BYTES) {
-      setStatus('That video is too big (' + humanMB(file.size) + '). Ask a grown-up.');
+      setStatus(kidT('That video is too big ({size}). Ask a grown-up.', {size: humanMB(file.size)}));
       return false;
     }
 
     startBtn.disabled = true;
     bar.value = 0;
-    setStatus('Sending...');
+    setStatus(kidT('Sending...'));
 
     var fd = new FormData(form);
     var xhr = new XMLHttpRequest();
@@ -49,7 +49,7 @@
         if (evt.lengthComputable) {
           var pct = Math.floor((evt.loaded / evt.total) * 100);
           bar.value = pct;
-          setStatus(pct < 100 ? 'Sending: ' + pct + '%' : 'Getting it ready...');
+          setStatus(pct < 100 ? kidT('Sending: {pct}%', {pct: pct}) : kidT('Getting it ready...'));
         }
       };
     }
@@ -64,9 +64,9 @@
       } else if (data && data.error) {
         setStatus(data.error);
       } else if (xhr.status === 413) {
-        setStatus('This video is too big. Ask a grown-up to help.');
+        setStatus(kidT('This video is too big. Ask a grown-up to help.'));
       } else {
-        setStatus('That didn\u2019t work. Try again.');
+        setStatus(kidT('That didn\u2019t work. Try again.'));
       }
     };
 

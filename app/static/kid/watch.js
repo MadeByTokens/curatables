@@ -43,11 +43,11 @@
         showStatus('');
         if (done) { done(xhr); }
       } else if (xhr.status === 429) {
-        showStatus('Too many in a row. Wait a minute, then try again.');
+        showStatus(kidT('Too many in a row. Wait a minute, then try again.'));
       } else if (xhr.status === 403) {
-        showStatus('That didn’t work. Ask a grown-up to reload the page.');
+        showStatus(kidT('That didn’t work. Ask a grown-up to reload the page.'));
       } else {
-        showStatus('That didn’t work. Try again.');
+        showStatus(kidT('That didn’t work. Try again.'));
       }
     };
     xhr.send(body);

@@ -291,6 +291,7 @@ def get_viewer(
                 allowed_channel_ids=allowed,
                 search_mode=profile.search_mode,
                 theme=profile.theme,
+                language=profile.language,
                 has_multiple_profiles=profile_repo.count() > 1,
                 allow_comments=profile.allow_comments,
                 allow_reactions=profile.allow_reactions,

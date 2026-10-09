@@ -28,6 +28,7 @@ Unknown keys make startup fail, so check spelling.
 | `mdns_enabled` | `true` | Advertise the server as `curatables.local` on the network. |
 | `mdns_name` | `Curatables` | Name shown in Bonjour/Avahi browsers. |
 | `prometheus_enabled` | `false` | Expose counters at `/metrics` for Prometheus. |
+| `kid_language` | `en` | Language of the "Who's watching?" picker (`en`, `pt-BR`, `es`). Settings → Storage → Kid screen language. |
 
 ### `storage`
 
@@ -67,6 +68,7 @@ Stored in the database, not `config.json`.
 |---|---|
 | Name, avatar | Shown on the profile picker and in the header. |
 | PIN | Numbers (4–6 digits) or pictures (3 taps from 9 animals, for a child who doesn't read numbers yet). Keeps siblings out of each other's profiles; not a strong lock. Stored hashed. |
+| Language | English, Português (Brasil) or Español for this kid's screens. Video and channel names are not translated. |
 | Theme | Default, Playful, Calm, or Big & clear (large text, high contrast). |
 | Search | Off, or search within the approved library. |
 | What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles. New profiles start with reactions only. |

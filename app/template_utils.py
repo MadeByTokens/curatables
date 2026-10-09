@@ -1,5 +1,5 @@
-from __future__ import annotations
 """Template rendering for the kid UI."""
+from __future__ import annotations
 
 import hashlib
 import os
@@ -8,7 +8,12 @@ from datetime import date, datetime
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
+from jinja2 import pass_context
+
 from app.constants import THEME_CHOICES
+from app.i18n import (
+    LANGUAGES, context_language, gettext, jinja_gettext, jinja_language, js_messages,
+)
 from app.models import ViewerContext
 
 _TEMPLATES_ROOT = os.path.join(os.path.dirname(__file__), "templates", "base")
@@ -16,7 +21,7 @@ _TEMPLATES_ROOT = os.path.join(os.path.dirname(__file__), "templates", "base")
 _templates: Jinja2Templates | None = None
 
 
-def friendly_date(value: str | None, today: date | None = None) -> str:
+def friendly_date(value: str | None, today: date | None = None, lang: str = "en") -> str:
     """'today', 'yesterday', 'N days ago' or the date, from a
     'YYYY-MM-DD[ HH:MM:SS]' string. Pre-readers and early readers cope
     far better with these than with raw timestamps."""
@@ -28,11 +33,11 @@ def friendly_date(value: str | None, today: date | None = None) -> str:
         return str(value)
     delta = ((today or date.today()) - day).days
     if delta <= 0:
-        return "today"
+        return gettext(lang, "today")
     if delta == 1:
-        return "yesterday"
+        return gettext(lang, "yesterday")
     if delta < 7:
-        return f"{delta} days ago"
+        return gettext(lang, "{n} days ago", n=delta)
     return day.strftime("%d %b %Y").lstrip("0")
 
 
@@ -73,8 +78,17 @@ def friendly_download_error(raw: str | None) -> str:
     return "The download failed. Press Retry; if it keeps failing, update yt-dlp in Settings."
 
 
+@pass_context
+def _friendly_date_filter(ctx, value: str | None) -> str:
+    return friendly_date(value, lang=context_language(ctx))
+
+
 def register_filters(templates: Jinja2Templates) -> None:
-    templates.env.filters["friendly_date"] = friendly_date
+    templates.env.filters["friendly_date"] = _friendly_date_filter
+    templates.env.globals["_"] = jinja_gettext
+    templates.env.globals["page_language"] = jinja_language
+    templates.env.globals["js_messages"] = js_messages
+    templates.env.globals["kid_languages"] = LANGUAGES
     templates.env.filters["friendly_download_error"] = friendly_download_error
     templates.env.globals["asset_v"] = _asset_version()
     templates.env.globals["kid_themes"] = [key for key, _label in THEME_CHOICES if key != "base"]

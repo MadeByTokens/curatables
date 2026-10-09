@@ -40,11 +40,12 @@ class ProfileRepository(BaseRepository):
 
     def create(self, profile: Profile) -> int:
         cur = self.db.execute(
-            "INSERT INTO profiles (name, display_name, pin, pin_style, avatar, theme, "
-            "search_mode, channels_restricted, "
+            "INSERT INTO profiles (name, display_name, pin, pin_style, language, avatar, "
+            "theme, search_mode, channels_restricted, "
             + ", ".join(FEATURE_FIELDS) + ") "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?" + ", ?" * len(FEATURE_FIELDS) + ")",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?" + ", ?" * len(FEATURE_FIELDS) + ")",
             (profile.name, profile.display_name, profile.pin, profile.pin_style,
+             profile.language,
              profile.avatar, profile.theme, profile.search_mode,
              int(profile.channels_restricted or bool(profile.allowed_channel_ids)),
              *(int(bool(getattr(profile, f))) for f in FEATURE_FIELDS)),
@@ -56,7 +57,8 @@ class ProfileRepository(BaseRepository):
         return profile_id
 
     _UPDATABLE_FIELDS = {
-        "name", "display_name", "pin", "pin_style", "avatar", "theme", "search_mode",
+        "name", "display_name", "pin", "pin_style", "language", "avatar", "theme",
+        "search_mode",
         "channels_restricted", *FEATURE_FIELDS,
     }
 
@@ -110,6 +112,7 @@ class ProfileRepository(BaseRepository):
             name=d["name"],
             pin=d.get("pin", ""),
             pin_style=d.get("pin_style") or "digits",
+            language=d.get("language") or "en",
             display_name=d.get("display_name", ""),
             avatar=d.get("avatar", "default"),
             theme=d.get("theme", "base"),

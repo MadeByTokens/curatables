@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse
 
+from app.i18n import LANGUAGE_CODES
 from app.dependencies import (
     require_parent, get_auth_service, get_config, get_relocation_service,
 )
@@ -70,6 +71,7 @@ def settings_save(request: Request,
                   default_resolution: str = Form(...),
                   subtitle_langs: str = Form("en"),
                   keep_forever_default: str = Form(""),
+                  kid_language: str = Form(""),
                   viewer: ViewerContext = Depends(require_parent),
                   config: Config = Depends(get_config)):
     templates = request.app.state.templates
@@ -80,6 +82,8 @@ def settings_save(request: Request,
         config.storage.default_resolution = default_resolution
     config.storage.subtitle_langs = subtitle_langs.strip()
     config.storage.default_mode = "library" if keep_forever_default == "1" else "cache"
+    if kid_language in LANGUAGE_CODES:
+        config.server.kid_language = kid_language
     config.save()
     return templates.TemplateResponse(request, "parent/settings.html", {
         **ctx, "success": "Settings saved.", "error": None,

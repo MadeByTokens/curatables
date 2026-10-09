@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ page_language() }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ viewer.kid_header_name if viewer else 'curatables' }}{% endblock %}</title>
 <link rel="stylesheet" href="/static/kid/style.css?v={{ asset_v }}">
+<script src="/static/kid/i18n.js?v={{ asset_v }}"></script>
 {% if viewer and viewer.theme in kid_themes %}
 <link rel="stylesheet" href="/static/kid/theme-{{ viewer.theme }}.css?v={{ asset_v }}">
 {% endif %}
 {% block head_extra %}{% endblock %}
 </head>
-<body>
+<body data-messages="{{ js_messages(page_language())|tojson|forceescape }}">
 {% block body %}{% endblock %}
 </body>
 </html>

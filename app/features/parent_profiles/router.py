@@ -12,6 +12,7 @@ from app.constants import (
     AVATAR_CHOICES, PICTURE_PIN_LENGTH, PIN_PICTURES, PIN_STYLE_CHOICES,
     SEARCH_CHOICES, THEME_CHOICES,
 )
+from app.i18n import DEFAULT_LANGUAGE, LANGUAGES
 from app.models.profile import FEATURE_SWITCHES
 from app.web import form_str
 
@@ -28,6 +29,7 @@ def _profile_fields(form) -> dict:
     return {
         "avatar": _choice(form.get("avatar"), AVATAR_CHOICES, "default"),
         "theme": _choice(form.get("theme"), THEME_CHOICES, "base"),
+        "language": _choice(form.get("language"), LANGUAGES, DEFAULT_LANGUAGE),
         "search_mode": _choice(form.get("search_mode"), SEARCH_CHOICES, "disabled"),
         "channels_restricted": (form.get("channels_restricted") == "1"
                                 or bool(channel_ids)),
@@ -63,6 +65,7 @@ def _render_form(request: Request, content: ContentService, profile=None,
         "theme_choices": THEME_CHOICES,
         "search_choices": SEARCH_CHOICES,
         "pin_style_choices": PIN_STYLE_CHOICES,
+        "language_choices": LANGUAGES,
         "pin_pictures": PIN_PICTURES,
         "picture_pin_length": PICTURE_PIN_LENGTH,
         "selected_channel_ids": (profile.allowed_channel_ids or []) if profile else [],
