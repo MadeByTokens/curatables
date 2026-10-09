@@ -2,7 +2,7 @@
 Description=Curatables first-boot Wi-Fi setup from boot-partition file
 Documentation=https://github.com/MadeByTokens/curatables
 # Apply Wi-Fi from curatables-wifi.txt on the FAT boot partition. raspi-config's
-# Wi-Fi setup drives the running network manager (NetworkManager on bookworm,
+# Wi-Fi setup drives the running network manager (NetworkManager on bookworm and later,
 # via nmcli: `nmcli radio wifi on`, `nmcli device wifi connect`), so this MUST
 # run AFTER NetworkManager is active — running it earlier fails with "No
 # supported network connection manager found". local-fs.target guarantees the

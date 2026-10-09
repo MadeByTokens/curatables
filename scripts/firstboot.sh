@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-# Bookworm mounts the FAT boot partition at /boot/firmware; older layouts
+# Bookworm and later mount the FAT boot partition at /boot/firmware; older layouts
 # use /boot. Take the first that has our file.
 WIFI_FILE=""
 for cand in /boot/firmware/curatables-wifi.txt /boot/curatables-wifi.txt; do
@@ -48,7 +48,7 @@ if [ -z "$SSID" ]; then
 	exit 0
 fi
 
-# raspi-config nonint abstracts over the NetworkManager (bookworm) vs
+# raspi-config nonint abstracts over the NetworkManager (bookworm and later) vs
 # wpa_supplicant (older) difference and also unblocks rfkill + sets the
 # regulatory domain, which Wi-Fi needs before it will associate.
 if [ -n "$COUNTRY" ]; then

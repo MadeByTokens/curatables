@@ -19,7 +19,7 @@ assignees: ""
 ## Environment
 
 - Curatables version or commit hash:
-- Host OS (e.g. Ubuntu 24.04, Raspberry Pi OS Bookworm):
+- Host OS (e.g. Ubuntu 24.04, Raspberry Pi OS trixie):
 - Python version (`python3 --version`):
 - Install method (`scripts/install.sh`, manual venv, other):
 - Browser (only relevant for UI bugs; include iOS/Safari version
