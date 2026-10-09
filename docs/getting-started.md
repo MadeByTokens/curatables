@@ -340,7 +340,7 @@ Linux. It needs a little help elsewhere:
 - **Android**: Chrome resolves `.local` names; many other browsers don't.
 - **Any device**: as a fallback, use the box's **IP address** instead of
   the name. Find it by running `hostname -I` on the box (the first number,
-  e.g. `192.168.1.42`), then browse to `http://192.168.1.42:8080/`.
+  e.g. `192.168.50.42`), then browse to `http://192.168.50.42:8080/`.
 
 The deployment doc has a deeper checklist:
 [deployment.md → Verifying the mDNS setup](deployment.md#verifying-the-mdns-setup).

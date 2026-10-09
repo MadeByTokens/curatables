@@ -154,7 +154,7 @@ class TestAdvertiserHappyPath:
     @pytest.mark.asyncio
     async def test_start_registers_service_with_expected_fields(self):
         adv = _make_adv(name="Curatables", port=8080,
-                        ip_detector=_fake_ip_detector("192.168.1.42"))
+                        ip_detector=_fake_ip_detector("192.0.2.42"))
         assert await adv.start() is True
         assert adv.started is True
         assert len(FakeAsyncZeroconf.instances) == 1
@@ -166,7 +166,7 @@ class TestAdvertiserHappyPath:
         assert info.name == f"Curatables.{SERVICE_TYPE}"
         assert info.server == "curatables.local."
         assert info.port == 8080
-        assert info.addresses == [socket.inet_aton("192.168.1.42")]
+        assert info.addresses == [socket.inet_aton("192.0.2.42")]
         assert info.properties == {"path": "/"}
 
     @pytest.mark.asyncio
