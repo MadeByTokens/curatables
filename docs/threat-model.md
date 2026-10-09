@@ -364,6 +364,46 @@ What remains:
 - If an operator builds the venv as another user, the script still
   runs that venv's `python` as root. Keep `/opt/curatables` root-owned.
 
+## The root system helper
+
+On the Pi image the dashboard also changes things only root can: the
+Linux login password, SSH, Wi-Fi, USB drives, restarts and backups.
+`curatables-helper.service` runs [`syshelper/`](../syshelper/) **as
+root** on a Unix socket, `/run/curatables-helper/helper.sock`
+(`root:curatables`, mode 0660). It accepts connections only from root and
+the service user (checked with `SO_PEERCRED`).
+
+What bounds it:
+
+- It does a fixed list of actions (`syshelper/registry.py` lists what is
+  registered). Every parameter is type- and length-checked, device paths
+  must look like `/dev/<name>` and be a USB drive in `lsblk`, and nothing
+  is ever passed through a shell.
+- Destructive drive actions refuse the SD card and any partition holding
+  the system or the videos; formatting needs the literal word `ERASE`.
+- The Linux password and SSH pages ask for the parent password again,
+  and the two passwords must differ, so a stolen parent session or a
+  cracked parent hash does not give `sudo`.
+- Files in the service user's data dir are opened without following
+  symlinks and only when owned by that user; `config.json` is replaced
+  through a freshly created file handed over by its descriptor; copying
+  videos back to the SD card and restoring a backup run as the service
+  user. A planted symlink cannot redirect a root read or write.
+- Wi-Fi switches test the new network and roll back, so a compromised
+  service can disconnect the box only briefly.
+- Diagnostics reports remove Wi-Fi passwords, password hashes, the
+  session secret and API keys.
+
+What remains:
+
+- A compromised service process can do anything a parent can do from
+  the Box pages: switch Wi-Fi, format a USB drive that does not hold the
+  videos, reboot. It cannot set the Linux password without the parent
+  password, run commands, or touch the SD card's partitions.
+- The SD card's boot partition is trusted: `curatables-reset.txt` clears
+  the parent password. Physical access to the card is treated as full
+  access, as it is anyway (the card can simply be reflashed).
+
 ## Supply chain: `yt-dlp`, Deno, `ffmpeg`
 
 `yt-dlp` ships ~1,800 extractors, each arbitrary Python code, run
@@ -427,12 +467,14 @@ reaches ffprobe/ffmpeg, as with uploads.
 With `storage.media_path` set (`setup-external-drive.sh --media-only`)
 the database, config and logs stay on the SD card and only media goes to
 the drive, which may be exFAT or NTFS (mounted with the service user's
-uid/gid). If the configured media folder is missing at startup, the
-server refuses to start instead of creating it on the SD card; the empty
-mount point is `chattr +i`, so no process can write to the SD card
-through it while the drive is unplugged; a drop-in adds
-`RequiresMountsFor=` and `ReadWritePaths=` for the mount. Moving the
-library from the dashboard is refused in this mode.
+uid/gid), or FAT32 (files of 4 GB or more refused). If the configured
+media folder is missing, the server starts but never creates it on the SD
+card: kid pages show a "videos are resting" screen, writes are refused,
+and crash recovery, resumed downloads and cache eviction skip the
+library. The empty mount point is `chattr +i`, so no process can write
+to the SD card through it while the drive is unplugged; a drop-in adds
+`ReadWritePaths=-` for the mount. Moving the library from the dashboard's
+Settings is refused in this mode (Box, Drives moves the videos instead).
 
 ### Kid wishlist (YouTube search)
 

@@ -7,7 +7,8 @@ you're doing.
 
 | Doc | What it covers |
 |-----|----------------|
-| [getting-started.md](getting-started.md) | **Start here.** Step-by-step setup on a Raspberry Pi or spare laptop, for non-developers. |
+| [parents-guide.md](parents-guide.md) | **Start here with the ready-made Raspberry Pi image.** Setup from Windows, Mac or a phone, the Box pages, USB drives, backups, and what to do when something's wrong. No terminal. |
+| [getting-started.md](getting-started.md) | Installing Curatables yourself on a Raspberry Pi or spare laptop, with a terminal. |
 | [safety-model.md](safety-model.md) | What a child can and can't reach, what is recorded, and how to lock the tablet. |
 | [faq.md](faq.md) | Everyday questions: can't connect, video stuck, YouTube blocked, disk full, PINs. |
 | [backup.md](backup.md) | Nightly backups, restoring, testing a backup. |

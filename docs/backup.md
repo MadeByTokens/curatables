@@ -79,6 +79,16 @@ journalctl -u curatables-backup -n 20
 ls -l /var/lib/curatables-backups
 ```
 
+## From the dashboard (Pi image)
+
+**Box → Drives & backups** has **Back up now**, a **Restore** button for
+each snapshot (it stops the server, runs `restore.sh` as the service
+user and starts it again), and, when the videos are on a USB drive,
+**Also keep backups on the videos drive**. With that on, each nightly
+snapshot is also copied to `<media folder>/backups` on the drive, so the
+library survives the SD card dying (`storage.drive_backups` in
+`config.json`).
+
 ## Off-device copies (recommended)
 
 The timer protects against mistakes and a corrupted database, not

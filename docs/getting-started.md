@@ -9,6 +9,9 @@ for when something doesn't go to plan.
 By the end you'll have Curatables running on a small computer in your
 home, reachable from any phone, tablet, or laptop on your Wi-Fi.
 
+> **Using the ready-made Raspberry Pi image?** Follow
+> [parents-guide.md](parents-guide.md) instead: no terminal at all.
+>
 > **Already comfortable with Linux and systemd?** You can skip this
 > guide and read [deployment.md](deployment.md) instead — it's the
 > terse ops version of the same thing.
@@ -61,15 +64,17 @@ You'll also need:
 >    [Releases page](https://github.com/MadeByTokens/curatables/releases)
 >    (or build it yourself with [`pi-gen/build.sh`](../pi-gen/README.md)).
 > 2. In **Raspberry Pi Imager**, choose **"Use custom"** and select that
->    `.img.xz`. Click the **gear** and set your **login username/password**
->    (and Wi-Fi, if you like). Write the card.
+>    `.img.xz`. Customising the settings is optional: the dashboard asks
+>    for the Linux login password on first start. Write the card.
 > 3. *(Wi-Fi alternative)* After writing, the card shows a small **boot**
 >    drive on your computer. Open **`curatables-wifi.txt`** on it and fill
 >    in `country`, `ssid`, `psk`. Wired Ethernet needs nothing.
 > 4. Put the card in the Pi, power on, wait ~2 minutes, then open
 >    **`http://curatables.local/parent/`** (no `:8080` on the image) and
 >    set your parent password right away — until you do, anyone on your
->    network could. Then continue from
+>    network could — then a different password for the box's Linux login.
+>    The [parents' guide](parents-guide.md) covers all of this without a
+>    terminal. Then continue from
 >    [Add your first video](#add-your-first-video). Kids use
 >    `http://curatables.local/`.
 >
@@ -373,7 +378,12 @@ which the appliance image and `scripts/install.sh --systemd` install. See
 
 ### I forgot the parent password
 
-The password hash is stored in `config.json` in your data folder
+**On the Raspberry Pi image:** turn the box off, put the SD card in any
+computer, create an empty file named `curatables-reset.txt` on the part
+the computer can open, and start the box again. See
+[parents-guide.md → Something's wrong](parents-guide.md#7-somethings-wrong).
+
+**On your own install:** the password hash is stored in `config.json` in your data folder
 (`/home/curatables/curatables-data/` for a permanent install,
 `~/curatables-data/` for a try-out). Clearing it puts Curatables back
 into first-run mode so you can set a new one; nothing else is lost:

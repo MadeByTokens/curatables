@@ -21,7 +21,18 @@ terminal needed after flashing.
     `config.json` into `/var/lib/curatables-backups` (see
     [`../docs/backup.md`](../docs/backup.md)).
   - `curatables-firstboot.service` — applies the Wi-Fi file below.
+  - `curatables-helper.service` — the root system helper behind the
+    dashboard's **Box** pages (Linux password, SSH, Wi-Fi, USB drives,
+    backups, diagnostics). See
+    [`../docs/threat-model.md`](../docs/threat-model.md#the-root-system-helper).
+  - `curatables-recovery.service` and `curatables-diagnose.service` —
+    act on `curatables-reset.txt` and `curatables-diagnose.txt` on the
+    boot partition (see below).
+  - `curatables-mdns-unicast.service` — answers `curatables.local`
+    directly for routers that drop multicast to Wi-Fi clients.
 - mDNS via Avahi → reachable at `curatables.local` on the LAN.
+- A NetworkManager dispatcher hook that keeps Wi-Fi on standby while an
+  Ethernet cable is connected.
 
 ## Networking (no terminal needed)
 
@@ -40,22 +51,36 @@ terminal needed after flashing.
   `curatables-firstboot.log` on the same partition (Raspberry Pi OS keeps
   the system journal in RAM only, so it is gone after a power cycle).
 
-**No default passwords.** The OS login user *and* the parent dashboard
-password are both set by you, not baked in:
+**No default passwords, SSH off.** The OS login *and* the parent
+dashboard password are both set by you, not baked in. The first visit to
+`curatables.local` opens a two-step setup:
 
-- **OS / SSH login:** set the username, password (or SSH key), and Wi-Fi
-  in **Raspberry Pi Imager → ⚙ (advanced options)** before flashing. The
-  image ships with no login password on purpose.
-- **Parent dashboard:** the app ships with no password; the first visit
-  to `curatables.local` redirects to a one-time setup page where you
-  choose it. Do it within 30 minutes of powering on; after that the page
-  says setup has timed out, and unplugging and replugging the Pi
-  reopens it.
+1. **Parent dashboard password.** Do it within 30 minutes of powering on;
+   after that the page says setup has timed out, and unplugging and
+   replugging the Pi reopens it.
+2. **Linux login password** for the `admin` account, which must differ
+   from the dashboard password. A checkbox turns SSH on (it is off in
+   the image). A password already set with Raspberry Pi Imager's
+   settings or a `userconf.txt` can be kept by typing it.
+
+Raspberry Pi Imager's settings, `userconf.txt` and an empty `ssh` file on
+the boot partition still work for people who prefer them. If you change
+the hostname in Imager, the box answers on `<that name>.local` instead.
+
+**Recovery from the boot partition.** Besides `curatables-wifi.txt`, an
+empty `curatables-reset.txt` clears the parent password (setup opens
+again on the next start), and an empty `curatables-diagnose.txt` makes
+the box write `curatables-diagnostics-report.txt` there. Each is used
+once and renamed to `…-done.txt`. `curatables-README.txt` on the card
+explains them. Parents' instructions:
+[`../docs/parents-guide.md`](../docs/parents-guide.md).
 
 ## After flashing
 
-- **Media on a USB drive.** An SD card is small and wears out; move the
-  library to a USB disk with `scripts/setup-external-drive.sh`. See
+- **Media on a USB drive.** An SD card is small and wears out; plug in a
+  USB disk and press **Use for videos** on **Box → Drives & backups**
+  (exFAT, NTFS, FAT32 and ext4 drives work). Underneath it runs
+  `scripts/setup-external-drive.sh --media-only`; see
   [Media on an external drive](../docs/deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk).
 - **Upgrading Curatables.** The image has no `.git`, so clone the repo on
   the Pi and run the installer, which takes a backup first:

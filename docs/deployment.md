@@ -202,10 +202,13 @@ yourself (`iptables-persistent`, `nftables` restore service, etc.).
 
 An SD card is small and wears out under constant video writes, so on a
 Pi it is worth keeping the library on a USB hard drive or SSD.
-`scripts/setup-external-drive.sh` has two modes. Neither formats
-anything.
+On the Pi image, **Box → Drives & backups** in the dashboard does all of
+this with buttons (use a drive, move, eject, reconnect, repair, format);
+see [parents-guide.md](parents-guide.md#5-usb-drives-for-more-videos).
+Underneath, it runs `scripts/setup-external-drive.sh`, which has two
+modes. Neither formats anything.
 
-### Media only (any exFAT, NTFS or ext4 drive)
+### Media only (any exFAT, NTFS, FAT32 or ext4 drive)
 
 The database, settings and logs stay on the SD card's ext4, the only
 filesystem here that keeps SQLite safe through a power cut. Videos,
@@ -220,7 +223,9 @@ sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
 
 The script:
 
-- refuses FAT32, which cannot hold files over 4 GB.
+- accepts FAT32 with a warning: curatables then refuses any file of
+  4 GB or more (the most FAT32 can hold) with a clear message, and never
+  evicts videos to make room for one.
 - stops curatables.
 - makes the empty mount point `/mnt/curatables-media` immutable
   (`chattr +i`), so nothing can be written to the SD card through it
@@ -234,16 +239,20 @@ The script:
   `<data dir>/media.before-external-<date>`.
 - sets `storage.media_path` to that folder and adds the mount to
   `storage.import_roots`, so the Import page can list the drive.
-- adds a drop-in with `RequiresMountsFor=` and `ReadWritePaths=` for the
-  mount, then starts curatables again.
+- adds a drop-in with `ReadWritePaths=-/mnt/curatables-media`, then
+  starts curatables again.
 
-With `storage.media_path` set, the server refuses to start if that folder
-is missing, so a drive that failed to mount never leads to an empty
-library spread over the SD card.
+With `storage.media_path` set and that folder missing (the drive is
+unplugged or did not mount), the server still starts so the parent can
+reconnect the drive from the dashboard, but it stores nothing: kids see a
+"videos are resting" screen, the parent sees a notice, and startup crash
+recovery, resumed downloads and the cache sweep leave the library alone.
+Nothing can be written to the SD card through the immutable mount point.
 
-exFAT has no journal: after an unplug or a power cut, check it with
-`sudo fsck.exfat /dev/sda1`. An NTFS drive that Windows did not shut down
-cleanly will not mount until Windows has checked it.
+exFAT and FAT32 have no journal: after an unplug or a power cut, use
+**Check & repair** on the Drives page (or `sudo fsck.exfat /dev/sda1`).
+An NTFS drive that Windows did not shut down cleanly will not mount until
+it is repaired (`ntfsfix -d`, which **Check & repair** runs).
 
 ### Whole library (ext4 only)
 

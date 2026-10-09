@@ -29,14 +29,17 @@ Unknown keys make startup fail, so check spelling.
 | `mdns_name` | `Curatables` | Name shown in Bonjour/Avahi browsers. |
 | `prometheus_enabled` | `false` | Expose counters at `/metrics` for Prometheus. |
 | `kid_language` | `en` | Language of the "Who's watching?" picker (`en`, `pt-BR`, `es`). Settings → Storage → Kid screen language. |
+| `helper_socket` | `/run/curatables-helper/helper.sock` | Socket of the root system helper behind the Box pages (Pi image only). Without it, those pages say they only work on the Pi image. |
 
 ### `storage`
 
 | Key | Default | Settings page | Meaning |
 |---|---|---|---|
 | `path` | data dir | (read-only) | Where everything lives. Set by `--data-dir`. |
-| `media_path` | empty | (read-only) | Where videos, uploads, thumbnails and channel pictures live, if not inside `path`. Set by `setup-external-drive.sh --media-only`, so the media can be on an exFAT or NTFS drive while the database stays on the SD card. If it is set and missing, the server refuses to start. |
+| `media_path` | empty | (read-only) | Where videos, uploads, thumbnails and channel pictures live, if not inside `path`. Set by `setup-external-drive.sh --media-only`, so the media can be on an exFAT, NTFS or FAT32 drive while the database stays on the SD card. If it is set and missing, the server starts without it: kids see a "videos are resting" screen and nothing is stored. |
 | `import_roots` | `[]` | Import from a drive | Folders the [Import](getting-started.md#import-videos-already-on-a-drive) page may list video files from. The library's own folders are never listed. |
+| `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives | USB drives opened with *Import videos from it* are mounted in folders here; each mounted one is an import folder too. |
+| `drive_backups` | `false` | Box → Drives | Also copy each nightly backup to `<media_path>/backups` on the videos drive. |
 | `cache_days` | `30` | Storage | A downloaded video nobody watched for this many days is removed from disk and downloads again when next tapped. `0` keeps everything. |
 | `default_mode` | `cache` | Storage → "Keep newly added videos forever" | `library` marks new videos keep-forever. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
@@ -61,6 +64,7 @@ Unknown keys make startup fail, so check spelling.
 | `session_timeout_hours` | `24` | How long a parent (or kid) sign-in lasts. |
 | `session_epoch` | `0` | Bumped on every password change; sessions from an older epoch are signed out. |
 | `setup_window_minutes` | `30` | While no password is set, the setup page only works for this many minutes after the server starts; restart it to reopen. `0` keeps it open. |
+| `system_setup_done` | `false` | First-run step 2 (the Linux login password) is done. Only asked for on the Pi image. `curatables-reset.txt` on the SD card sets it back to `false`. |
 
 ### `wishlist`
 

@@ -536,7 +536,8 @@ unplugged drive) without corruption or stuck state.
 3. **`recover_from_crash`** (`app/db/schema.py`), on every start:
    `downloading` → `pending`; `.part` files deleted; `ready` videos whose
    file is missing → `pending`. If most `ready` videos are missing at once
-   (an unmounted external drive) it changes nothing and logs why.
+   (an unmounted external drive) it changes nothing and logs why; if the
+   media folder itself is missing it skips the file checks altogether.
 4. **Mount guard.** With `CURATABLES_REQUIRE_MOUNT=1` (set by
    `scripts/setup-external-drive.sh`) `run.py` refuses to start when the
    data dir is not a mount point, rather than serving an empty library

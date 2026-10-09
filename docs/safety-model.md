@@ -84,9 +84,11 @@ from leaving the browser. On the child's tablet:
 - Until you set the parent password the first time, **anyone on your
   network** who opens the dashboard can set it. Do that first, right
   after installing.
-- With the library on an external drive, Curatables refuses to start if
-  the drive is missing, so it never comes up as a fresh install that
-  asks for a new password.
+- With only the videos on a USB drive, the settings and password stay on
+  the SD card: if the drive is missing, kids see a "videos are resting"
+  screen and nothing is stored until it is back. With the whole library
+  on the drive, Curatables refuses to start without it, so it never
+  comes up as a fresh install that asks for a new password.
 
 ## What is recorded
 

@@ -113,13 +113,16 @@ PIN → Pictures).
 ## The box
 
 **Where are the logs?**
+On the Pi image, **Box → Diagnostics** shows recent errors and downloads
+a report with the logs (passwords removed). From a terminal:
 `sudo journalctl -u curatables -n 100` (add `-f` to follow). Older logs
 are in `logs/` inside the data dir.
 
 **The external drive was unplugged.**
-Curatables stops and waits. Plug it back in and run
-`sudo mount -a && sudo systemctl restart curatables`, or reboot. An exFAT
-drive should be checked first: `sudo fsck.exfat /dev/sda1`.
+Kids see a "videos are resting" screen and nothing new is stored. Plug
+it back in and press **Reconnect** on **Box → Drives & backups**; if it
+won't reconnect, press **Check & repair**. Without the dashboard:
+`sudo mount -a && sudo systemctl restart curatables`.
 
 **I forgot the parent password.**
 See [getting-started.md → I forgot the parent

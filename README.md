@@ -15,7 +15,7 @@ child's screen can be made simpler still.
 
 | You have… | Do this |
 |---|---|
-| A **Raspberry Pi 4 or 5** | Flash the ready-made image, boot, open `http://curatables.local`, set a password. [pi-gen/README.md](pi-gen/README.md) |
+| A **Raspberry Pi 4 or 5** | Flash the ready-made image, boot, open `http://curatables.local`, set two passwords. Everything else (Wi-Fi, USB drives, backups, diagnostics) is in the dashboard: see the [parents' guide](docs/parents-guide.md), written for Windows, Mac and phone users. |
 | A spare **Linux** laptop / mini-PC (Debian, Ubuntu) | Follow the [step-by-step guide](docs/getting-started.md), or run `sudo scripts/install.sh --systemd`. |
 | Want to try it on your computer | `scripts/install.sh && .venv/bin/python run.py`, then open `http://localhost:8080/parent/`. |
 
@@ -104,7 +104,8 @@ the server itself runs on Linux.
 
 ## Documentation
 
-- **Parents:** [getting started](docs/getting-started.md) ·
+- **Parents:** [parents' guide (Pi image)](docs/parents-guide.md) ·
+  [getting started](docs/getting-started.md) ·
   [safety](docs/safety-model.md) · [FAQ](docs/faq.md) ·
   [backups](docs/backup.md) · [upgrading](docs/upgrade.md)
 - **Running the server:** [deployment](docs/deployment.md) ·

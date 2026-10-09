@@ -22,13 +22,35 @@ install, see [docs/deployment.md](docs/deployment.md)).
   on the drive is untouched until its import has finished. Running
   imports show on the dashboard.
 - Media on any drive: `setup-external-drive.sh --media-only` keeps the
-  database on the SD card and puts the videos on an exFAT, NTFS or ext4
-  drive without formatting it.
+  database on the SD card and puts the videos on an exFAT, NTFS, FAT32
+  or ext4 drive without formatting it.
 - Pi image: with an Ethernet cable plugged in, the Pi uses only the cable
   and disconnects Wi-Fi; unplugging the cable brings Wi-Fi back. A Wi-Fi
   network that doesn't show up in a scan is tried once as hidden.
 - `curatables.local` works behind routers that drop multicast on Wi-Fi:
   the Pi also answers the lookup directly to the device that asked.
+- Pi image, everything from the dashboard: a new **Box** section changes
+  the Linux login password and SSH, switches Wi-Fi (testing the new
+  network first and going back if it fails), and restarts Curatables,
+  the network or the box.
+- Two-step first-run setup on the Pi image: after the parent password,
+  a different password for the box's Linux login. The image now ships
+  with SSH off. Password managers can generate and save both passwords.
+- **Box → Drives & backups**: use a USB drive for the videos, move them
+  to another drive or back to the SD card, eject, reconnect, check and
+  repair, format as exFAT or ext4, open a drive for importing; a power
+  warning; back up now, restore, and keep backups on the videos drive.
+  FAT32 drives work, with a 4 GB per-file limit.
+- If the videos drive is missing, Curatables still starts: kids see a
+  calm "videos are resting" screen and the dashboard says how to
+  reconnect, while nothing in the library is reset or evicted.
+- **Box → Diagnostics**: health checks with what to do for each, buttons
+  for the usual fixes, and a downloadable report with passwords removed.
+- SD-card recovery files: `curatables-reset.txt` (forgotten parent
+  password) and `curatables-diagnose.txt` (a report written to the card),
+  next to `curatables-wifi.txt`, explained in `curatables-README.txt`.
+- New [parents' guide](docs/parents-guide.md) for the Pi image, written
+  for Windows, Mac and phone users.
 
 **Fixes that also help uploads and downloads**
 - Conversions had a one-hour limit a Pi 4 can hit on a movie; they now
