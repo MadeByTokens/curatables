@@ -9,7 +9,6 @@ XMLHttpRequest upload progress.
 
 from __future__ import annotations
 
-import json
 import logging
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
@@ -192,9 +191,9 @@ async def kid_upload(request: Request,
     except ProbeError as e:
         logger.info("Kid %s upload rejected: probe failure: %s", viewer.profile_id, e)
         return fail("We couldn't read this video file. Try a different one.", 400)
-    except InsufficientDiskSpace as e:
+    except InsufficientDiskSpace:
         return fail("There isn't enough free space on this computer. Ask a grown-up.", 507)
-    except UploadError as e:
+    except UploadError:
         return fail("Upload failed. Try again.", 400)
 
     events.log(

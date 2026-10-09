@@ -34,11 +34,12 @@ hr
 m1=$(grep -ro 'style="' "$BASE_TPL" | wc -l | tr -d ' ')
 printf "M1  inline style= in %s ......... %s   (target 0)\n" "$BASE_TPL" "$m1"
 
-# M2 — hardcoded #2a9d8f literals in app/  (target 1 = token def only)
-m2=$(grep -roI --exclude-dir=__pycache__ '#2a9d8f' app/ | wc -l | tr -d ' ')
-printf "M2  #2a9d8f literals in app/ ..... %s   (target 1)\n" "$m2"
+# M2 — hardcoded accent (#1f7a70) literals in app/  (target 1 = token def only)
+m2=$(grep -roI --exclude-dir=__pycache__ '#1f7a70' app/ | wc -l | tr -d ' ')
+printf "M2  #1f7a70 literals in app/ ..... %s   (target 1)\n" "$m2"
 
 # M3 — total app CSS size  (target <= 22528 bytes)
+# shellcheck disable=SC2086  # CSS_FILES is a list of paths
 m3=$(cat $CSS_FILES 2>/dev/null | wc -c | tr -d ' ')
 printf "M3  total app CSS bytes .......... %s   (target <= 22528)\n" "$m3"
 

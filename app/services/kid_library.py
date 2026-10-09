@@ -2,7 +2,6 @@ from __future__ import annotations
 """Kid library service — per-kid video overrides, tags, and channel bookmarks."""
 
 import dataclasses
-import os
 from pathlib import Path
 
 from app.services.images import validate_image

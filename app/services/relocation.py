@@ -93,7 +93,7 @@ class RelocationService:
         except OSError as e:
             raise RelocationError(
                 f"Cannot write to '{parent}': {e}. Check permissions."
-            )
+            ) from e
 
         # No in-flight downloads — background threads capture the old
         # db_path and would keep writing to the pre-move location.
@@ -111,7 +111,7 @@ class RelocationService:
         except OSError as e:
             raise RelocationError(
                 f"Could not read free space on '{parent}': {e}"
-            )
+            ) from e
         required = self.video_repo.sum_file_size() + _HEADROOM_BYTES
         if usage.free < required:
             free_gb = usage.free / 1_073_741_824

@@ -106,8 +106,8 @@ class YtdlpBackend(VideoBackend):
             try:
                 from yt_dlp.networking.impersonate import ImpersonateTarget
                 opts["impersonate"] = ImpersonateTarget.from_str(self.impersonate)
-            except (ImportError, Exception):
-                pass  # curl_cffi not available, skip silently
+            except Exception as e:
+                logger.info("Browser impersonation unavailable (%s); continuing without it", e)
         # Cookie auth — fallback or supplement
         if self.cookies_file:
             opts["cookiefile"] = self.cookies_file

@@ -23,7 +23,7 @@ from pathlib import Path
 
 from app.models import Video
 from app.repositories import VideoRepository, ChannelRepository
-from app.services.storage import StorageService, InsufficientDiskSpace
+from app.services.storage import StorageService
 from app.services.media_probe import MediaProbeService, UnsupportedCodec, ProbeError
 from app.services.thumbnails import ThumbnailService
 

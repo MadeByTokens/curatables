@@ -6,7 +6,6 @@ arbitrary requests, and the parent_logins counter records the
 right outcome label on success/failure/setup.
 """
 
-import pytest
 
 from app.services.metrics import MetricsService
 
@@ -56,10 +55,10 @@ class TestMetricsRouteEnabled:
         # We don't pin the exact number because /metrics itself bumps
         # the GET counter; just assert it crossed our floor.
         line = next(
-            (l for l in body.splitlines()
-             if l.startswith("curatables_http_requests_total")
-             and 'method="GET"' in l
-             and 'status_class="2xx"' in l),
+            (line for line in body.splitlines()
+             if line.startswith("curatables_http_requests_total")
+             and 'method="GET"' in line
+             and 'status_class="2xx"' in line),
             None,
         )
         assert line is not None, body
@@ -73,9 +72,9 @@ class TestParentLoginCounter:
         client.post("/parent/login", data={"password": "wrong"})
         body = client.get("/metrics").content.decode()
         line = next(
-            (l for l in body.splitlines()
-             if l.startswith("curatables_parent_logins_total")
-             and 'outcome="failure"' in l),
+            (line for line in body.splitlines()
+             if line.startswith("curatables_parent_logins_total")
+             and 'outcome="failure"' in line),
             None,
         )
         assert line is not None, body
@@ -86,9 +85,9 @@ class TestParentLoginCounter:
         client.post("/parent/login", data={"password": "testpass"})
         body = client.get("/metrics").content.decode()
         line = next(
-            (l for l in body.splitlines()
-             if l.startswith("curatables_parent_logins_total")
-             and 'outcome="success"' in l),
+            (line for line in body.splitlines()
+             if line.startswith("curatables_parent_logins_total")
+             and 'outcome="success"' in line),
             None,
         )
         assert line is not None, body
@@ -105,9 +104,9 @@ class TestParentLoginCounter:
         )
         body = client.get("/metrics").content.decode()
         line = next(
-            (l for l in body.splitlines()
-             if l.startswith("curatables_parent_logins_total")
-             and 'outcome="setup"' in l),
+            (line for line in body.splitlines()
+             if line.startswith("curatables_parent_logins_total")
+             and 'outcome="setup"' in line),
             None,
         )
         assert line is not None, body
@@ -202,7 +201,6 @@ class TestDownloadCounter:
         metrics.record_download("failure")
         metrics.record_download("disk_full")
 
-        body = client.get("/metrics").content.decode()
         assert _scrape_counter(client, "curatables_downloads_total",
                                'outcome="success"') >= 2.0
         assert _scrape_counter(client, "curatables_downloads_total",

@@ -84,3 +84,17 @@ markers = [
 # Skip the smoke suite in the default fast unit run. Re-enable explicitly
 # with `pytest -m smoke` (or override addopts) for E2E coverage.
 addopts = "-m 'not smoke'"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["tests/fixtures", "pi-gen"]
+
+[tool.ruff.lint]
+# Correctness-focused set: pyflakes, pycodestyle errors, bugbear, and a
+# few safe modernisations. Style nits are left to review.
+select = ["E4", "E7", "E9", "F", "B", "UP032", "UP034", "S110", "ASYNC"]
+ignore = [
+    "E402",   # modules set up `from __future__` + docstring before imports
+    "B008",   # FastAPI's Depends()/Form() defaults are the idiom
+]

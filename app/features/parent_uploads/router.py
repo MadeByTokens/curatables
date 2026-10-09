@@ -13,7 +13,7 @@ import base64
 import logging
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (

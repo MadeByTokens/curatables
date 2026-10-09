@@ -2,7 +2,6 @@
 
 import logging
 import os
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -239,7 +238,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                     "parent/error.html", {"request": request, "heading": heading},
                     status_code=status_code)
             except Exception:
-                pass
+                _error_logger.exception("Parent error page failed to render")
         try:
             tpl_path = os.path.join(os.path.dirname(__file__), "templates", "base", "kid", "error.html")
             with open(tpl_path) as f:

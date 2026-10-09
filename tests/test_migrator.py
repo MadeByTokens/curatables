@@ -2,9 +2,7 @@
 
 import sqlite3
 import threading
-from pathlib import Path
 
-import pytest
 
 from app.db.migrator import apply_pending, migrations_dir
 
@@ -199,8 +197,10 @@ class TestMigratorConcurrency:
 
         t1 = threading.Thread(target=worker)
         t2 = threading.Thread(target=worker)
-        t1.start(); t2.start()
-        t1.join(); t2.join()
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
         # At most one worker can succeed without IntegrityError; the
         # other should either retry silently or surface the error

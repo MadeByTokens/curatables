@@ -113,7 +113,7 @@ class MediaProbeService:
                 capture_output=True, text=True, timeout=30,
             )
         except Exception as e:
-            raise ProbeError(f"ffprobe failed to run: {e}")
+            raise ProbeError(f"ffprobe failed to run: {e}") from e
 
         if result.returncode != 0:
             raise ProbeError(
@@ -124,7 +124,7 @@ class MediaProbeService:
         try:
             data = json.loads(result.stdout)
         except json.JSONDecodeError as e:
-            raise ProbeError(f"ffprobe returned invalid JSON: {e}")
+            raise ProbeError(f"ffprobe returned invalid JSON: {e}") from e
 
         streams = data.get("streams") or []
         video = next((s for s in streams if s.get("codec_type") == "video"), None)

@@ -14,7 +14,6 @@ Two cross-cutting invariants, matched to the existing guard-test culture
 import re
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 KID_TEMPLATES = REPO_ROOT / "app" / "templates" / "base" / "kid"

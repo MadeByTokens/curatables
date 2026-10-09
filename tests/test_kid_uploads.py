@@ -7,7 +7,6 @@ the kid_uploads routes (GET upload page, POST /upload, POST
 friendly event labels.
 """
 
-import io
 import json
 from unittest.mock import patch
 
@@ -16,10 +15,8 @@ import pytest
 from app.db.schema import init_schema
 from app.models import Profile, Video
 from app.repositories import (
-    ChannelRepository, ProfileRepository, VideoRepository, EventRepository,
+    ChannelRepository, ProfileRepository, VideoRepository,
 )
-from app.repositories.reaction_repo import ReactionRepository
-from app.services.channels import ChannelService
 from app.services.media_probe import ProbeResult, UnsupportedCodec
 from app.models.viewer import ViewerContext
 

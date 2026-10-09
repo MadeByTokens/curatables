@@ -1,7 +1,6 @@
 """Tests for BodySizeLimitMiddleware — early rejection of oversized
 request bodies before they hit the service layer."""
 
-import pytest
 
 
 class TestBodySizeLimit:

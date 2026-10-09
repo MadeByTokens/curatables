@@ -2,7 +2,6 @@
 
 import pytest
 import sqlite3
-from pathlib import Path
 
 from fastapi.testclient import TestClient
 

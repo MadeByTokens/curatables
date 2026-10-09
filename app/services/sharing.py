@@ -172,7 +172,7 @@ def render_text(channel: Channel, videos: Iterable[Video]) -> str:
     hand-editing; the URL list is one per line.
     """
     lines = [
-        f"# Curatables channel export",
+        "# Curatables channel export",
         f"# name: {channel.name}",
     ]
     if channel.description:

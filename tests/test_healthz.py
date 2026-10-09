@@ -7,7 +7,6 @@ DB-degraded path returning 503 with the structured error string.
 
 import sqlite3
 
-import pytest
 
 from app import __version__
 

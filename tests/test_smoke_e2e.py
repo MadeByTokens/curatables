@@ -129,7 +129,7 @@ def server(tmp_path):
     base_url = f"http://127.0.0.1:{port}"
     try:
         _wait_for_server(base_url)
-    except AssertionError:
+    except AssertionError as startup_error:
         proc.terminate()
         try:
             _, err = proc.communicate(timeout=5)
@@ -139,7 +139,7 @@ def server(tmp_path):
         raise AssertionError(
             f"server at {base_url} failed to come up; stderr:\n"
             f"{err.decode(errors='replace')}"
-        )
+        ) from startup_error
 
     try:
         yield base_url

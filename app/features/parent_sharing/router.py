@@ -9,7 +9,6 @@ they added videos by URL or via import.
 """
 
 import logging
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from starlette.concurrency import run_in_threadpool

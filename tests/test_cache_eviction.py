@@ -1,15 +1,11 @@
 """Cache eviction sweep — repository query + storage service orchestration."""
 
-import shutil
-import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 
-import pytest
 
 from app.models import Video
 from app.repositories import VideoRepository
-from app.services.storage import StorageService, EvictionReport
+from app.services.storage import StorageService
 
 
 def _iso(dt: datetime) -> str:

@@ -15,7 +15,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-from datetime import datetime
 
 
 # Defaults passed to the external `yt-dlp` CLI when the user runs

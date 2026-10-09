@@ -1,7 +1,6 @@
 from __future__ import annotations
 """Profile channel video repository — per-kid channel bookmarks."""
 
-from app.models.video import Video
 from app.repositories.base import BaseRepository
 
 

@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 
-import pytest
 
 from app.logging_config import (
     JsonFormatter, _resolve_format, _build_formatter, setup_logging,

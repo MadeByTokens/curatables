@@ -11,9 +11,7 @@ import base64
 import hashlib
 import json
 import os
-import subprocess
 import time
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -25,7 +23,7 @@ from app.services.media_probe import (
 )
 from app.services.storage import StorageService
 from app.services.uploads import (
-    UploadService, UploadNotFound, UploadOffsetMismatch, UploadError,
+    UploadService, UploadOffsetMismatch, UploadError,
 )
 
 

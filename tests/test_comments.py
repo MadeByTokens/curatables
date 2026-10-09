@@ -142,7 +142,6 @@ class TestCommentPagination:
 
 class TestSiblingCommentVisibility:
     def _setup(self, db):
-        from app.repositories import ChannelRepository
         ch = ChannelRepository(db).create("Shared")
         alice = ProfileRepository(db).create(Profile(name="alice2", display_name="Alice"))
         bob = ProfileRepository(db).create(Profile(name="bob2", display_name="Bob"))

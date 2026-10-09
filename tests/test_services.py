@@ -1,8 +1,7 @@
 """Service layer tests — business logic with real in-memory SQLite."""
 
-import pytest
 
-from app.models import Video, Profile
+from app.models import Profile
 from app.repositories import ChannelRepository, ProfileRepository
 from app.services.channels import ChannelService
 from app.services.profiles import ProfileService, slugify

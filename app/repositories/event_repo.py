@@ -1,7 +1,6 @@
 from __future__ import annotations
 """Event repository — usage event logging and statistics."""
 
-import json
 import sqlite3
 from app.models import Event
 from app.repositories.base import BaseRepository

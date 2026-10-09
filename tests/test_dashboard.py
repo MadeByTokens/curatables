@@ -3,7 +3,7 @@ route."""
 
 from app.models import Profile, Video
 from app.repositories import (
-    ChannelRepository, EventRepository, ProfileRepository, VideoRepository,
+    EventRepository, ProfileRepository, VideoRepository,
 )
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.reaction_repo import ReactionRepository

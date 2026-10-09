@@ -1,12 +1,10 @@
 """Tests for kid library personalization: per-kid video title/thumbnail
 overrides, personal tags + tag cloud, and per-kid channel bookmarks."""
 
-import io
 import threading
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.db.connection import create_connection
 from app.db.schema import init_schema
@@ -251,7 +249,6 @@ class TestThumbnailOverrides:
         assert files[0].read_bytes() == b"\x89PNG\r\n\x1a\nPNG"
 
     def test_upload_rejects_non_image_bytes(self, db, tmp_path):
-        import pytest
         alice = _mk_kid(db, "alice")
         _mk_video(db, "v1")
         svc = _mk_service(db, tmp_path)

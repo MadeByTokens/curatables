@@ -12,7 +12,6 @@ and rely on pytest-asyncio (already a dev dependency).
 
 from __future__ import annotations
 
-import asyncio
 import socket
 
 import pytest

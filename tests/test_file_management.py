@@ -8,7 +8,7 @@ route.
 
 from collections import namedtuple
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -20,7 +20,6 @@ from app.models import Profile, Video
 from app.repositories import (
     ChannelRepository, ProfileRepository, VideoRepository,
 )
-from app.services.channels import ChannelService
 from app.services.content import ContentService
 from app.services.relocation import RelocationService, RelocationError
 from app.services.storage import StorageService

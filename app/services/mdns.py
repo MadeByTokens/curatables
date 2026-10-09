@@ -222,7 +222,7 @@ class ZeroconfAdvertiser:
         try:
             await self._azc.async_close()
         except Exception:
-            pass
+            logger.debug("mDNS close failed", exc_info=True)
         self._azc = None
         self._info = None
         self._started = False
