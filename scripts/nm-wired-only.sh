@@ -7,10 +7,13 @@
 #
 # It only flips the device's autoconnect flag, which NetworkManager does
 # not keep across reboots, so a Pi that boots without a cable always
-# tries Wi-Fi. Saved Wi-Fi profiles are never touched.
+# tries Wi-Fi. Saved Wi-Fi profiles are never touched. While the system
+# helper is testing a new Wi-Fi network it creates WIFI_TEST_FLAG, and
+# Wi-Fi coming up is left alone until the test is over.
 
 IFACE="$1"
 ACTION="$2"
+WIFI_TEST_FLAG="${CURATABLES_WIFI_TEST_FLAG:-/run/curatables-wifi-test}"
 
 [ -n "$IFACE" ] || exit 0
 
@@ -48,6 +51,7 @@ ethernet:down)
 	wired_connected || wifi_on
 	;;
 wifi:up)
+	[ -e "$WIFI_TEST_FLAG" ] && exit 0
 	if wired_connected; then wifi_off; fi
 	;;
 esac

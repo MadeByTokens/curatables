@@ -4,7 +4,7 @@
 #   - build the venv and install Python deps (pulls a fresh yt-dlp)
 #   - install Deno (yt-dlp's JS runtime for YouTube extraction)
 #   - install + enable the systemd units (server, updater watcher,
-#     nightly backup)
+#     nightly backup, mDNS helper, root system helper)
 #   - acceptance-test with run.py --check
 #
 # First boot is handled by the OS + the app itself: Raspberry Pi OS
@@ -34,7 +34,7 @@ python3 -m venv "${ROOT}/.venv"
 # --- systemd units -----------------------------------------------------
 for unit in curatables.service curatables-updater.service curatables-updater.path \
             curatables-backup.service curatables-backup.timer \
-            curatables-mdns-unicast.service; do
+            curatables-mdns-unicast.service curatables-helper.service; do
 	install -m 0644 "${ROOT}/systemd/${unit}" /etc/systemd/system/
 done
 
@@ -42,6 +42,7 @@ systemctl enable curatables.service
 systemctl enable curatables-updater.path
 systemctl enable curatables-backup.timer
 systemctl enable curatables-mdns-unicast.service
+systemctl enable curatables-helper.service
 
 # --- acceptance test ---------------------------------------------------
 # Non-fatal on deno/mDNS warnings; fails the build only if a REQUIRED dep

@@ -84,7 +84,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run mypy
-        run: mypy app
+        run: mypy app syshelper
 
   build:
     name: build wheel

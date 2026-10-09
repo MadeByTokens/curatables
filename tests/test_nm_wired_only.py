@@ -28,7 +28,7 @@ exit 0
 """
 
 
-def _run(tmp_path, iface, action, *, eth="connected", wifi="connected"):
+def _run(tmp_path, iface, action, *, eth="connected", wifi="connected", testing=False):
     bindir = tmp_path / "bin"
     bindir.mkdir(exist_ok=True)
     log = tmp_path / "calls.log"
@@ -38,7 +38,10 @@ def _run(tmp_path, iface, action, *, eth="connected", wifi="connected"):
     for stub in bindir.iterdir():
         stub.chmod(0o755)
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", FAKE_LOG=str(log),
-               FAKE_ETH_STATE=eth, FAKE_WIFI_STATE=wifi)
+               FAKE_ETH_STATE=eth, FAKE_WIFI_STATE=wifi,
+               CURATABLES_WIFI_TEST_FLAG=str(tmp_path / "wifi-test"))
+    if testing:
+        (tmp_path / "wifi-test").touch()
     proc = subprocess.run(["sh", str(SCRIPT), iface, action], env=env,
                           capture_output=True, text=True, timeout=10)
     assert proc.returncode == 0, proc.stderr
@@ -62,6 +65,10 @@ def test_cable_unplugged_brings_wifi_back(tmp_path):
 def test_wifi_coming_up_while_wired_is_turned_off_again(tmp_path):
     calls = _run(tmp_path, "wlan0", "up")
     assert "device disconnect wlan0" in calls
+
+
+def test_wifi_being_tested_by_the_helper_is_left_alone(tmp_path):
+    assert _run(tmp_path, "wlan0", "up", testing=True) == []
 
 
 def test_wifi_coming_up_without_a_cable_is_left_alone(tmp_path):

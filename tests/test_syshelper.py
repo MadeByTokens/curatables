@@ -1,0 +1,570 @@
+"""syshelper: the root helper's request handling, accounts, Wi-Fi,
+drives and diagnostics, with every system command faked."""
+
+import json
+import os
+import socket
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from syshelper import accounts, diagnostics, drives, runner, server, system, wifi  # noqa: E402
+from syshelper.errors import HelperError  # noqa: E402
+from syshelper.registry import ACTIONS, action  # noqa: E402
+from syshelper.runner import Result  # noqa: E402
+from syshelper.settings import SETTINGS  # noqa: E402
+
+
+class FakeRunner:
+    """Answers commands by prefix; the most recently added rule wins."""
+
+    def __init__(self):
+        self.calls = []
+        self.rules = []
+
+    def on(self, prefix, rc=0, out="", err="", fn=None):
+        self.rules.append((list(prefix), fn or Result(rc, out, err)))
+
+    def run(self, argv, *, input=None, timeout=60):
+        self.calls.append((list(argv), input))
+        for prefix, res in reversed(self.rules):
+            if argv[:len(prefix)] == prefix:
+                return res(argv) if callable(res) else res
+        return Result(0, "", "")
+
+    def stream(self, argv, on_line, *, timeout=0, env=None):
+        result = self.run(argv)
+        for line in result.out.splitlines():
+            on_line(line)
+        return result.rc
+
+    def argvs(self):
+        return [c[0] for c in self.calls]
+
+    def ran(self, *prefix):
+        return any(a[:len(prefix)] == list(prefix) for a in self.argvs())
+
+
+class FakeJob:
+    def __init__(self):
+        self.messages = []
+
+    def log(self, message):
+        self.messages.append(message)
+
+
+@pytest.fixture
+def fake(monkeypatch, tmp_path):
+    f = FakeRunner()
+    monkeypatch.setattr(runner, "run", f.run)
+    monkeypatch.setattr(runner, "stream", f.stream)
+    me = os.getuid()
+    passwd = tmp_path / "passwd"
+    passwd.write_text(
+        "root:x:0:0:root:/root:/bin/bash\n"
+        f"curatables:x:{me}:{os.getgid()}::/home/curatables:/usr/sbin/nologin\n"
+        "admin:x:1000:1000::/home/admin:/usr/sbin/nologin\n"
+        "later:x:1001:1001::/home/later:/bin/bash\n")
+    shadow = tmp_path / "shadow"
+    shadow.write_text("root:*:1::::::\nadmin:!:1::::::\n")
+    fstab = tmp_path / "fstab"
+    fstab.write_text("proc /proc proc defaults 0 0\n")
+    data = tmp_path / "data"
+    data.mkdir()
+    for name, value in {
+        "passwd_path": passwd, "shadow_path": shadow, "fstab_path": fstab, "data_dir": data,
+        "service_user": "curatables", "admin_user": "",
+        "media_mount": tmp_path / "media", "import_mount_root": tmp_path / "drives",
+        "wifi_test_flag": tmp_path / "wifi-test", "socket_path": tmp_path / "run" / "helper.sock",
+        "dropin_dir": tmp_path / "dropin", "boot_dir": tmp_path / "boot",
+    }.items():
+        monkeypatch.setattr(SETTINGS, name, value)
+    monkeypatch.setattr(drives.pwd, "getpwnam", lambda name: type("P", (), {
+        "pw_uid": me, "pw_gid": os.getgid()})())
+    return f
+
+
+# --- request handling ---------------------------------------------------------
+
+def test_unknown_and_malformed_requests_are_refused():
+    assert server.handle({"action": "rm -rf"}) == {"ok": False, "error": "unknown action 'rm -rf'"}
+    assert not server.handle(None)["ok"]
+    assert not server.handle({"action": "ping", "params": "x"})["ok"]
+    assert server.handle({"action": "ping"}) == {"ok": True, "result": {"pong": True}}
+
+
+def test_every_registered_action_is_one_we_know_about():
+    assert set(ACTIONS) >= {
+        "account_status", "account_password_matches", "account_set_password", "ssh_set",
+        "wifi_status", "wifi_scan", "wifi_set", "restart_curatables", "reboot", "restart_network",
+        "power_status", "drives_list", "drive_use_for_videos", "drive_back_to_sd", "drive_eject",
+        "drive_reconnect", "drive_repair", "drive_format", "drive_open_for_import",
+        "drive_delete_sd_copy", "diagnostics", "diagnostics_report"}
+
+
+def test_a_job_runs_in_the_background_and_reports_back():
+    @action("_test_job", job=True, title="Testing")
+    def _job(params):
+        def work(job):
+            job.log("step one")
+            return {"answer": params["n"] * 2}
+        return work
+
+    try:
+        started = server.handle({"action": "_test_job", "params": {"n": 21}})
+        assert started["ok"] and started["result"]["title"] == "Testing"
+        job_id = started["result"]["id"]
+        for _ in range(100):
+            status = server.handle({"action": "job_status", "params": {"id": job_id}})["result"]
+            if status["state"] != "running":
+                break
+            import time
+            time.sleep(0.02)
+        assert status["state"] == "done"
+        assert status["result"] == {"answer": 42}
+        assert status["messages"] == ["step one"]
+    finally:
+        ACTIONS.pop("_test_job")
+
+
+def test_a_failing_job_carries_the_parent_facing_message():
+    @action("_test_fail", job=True)
+    def _job(params):
+        def work(job):
+            raise HelperError("The drive is full.")
+        return work
+
+    try:
+        job_id = server.handle({"action": "_test_fail"})["result"]["id"]
+        import time
+        for _ in range(100):
+            status = server.handle({"action": "job_status", "params": {"id": job_id}})["result"]
+            if status["state"] != "running":
+                break
+            time.sleep(0.02)
+        assert status["state"] == "failed" and status["error"] == "The drive is full."
+    finally:
+        ACTIONS.pop("_test_fail")
+
+
+def test_socket_answers_allowed_users_and_ignores_others():
+    a, b = socket.socketpair()
+    a.sendall(b'{"action": "ping"}\n')
+    server._serve_one(b, {os.getuid()})
+    assert json.loads(a.recv(4096)) == {"ok": True, "result": {"pong": True}}
+    a.close()
+
+    a, b = socket.socketpair()
+    a.sendall(b'{"action": "ping"}\n')
+    server._serve_one(b, {os.getuid() + 12345})
+    try:
+        assert a.recv(4096) == b""
+    except ConnectionResetError:
+        pass
+    a.close()
+
+
+# --- accounts -----------------------------------------------------------------
+
+def test_admin_is_the_first_regular_account_other_than_the_service_user(fake):
+    assert accounts.admin_user() == "admin"
+
+
+def test_status_reports_a_locked_account(fake):
+    fake.on(["systemctl", "is-enabled"], out="disabled\n")
+    assert accounts.account_status({}) == {"user": "admin", "has_password": False, "ssh_enabled": False}
+
+
+def _sha512(password):
+    out = subprocess.run(["openssl", "passwd", "-6", "-salt", "saltsalt", password],
+                         capture_output=True, text=True, check=True)
+    return out.stdout.strip()
+
+
+def test_password_check_against_the_shadow_hash(fake):
+    SETTINGS.shadow_path.write_text(f"admin:{_sha512('correct horse')}:1::::::\n")
+    assert accounts.account_password_matches({"password": "correct horse"}) == {"matches": True}
+    assert accounts.account_password_matches({"password": "wrong horse"}) == {"matches": False}
+
+
+def test_locked_account_never_matches(fake):
+    assert not accounts.password_matches("anything", "!")
+    assert not accounts.password_matches("anything", "")
+
+
+def test_setting_the_password_uses_chpasswd_and_gives_a_shell(fake):
+    assert accounts.account_set_password({"password": "a long password"}) == {"user": "admin"}
+    assert (["chpasswd"], "admin:a long password\n") in fake.calls
+    assert fake.ran("usermod", "-s", "/bin/bash", "admin")
+    assert not fake.ran("cancel-rename")
+
+
+def test_setting_the_password_closes_the_first_boot_user_dialog(fake):
+    fake.on(["systemctl", "is-enabled", "userconfig.service"], out="enabled\n")
+    accounts.account_set_password({"password": "a long password"})
+    assert fake.ran("cancel-rename", "admin")
+    assert fake.ran("systemctl", "stop", "userconfig.service")
+
+
+@pytest.mark.parametrize("password", ["short", "two\nlines", "x" * 1025])
+def test_bad_passwords_are_refused(fake, password):
+    with pytest.raises(HelperError):
+        accounts.account_set_password({"password": password})
+    assert not fake.ran("chpasswd")
+
+
+def test_chpasswd_errors_never_echo_the_password(fake):
+    fake.on(["chpasswd"], rc=1, err="chpasswd: bad thing with a long password")
+    with pytest.raises(HelperError) as e:
+        accounts.account_set_password({"password": "a long password"})
+    assert "a long password" not in str(e.value)
+
+
+def test_ssh_off_disables_service_and_socket(fake):
+    accounts.ssh_set({"enabled": False})
+    assert fake.ran("systemctl", "disable", "--now", "ssh.service")
+    assert fake.ran("systemctl", "disable", "--now", "ssh.socket")
+
+
+def test_ssh_flag_must_be_a_boolean(fake):
+    with pytest.raises(HelperError):
+        accounts.ssh_set({"enabled": "yes"})
+
+
+# --- Wi-Fi --------------------------------------------------------------------
+
+DEVICES_WIFI = "eth0:ethernet:unavailable:\nwlan0:wifi:connected:Old Net\n"
+DEVICES_WIRED = "eth0:ethernet:connected:Wired\nwlan0:wifi:disconnected:\n"
+
+
+@pytest.fixture
+def nofast(monkeypatch):
+    monkeypatch.setattr(wifi.time, "sleep", lambda s: None)
+
+
+@pytest.mark.parametrize("params", [
+    {"ssid": ""}, {"ssid": "x" * 33}, {"ssid": "Home Net", "password": "short"},
+    {"ssid": "Home Net", "country": "Canada"}, {"ssid": "Home Net", "hidden": "yes"},
+])
+def test_wifi_settings_are_checked_before_anything_runs(fake, params):
+    with pytest.raises(HelperError):
+        wifi.wifi_set(params)
+    assert fake.calls == []
+
+
+def test_wifi_switch_keeps_the_new_network_when_it_connects(fake, nofast):
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], out=DEVICES_WIFI)
+    fake.on(["nmcli", "-g", "IP4.ADDRESS"], out="192.0.2.30/24\n")
+    work = wifi.wifi_set({"ssid": "Home Net", "password": "a*b?c secret", "country": "gb"})
+    result = work(FakeJob())
+    assert result["connected"] and result["ssid"] == "Home Net"
+    assert fake.ran("raspi-config", "nonint", "do_wifi_country", "GB")
+    add = next(a for a in fake.argvs() if a[:3] == ["nmcli", "connection", "add"])
+    assert add[add.index("ssid") + 1] == "Home Net"
+    assert add[add.index("wifi-sec.psk") + 1] == "a*b?c secret"
+    assert fake.ran("nmcli", "connection", "delete", "curatables-wifi")
+    assert fake.ran("nmcli", "connection", "modify", "curatables-wifi-trial", "connection.id", "curatables-wifi")
+    assert not SETTINGS.wifi_test_flag.exists()
+
+
+def test_wifi_switch_rolls_back_when_the_password_is_wrong(fake, nofast):
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], out=DEVICES_WIFI)
+    fake.on(["nmcli", "--wait", "45", "connection", "up", "curatables-wifi-trial"], rc=4,
+            err="Error: Connection activation failed: Secrets were required, but not provided (a*b?c secret)")
+    job = FakeJob()
+    with pytest.raises(HelperError) as e:
+        wifi.wifi_set({"ssid": "Home Net", "password": "a*b?c secret"})(job)
+    assert "password looks wrong" in str(e.value) and "Nothing was changed" in str(e.value)
+    assert "a*b?c secret" not in str(e.value)
+    assert fake.ran("nmcli", "connection", "delete", "curatables-wifi-trial")
+    assert fake.ran("nmcli", "--wait", "45", "connection", "up", "Old Net")
+    assert not fake.ran("nmcli", "connection", "modify", "curatables-wifi-trial", "connection.id")
+    assert not SETTINGS.wifi_test_flag.exists()
+
+
+def test_wifi_tested_while_wired_goes_back_to_standby(fake, nofast):
+    state = {"n": 0}
+
+    def devices(argv):
+        state["n"] += 1
+        return Result(0, DEVICES_WIRED if state["n"] < 3 else
+                      "eth0:ethernet:connected:Wired\nwlan0:wifi:connected:curatables-wifi-trial\n")
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], fn=devices)
+    fake.on(["nmcli", "-g", "IP4.ADDRESS"], out="192.0.2.31/24\n")
+    flag_seen = []
+    fake.on(["nmcli", "--wait"], fn=lambda argv: (flag_seen.append(SETTINGS.wifi_test_flag.exists()),
+                                                  Result(0))[1])
+    result = wifi.wifi_set({"ssid": "Home Net", "password": "long enough"})(FakeJob())
+    assert result["wired"] and flag_seen == [True]
+    assert fake.ran("nmcli", "device", "disconnect", "wlan0")
+
+
+def test_terse_output_with_escaped_colons():
+    from syshelper.nm import split_terse
+    assert split_terse(r"yes:Cafe\:Guest:70") == ["yes", "Cafe:Guest", "70"]
+    assert split_terse(r"a\\b:c") == ["a\\b", "c"]
+
+
+def test_scan_lists_each_network_once_strongest_first(fake):
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], out=DEVICES_WIFI)
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "SSID,SIGNAL,SECURITY"],
+            out="Home Net:40:WPA2\nHome Net:80:WPA2\n:90:WPA2\nCafe:60:\n")
+    nets = wifi.wifi_scan({})["networks"]
+    assert nets == [{"ssid": "Home Net", "signal": 80, "secured": True},
+                    {"ssid": "Cafe", "signal": 60, "secured": False}]
+
+
+# --- power --------------------------------------------------------------------
+
+def test_power_flags_from_vcgencmd(fake):
+    fake.on(["vcgencmd", "get_throttled"], out="throttled=0x50005\n")
+    fake.on(["vcgencmd", "measure_temp"], out="temp=61.3'C\n")
+    p = system.power()
+    assert p["under_voltage_now"] and p["under_voltage_seen"] and p["throttled_now"]
+    assert not p["soft_temp_limit_seen"]
+    assert p["temp_c"] == 61.3
+
+
+def test_power_is_empty_off_a_pi(fake):
+    fake.on(["vcgencmd"], rc=127)
+    assert system.power() == {}
+
+
+# --- drives -------------------------------------------------------------------
+
+def _lsblk(*disks):
+    return json.dumps({"blockdevices": list(disks)})
+
+
+SD = {"name": "mmcblk0", "path": "/dev/mmcblk0", "type": "disk", "size": 32 * 10 ** 9, "tran": None,
+      "children": [{"name": "mmcblk0p2", "path": "/dev/mmcblk0p2", "type": "part", "fstype": "ext4",
+                    "mountpoint": "/", "size": 31 * 10 ** 9}]}
+
+
+def _usb(name, fstype, *, uuid="AAAA-1111", label="KIDS", mountpoint=None, model="Thumb"):
+    return {"name": name, "path": f"/dev/{name}", "type": "disk", "size": 64 * 10 ** 9, "tran": "usb",
+            "vendor": "Acme ", "model": model,
+            "children": [{"name": f"{name}1", "path": f"/dev/{name}1", "type": "part", "fstype": fstype,
+                          "uuid": uuid, "label": label, "mountpoint": mountpoint,
+                          "size": 64 * 10 ** 9, "fsavail": 10 ** 9}]}
+
+
+def test_only_usb_drives_are_listed(fake):
+    fake.on(["lsblk"], out=_lsblk(SD, _usb("sda", "vfat")))
+    found = drives.disks()
+    assert [d["path"] for d in found] == ["/dev/sda"]
+    part = found[0]["partitions"][0]
+    assert found[0]["name"] == "Acme Thumb"
+    assert part["fs_name"] == "FAT32" and part["usable"] and "4 GB" in part["warning"]
+
+
+def test_unknown_formats_are_listed_but_not_usable(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "btrfs"), _usb("sdb", None, uuid="")))
+    a, b = (d["partitions"][0] for d in drives.disks())
+    assert not a["usable"] and "exFAT" in a["warning"]
+    assert not b["usable"] and b["fs_name"] == "not formatted"
+
+
+def test_the_videos_drive_is_recognised(fake):
+    SETTINGS.fstab_path.write_text(
+        f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat uid=999,nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat", mountpoint=str(SETTINGS.media_mount))))
+    part = drives.disks()[0]["partitions"][0]
+    assert part["role"] == "videos" and part["is_videos_drive"]
+
+
+def test_format_needs_the_word_erase(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "vfat")))
+    with pytest.raises(HelperError, match="ERASE"):
+        drives.drive_format({"disk": "/dev/sda", "fstype": "exfat", "label": "KIDS", "confirm": "erase"})
+
+
+def test_format_refuses_the_sd_card_and_the_videos_drive(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(SD, _usb("sda", "exfat", mountpoint=str(SETTINGS.media_mount))))
+    base = {"fstype": "exfat", "label": "KIDS", "confirm": "ERASE"}
+    with pytest.raises(HelperError, match="not plugged in"):
+        drives.drive_format({**base, "disk": "/dev/mmcblk0"})
+    with pytest.raises(HelperError, match="in use"):
+        drives.drive_format({**base, "disk": "/dev/sda"})
+
+
+@pytest.mark.parametrize("device", ["/dev/sda1; reboot", "sda1", "/dev/../etc/passwd"])
+def test_device_names_are_checked(fake, device):
+    with pytest.raises(HelperError):
+        drives.drive_repair({"device": device})
+
+
+def test_format_partitions_then_makes_an_exfat_filesystem(fake, monkeypatch):
+    monkeypatch.setattr(drives.time, "sleep", lambda s: None)
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "ntfs", mountpoint="/media/x")))
+    work = drives.drive_format({"disk": "/dev/sda", "fstype": "exfat", "label": "KIDS", "confirm": "ERASE"})
+    assert work(FakeJob()) == {"partition": "/dev/sda1"}
+    argvs = fake.argvs()
+    order = [a[0] for a in argvs if a[0] in ("umount", "wipefs", "sfdisk", "mkfs.exfat")]
+    assert order == ["umount", "wipefs", "sfdisk", "mkfs.exfat"]
+    sfdisk = next(c for c in fake.calls if c[0][0] == "sfdisk")
+    assert drives.BASIC_DATA in sfdisk[1]
+    assert ["mkfs.exfat", "-L", "KIDS", "/dev/sda1"] in argvs
+
+
+def test_repair_of_the_videos_drive_pauses_curatables(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} ntfs3 nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "ntfs", mountpoint=str(SETTINGS.media_mount))))
+    fake.on(["findmnt"], out="")
+    drives.drive_repair({"device": "/dev/sda1"})(FakeJob())
+    argvs = fake.argvs()
+    stop = argvs.index(["systemctl", "stop", "curatables.service"])
+    fix = argvs.index(["ntfsfix", "-d", "/dev/sda1"])
+    start = argvs.index(["systemctl", "start", "curatables.service"])
+    assert stop < fix < start
+
+
+def test_failed_repair_says_so(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat")))
+    fake.on(["fsck.exfat"], rc=4)
+    with pytest.raises(HelperError, match="could not fix"):
+        drives.drive_repair({"device": "/dev/sda1"})(FakeJob())
+
+
+def test_mount_options_give_fat_style_drives_to_the_service_user(fake):
+    fs, opts = drives.mount_options("vfat")
+    assert fs == "vfat" and f"uid={os.getuid()}" in opts
+    assert drives.mount_options("ntfs")[0] == "ntfs3"
+    with pytest.raises(HelperError):
+        drives.mount_options("btrfs")
+
+
+def test_removing_the_videos_drive_from_fstab_keeps_other_lines(fake):
+    SETTINGS.fstab_path.write_text(
+        "proc /proc proc defaults 0 0\n"
+        f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n"
+        "UUID=BBBB /home/x ext4 defaults 0 2\n")
+    drives._remove_media_fstab(FakeJob())
+    assert SETTINGS.fstab_path.read_text() == "proc /proc proc defaults 0 0\nUUID=BBBB /home/x ext4 defaults 0 2\n"
+    assert list(SETTINGS.fstab_path.parent.glob("fstab.before-curatables-*"))
+
+
+def test_eject_videos_drive_restarts_curatables_and_powers_off(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat", mountpoint=str(SETTINGS.media_mount))))
+    fake.on(["findmnt"], out="")
+    assert drives.drive_eject({"device": "/dev/sda1"})(FakeJob()) == {"safe": True}
+    argvs = fake.argvs()
+    assert argvs.index(["umount", str(SETTINGS.media_mount)]) < argvs.index(
+        ["systemctl", "start", "curatables.service"])
+    assert ["udisksctl", "power-off", "-b", "/dev/sda"] in argvs
+
+
+def test_eject_reports_a_busy_drive(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat", mountpoint="/media/stick")))
+    fake.on(["umount"], rc=32, err="target is busy")
+    fake.on(["findmnt"], out="/dev/sda1\n")
+    with pytest.raises(HelperError, match="still in use"):
+        drives.drive_eject({"device": "/dev/sda1"})(FakeJob())
+
+
+def test_open_for_import_mounts_under_the_drives_folder(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat", label="Movies 2")))
+    result = drives.drive_open_for_import({"device": "/dev/sda1"})(FakeJob())
+    assert result["path"] == str(SETTINGS.import_mount_root / "Movies-2")
+    mount = next(a for a in fake.argvs() if a[0] == "mount")
+    assert mount[-2:] == ["/dev/sda1", result["path"]] and "noexec" in mount[4]
+
+
+def test_reconnect_needs_the_drive_plugged_in(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk())
+    with pytest.raises(HelperError, match="not plugged in"):
+        drives.drive_reconnect({})
+
+
+def test_reconnect_mounts_and_restarts(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat")))
+    fake.on(["findmnt"], out="")
+    drives.drive_reconnect({})(FakeJob())
+    assert ["mount", str(SETTINGS.media_mount)] in fake.argvs()
+    assert ["systemctl", "restart", "curatables.service"] in fake.argvs()
+
+
+# --- diagnostics --------------------------------------------------------------
+
+def test_redaction_removes_known_secrets_and_hash_shapes():
+    text = ("psk=hunter2hunter2\nconnected to Home Net with sekrit-value-1\n"
+            "admin:$y$j9T$abc$def:19000\nhash pbkdf2$600000$aa$bb\napi_key: 12345")
+    out = diagnostics.redact(text, {"sekrit-value-1"})
+    assert "hunter2" not in out and "sekrit-value-1" not in out
+    assert "$y$" not in out and "pbkdf2$" not in out and "12345" not in out
+    assert "Home Net" in out
+
+
+def test_secrets_include_the_app_password_hash_and_session_secret(fake):
+    (SETTINGS.data_dir / "config.json").write_text(json.dumps({
+        "parent": {"password_hash": "pbkdf2:abc:def", "session_secret": "s3ss10n-secret"},
+        "imports": {"tmdb_api_key": "tmdb-key-123"}}))
+    assert {"pbkdf2:abc:def", "s3ss10n-secret", "tmdb-key-123"} <= diagnostics.secrets()
+
+
+def test_checks_flag_a_missing_videos_drive(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk())
+    fake.on(["findmnt"], out="")
+    drive = next(c for c in diagnostics.check_storage() if c["id"] == "drive")
+    assert drive["status"] == "fail" and "Reconnect" in drive["fix"]
+
+
+def test_checks_flag_under_voltage(fake):
+    fake.on(["vcgencmd", "get_throttled"], out="throttled=0x10000\n")
+    power = next(c for c in diagnostics.check_power() if c["id"] == "power")
+    assert power["status"] == "warn" and "power supply" in power["fix"]
+
+
+def test_report_is_redacted(fake, monkeypatch):
+    (SETTINGS.data_dir / "config.json").write_text(json.dumps(
+        {"parent": {"session_secret": "do-not-leak-this"}}))
+    fake.on(["journalctl"], out="something logged do-not-leak-this\n")
+    monkeypatch.setattr(diagnostics, "_tcp", lambda host, port, timeout=5: "")
+    report = diagnostics.build_report()
+    assert "Curatables diagnostics report" in report
+    assert "do-not-leak-this" not in report and "[hidden]" in report
+
+
+def test_report_file_uses_windows_line_endings(tmp_path):
+    target = tmp_path / "report.txt"
+    diagnostics.write_text_file(str(target), "one\ntwo\n")
+    assert target.read_bytes() == b"one\r\ntwo\r\n"
+
+
+def test_the_app_client_talks_to_the_helper_over_a_socket(tmp_path):
+    import threading
+
+    from app.services.system_helper import HelperFailed, HelperUnavailable, SystemHelper
+
+    path = str(tmp_path / "h.sock")
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(path)
+    listener.listen(4)
+
+    def serve(n):
+        for _ in range(n):
+            conn, _ = listener.accept()
+            server._serve_one(conn, {os.getuid()})
+
+    thread = threading.Thread(target=serve, args=(2,), daemon=True)
+    thread.start()
+    client = SystemHelper(path, timeout=5)
+    assert client.available
+    assert client.call("ping") == {"pong": True}
+    with pytest.raises(HelperFailed, match="unknown action"):
+        client.call("format_everything")
+    thread.join(5)
+    listener.close()
+    os.unlink(path)
+    assert not client.available
+    with pytest.raises(HelperUnavailable):
+        client.call("ping")
