@@ -11,21 +11,43 @@ import logging
 import re
 import shlex
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
+TEXT_SUBTITLE_CODECS = {"subrip", "srt", "ass", "ssa", "webvtt", "mov_text", "text"}
+
+
+@dataclass
+class StreamInfo:
+    """One audio or subtitle stream, addressed by its absolute index."""
+    index: int
+    codec: str
+    language: str = ""
+    title: str = ""
+    channels: int = 0
+    default: bool = False
+    commentary: bool = False
+
+    @property
+    def is_text(self) -> bool:
+        return self.codec in TEXT_SUBTITLE_CODECS
+
+
 @dataclass
 class ProbeResult:
-    codec_name: str          # first video stream codec (e.g. "h264", "vp9", "av1")
+    codec_name: str          # main video stream codec (e.g. "h264", "vp9", "av1")
     width: int
     height: int
     duration_seconds: float
     container: str
     audio_codec: str = ""    # first audio stream codec (e.g. "aac", "opus"); "" if silent
     fps: float = 0.0         # video frame rate, parsed from r_frame_rate
+    video_index: int | None = None
+    audio_streams: list[StreamInfo] = field(default_factory=list)
+    subtitle_streams: list[StreamInfo] = field(default_factory=list)
 
 
 class ProbeError(Exception):
@@ -42,6 +64,21 @@ class UnsupportedCodec(Exception):
 
 
 _DECODER_LINE = re.compile(r"^\s*V[FSXBD.]{5}\s+(\S+)")
+
+
+def _stream_info(stream: dict) -> StreamInfo:
+    tags = stream.get("tags") or {}
+    disposition = stream.get("disposition") or {}
+    title = str(tags.get("title") or "")
+    return StreamInfo(
+        index=int(stream.get("index") or 0),
+        codec=str(stream.get("codec_name") or ""),
+        language=str(tags.get("language") or "").lower(),
+        title=title,
+        channels=int(stream.get("channels") or 0),
+        default=bool(disposition.get("default")),
+        commentary=bool(disposition.get("comment")) or "comment" in title.lower(),
+    )
 
 
 def _parse_fps(rate: str | None) -> float:
@@ -105,7 +142,9 @@ class MediaProbeService:
                 [
                     "ffprobe", "-v", "error",
                     "-show_entries",
-                    "stream=codec_name,codec_type,width,height,duration,r_frame_rate",
+                    "stream=index,codec_name,codec_type,width,height,duration,"
+                    "r_frame_rate,channels:stream_tags=language,title"
+                    ":stream_disposition=default,comment,attached_pic",
                     "-show_entries", "format=format_name,duration",
                     "-of", "json",
                     str(path),
@@ -127,7 +166,9 @@ class MediaProbeService:
             raise ProbeError(f"ffprobe returned invalid JSON: {e}") from e
 
         streams = data.get("streams") or []
-        video = next((s for s in streams if s.get("codec_type") == "video"), None)
+        videos = [s for s in streams if s.get("codec_type") == "video"]
+        video = next((s for s in videos
+                      if not (s.get("disposition") or {}).get("attached_pic")), None)
         audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
         if video is None:
             raise ProbeError("ffprobe found no video stream in the file")
@@ -148,6 +189,11 @@ class MediaProbeService:
             container=container,
             audio_codec=(audio.get("codec_name") if audio else "") or "",
             fps=_parse_fps(video.get("r_frame_rate")),
+            video_index=int(video["index"]) if "index" in video else None,
+            audio_streams=[_stream_info(s) for s in streams
+                           if s.get("codec_type") == "audio"],
+            subtitle_streams=[_stream_info(s) for s in streams
+                              if s.get("codec_type") == "subtitle"],
         )
 
     def is_faststart(self, path: Path) -> bool:
