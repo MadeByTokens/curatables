@@ -385,9 +385,54 @@ Remote thumbnails are fetched only from `http(s)` URLs whose host
 resolves to public internet addresses only (`app/services/safe_fetch.py`;
 private, loopback, link-local, CGNAT and multicast ranges are refused),
 following at most 3 redirects, each checked the same way. They are capped
-at 5 MB and kept only if the bytes are an image. The address is checked
-before connecting, so a DNS name that changes its answer between the
-check and the connection (DNS rebinding) is not covered.
+at 5 MB and kept only if the bytes are an image. The connection goes to
+exactly the addresses that passed the check (no second DNS lookup), so a
+name that changes its answer between the check and the connection (DNS
+rebinding) cannot reach the home network. IPv4 addresses are tried
+first, with a 4-second connect timeout per address.
+
+### Import from a drive
+
+Parent-only (`/parent/import`, CSRF on every POST). The page lists files
+only under `storage.import_roots`; every path is resolved and must stay
+inside its root, symlinks, hidden files and Windows system folders are
+skipped, and the library's own media and data folders are never listed,
+even when configured as a root. A queued job re-checks its file is still
+inside a root and unchanged (size and mtime) before reading it. Sidecar
+pictures and subtitles are only taken from the video's own folder; `.nfo`
+files with DTD or entity declarations are ignored, and picture bytes must
+pass the magic-byte check.
+
+Each job works in `uploads/.tmp/import-<id>/`. ffmpeg runs in its own
+process group with its stderr in a file; a cancel or a 2-minute stall
+stops the group and the folder is deleted. Before the short final commit
+nothing outside that folder is written, and the source file is only
+removed ("move") after the video row exists. On restart, running jobs are
+queued again and unclaimed job folders are deleted.
+
+Lookups (optional, `imports.lookups_enabled`) send only the title and
+year the parent typed, or a link they pasted, to `*.wikipedia.org`,
+`www.wikidata.org` (and `upload.wikimedia.org` for the picture),
+`api.themoviedb.org` / `image.tmdb.org` when a TMDB key is set, YouTube
+through yt-dlp, or the linked page. All of it goes through `safe_fetch`;
+results are plain text, shown to the parent, and saved only when the
+parent picks one.
+
+Residual: a parent who adds a folder to `import_roots` lets the parent
+page list (not read) every video file under it; a hostile media file
+reaches ffprobe/ffmpeg, as with uploads.
+
+### Media on a separate drive
+
+With `storage.media_path` set (`setup-external-drive.sh --media-only`)
+the database, config and logs stay on the SD card and only media goes to
+the drive, which may be exFAT or NTFS (mounted with the service user's
+uid/gid). If the configured media folder is missing at startup, the
+server refuses to start instead of creating it on the SD card; the empty
+mount point is `chattr +i`, so no process can write to the SD card
+through it while the drive is unplugged; a drop-in adds
+`RequiresMountsFor=` and `ReadWritePaths=` for the mount. Moving the
+library from the dashboard is refused in this mode.
 
 ### Kid wishlist (YouTube search)
 
@@ -426,7 +471,10 @@ only filter (no SafeSearch, no classifier yet).
 - ffmpeg codec allow-list on uploads; comment rate limits.
 - Hardened systemd unit; root-owned code; updater touches the data dir
   only as the service user.
-- Unmounted-drive guards; nightly 0600 backups off the media drive.
+- Unmounted-drive guards (whole-library and media-only modes); nightly
+  0600 backups off the media drive.
+- Imports confined to configured folders; cancellable jobs that clean up
+  after themselves; outbound fetches pinned to checked public addresses.
 - Forward-only schema migrations.
 
 ## Residual risks and known gaps

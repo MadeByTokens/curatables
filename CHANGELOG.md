@@ -8,6 +8,38 @@ Milestones are development phases, not released package versions — there
 is no PyPI/Docker release cadence yet (bare-metal Linux is the supported
 install, see [docs/deployment.md](docs/deployment.md)).
 
+## Unreleased — Import from a drive
+
+**New for parents**
+- Import page: browse a drive, pick movies, episodes or home videos, check
+  the guessed titles (from file names, posters, Kodi `.nfo` files), find a
+  picture and description on Wikipedia/Wikidata (with the age rating),
+  TMDB (optional key), YouTube or a linked page, or pick a frame. Episodes
+  of a show can go into one channel, in episode order. Copy, or move off
+  the drive once imported.
+- Every import shows live progress, conversion speed and time left, and
+  can be cancelled at any moment; nothing is left half-made and the file
+  on the drive is untouched until its import has finished. Running
+  imports show on the dashboard.
+- Media on any drive: `setup-external-drive.sh --media-only` keeps the
+  database on the SD card and puts the videos on an exFAT, NTFS or ext4
+  drive without formatting it.
+
+**Fixes that also help uploads and downloads**
+- Conversions had a one-hour limit a Pi 4 can hit on a movie; they now
+  run until done, with progress, stall detection and a clean stop.
+- Conversions picked streams on their own: cover art could become the
+  video, a commentary track the audio, and a subtitle stream could fail
+  the whole conversion. They now map one video and one audio stream.
+- Uploaded videos could never have subtitles, and `.srt` files were not
+  played at all; every subtitle is now served as WebVTT, with language
+  names instead of codes.
+- Server-side fetches waited out a broken IPv6 route before trying IPv4
+  (15 s per picture on some home networks); they now try IPv4 first and
+  connect only to the addresses that were checked.
+- First boot: Wi-Fi is saved as a NetworkManager profile and retried
+  until the network shows up, with a log on the boot partition.
+
 ## Unreleased — Wishlist, languages, picture PIN and hardening
 
 **New for kids and parents**

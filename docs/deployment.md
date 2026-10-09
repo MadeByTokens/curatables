@@ -201,9 +201,54 @@ yourself (`iptables-persistent`, `nftables` restore service, etc.).
 ## Media on an external drive (Raspberry Pi + USB disk)
 
 An SD card is small and wears out under constant video writes, so on a
-Pi it is worth keeping the library on a USB hard drive or SSD. The
-drive is mounted **at** the data dir (`/home/curatables/curatables-data`),
-so no paths change anywhere.
+Pi it is worth keeping the library on a USB hard drive or SSD.
+`scripts/setup-external-drive.sh` has two modes. Neither formats
+anything.
+
+### Media only (any exFAT, NTFS or ext4 drive)
+
+The database, settings and logs stay on the SD card's ext4, the only
+filesystem here that keeps SQLite safe through a power cut. Videos,
+uploads, thumbnails and channel pictures move to the drive. The drive
+may already hold other files (a movie collection to import), and they
+are left alone.
+
+```sh
+lsblk -f                        # find the partition, e.g. sda1
+sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
+```
+
+The script:
+
+- refuses FAT32, which cannot hold files over 4 GB.
+- stops curatables.
+- makes the empty mount point `/mnt/curatables-media` immutable
+  (`chattr +i`), so nothing can be written to the SD card through it
+  while the drive is unplugged.
+- adds an `/etc/fstab` entry by UUID with `nofail`. exFAT and NTFS
+  (the kernel's `ntfs3` driver) get `uid`/`gid`/`fmask`/`dmask` options,
+  since they have no Linux owners.
+- copies `videos/`, `uploads/`, `thumbnails/` and `channels/` into
+  `/mnt/curatables-media/curatables-library/`, checks the copy (file
+  count, and bytes on ext4), and keeps the SD-card originals under
+  `<data dir>/media.before-external-<date>`.
+- sets `storage.media_path` to that folder and adds the mount to
+  `storage.import_roots`, so the Import page can list the drive.
+- adds a drop-in with `RequiresMountsFor=` and `ReadWritePaths=` for the
+  mount, then starts curatables again.
+
+With `storage.media_path` set, the server refuses to start if that folder
+is missing, so a drive that failed to mount never leads to an empty
+library spread over the SD card.
+
+exFAT has no journal: after an unplug or a power cut, check it with
+`sudo fsck.exfat /dev/sda1`. An NTFS drive that Windows did not shut down
+cleanly will not mount until Windows has checked it.
+
+### Whole library (ext4 only)
+
+The drive is mounted **at** the data dir (`/home/curatables/curatables-data`),
+so no paths change anywhere and the database moves too.
 
 1. Plug the drive in and find its partition:
 

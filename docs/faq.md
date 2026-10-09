@@ -67,6 +67,22 @@ watched cached videos; uploads and keep-forever videos are never
 removed. **Storage** shows what uses the space. On a Pi, move the library
 to a USB drive ([deployment.md](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)).
 
+**I already have a drive full of movies.**
+Don't format it. Plug it into the Pi and run
+`sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1`
+(find the name with `lsblk -f`). It works with exFAT, NTFS and ext4, keeps
+every file where it is, and adds the drive to **+ Add → import files
+already on a drive**, where you pick the movies, check their titles and
+pictures, and import them
+([getting-started.md](getting-started.md#import-videos-already-on-a-drive)).
+
+**An import is taking hours.**
+The file is being converted for the player, and a Raspberry Pi 4 can take
+longer than the movie lasts. The Import page shows how fast it is going
+and about how long is left; **Cancel** stops it and leaves the file on
+the drive exactly as it was. Files that are already H.264/AAC MP4 at up to
+720p need no conversion.
+
 ## Kids and profiles
 
 **Can each child have different rules?**
@@ -102,7 +118,8 @@ are in `logs/` inside the data dir.
 
 **The external drive was unplugged.**
 Curatables stops and waits. Plug it back in and run
-`sudo mount -a && sudo systemctl restart curatables`, or reboot.
+`sudo mount -a && sudo systemctl restart curatables`, or reboot. An exFAT
+drive should be checked first: `sudo fsck.exfat /dev/sda1`.
 
 **I forgot the parent password.**
 See [getting-started.md → I forgot the parent

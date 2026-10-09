@@ -1,7 +1,7 @@
 # Import From the Drive — Design Notes
 
 **Date:** 2026-10-09
-**Status:** Planned, not built.
+**Status:** Built (see [architecture.md → Imports from a drive](../architecture.md#imports-from-a-drive)). Not built: the Pi 4 hardware H.264 encoder.
 **Scope:** (1) Let the media live on an external drive that is not ext4, with the database staying on the SD card. (2) A parent page that turns video files already on that drive into library videos, with a step that looks up a cover image and a description online.
 
 ---

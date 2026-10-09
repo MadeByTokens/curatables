@@ -231,13 +231,19 @@ migrations must be idempotent and safe on existing data.
 | `0005_hash_profile_pins.py` | Rewrites plaintext kid PINs as PBKDF2 hashes. |
 | `0006_videos_last_played_at.py` | `videos.last_played_at`, backfilled from `video_play` events. |
 | `0007_profile_feature_switches.py` | Per-profile `allow_comments`, `allow_reactions`, `allow_tags`, `allow_customize`, `allow_upload`, `auto_subtitles` (existing profiles keep everything on). |
+| `0008_login_failures.py` | `login_failures`, so the parent login limit survives a restart. |
+| `0009_profile_pin_style.py` | `profiles.pin_style` (digits or pictures). |
+| `0010_profile_language.py` | `profiles.language` for the kid screens. |
+| `0011_wishlist.py` | `profiles.allow_wishlist` and `wishlist_requests`. |
+| `0012_imports.py` | `videos.origin`, `origin_ref`, `source_path`, `episode_key`; the `import_jobs` table. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
 `sources`, `videos`, `profiles`, `profile_channels` (whitelist),
 `reactions`, `comments`, `events` (append-only usage log),
 `profile_video_overrides`, `tags`, `profile_video_tags`,
-`profile_channel_videos`.
+`profile_channel_videos`, `wishlist_requests`, `login_failures`,
+`import_jobs`.
 
 `videos` carries two independent states: `status` (`active` / `hidden` /
 `review`, the parent's decision) and `download_status` (`pending` /
@@ -305,8 +311,9 @@ video directory, so evicting a video keeps the picture the parent chose
 ### Playback baseline
 
 Modern sources serve VP9/AV1 + Opus, which Safari and old devices can't
-decode. After `StorageService.download` and inside `UploadService.finalize`,
-`MediaNormalizer` probes the file and leaves it alone (already baseline),
+decode. After `StorageService.download`, in the shared ingest path for
+uploads and imports, `MediaNormalizer` probes the file and leaves it alone
+(already baseline),
 **remuxes** it (`-c copy -movflags +faststart`), or **transcodes** it
 (`libx264` main / `aac` / ≤720p / ≤30 fps). The result is a `video.mp4`
 that is H.264/AAC ≤720p30 with `+faststart`. It never raises on media
@@ -314,6 +321,77 @@ problems: an unconvertible file keeps its original `.webm`/`.mkv`, which
 playback, size accounting and crash recovery all find. The yt-dlp format
 string prefers `avc1`+`mp4a`, so most ingests need only the remux. Design
 notes: [`history/ui-and-playback-plan.md`](history/ui-and-playback-plan.md).
+
+The command maps exactly one video stream (skipping cover-art pictures)
+and one audio stream (the first, or the one the parent chose), and drops
+subtitle and data streams (`-sn -dn`); a picture subtitle track can be
+drawn into the video with an `overlay` filter. `convert(src, out)` writes
+the result elsewhere and never touches the source; `normalize(path)`
+converts in place.
+
+ffmpeg runs through `app/services/ffmpeg_runner.py`: its own process
+group, `-progress pipe:1` parsed on a reader thread that keeps only the
+latest numbers, stderr to a log file. Callers get measured progress, a
+speed averaged over the last minute and the time left. A `CancelToken`
+or 2 minutes without progress stops the whole group (SIGTERM, then
+SIGKILL) and the partial output is deleted. There is no fixed timeout.
+
+### Subtitles
+
+Subtitle files sit next to the video file as `video.<lang>.vtt` (or
+`.srt`), in `videos/<id>/` for downloads and `uploads/<id>/` for uploads
+and imports (`StorageService.subtitle_dir`). `/media/subs/<id>` lists
+them with a language code for `srclang` and a readable name;
+`/media/subs/<id>/<file>` always serves WebVTT, converting SubRip on the
+fly (`app/services/subtitles.py`: times, ASS override tags, markup other
+than i/b/u, Windows-1252 and UTF-16 text) and stripping VTT cue settings.
+
+## Imports from a drive
+
+`app/features/parent_import/` plus `app/services/imports.py`,
+`import_scan.py`, `ingest.py` and `lookup.py`.
+
+- **Scan.** `ImportRoots` lists video files under `storage.import_roots`,
+  resolving every path inside its root and skipping symlinks, hidden
+  files and the library's own folders. `parse_name` guesses title, year,
+  season and episode; `find_sidecars` picks up posters, a Kodi `.nfo`
+  and `.srt`/`.vtt` files next to the video.
+- **Draft.** Picking files creates `import_jobs` rows in state `draft`
+  (one batch). A background thread probes each file once (streams,
+  conversion plan, default audio track) and fills in the details. The
+  parent edits them; episodes of one show can become one new channel,
+  ordered by `videos.episode_key` (season × 1000 + episode), which
+  `list_ready(channel_id=…)` sorts by.
+- **Lookup.** `LookupService` asks Wikipedia (REST search and page
+  summary, in the kid language first) and Wikidata (film / TV series,
+  year, MPAA rating), TMDB when a key is set, YouTube through the
+  backend, or a page's `og:` tags. Candidate pictures are downloaded by
+  the server into `uploads/.tmp/import-preview-<id>/` and shown from
+  there, so the CSP stays `img-src 'self'`.
+- **Run.** `ImportWorker` (one thread, started in the lifespan) takes the
+  next `queued` job and runs it on the download pool, so imports share
+  `max_concurrent_downloads`. `ImportRunner` re-checks the path, hashes
+  the file (`up_<sha256[:16]>`, the same id as uploads, so a file is never
+  imported twice), converts with `convert()` or copies it into
+  `uploads/.tmp/import-<id>/` (a same-drive move with nothing to convert
+  is a rename at commit), extracts the chosen subtitles to VTT, and then
+  `IngestService.commit()` moves everything into `uploads/<id>/` and
+  inserts the row. Progress goes to the job row about once a second; the
+  page polls `/parent/import/status.json`.
+- **Cancel and restart.** Cancel marks the row `cancelling` and fires the
+  job's `CancelToken`; the runner also re-reads the row every few seconds.
+  Either way the job folder is deleted and the source is untouched. On
+  startup `working` jobs return to `queued`, `cancelling` ones become
+  `cancelled`, and job folders no live job owns are deleted.
+
+### Media folder
+
+`config.media_dir` is `storage.media_path` when set, else the data dir.
+`StorageService`, `ThumbnailService`, `ChannelService`, `KidLibraryService`,
+the storage report and crash recovery all take the media dir; the
+database, config, logs and update flag files stay in the data dir. A test
+fails if code joins `videos`/`uploads`/`thumbnails`/`channels` onto the
+data dir again.
 
 ---
 
@@ -328,7 +406,8 @@ calls, in order:
    `DownloadQueue` and sweep upload temp files older than 24 h. Failures
    are logged, never fatal.
 3. `make_lifespan(config)` — the FastAPI lifespan: starts the mDNS
-   advertiser and the **maintenance loop**, and stops both on shutdown.
+   advertiser, the **import worker** and the **maintenance loop**, and
+   stops them on shutdown.
 
 The maintenance loop wakes every `storage.cache_cleanup_interval_minutes`
 (default 60; 0 disables it), re-reads the config, and on a worker thread

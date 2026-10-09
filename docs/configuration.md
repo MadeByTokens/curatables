@@ -35,6 +35,8 @@ Unknown keys make startup fail, so check spelling.
 | Key | Default | Settings page | Meaning |
 |---|---|---|---|
 | `path` | data dir | (read-only) | Where everything lives. Set by `--data-dir`. |
+| `media_path` | empty | (read-only) | Where videos, uploads, thumbnails and channel pictures live, if not inside `path`. Set by `setup-external-drive.sh --media-only`, so the media can be on an exFAT or NTFS drive while the database stays on the SD card. If it is set and missing, the server refuses to start. |
+| `import_roots` | `[]` | Import from a drive | Folders the [Import](getting-started.md#import-videos-already-on-a-drive) page may list video files from. The library's own folders are never listed. |
 | `cache_days` | `30` | Storage | A downloaded video nobody watched for this many days is removed from disk and downloads again when next tapped. `0` keeps everything. |
 | `default_mode` | `cache` | Storage → "Keep newly added videos forever" | `library` marks new videos keep-forever. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
@@ -72,6 +74,15 @@ Video requests).
 | `max_duration_minutes` | `30` | Longer results are hidden; `0` = any length. |
 | `max_results` | `12` | Results shown per search. |
 
+### `imports`
+
+The Import page's online lookups (Settings → Import from a drive).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `lookups_enabled` | `true` | Offer pictures and descriptions from Wikipedia/Wikidata, YouTube, or a web page the parent links. Only the typed title, year or link is sent. Off: frames and uploaded pictures only. |
+| `tmdb_api_key` | empty | Optional TMDB v3 key or v4 read token; adds film and TV posters and overviews from The Movie Database. |
+
 ## Per-child options (Kids → Edit)
 
 Stored in the database, not `config.json`.
@@ -90,7 +101,8 @@ Stored in the database, not `config.json`.
 
 | Variable | Used by | Meaning |
 |---|---|---|
-| `CURATABLES_REQUIRE_MOUNT=1` | `run.py` | Refuse to start unless the data dir is a mounted drive. Set by `scripts/setup-external-drive.sh`. |
+| `CURATABLES_REQUIRE_MOUNT=1` | `run.py` | Refuse to start unless the data dir is a mounted drive. Set by `scripts/setup-external-drive.sh` (whole-library mode). |
+| `CURATABLES_MEDIA_MOUNT` | `setup-external-drive.sh --media-only` | Where the media drive is mounted (default `/mnt/curatables-media`). |
 | `LOG_FORMAT=json` | server | One JSON object per log line instead of plain text. |
 | `CURATABLES_DATA_DIR` | `backup.sh`, `restore.sh` | Data dir to back up / restore into. |
 | `RETAIN` | `backup.sh` | Number of snapshots to keep (default 14). |

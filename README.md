@@ -69,6 +69,12 @@ _A demo library (generated test clips, no real data)._
   iOS 9.
 - **Kid uploads** — kids can add their own videos; ones sent to a shared
   channel wait for your approval.
+- **Import from a drive** — bring in movies and videos already on a USB
+  drive: titles and episodes guessed from the file names, pictures and
+  descriptions looked up on Wikipedia (with the age rating), YouTube or a
+  web page, TV shows grouped into one channel in episode order. Each
+  conversion shows its live progress and time left, and can be cancelled
+  at any moment without leaving anything behind.
 - **Ask for new videos** (off by default) — a kid searches YouTube through
   the server, sees only results that pass your rules, and taps **Ask**;
   you review and add it, or say "not this one", from a requests inbox.
@@ -86,8 +92,10 @@ running Debian/Ubuntu. Converting each new video is the only heavy job: a
 Pi 5 or laptop does it quickly, a Pi 4 takes a few minutes per video.
 
 On a Pi, keep the videos on a **USB hard drive or SSD**: SD cards are
-small and wear out. `scripts/setup-external-drive.sh` moves the library
-over and makes Curatables wait for the drive at boot
+small and wear out. `scripts/setup-external-drive.sh --media-only` puts
+the videos on any exFAT, NTFS or ext4 drive (without formatting it, so a
+drive that already holds your movies is fine) while the database stays on
+the SD card, and makes Curatables wait for the drive at boot
 ([details](docs/deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)).
 A 2.5" hard drive may need a powered USB hub on a Pi 4.
 

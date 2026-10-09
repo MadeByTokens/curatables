@@ -225,6 +225,39 @@ the one part that uses real computing power:
 If you add a lot of content and the wait bothers you, a Pi 5 or a small
 mini-PC will process videos noticeably faster than a Pi 4.
 
+### Import videos already on a drive
+
+Movies from DVDs, videos you saved from YouTube, home videos: if they are
+already on a drive plugged into the box, **+ Add → import files already on
+a drive** brings them in without uploading anything.
+
+1. **Pick files.** Browse the drive's folders and tick the videos (files
+   already imported are marked). A whole folder, subfolders included,
+   can go at once: up to 200 files.
+2. **Check the details.** The title, year and episode are guessed from the
+   file name, and a `poster.jpg`, a Kodi `.nfo` or `.srt` subtitles next to
+   a file are picked up. Say where each one is from (a movie or TV show,
+   YouTube, another web page, a home video) and pick a channel. Files that
+   look like episodes of one show are offered as **one channel for the
+   show**, in episode order.
+3. **Find a picture and description (optional).** The server looks the
+   title up on Wikipedia (with the age rating from Wikidata when there is
+   one), on YouTube, or on the web page you link, and shows a few matches
+   to choose from. You can also pick a frame from the video or upload a
+   picture. Only the title, year or link is sent. Read the description
+   before using it, because encyclopedias give away the story.
+4. **Import.** **Copy** leaves the files on the drive; **Move** takes
+   them off once they are in the library (on the same drive that is
+   instant). The Import page shows each file's progress: percent done,
+   how fast the conversion is going and about how long is left, worked
+   out as it runs. **Cancel** stops any of them at once and leaves no
+   half-made files behind; the file on the drive is never changed until
+   its import has finished.
+
+Files that already play on every device are imported in seconds. Others
+are converted, which on a Raspberry Pi 4 can take as long as the movie
+itself, or longer.
+
 ---
 
 ## Step 6 (optional) — make it start automatically
@@ -259,17 +292,36 @@ sudo journalctl -u curatables -f      # live log; Ctrl-C to stop watching
 ### Using an external hard drive for the videos
 
 On a Raspberry Pi it's worth keeping the videos on a USB hard drive or
-SSD: SD cards are small and wear out. With the drive plugged in:
+SSD: SD cards are small and wear out. Plug the drive in and find it:
 
 ```sh
-lsblk -f                                            # find it, e.g. sda1
-sudo mkfs.ext4 -L curatables /dev/sda1              # ERASES the drive; skip if already ext4
+lsblk -f                                            # e.g. sda1, and its type
+```
+
+**Most drives: keep the database on the SD card, videos on the drive.**
+This works with the exFAT and NTFS drives computers usually come with, and
+with a drive that already holds your movies: nothing on it is erased or
+moved.
+
+```sh
+sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
+```
+
+The library's videos go into a `curatables-library` folder on the drive,
+and the drive is added to the Import page so you can bring in what is
+already on it. (FAT32 drives are refused: they cannot hold files over
+4 GB.)
+
+**Or put the whole library on an ext4 drive:**
+
+```sh
+sudo mkfs.ext4 -L curatables /dev/sda1              # ERASES the drive
 sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sda1
 ```
 
-The last command moves your library onto the drive and sets the Pi up
-to mount it on every boot. If the drive is ever unplugged, Curatables
-waits for it instead of starting with an empty library. Details:
+Either way the Pi mounts the drive on every boot, and if the drive is ever
+unplugged, Curatables waits for it instead of starting with an empty
+library. Details:
 [deployment.md → Media on an external drive](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk).
 
 ---
