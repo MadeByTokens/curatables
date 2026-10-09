@@ -22,7 +22,7 @@ avahi-daemon inside vs. outside the container).
 | Runtime | Min version | Why | Notes |
 |---|---|---|---|
 | **Python** | 3.10 | `app/config.py` uses PEP 604 `str \| None` annotations in its dataclasses (e.g. `ParentConfig.password_hash`) without `from __future__ import annotations`, so older Pythons fail to import it. `pyproject.toml` has `requires-python = ">=3.10"`. | Supported and tested in CI: 3.10, 3.11, 3.12, 3.13. The Pi appliance image (Raspberry Pi OS trixie) runs 3.13. Type checking targets 3.11 (`[tool.mypy] python_version`). |
-| **Deno** | any recent | yt-dlp uses Deno as a JavaScript runtime to run YouTube's player extraction code. Without Deno, YouTube extraction fails with an opaque "extractor" error. | `scripts/install.sh` and the Pi image install it system-wide with `DENO_INSTALL=/usr/local` (binary at `/usr/local/bin/deno`, readable by the service user). Must be on `PATH` when `run.py` starts; `run.py:check_dependencies` warns if missing. |
+| **Deno** | any recent | yt-dlp uses Deno as a JavaScript runtime to run YouTube's player extraction code. Without Deno, YouTube extraction fails with an opaque "extractor" error. | `scripts/install.sh` and the Pi image install it system-wide with `scripts/install-deno.sh`, which downloads a pinned release from GitHub and checks its SHA-256 (binary at `/usr/local/bin/deno`, readable by the service user). Bump `DENO_VERSION` and both checksums there to upgrade. Must be on `PATH` when `run.py` starts; `run.py:check_dependencies` warns if missing. |
 
 ---
 
@@ -356,9 +356,8 @@ none — yt-dlp runs synchronously inside the download worker).
 ### Deno
 
 Two options, both fine:
-1. Install Deno from the upstream script inside the Dockerfile:
-   `RUN curl -fsSL https://deno.land/install.sh | sh`. Lands at
-   `/root/.deno/bin/deno`; add to `PATH`.
+1. Run the pinned, checksummed installer inside the Dockerfile:
+   `RUN scripts/install-deno.sh /usr/local` (needs `curl` and `unzip`).
 2. Copy the prebuilt binary from the official `denoland/deno` Docker
    image:
    ```
@@ -399,7 +398,7 @@ and `scripts/apt-packages.txt` in the same commit.
 
 `scripts/install.sh --dry-run` is how to test installer changes from a
 workstation without root: it resolves apt package names via
-`apt-cache policy`, probes the Deno URL, and runs the full venv +
+`apt-cache policy`, checks GitHub (where Deno is downloaded from) is reachable, and runs the full venv +
 `pip install` + `run.py --check` cycle inside a throwaway tmpdir that
 is cleaned up on exit.
 

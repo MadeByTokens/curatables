@@ -294,7 +294,7 @@ The deployment doc has a deeper checklist:
 
 - **`xx required command not found`**: you're probably not on a
   Debian/Ubuntu/Raspberry Pi OS system. The installer only supports those.
-- **apt or network errors**: check the box is online (`ping -c3 deno.land`)
+- **apt or network errors**: check the box is online (`ping -c3 github.com`)
   and try `sudo apt update` again.
 - You can safely **re-run `scripts/install.sh`** — it's designed to be run
   multiple times.

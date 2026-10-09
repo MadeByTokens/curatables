@@ -40,7 +40,7 @@ Both the image and `install.sh --systemd` produce the same layout:
 | `/opt/curatables` (code + `.venv`) | root | Read-only to the service. `chown -R root:root` after every install/build. |
 | `/home/curatables/curatables-data` | `curatables` | Data dir: `config.json`, SQLite DB, videos, thumbnails, update flag files. |
 | `/var/lib/curatables-backups` | `curatables`, mode 0700 | Nightly snapshots (systemd `StateDirectory`), off the media drive. |
-| `/usr/local/bin/deno` | root | Installed with `curl https://deno.land/install.sh \| sh` as root. |
+| `/usr/local/bin/deno` | root | Pinned release from GitHub, SHA-256 checked by `scripts/install-deno.sh`. |
 
 `curatables.service` runs as the unprivileged `curatables` user with
 only `CAP_NET_BIND_SERVICE` (port 80), `NoNewPrivileges`,
@@ -408,8 +408,8 @@ check and the connection (DNS rebinding) is not covered.
 | No CSP; inline scripts remain in some templates | Low | Known gap |
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
-| Wi-Fi PSK left in plaintext on the image's boot partition | Low (physical access) | Documented |
-| Deno installed by piping a remote script to a root shell | Low | Documented |
+| Wi-Fi PSK on the boot partition between flashing and the first boot | Low (physical access) | Mitigated; blanked once applied |
+| Thumbnail fetch: DNS rebinding between the address check and the connection | Low | Documented |
 
 "Accepted" and "Documented" mean we believe the behaviour is acceptable
 once the operator understands it; "Out of scope" items are explicit

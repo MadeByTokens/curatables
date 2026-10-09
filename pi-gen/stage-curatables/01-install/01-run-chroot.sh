@@ -29,15 +29,7 @@ python3 -m venv "${ROOT}/.venv"
 "${ROOT}/.venv/bin/pip" install -r "${ROOT}/requirements.txt"
 
 # --- deno (system-wide, on PATH for the service) -----------------------
-export DENO_INSTALL=/usr/local
-curl -fsSL https://deno.land/install.sh | sh
-# install.sh lands the binary at ${DENO_INSTALL}/bin/deno; ensure it's on
-# the default PATH the service inherits.
-if [ -x /usr/local/bin/deno ]; then
-	:
-elif [ -x /usr/local/deno ]; then
-	ln -sf /usr/local/deno /usr/local/bin/deno
-fi
+"${ROOT}/scripts/install-deno.sh" /usr/local
 
 # --- systemd units -----------------------------------------------------
 for unit in curatables.service curatables-updater.service curatables-updater.path \

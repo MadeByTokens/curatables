@@ -49,7 +49,6 @@ SVC_DATA=/home/curatables/curatables-data
 
 mapfile -t APT_PACKAGES < <(grep -Ev '^[[:space:]]*(#|$)' scripts/apt-packages.txt)
 
-DENO_INSTALL_URL="https://deno.land/install.sh"
 
 say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*" >&2; }
@@ -85,8 +84,9 @@ if [[ $DRY_RUN -eq 1 ]]; then
     fi
 
     need_cmd curl
-    say "Checking Deno install URL is reachable"
-    curl -fsI "$DENO_INSTALL_URL" >/dev/null || warn "Deno URL unreachable: $DENO_INSTALL_URL"
+    say "Checking the Deno download site is reachable"
+    curl -fsI https://github.com/denoland/deno/releases >/dev/null \
+        || warn "github.com unreachable: Deno could not be downloaded"
 
     TMPVENV="$(mktemp -d)"
     trap 'rm -rf "$TMPVENV"' EXIT
@@ -115,7 +115,7 @@ as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${APT_PACKAGES[@]
 
 if ! command -v deno >/dev/null 2>&1; then
     say "Installing Deno to /usr/local (system-wide, visible to the service)"
-    curl -fsSL "$DENO_INSTALL_URL" | as_root env DENO_INSTALL=/usr/local sh -s -- -y
+    as_root "$REPO_ROOT/scripts/install-deno.sh" /usr/local
 else
     say "Deno already installed: $(deno --version | head -n1)"
 fi
