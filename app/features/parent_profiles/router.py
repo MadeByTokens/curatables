@@ -8,7 +8,10 @@ from app.dependencies import require_parent, get_profile_service, get_content_se
 from app.services.profiles import ProfileService
 from app.services.content import ContentService
 from app.models import ViewerContext
-from app.constants import AVATAR_CHOICES, THEME_CHOICES, SEARCH_CHOICES
+from app.constants import (
+    AVATAR_CHOICES, PICTURE_PIN_LENGTH, PIN_PICTURES, PIN_STYLE_CHOICES,
+    SEARCH_CHOICES, THEME_CHOICES,
+)
 from app.models.profile import FEATURE_SWITCHES
 from app.web import form_str
 
@@ -33,10 +36,21 @@ def _profile_fields(form) -> dict:
     }
 
 
-def _pin_error(pin: str) -> str | None:
+def _read_pin(form) -> tuple[str, str, str | None]:
+    """(pin_style, new PIN or "", error) from the PIN part of the form."""
+    style = _choice(form_str(form, "pin_style"), PIN_STYLE_CHOICES, "digits")
+    if style == "pictures":
+        allowed = {digit for digit, _emoji, _name in PIN_PICTURES}
+        picks = [form_str(form, f"pin_pic_{i}") for i in range(1, PICTURE_PIN_LENGTH + 1)]
+        if not any(picks):
+            return style, "", None
+        if not all(p in allowed for p in picks):
+            return style, "", f"Pick all {PICTURE_PIN_LENGTH} pictures."
+        return style, "".join(picks), None
+    pin = form_str(form, "pin").strip()
     if pin and not (pin.isdigit() and 4 <= len(pin) <= 6):
-        return "PIN must be 4 to 6 digits."
-    return None
+        return style, "", "PIN must be 4 to 6 digits."
+    return style, pin, None
 
 
 def _render_form(request: Request, content: ContentService, profile=None,
@@ -48,6 +62,9 @@ def _render_form(request: Request, content: ContentService, profile=None,
         "avatar_choices": AVATAR_CHOICES,
         "theme_choices": THEME_CHOICES,
         "search_choices": SEARCH_CHOICES,
+        "pin_style_choices": PIN_STYLE_CHOICES,
+        "pin_pictures": PIN_PICTURES,
+        "picture_pin_length": PICTURE_PIN_LENGTH,
         "selected_channel_ids": (profile.allowed_channel_ids or []) if profile else [],
         "feature_switches": FEATURE_SWITCHES,
         "error": error,
@@ -81,8 +98,8 @@ async def create_submit(request: Request,
                         content: ContentService = Depends(get_content_service)):
     form = await request.form()
     display_name = form_str(form, "display_name").strip()
-    pin = form_str(form, "pin").strip()
-    error = "Name is required." if not display_name else _pin_error(pin)
+    pin_style, pin, pin_error = _read_pin(form)
+    error = "Name is required." if not display_name else pin_error
     if error:
         return _render_form(request, content, error=error, status_code=400)
 
@@ -90,6 +107,7 @@ async def create_submit(request: Request,
         name=profiles_svc.unique_slug(display_name),
         display_name=display_name,
         pin=pin,
+        pin_style=pin_style,
         **_profile_fields(form),
     )
     return RedirectResponse(url="/parent/profiles", status_code=302)
@@ -115,8 +133,11 @@ async def edit_submit(request: Request, profile_id: int,
     if not profile:
         return RedirectResponse(url="/parent/profiles", status_code=302)
     form = await request.form()
-    pin = form_str(form, "pin").strip()
-    error = _pin_error(pin)
+    pin_style, pin, error = _read_pin(form)
+    removing = form.get("remove_pin") == "1"
+    if (not error and profile.pin and not pin and not removing
+            and pin_style != profile.pin_style):
+        error = "You changed the kind of PIN: choose the new PIN, or tick Remove the PIN."
     if error:
         return _render_form(request, content, profile, error=error, status_code=400)
 
@@ -126,10 +147,11 @@ async def edit_submit(request: Request, profile_id: int,
         "display_name": form_str(form, "display_name").strip() or profile.display_name,
         **_profile_fields(form),
     }
-    if form.get("remove_pin") == "1":
+    if removing:
         fields["pin"] = ""
     elif pin:
         fields["pin"] = pin
+        fields["pin_style"] = pin_style
     profiles_svc.update(profile_id, **fields)
     return RedirectResponse(url="/parent/profiles", status_code=302)
 

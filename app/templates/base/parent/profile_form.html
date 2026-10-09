@@ -18,10 +18,32 @@
     <small class="muted">Shown to the kid in the header.</small>
   </div>
 
-  <div class="form-group">
-    <label for="pin">{% if profile and profile.pin %}New PIN{% else %}PIN (optional, 4–6 digits){% endif %}</label>
-    <input type="text" inputmode="numeric" pattern="[0-9]{4,6}" autocomplete="off"
-           id="pin" name="pin" maxlength="6" value="">
+  {% set current_style = profile.pin_style if profile else 'digits' %}
+  <fieldset class="form-group pin-fieldset">
+    <legend>{% if profile and profile.pin %}PIN{% else %}PIN (optional){% endif %}</legend>
+    <div class="pin-style-choice">
+      {% for val, label in pin_style_choices %}
+      <label class="fw-normal"><input type="radio" name="pin_style" value="{{ val }}" {% if current_style == val %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </div>
+    <div data-pin-panel="digits">
+      <label for="pin" class="fw-normal">{% if profile and profile.pin %}New PIN{% else %}4–6 digits{% endif %}</label>
+      <input type="text" inputmode="numeric" pattern="[0-9]{4,6}" autocomplete="off"
+             id="pin" name="pin" maxlength="6" value="">
+    </div>
+    <div data-pin-panel="pictures">
+      <p class="fw-normal mb-6">{% if profile and profile.pin %}New picture PIN{% else %}Three pictures, in order{% endif %} — easier for a child who doesn't read numbers yet.</p>
+      {% for i in range(1, picture_pin_length + 1) %}
+      <label class="fw-normal">{{ i }}.
+        <select name="pin_pic_{{ i }}">
+          <option value="">—</option>
+          {% for digit, emoji, name in pin_pictures %}
+          <option value="{{ digit }}">{{ emoji }} {{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endfor %}
+    </div>
     {% if profile and profile.pin %}
     <small class="muted d-block">A PIN is set. Leave this blank to keep it.</small>
     <label class="fw-normal d-block">
@@ -30,7 +52,7 @@
     {% else %}
     <small class="muted">If set, the kid must enter this PIN to use the profile. A PIN keeps siblings out of each other's profiles; it is not a strong lock.</small>
     {% endif %}
-  </div>
+  </fieldset>
 
   <div class="form-group">
     <label for="avatar">Avatar</label>

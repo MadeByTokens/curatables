@@ -6,13 +6,16 @@
   var pad = document.getElementById('pin-pad');
   var dots = document.getElementById('pin-dots');
   if (!input || !pad || !dots) { return; }
+  var max = parseInt(pad.getAttribute('data-max'), 10) || 6;
+  var autoSubmit = pad.getAttribute('data-auto-submit') === '1';
+  var shown = [];
 
   document.documentElement.className += ' js';
   input.setAttribute('readonly', 'readonly');
 
   function render() {
     var out = '';
-    for (var i = 0; i < input.value.length; i++) { out += '● '; }
+    for (var i = 0; i < input.value.length; i++) { out += (shown[i] || '●') + ' '; }
     dots.innerHTML = out || '&nbsp;';
   }
 
@@ -23,10 +26,15 @@
     var d = el.getAttribute('data-digit');
     if (d === 'back') {
       input.value = input.value.substring(0, input.value.length - 1);
-    } else if (input.value.length < 6) {
+      shown.length = input.value.length;
+    } else if (input.value.length < max) {
       input.value += d;
+      shown[input.value.length - 1] = el.getAttribute('data-show');
     }
     render();
+    if (autoSubmit && d !== 'back' && input.value.length === max) {
+      input.form.submit();
+    }
   };
   render();
 })();

@@ -8,7 +8,7 @@ from app.services.auth import PIN_LIMITER
 from app.services.profiles import ProfileService
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
-from app.constants import AVATAR_EMOJIS
+from app.constants import AVATAR_EMOJIS, PICTURE_PIN_LENGTH, PIN_PICTURES
 
 router = APIRouter(tags=["kid-profiles"])
 
@@ -51,6 +51,18 @@ def profile_picker(request: Request,
     })
 
 
+def _pin_page(request: Request, profile, error: str | None = None,
+              locked: bool = False):
+    return render_kid_template(request, _viewer_for_profile(profile), "kid/pin.html", {
+        "profile": profile,
+        "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
+        "error": error,
+        "locked": locked,
+        "pin_pictures": PIN_PICTURES,
+        "picture_pin_length": PICTURE_PIN_LENGTH,
+    })
+
+
 @router.post("/profiles/select")
 def profile_select(request: Request,
                    profile_id: int = Form(...),
@@ -59,12 +71,7 @@ def profile_select(request: Request,
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
     if profile.pin:
-        viewer = _viewer_for_profile(profile)
-        return render_kid_template(request, viewer, "kid/pin.html", {
-            "profile": profile,
-            "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
-            "error": None,
-        })
+        return _pin_page(request, profile)
     _enter_kid_mode(request, profile.id)
     return RedirectResponse(url="/", status_code=302)
 
@@ -77,26 +84,17 @@ def profile_pin(request: Request,
     profile = profiles_svc.get(profile_id)
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
-    viewer = _viewer_for_profile(profile)
     # Keyed by device as well, so one sibling's wrong guesses don't lock
     # the profile on everyone else's tablet.
     limiter_key = (profile.id, request.client.host if request.client else "")
     if not PIN_LIMITER.check(limiter_key):
-        return render_kid_template(request, viewer, "kid/pin.html", {
-            "profile": profile,
-            "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
-            "error": "Too many tries. Wait a little, then try again.",
-            "locked": True,
-        })
+        return _pin_page(request, profile,
+                         "Too many tries. Wait a little, then try again.", locked=True)
     if profiles_svc.check_pin(profile, pin):
         PIN_LIMITER.reset(limiter_key)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url="/", status_code=302)
-    return render_kid_template(request, viewer, "kid/pin.html", {
-        "profile": profile,
-        "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
-        "error": "Wrong PIN. Try again.",
-    })
+    return _pin_page(request, profile, "Wrong PIN. Try again.")
 
 
 @router.get("/profiles/switch")

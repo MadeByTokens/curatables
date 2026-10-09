@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     allow_tags      INTEGER NOT NULL DEFAULT 1,
     allow_customize INTEGER NOT NULL DEFAULT 1,
     allow_upload    INTEGER NOT NULL DEFAULT 1,
-    auto_subtitles  INTEGER NOT NULL DEFAULT 1
+    auto_subtitles  INTEGER NOT NULL DEFAULT 1,
+    pin_style   TEXT NOT NULL DEFAULT 'digits'  -- 'digits' | 'pictures'
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (

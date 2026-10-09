@@ -25,4 +25,21 @@ THEME_CHOICES = [
     ("calm", "Calm"),
     ("clear", "Big & clear (large text, high contrast)"),
 ]
+PIN_STYLE_CHOICES = [("digits", "Numbers (4–6 digits)"), ("pictures", "Pictures (pick 3)")]
+
+# Picture PIN: each picture stands for a digit, so a picture PIN is
+# stored and checked like a 3-digit PIN.
+PIN_PICTURES = [
+    ("1", "\U0001f436", "dog"),
+    ("2", "\U0001f431", "cat"),
+    ("3", "\U0001f430", "rabbit"),
+    ("4", "\U0001f981", "lion"),
+    ("5", "\U0001f438", "frog"),
+    ("6", "\U0001f435", "monkey"),
+    ("7", "\U0001f43c", "panda"),
+    ("8", "\U0001f427", "penguin"),
+    ("9", "\U0001f422", "turtle"),
+]
+PICTURE_PIN_LENGTH = 3
+
 SEARCH_CHOICES = [("disabled", "Disabled"), ("curated", "Curated (approved content only)")]

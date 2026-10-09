@@ -153,7 +153,9 @@ watched this video" (checked server-side on approval) and only while
 
 PINs are a sibling barrier, not an access-control boundary.
 
-- 4–6 digits, stored as PBKDF2-HMAC-SHA256 (100,000 iterations, random
+- 4–6 digits, or a picture PIN of 3 picks from 9 pictures (stored as
+  the 3 digits the pictures stand for, so 729 combinations), stored as
+  PBKDF2-HMAC-SHA256 (100,000 iterations, random
   salt; migration 0005 converted existing rows), compared with
   `hmac.compare_digest`. A legacy plaintext value would still verify.
 - **5 attempts per profile per 5 minutes** (in memory). That bounds an

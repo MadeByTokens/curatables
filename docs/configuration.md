@@ -66,7 +66,7 @@ Stored in the database, not `config.json`.
 | Option | Meaning |
 |---|---|
 | Name, avatar | Shown on the profile picker and in the header. |
-| PIN | 4–6 digits. Keeps siblings out of each other's profiles; not a strong lock. Stored hashed. |
+| PIN | Numbers (4–6 digits) or pictures (3 taps from 9 animals, for a child who doesn't read numbers yet). Keeps siblings out of each other's profiles; not a strong lock. Stored hashed. |
 | Theme | Default, Playful, Calm, or Big & clear (large text, high contrast). |
 | Search | Off, or search within the approved library. |
 | What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles. New profiles start with reactions only. |

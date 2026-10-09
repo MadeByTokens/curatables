@@ -14,10 +14,21 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="profile_id" value="{{ profile.id }}">
     <label for="pin" class="sr-only">PIN</label>
+    {% if profile.pin_style == 'pictures' %}
+    <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[1-9]*"
+           maxlength="{{ picture_pin_length }}" autocomplete="off" class="pin-input">
+    <div class="pin-dots pin-dots-pictures" id="pin-dots" aria-live="polite"></div>
+    <div class="pin-pad pin-pad-pictures" id="pin-pad" data-max="{{ picture_pin_length }}" data-auto-submit="1">
+      {% for digit, emoji, name in pin_pictures %}
+      <button type="button" class="pin-key pin-key-picture" data-digit="{{ digit }}" data-show="{{ emoji }}" aria-label="{{ name }}">{{ emoji }}</button>
+      {% endfor %}
+      <button type="button" class="pin-key pin-key-back" data-digit="back" aria-label="Delete">&#9003;</button>
+    </div>
+    {% else %}
     <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
            maxlength="6" autocomplete="off" class="pin-input">
     <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
-    <div class="pin-pad" id="pin-pad">
+    <div class="pin-pad" id="pin-pad" data-max="6">
       {% for d in "123456789" %}
       <button type="button" class="pin-key" data-digit="{{ d }}">{{ d }}</button>
       {% endfor %}
@@ -25,6 +36,7 @@
       <button type="button" class="pin-key" data-digit="0">0</button>
       <button type="submit" class="pin-key pin-key-go" aria-label="Go">&#10003;</button>
     </div>
+    {% endif %}
     <noscript><button type="submit" class="pin-key pin-key-go">&#10003;</button></noscript>
   </form>
   {% endif %}

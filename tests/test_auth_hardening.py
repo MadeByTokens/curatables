@@ -127,3 +127,42 @@ def test_successful_login_clears_that_clients_failures(client):
     for _ in range(9):
         client.post("/parent/login", data={"password": "wrong"})
     assert client.post("/parent/login", data={"password": "testpass"}).status_code == 302
+
+
+def test_picture_pin_profile_round_trip(app, authed_client, client):
+    resp = authed_client.post("/parent/profiles/create", data={
+        "display_name": "Pia", "pin_style": "pictures",
+        "pin_pic_1": "4", "pin_pic_2": "1", "pin_pic_3": "9",
+    })
+    assert resp.status_code == 302
+    profile = [p for p in _svc(app).list() if p.display_name == "Pia"][0]
+    assert profile.pin_style == "pictures"
+    assert profile.pin.startswith("pbkdf2$")
+
+    page = client.post("/profiles/select", data={"profile_id": profile.id})
+    assert 'data-auto-submit="1"' in page.text
+    assert page.text.count('class="pin-key pin-key-picture"') == 9
+    assert client.post("/profiles/pin", data={
+        "profile_id": profile.id, "pin": "419"}).status_code == 302
+
+
+def test_picture_pin_needs_all_three(authed_client):
+    resp = authed_client.post("/parent/profiles/create", data={
+        "display_name": "Half", "pin_style": "pictures", "pin_pic_1": "4"})
+    assert resp.status_code == 400
+    assert "Pick all 3 pictures" in resp.text
+
+
+def test_changing_pin_kind_requires_a_new_pin(app, authed_client):
+    pid = _svc(app).create(name="kai", display_name="Kai", pin="1234")
+    resp = authed_client.post(f"/parent/profiles/{pid}/edit", data={
+        "display_name": "Kai", "pin_style": "pictures"})
+    assert resp.status_code == 400
+    assert "changed the kind of PIN" in resp.text
+    resp = authed_client.post(f"/parent/profiles/{pid}/edit", data={
+        "display_name": "Kai", "pin_style": "pictures",
+        "pin_pic_1": "2", "pin_pic_2": "2", "pin_pic_3": "3"})
+    assert resp.status_code == 302
+    kai = _svc(app).get(pid)
+    assert kai.pin_style == "pictures"
+    assert _svc(app).check_pin(kai, "223")

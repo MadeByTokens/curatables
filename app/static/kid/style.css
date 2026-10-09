@@ -1151,3 +1151,6 @@ video:focus {
 }
 noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
 
+.pin-dots-pictures { font-size: 40px; min-height: 56px; }
+.pin-pad-pictures .pin-key-picture { font-size: 44px; }
+.pin-pad-pictures .pin-key-back { margin-left: 33.5%; }

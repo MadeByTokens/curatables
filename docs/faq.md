@@ -78,7 +78,9 @@ channel with). In a shared channel: nobody until you approve it under
 **Needs your attention**.
 
 **A kid forgot their PIN.**
-**Kids → Edit**, type a new PIN or tick "Remove the PIN".
+**Kids → Edit**, type a new PIN or tick "Remove the PIN". A child who
+doesn't read numbers yet can have a picture PIN instead (Kids → Edit →
+PIN → Pictures).
 
 ## The box
 

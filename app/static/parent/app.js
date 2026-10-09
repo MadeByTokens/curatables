@@ -16,4 +16,17 @@
       if (field) { field.type = e.target.checked ? 'text' : 'password'; }
     });
   });
+
+  function showPinPanel() {
+    var picked = document.querySelector('input[name="pin_style"]:checked');
+    if (!picked) { return; }
+    var panels = document.querySelectorAll('[data-pin-panel]');
+    for (var i = 0; i < panels.length; i++) {
+      panels[i].hidden = panels[i].getAttribute('data-pin-panel') !== picked.value;
+    }
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target.name === 'pin_style') { showPinPanel(); }
+  });
+  showPinPanel();
 })();

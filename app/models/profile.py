@@ -10,6 +10,7 @@ class Profile:
     avatar: str = "default"
     theme: str = "base"
     search_mode: str = "disabled"   # "disabled" | "curated" | "open"
+    pin_style: str = "digits"       # "digits" | "pictures"
     created_at: str = ""
     id: int | None = None
     allowed_channel_ids: list[int] = field(default_factory=list)

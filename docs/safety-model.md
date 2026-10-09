@@ -43,9 +43,11 @@ contrast; **Calm** removes colour and shadows.
 - If you sign in as a parent on the child's tablet and then pick a kid
   profile, the parent sign-in on that tablet ends. Changing the parent
   password signs out every other device.
-- A kid **PIN** keeps siblings out of each other's profiles. It is not a
-  strong lock: a determined older child could guess 4 digits over time
-  (5 tries, then a 5-minute wait).
+- A kid **PIN** keeps siblings out of each other's profiles. It can be
+  numbers or three pictures (tap the lion, the dog, the turtle). It is
+  not a strong lock: a determined older child could guess it over time
+  (5 tries, then a 5-minute wait); a picture PIN has 729 combinations,
+  a 4-digit one 10,000.
 
 ## What you still need to do on the device
 
