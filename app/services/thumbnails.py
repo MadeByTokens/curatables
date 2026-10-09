@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import logging
 import subprocess
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from app.services.images import MAX_IMAGE_BYTES, image_extension
+from app.services.safe_fetch import fetch_public
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +61,7 @@ class ThumbnailService:
         thumb_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            req = urllib.request.Request(
-                thumbnail_url, headers={"User-Agent": "Mozilla/5.0"}
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = resp.read(MAX_IMAGE_BYTES + 1)
+            data = fetch_public(thumbnail_url, MAX_IMAGE_BYTES)
             if len(data) > MAX_IMAGE_BYTES or image_extension(data) is None:
                 logger.warning("Rejected thumbnail for %s from %s", video_id, thumbnail_url)
                 return None

@@ -364,9 +364,13 @@ use `noplaylist` and `storage.max_download_bytes` (default 4 GB); the
 service unit confines a compromise to the service user (data dir,
 network egress, update requests). There is no further sandbox.
 
-Remote thumbnails are fetched only from `http(s)` URLs, capped at 5 MB,
-and kept only if the bytes are an image. The fetch can still reach LAN
-addresses (a GET whose response is discarded unless it is an image).
+Remote thumbnails are fetched only from `http(s)` URLs whose host
+resolves to public internet addresses only (`app/services/safe_fetch.py`;
+private, loopback, link-local, CGNAT and multicast ranges are refused),
+following at most 3 redirects, each checked the same way. They are capped
+at 5 MB and kept only if the bytes are an image. The address is checked
+before connecting, so a DNS name that changes its answer between the
+check and the connection (DNS rebinding) is not covered.
 
 ## Defense-in-depth: what's in place
 
