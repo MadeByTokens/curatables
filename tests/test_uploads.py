@@ -652,8 +652,18 @@ class TestSettingsMaxUpload:
 # Upload page polish (tus-js-client best-practices fixes)
 # ---------------------------------------------------------------------------
 
+def _upload_page_with_script(client):
+    from types import SimpleNamespace
+    page = client.get("/parent/upload")
+    assert page.status_code == 200
+    script = client.get("/static/parent/upload.js")
+    assert script.status_code == 200
+    return SimpleNamespace(content=page.content + script.content)
+
+
 class TestUploadPagePolish:
-    """Structural regressions for the upload.html fixes from
+    """Structural regressions for the upload page (upload.html and
+    static/parent/upload.js) fixes from
     docs/tus-js-client-best-practices.md. These are grep-the-HTML
     assertions that catch accidental deletion of critical client-side
     structures — they do not verify JS runtime behavior, which requires
@@ -661,8 +671,7 @@ class TestUploadPagePolish:
     """
 
     def test_page_contains_build_metadata_helper(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         # The must-fix: a buildMetadata helper that filters empty values
         # so Safari doesn't reject the Upload-Metadata header.
         assert b"buildMetadata" in resp.content
@@ -671,8 +680,7 @@ class TestUploadPagePolish:
         assert b"if (title)" in resp.content
 
     def test_page_contains_on_should_retry_with_unrecoverable_codes(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         assert b"onShouldRetry" in resp.content
         # The five unrecoverable status codes must be referenced inline
         # so the retry short-circuit works for each one.
@@ -680,25 +688,21 @@ class TestUploadPagePolish:
             assert code in resp.content, f"Missing status code {code!r}"
 
     def test_page_contains_remove_fingerprint(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         assert b"removeFingerprintOnSuccess" in resp.content
 
     def test_page_contains_find_previous_uploads(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         assert b"findPreviousUploads" in resp.content
         # And the resume banner markup the promise callback populates.
         assert b"resume-banner" in resp.content
 
     def test_page_contains_beforeunload_guard(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         assert b"beforeunload" in resp.content
 
     def test_page_contains_ios_preparing_state(self, authed_client):
-        resp = authed_client.get("/parent/upload")
-        assert resp.status_code == 200
+        resp = _upload_page_with_script(authed_client)
         # The preparing state must show on the file-pick change event.
         assert b"Preparing" in resp.content
         # And the file-pick change listener must be wired up.

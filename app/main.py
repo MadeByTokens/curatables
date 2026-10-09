@@ -22,6 +22,17 @@ from app.services.csrf import CSRFService
 from app.services.metrics import MetricsService
 
 
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+    "frame-src https:; object-src 'none'; base-uri 'self'; form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+"""Pages run only the app's own scripts. Inline style attributes stay
+allowed (templates set per-channel colours); frames are https only, for
+the video-site embeds in the parent preview (PeerTube can be any host)."""
+
+
 def create_app(data_dir: str | None = None, log_level: str | None = None) -> FastAPI:
     config = load_config(data_dir)
     ensure_directories(config)
@@ -143,6 +154,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
         # YouTube embeds in the parent preview need an origin referrer.
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response

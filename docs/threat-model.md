@@ -276,13 +276,15 @@ the login) before handing it over.
 
 Every response carries `X-Content-Type-Options: nosniff`,
 `X-Frame-Options: DENY` and `Referrer-Policy:
-strict-origin-when-cross-origin`. There is no `Content-Security-Policy`.
-Inline `<script>` blocks
-remain in `parent/content.html`, `content_edit.html`, `upload.html`,
-`content_preview.html` and `kid/upload.html`, plus a few inline
-`onsubmit`/`onchange` handlers in parent templates, so a strict CSP
-would need those moved to static files first. XSS defense rests on
-Jinja autoescape and on not interpolating user data into scripts.
+strict-origin-when-cross-origin`, and a `Content-Security-Policy`
+(`app/main.py`) that allows scripts only from the app itself
+(`script-src 'self'`, no inline code), frames only over https (the video
+embeds in the parent preview), and no plugins, foreign form targets or
+framing. Inline style attributes are still allowed. All page scripts
+live in `app/static/`; a test fails if a template gains an inline
+`<script>`, an `on…=` handler or a `javascript:` URL. Jinja autoescape
+is the first line against XSS; the CSP stops injected markup from
+running script if that ever fails.
 
 ### Data-dir relocation
 
@@ -407,15 +409,15 @@ check and the connection (DNS rebinding) is not covered.
 | Gap | Severity | Status |
 |-----|----------|--------|
 | No TLS; parent cookie sniffable and replayable on the LAN | Medium (LAN-dependent) | Accepted for LAN-only use |
-| First-run setup: anyone on the LAN who gets there first sets the parent password | Medium | Documented; set the password right after first boot |
+| First-run setup: anyone on the LAN who gets there first, within 30 minutes of the server starting, sets the parent password | Low | Mitigated by the setup window; set the password right after first boot |
 | PIN is a sibling barrier (4-digit: ~3.5 days average under the rate limit), and a PIN-less single profile is auto-selected for any LAN device | Low | Documented |
-| Rate limits are in memory, per IP for login (a LAN host with many addresses gets more tries), reset on restart | Low | Documented |
+| PIN and comment rate limits are in memory and reset on restart; a flood of wrong parent passwords locks everyone out for 5 minutes | Low | Documented |
 | A parent session left open on a shared device is full parent access | Medium | Documented; log out or pick a kid profile |
 | Kid device still has a browser; device lockdown (Guided Access / screen pinning / kiosk) is up to the parent | Medium | Out of scope |
 | `yt-dlp` extractors, Deno and `ffmpeg` parse untrusted media in-process / unsandboxed beyond systemd | Medium | Out of scope (upstream) |
 | Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
 | Re-download check compares length only | Low | Documented; use keep forever for favourites |
-| No CSP; inline scripts remain in some templates | Low | Known gap |
+| CSP allows inline style attributes and any https frame | Low | Accepted |
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
 | Wi-Fi PSK on the boot partition between flashing and the first boot | Low (physical access) | Mitigated; blanked once applied |

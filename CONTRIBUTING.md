@@ -173,6 +173,10 @@ Other conventions worth knowing:
   enforces this. Reference static files with `?v={{ asset_v }}`
   so browsers pick up changes after an upgrade. Test with the
   oldest browser you can find.
+- **No inline JavaScript:** the Content-Security-Policy only runs
+  scripts from `app/static/`, so no `<script>` blocks, `on…=`
+  attributes or `javascript:` links in templates (a test checks).
+  Pass server values to scripts through `data-` attributes.
 
 [`docs/architecture.md`](docs/architecture.md) documents the
 project conventions and layering; if you change one, update the

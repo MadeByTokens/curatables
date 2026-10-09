@@ -70,3 +70,22 @@ def test_security_headers(client):
     resp = client.get("/profiles")
     assert resp.headers["X-Content-Type-Options"] == "nosniff"
     assert resp.headers["X-Frame-Options"] == "DENY"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "script-src 'self';" in csp
+    assert "unsafe-inline" not in csp.split("script-src", 1)[1].split(";", 1)[0]
+
+
+def test_templates_have_no_inline_scripts_or_handlers():
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "app" / "templates"
+    offenders = []
+    for tpl in root.rglob("*.html"):
+        text = tpl.read_text()
+        if re.search(r"<script(?![^>]*\bsrc=)[^>]*>", text):
+            offenders.append(f"{tpl.name}: inline <script>")
+        if re.search(r"\son[a-z]+\s*=\s*[\"']", text):
+            offenders.append(f"{tpl.name}: inline event handler")
+        if "javascript:" in text:
+            offenders.append(f"{tpl.name}: javascript: URL")
+    assert offenders == []
