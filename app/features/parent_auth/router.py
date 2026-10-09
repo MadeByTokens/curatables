@@ -137,14 +137,17 @@ def setup_system_submit(request: Request,
             if password != password2:
                 return _system_page(request, helper, "The passwords do not match.")
             helper.call("account_set_password", password=password)
-        want_ssh = ssh == "1"
-        if want_ssh != bool(account.get("ssh_enabled")):
-            helper.call("ssh_set", enabled=want_ssh)
     except (HelperUnavailable, HelperFailed) as e:
         return _system_page(request, helper, str(e))
 
     config.parent.system_setup_done = True
     config.save()
+    want_ssh = ssh == "1"
+    if want_ssh != bool(account.get("ssh_enabled")):
+        try:
+            helper.call("ssh_set", enabled=want_ssh)
+        except (HelperUnavailable, HelperFailed):
+            return RedirectResponse(url="/parent/system?notice=ssh-failed#ssh", status_code=302)
     return RedirectResponse(url="/parent/", status_code=302)
 
 

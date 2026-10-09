@@ -1,6 +1,8 @@
 """The Box pages: the Linux login, SSH, Wi-Fi, restarting, and the
 progress page for the system helper's background tasks."""
 
+import shutil
+import time
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -9,6 +11,7 @@ from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, R
 from app.config import Config
 from app.dependencies import get_auth_service, get_config, get_system_helper, require_parent
 from app.models import ViewerContext
+from app.services import updates
 from app.services.auth import MIN_PASSWORD_LENGTH, AuthService
 from app.services.system_helper import (
     SAME_AS_PARENT, HelperFailed, HelperUnavailable, SystemHelper,
@@ -56,6 +59,9 @@ def _overview(request: Request, helper: SystemHelper, *, success: str | None = N
 def system_page(request: Request,
                 viewer: ViewerContext = Depends(require_parent),
                 helper: SystemHelper = Depends(get_system_helper)):
+    if request.query_params.get("notice") == "ssh-failed":
+        return _overview(request, helper, error=(
+            "Setup is done, but SSH could not be switched as you asked. Try again below."))
     return _overview(request, helper)
 
 
@@ -210,7 +216,6 @@ def _drives_page(request: Request, helper: SystemHelper, config: Config, *,
 
 
 def _sd_free(config: Config) -> int:
-    import shutil
     try:
         return shutil.disk_usage(config.data_dir).free
     except OSError:
@@ -322,7 +327,6 @@ def backup_restore(request: Request, where: str = Form(...), name: str = Form(..
 # --- diagnostics --------------------------------------------------------------
 
 def _app_checks(config: Config) -> list[dict]:
-    from app.services import updates
     installed = updates.ytdlp_version()
     latest = updates.latest_ytdlp_version()
     if not installed:
@@ -343,7 +347,6 @@ def diagnostics_page(request: Request,
                      viewer: ViewerContext = Depends(require_parent),
                      helper: SystemHelper = Depends(get_system_helper),
                      config: Config = Depends(get_config)):
-    from app.services import updates
     if not helper.available:
         return unavailable_page(request)
     result, error = _try(helper, "diagnostics")
@@ -360,7 +363,6 @@ def diagnostics_page(request: Request,
 def update_downloader(request: Request,
                       viewer: ViewerContext = Depends(require_parent),
                       config: Config = Depends(get_config)):
-    from app.services import updates
     try:
         updates.request_update(config, kind=updates.KIND_YTDLP)
     except OSError as e:
@@ -373,7 +375,6 @@ def update_downloader(request: Request,
 @router.get("/diagnostics/report.txt")
 def diagnostics_report(viewer: ViewerContext = Depends(require_parent),
                        helper: SystemHelper = Depends(get_system_helper)):
-    import time
     result, error = _try(helper, "diagnostics_report")
     if error:
         return PlainTextResponse(f"The report could not be made: {error}", status_code=503)

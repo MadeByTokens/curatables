@@ -171,3 +171,19 @@ def test_step_two_needs_a_parent_session(client, app, helper):
 def test_login_page_stays_reachable_before_step_two(app, helper):
     c = TestClient(app, follow_redirects=False)
     assert c.get("/parent/login").status_code == 200
+
+
+def test_a_failing_ssh_switch_does_not_trap_the_parent_in_setup(authed_client, app, helper):
+    helper.ssh = True
+    real = helper.call
+
+    def call(action, **params):
+        if action == "ssh_set":
+            raise HelperFailed("SSH could not be turned off: no systemd")
+        return real(action, **params)
+    helper.call = call
+    resp = authed_client.post("/parent/setup/system", data={
+        "mode": "new", "password": "linuxpass99", "password2": "linuxpass99"})
+    assert resp.status_code == 302 and resp.headers["location"] == "/parent/system?notice=ssh-failed#ssh"
+    assert app.state.config.parent.system_setup_done
+    assert helper.linux_password == "linuxpass99"
