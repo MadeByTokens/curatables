@@ -41,10 +41,11 @@ You'll also need:
 > **How much computer do I actually need?** Not much. Curatables itself
 > is light. The one job that needs some muscle is *re-processing each
 > video you add* so it plays on old devices — a Pi 4 does this slowly, a
-> Pi 5 or a laptop does it quickly. The big hardware numbers you may see
-> mentioned elsewhere in this project (16–32 GB RAM, many CPU cores) are
-> for a *future, optional* AI feature that isn't built yet. **Ignore
-> those for now** — they don't apply to running Curatables today.
+> Pi 5 or a laptop does it quickly.
+>
+> **On a Raspberry Pi, plan for a USB hard drive or SSD** for the videos:
+> SD cards are small and wear out. You can add it later
+> ([Using an external hard drive](#using-an-external-hard-drive-for-the-videos)).
 
 ---
 
@@ -56,17 +57,21 @@ You'll also need:
 > already installed — **no terminal, no install steps**. Flash it and you
 > can skip Steps 2, 3, and 4 entirely.
 >
-> 1. Get the image: `curatables-<date>.img.xz` from the project's
->    Releases page (or build it yourself with
->    [`pi-gen/build.sh`](../pi-gen/README.md)).
+> 1. Download the `.img.xz` file attached to the newest release on the
+>    [Releases page](https://github.com/MadeByTokens/curatables/releases)
+>    (or build it yourself with [`pi-gen/build.sh`](../pi-gen/README.md)).
 > 2. In **Raspberry Pi Imager**, choose **"Use custom"** and select that
 >    `.img.xz`. Click the **gear** and set your **login username/password**
 >    (and Wi-Fi, if you like). Write the card.
 > 3. *(Wi-Fi alternative)* After writing, the card shows a small **boot**
 >    drive on your computer. Open **`curatables-wifi.txt`** on it and fill
 >    in `country`, `ssid`, `psk`. Wired Ethernet needs nothing.
-> 4. Put the card in the Pi, power on, wait ~2 minutes, then jump straight
->    to [Step 5](#step-5--open-it-and-set-your-parent-password).
+> 4. Put the card in the Pi, power on, wait ~2 minutes, then open
+>    **`http://curatables.local/parent/`** (no `:8080` on the image) and
+>    set your parent password right away — until you do, anyone on your
+>    network could. Then continue from
+>    [Add your first video](#add-your-first-video). Kids use
+>    `http://curatables.local/`.
 >
 > The manual route below (plain Raspberry Pi OS + installer) still works
 > and is what to use on a laptop/mini-PC or if you prefer to see each step.

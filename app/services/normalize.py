@@ -11,7 +11,7 @@ still can't decode them, so the kid gets a black screen or audio-only.
 The fix is to *probe* every ingested file and, when it falls outside the
 baseline, either **remux** it (cheap: faststart fix, no re-encode) or
 **transcode** it (expensive: re-encode video and/or audio) so the result
-satisfies the contract in ``docs/ui-and-playback-plan.md`` §2:
+satisfies the contract in ``docs/history/ui-and-playback-plan.md`` §2:
 
 - Container: MP4 with ``+faststart`` (moov atom first → plays before full download)
 - Video: H.264, ≤ 720p, ≤ 30 fps

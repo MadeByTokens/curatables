@@ -5,9 +5,9 @@
 > reference. Some intended scope — notably multi-platform host
 > support (Mac/Windows/Linux) and the `server/` project layout
 > sketched in §9 — did not ship as written. Current capabilities are
-> documented in [`README.md`](../README.md); the current architecture
+> documented in [`README.md`](../../README.md); the current architecture
 > (single `app/` tree, Linux host target) is in
-> [`architecture.md`](architecture.md).
+> [`architecture.md`](../architecture.md).
 
 ## 1. Problem
 

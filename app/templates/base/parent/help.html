@@ -4,67 +4,60 @@
 
 <h2>Getting Started</h2>
 <ol class="x-052">
-  <li><strong>Add content</strong> — Go to <a href="/parent/add">Add</a> and paste a YouTube (or other) video URL. You can add individual videos, entire channels, or playlists.</li>
-  <li><strong>Organize into channels</strong> — Go to <a href="/parent/channels/">Channels</a> to create categories (e.g. "Science", "Music"). Assign videos to channels when adding or editing them.</li>
-  <li><strong>Create child profiles</strong> — Go to <a href="/parent/profiles">Profiles</a> to create profiles for each child. Set a display name, optional PIN, theme, search permissions, and which channels they can see.</li>
-  <li><strong>Share the kid URL</strong> — Give your kids <code>http://{{ request.headers.get('host', 'localhost:8080') }}/</code> — they'll see the profile picker and can only watch approved content.</li>
+  <li><strong>Organize into channels</strong> — Go to <a href="/parent/channels/">Channels</a> and make a few shelves (e.g. "Animals", "Music", "Bedtime").</li>
+  <li><strong>Add each child</strong> — Go to <a href="/parent/profiles">Kids</a>. Choose a name, avatar, optional PIN, theme, which channels they see, and what they're allowed to do. New kids start with "watch + react" only.</li>
+  <li><strong>Add videos</strong> — Go to <a href="/parent/add">+ Add</a> and paste a video, channel or playlist link from YouTube or any other site yt-dlp supports. Watch each video in the preview, tick that you've seen it all, and confirm.</li>
+  <li><strong>Open the kid address on the tablet</strong> — <code>http://{{ request.headers.get('host', 'curatables.local') }}/</code>. Add it to the home screen, and use Guided Access (iPad) or App pinning (Android) to keep your child inside it.</li>
 </ol>
 
 <h2>Key Concepts</h2>
 
 <h3>Channels</h3>
-<p>Channels are categories you create to organize videos (e.g. "Cartoons", "Science", "Music"). They control what each child profile can see. If a profile has no channels assigned, they see everything. If you assign specific channels, they only see videos in those channels.</p>
+<p>Channels are shelves of videos. Each kid can be limited to some of them (Kids → Edit → Visible channels). A kid who is limited and has no channels ticked sees only their own channels — never "everything".</p>
 
-<h3>Profiles</h3>
-<p>Each child gets a profile with their own name, avatar, theme, and permissions. Profiles control:</p>
+<h3>What each kid can do</h3>
 <ul>
-  <li><strong>Display name</strong> — what the child sees in the header</li>
-  <li><strong>PIN</strong> — optional, prevents siblings from using each other's profiles</li>
-  <li><strong>Theme</strong> — visual style (Default, Playful, Calm)</li>
-  <li><strong>Search</strong> — disabled (default) or curated (search within approved content only)</li>
-  <li><strong>Channels</strong> — which channels this child can see</li>
+  <li><strong>PIN</strong> — optional, 4–6 digits; keeps siblings out of each other's profiles (not a strong lock)</li>
+  <li><strong>Theme</strong> — Default, Playful, Calm, or Big &amp; clear (large text, high contrast)</li>
+  <li><strong>Search</strong> — off, or search within the approved library only</li>
+  <li><strong>Switches</strong> — reactions, comments, tags, customizing, uploads, automatic subtitles. Turn off what your child doesn't need: fewer buttons, fewer ways to get lost.</li>
 </ul>
 
-<h3>Video Downloads</h3>
-<p>Videos are downloaded when you add them, not when a child watches. The <a href="/parent/content">Content</a> tab shows download status. Videos only appear in the kid UI after they're fully downloaded.</p>
-<p>Download resolution and cache duration can be configured in <a href="/parent/settings">Settings</a>. Set cache to 0 days to keep videos forever.</p>
+<h3>Downloads and disk space</h3>
+<p>Videos download when you add them, one at a time, and are converted so they play on old tablets; on a Raspberry Pi 4 that takes a few minutes per video. <a href="/parent/content?status=pending">Content → Downloading</a> shows progress; failed ones have a <strong>Retry</strong> button.</p>
+<p>A video nobody watched for the number of days set in <a href="/parent/settings">Settings</a> is removed from disk and downloads again the next time it's tapped. Mark favourites <strong>keep forever</strong> on their edit page. When the disk is full, the least recently watched videos are removed first.</p>
 
-<h3>Comments & Reactions</h3>
-<p>Children can react to videos with emojis and post comments. Comments are only visible between profiles that share channels — a toddler won't see a teen's comments if they don't share any channels. You can delete any comment from the <a href="/parent/stats">Stats</a> page.</p>
+<h3>Kid uploads</h3>
+<p>Videos a kid uploads into their own channel appear right away for that kid. Uploads into a shared channel wait for you under <strong>Needs your attention</strong> on the dashboard.</p>
 
-<h2>Anti-Bot</h2>
-<p>If adding videos fails with "bot detection" errors (most often when pasting YouTube URLs), go to <a href="/parent/settings">Settings</a> and configure browser impersonation (recommended) or cookie authentication. Browser impersonation works without any login. Other yt-dlp-supported sources generally don't need anti-bot configuration.</p>
+<h3>Comments &amp; Reactions</h3>
+<p>Kids see comments from you and from family members who can see the same video. You can delete any comment from the video's page or from <a href="/parent/stats">Stats</a>.</p>
 
 <h2>Troubleshooting</h2>
 
 <h3>Video won't download</h3>
 <ul>
-  <li>Check the error message in the <a href="/parent/content">Content</a> tab</li>
-  <li>If it says "bot detection" — enable browser impersonation in Settings</li>
-  <li>If it says "unavailable" — the video may be private or region-locked</li>
-  <li>Check your internet connection</li>
+  <li>Open <a href="/parent/content?status=error">Content → Failed</a>; each video says what went wrong and what to try</li>
+  <li>YouTube changes often: <a href="/parent/settings">Settings → Updates → Update yt-dlp now</a>, then Retry</li>
+  <li>Still blocked: Settings → Advanced → Anti-Bot → Browser Impersonation</li>
 </ul>
 
 <h3>Kid can't see a video</h3>
 <ul>
-  <li>The video must be fully downloaded (status: "ready")</li>
-  <li>The video must be in a channel assigned to the child's profile</li>
-  <li>The video status must be "active" (not hidden)</li>
+  <li>It must be fully downloaded (Content → Downloading shows the ones still going)</li>
+  <li>It must be in a channel that kid may see</li>
+  <li>It must not be hidden or waiting for your OK</li>
 </ul>
 
-<h3>Server won't start</h3>
-<ul>
-  <li>Run <code>python run.py</code> and check the error messages</li>
-  <li>Make sure Python 3.10+, ffmpeg, and Deno are installed</li>
-  <li>Run <code>pip install -r requirements.txt</code></li>
-</ul>
+<h3>Forgot the parent password</h3>
+<p>It can be reset from the computer running Curatables; see "I forgot the parent password" in docs/getting-started.md.</p>
 
-<h2>Data & Privacy</h2>
+<h2>Data &amp; Privacy</h2>
 <ul>
-  <li>All data stays on your machine — nothing is sent to any cloud service</li>
-  <li>Kids never connect to the original video source — all video streaming goes through your server</li>
-  <li>Data is stored in <code>~/curatables-data/</code> by default (configurable in Settings)</li>
-  <li>Database: <code>curatables.db</code> (SQLite). Videos: <code>videos/</code> directory</li>
+  <li>Everything stays on this server; nothing is sent to any cloud service</li>
+  <li>Kids' devices never connect to the video sites — videos play from this server</li>
+  <li>Library location: <code>{{ request.app.state.config.storage.path }}</code></li>
+  <li>The database is backed up every night (permanent installs)</li>
 </ul>
 
 <p class="mt-32 txt fs-14">

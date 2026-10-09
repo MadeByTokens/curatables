@@ -4,273 +4,406 @@
 > trust boundaries, the attack surface, and — critically — the risks
 > Curatables does **not** mitigate today. It is intentionally honest:
 > "we don't defend against X" is a feature of a threat model, not a bug.
+> The plain-language version for parents is
+> [`safety-model.md`](safety-model.md).
 
 ## Deployment shape
 
 Curatables is designed for one specific operating environment:
 
-- A single mini-PC running bare-metal Debian/Ubuntu LTS.
-- Reachable on a single home LAN, typically as
-  `http://curatables.local/` via mDNS.
+- A single Linux box on a home LAN: the Raspberry Pi 4B appliance image
+  (built with [`pi-gen/`](../pi-gen/README.md), Raspberry Pi OS Lite
+  trixie) or a Debian/Ubuntu machine installed with
+  `scripts/install.sh --systemd`.
+- Reachable on that LAN only, typically as `http://curatables.local/`
+  via mDNS, plain HTTP on port 80.
+- Media optionally on an external ext4 USB drive mounted at the data
+  dir (`scripts/setup-external-drive.sh`).
 - One administrator (the parent) with shell access to the box.
-- Zero, one, or more "kid" profiles, used by family members on
-  trusted client devices on the same LAN.
-- **No** internet exposure of the parent dashboard. The egress flow
-  is one-way: Curatables fetches from upstream sites (YouTube et al.)
-  via `yt-dlp`. The server is not intended to be reverse-proxied
-  onto the public internet.
+- Zero, one, or more kid profiles, used on family devices on the same
+  LAN.
+- **No** internet exposure. Egress is one-way: Curatables fetches from
+  upstream sites (YouTube et al.) via `yt-dlp`. The server is not meant
+  to be reverse-proxied onto the public internet.
 
 Anything outside this shape (cloud VM, Docker on a multi-tenant box,
 public reverse proxy, hostile LAN) is **outside the supported threat
 model**. Some of those configurations may still be safe; others
 definitely aren't. We'd rather say so than imply blanket safety.
 
+### Install layout
+
+Both the image and `install.sh --systemd` produce the same layout:
+
+| Path | Owner | Notes |
+|------|-------|-------|
+| `/opt/curatables` (code + `.venv`) | root | Read-only to the service. `chown -R root:root` after every install/build. |
+| `/home/curatables/curatables-data` | `curatables` | Data dir: `config.json`, SQLite DB, videos, thumbnails, update flag files. |
+| `/var/lib/curatables-backups` | `curatables`, mode 0700 | Nightly snapshots (systemd `StateDirectory`), off the media drive. |
+| `/usr/local/bin/deno` | root | Installed with `curl https://deno.land/install.sh \| sh` as root. |
+
+`curatables.service` runs as the unprivileged `curatables` user with
+only `CAP_NET_BIND_SERVICE` (port 80), `NoNewPrivileges`,
+`ProtectSystem=strict`, `ProtectHome=read-only` with the data dir as the
+single `ReadWritePaths`, `PrivateTmp`, and restricted address families.
+`MemoryDenyWriteExecute` is off because Deno may JIT.
+
+The image enables SSH but bakes no login password: the flasher sets the
+login user in Raspberry Pi Imager. Wi-Fi credentials are read from
+`curatables-wifi.txt` on the FAT boot partition by
+`curatables-firstboot.service` on every boot; the file stays there in
+plaintext.
+
 ## Trust boundaries and roles
 
 | Role         | Trust level | Capabilities                             |
 |--------------|-------------|------------------------------------------|
 | Parent       | Trusted     | All routes under `/parent/*`, all kid views, server shell. |
-| Kid (profile)| Semi-trusted| Kid UI, kid uploads, kid-owned channels, comments, reactions, search (if enabled). Cannot reach `/parent/*`. |
-| Anonymous    | Untrusted   | `/profiles` picker, static assets, `/healthz` (planned). Everything else redirects to `/profiles` or `/parent/login`. |
-| LAN attacker | Adversary   | Can reach any HTTP port the box opens. Cannot read disk or process memory. Can sniff plaintext HTTP if the network is unencrypted. |
+| Kid (profile)| Semi-trusted| Kid UI for the selected profile: videos in visible channels, and per-profile switches for reactions, comments, tags, customize and uploads (switched-off features are refused server-side by `require_kid_feature`). Cannot reach `/parent/*`. |
+| Anonymous    | Untrusted   | `/profiles` picker, `/parent/login`, `/parent/setup` (first run only), static assets, `/healthz`, `/metrics` (only if enabled). Sees no videos, thumbnails, subtitles or channel art. |
+| LAN attacker | Adversary   | Can reach any port the box opens. Cannot read disk or process memory. Can sniff plaintext HTTP. |
 | WAN attacker | Out of scope| Should not be able to reach the box at all. |
+| Service user (`curatables`) | Contained | What a compromised app process (e.g. a malicious extractor) gets: the data dir, network egress, and the ability to request a yt-dlp upgrade. |
+| Root updater | Trusted, narrow | See [The root-run updater](#the-root-run-updater). |
 
-The viewer-resolution rule (`app/dependencies.py:get_viewer`) gives
-a selected child profile **priority** over `parent_authenticated`
-on kid-facing pages. Parent routes use `require_parent`, which
-checks `viewer.is_parent` and ignores `profile_id`. This means a
-kid sitting at the parent's logged-in browser cannot reach
-`/parent/*` (the parent must log in again from a kid session) —
-but a child profile in the session **does** mask the kid UI as
-that child until the parent visits `/parent/login` or `/profiles/switch`.
+### Viewer resolution and session separation
+
+`app/dependencies.py:get_viewer` gives a selected kid profile priority
+over a parent login; parent routes use `require_parent`, which needs a
+valid parent session. The two never coexist in one session:
+
+- Picking a kid profile (`/profiles/select`, `/profiles/pin`, or the
+  single-profile auto-select on `/profiles`) drops `parent_authenticated`
+  from the session, so "Switch" from kid mode lands on the picker, not
+  the dashboard.
+- Parent login and setup (`AuthService.start_parent_session`) drop
+  `profile_id`.
+- A parent session is valid only while its `parent_epoch` matches
+  `config.parent.session_epoch`. Changing the password bumps the epoch,
+  which signs out every other parent session (the session cookie is
+  stateless, so this is the only revocation mechanism). The device that
+  changed the password gets a fresh session.
+
+### Visibility policy
+
+`ContentService.visible_channel_ids` / `can_view` /
+`channels_for_viewer` is the single policy for every list, search,
+watch and media path:
+
+- Parent: everything.
+- Kid: parent channels allowed by the profile, plus channels the kid
+  owns; a sibling's channel only if explicitly whitelisted. Videos
+  without a channel are not visible to kids.
+- Anyone else: nothing.
+
+Restriction is an explicit flag (`profiles.channels_restricted`), so a
+restricted profile whose whitelisted channels were all deleted sees
+nothing rather than everything. Search with an empty visible set
+returns nothing. `/media/video`, `/media/thumb`, `/media/subs` and
+`/media/channel/*` check the viewer; the kid channel nav lists only
+visible channels, and `/channel/{id}` for a hidden channel redirects
+home. Kid search is local to the library and can be disabled per
+profile.
+
+A video reaches kids only after the parent ticks "I have already fully
+watched this video" (checked server-side on approval) and only while
+`status='active'` and downloaded.
 
 ## Authentication model
 
 ### Parent password
 
-- Stored in `config.json` as
-  `salt_hex:hash_hex`, derived with PBKDF2-HMAC-SHA256, **600,000
-  iterations**, 16-byte random salt
-  (`app/services/auth.py:hash_password`).
-- Verified with `hmac.compare_digest` — timing-safe.
-- Set on first run via `/parent/setup`; thereafter `/parent/login`
-  is the only entry point.
-- **No rate limiting** on `/parent/login` POST today. PBKDF2 at
-  600k iterations is the only brake on guessing rate; the
-  per-attempt cost on the target hardware is high enough that a
-  reasonable password (8+ chars, mixed alphanumeric) is well
-  out of reach, but the minimum length enforced at setup is only
-  **4 characters**, which is far too short. See *Residual risks*.
-- Sessions are signed cookies via Starlette's `SessionMiddleware`,
-  using a server-generated secret in `config.json`. `SameSite=Strict`
-  is set, defeating most CSRF vectors on its own; the
-  `CSRFMiddleware` token check layers on defense-in-depth.
+- Stored in `config.json` as `salt_hex:hash_hex`, PBKDF2-HMAC-SHA256,
+  **600,000 iterations**, 16-byte random salt
+  (`app/services/auth.py`). Verified with `hmac.compare_digest`.
+- Minimum length **8 characters** (setup and change).
+- Set on first run via `/parent/setup`. While no password exists, every
+  route except `/parent/setup`, `/static` and `/healthz` redirects to
+  setup — **whoever reaches it first on the LAN becomes the parent.**
+- `/parent/login` allows **10 attempts per client IP per 5 minutes**
+  (429 after that). The limiter is in memory and resets on restart.
+- Changing the password requires the current one and is not
+  rate-limited (it already needs a parent session).
+- Forgotten password: shell access to the box (edit `config.json`) is
+  the recovery path; there is no reset over the network.
 
-### Child PIN
+### Sessions
 
-PINs on child profiles are intentionally a low-friction affordance,
-not an access-control boundary. The threat model documents what
-they actually do.
+- Starlette `SessionMiddleware`: signed (not encrypted) cookie, secret
+  in `config.json`, `SameSite=Strict`, `HttpOnly`, no `Secure` flag
+  (plain HTTP). Lifetime `parent.session_timeout_hours` (default 24),
+  for kid and parent sessions alike.
+- `/parent/logout` is a GET that clears the session.
 
-- Stored as plaintext on `profiles.pin` (truncated to 10 chars at
-  the router; no hashing).
-- Compared with `==` in
-  `app/features/kid_profiles/router.py:profile_pin` — not
-  `hmac.compare_digest`. On a LAN this is not a realistic timing
-  channel, but the inconsistency with the parent password path
-  is worth noting.
-- No rate limiting on `/profiles/pin`. A short numeric PIN does
-  not provide meaningful resistance against an automated client
-  on the LAN.
-- The PIN gate sits on the profile picker, not on individual
-  routes. Once a session has `profile_id` set, that profile's
-  views render until the session is cleared via
-  `/profiles/switch` or `/parent/logout`.
-- An empty PIN means "no PIN" — `profile_select` skips the PIN
-  page and switches profiles in one POST.
+### Kid PIN
 
-The honest framing: PINs distinguish "which child profile is
-this" rather than enforce isolation between siblings. Households
-that need stronger isolation should use one device per child
-rather than relying on the PIN.
+PINs are a sibling barrier, not an access-control boundary.
+
+- 4–6 digits, stored as PBKDF2-HMAC-SHA256 (100,000 iterations, random
+  salt; migration 0005 converted existing rows), compared with
+  `hmac.compare_digest`. A legacy plaintext value would still verify.
+- **5 attempts per profile per 5 minutes** (in memory). That bounds an
+  automated guesser to about 3.5 days on average for a 4-digit PIN —
+  slow, not impossible. Because the limit is per profile, someone else
+  can also lock a kid out for 5 minutes by mistyping.
+- The parent profile form never echoes the PIN back.
+- An empty PIN means "no PIN": selecting the profile is one POST, and a
+  household with a single PIN-less profile is auto-selected on
+  `/profiles`. In that case any device on the LAN gets that kid's view.
+- The gate sits on the picker. Once a session has `profile_id`, that
+  profile's views render until `/profiles/switch`, parent login, or
+  cookie expiry.
+
+Households that need real isolation between siblings should use one
+device per child (with device-level locking) rather than the PIN.
 
 ### CSRF
 
-- Per-session token, stored in the signed session cookie, validated
-  against the form-submitted `csrf_token` field or the
-  `X-CSRF-Token` header (`app/middleware/csrf.py`).
-- All `POST/PUT/PATCH/DELETE` requests are checked except the
-  paths in `CSRF_EXEMPT_PREFIXES`:
+- Per-session nonce in the signed session; tokens are signed with
+  `itsdangerous` and live as long as the session
+  (`session_timeout_hours`). Checked on every `POST/PUT/PATCH/DELETE`
+  from the `csrf_token` form field or the `X-CSRF-Token` header
+  (`app/middleware/csrf.py`). Rejection is a plain 403.
+- Exempt prefixes (`CSRF_EXEMPT_PREFIXES`):
   - `/parent/setup`, `/parent/login`, `/profiles/select`,
-    `/profiles/pin` — session-establishment endpoints, no token
-    can exist before the session does.
-  - `/api/log` — fire-and-forget telemetry beacon from the kid
-    watch page, low-value target.
-  - `/parent/upload` — vendored `tus-js-client` does not send CSRF
-    tokens; relies on parent auth + `SameSite=Strict` for
-    protection on the LAN-only, parent-only endpoint.
-- Rejection mode: 403 with a plain-text error. No automatic retry.
-- The `SameSite=Strict` session cookie defeats nearly all
-  cross-origin CSRF on its own; the token middleware is
-  belt-and-braces.
+    `/profiles/pin` — session-establishment endpoints.
+  - `/api/log` — player telemetry; it records only `video_view` /
+    `video_play` / `video_complete` from a kid who can see the video.
+  - `/parent/upload` — the vendored `tus-js-client` sends no token. This
+    prefix also covers `/parent/upload/finalize/*`. These routes require
+    a parent session; `SameSite=Strict` is what protects them.
+- `SameSite=Strict` alone defeats cross-site CSRF in current browsers;
+  the token is defense in depth.
 
 ## Child-facing attack surface
 
-### Uploads from a child profile
+### Uploads from a kid profile
 
-`/upload` accepts XHR multipart uploads from any signed-in child
-profile. Mitigations:
+`POST /upload` (if the profile's upload switch is on). Mitigations:
 
-- Hard byte ceiling enforced by `BodySizeMiddleware` (configurable;
-  defaults are smaller than parent uploads).
-- Runtime `ffmpeg`-probed codec allow-list — files with codecs
-  outside the list are rejected with an actionable conversion hint.
-- Content-hash dedup prevents the same file from filling disk twice.
+- Body ceiling `storage.max_kid_upload_bytes` (default 500 MB) enforced
+  by `BodySizeLimitMiddleware`, which is the outermost middleware and
+  checks `Content-Length` and streamed bytes before anything (including
+  CSRF form parsing) reads the body.
+- `ffmpeg`-probed codec allow-list; unsupported files are rejected.
+- Content-hash dedup; free-disk guard.
+- An upload into a **shared (parent) channel** is stored with
+  `status='review'` and stays invisible to every kid until the parent
+  approves it ("Needs your attention" on the dashboard). An upload into
+  the kid's **own** channel goes live immediately for that kid (and
+  for siblings only if the parent whitelisted that channel for them).
 
-What the codec allow-list does **not** cover:
+Not covered: decoder vulnerabilities in `ffmpeg` and the browser media
+stack. Curatables does not sandbox `ffmpeg` beyond the service unit;
+keep the system patched.
 
-- Media-decoder vulnerabilities in `ffmpeg` and the browser's
-  media stack. These are upstream issues; Curatables does not
-  sandbox `ffmpeg`. Keep the system `ffmpeg` patched.
-- File-type confusion at the proxy layer. The kid UI serves
-  uploaded files with `Content-Type: video/*`; a misconfigured
-  reverse proxy that rewrites that header is out of scope here.
-- Sidecar subtitle files (`.vtt`, `.srt`) rendered in the kid
-  player. If you customise the subtitle pipeline, verify the
-  renderer's escaping behaviour.
+### Kid channels, pictures and comments
 
-### Kid-created channels and comments
+- Channel names are unique: a kid can't create or rename onto an
+  existing name, and a parent channel can't be created onto a kid's
+  private one.
+- Channel colour must be `#rrggbb` (it is rendered into a `style`
+  attribute); avatar, theme and search mode are validated against
+  known values.
+- Banner, icon, and custom-thumbnail uploads (kid and parent) must be
+  JPEG/PNG/WebP/GIF by magic bytes and at most 5 MB; the stored
+  extension comes from the bytes, and they are served with the sniffed
+  image type. Picture-upload and import routes have a 6 MB body limit;
+  everything else not listed above has 1 MB.
+- Comments: 500 characters, 10 per minute per kid, visible to family
+  members who can see the video's channel, replies filtered the same
+  way, and a reply must belong to the same video. They are not
+  pre-moderated: the parent sees and can delete them afterwards.
+  Reactions and comments check visibility. Jinja autoescape covers all
+  user text; do not disable it.
+- Parent delete confirmations use a `data-confirm` attribute read by
+  `/static/parent/app.js`, so kid-controlled names never end up inside
+  inline JavaScript.
 
-- Comments are parent-moderated and rate-limited
-  (`app/services/comments.py`). XSS via comment text is mitigated
-  by Jinja autoescape; do not disable autoescape in any kid view.
-- Channels owned by `owner_profile_id` are visibility-isolated from
-  sibling profiles (the queries filter on `owner_profile_id IN
-  (NULL, my_profile_id)`). A kid cannot see another kid's
-  upload-only channel.
-- Channel names, banners, and icons are uploaded by kids and shown
-  in the parent dashboard. The parent dashboard runs Jinja
-  autoescape on channel names; the icon/banner are served as
-  static images with explicit `Content-Type`.
+### Re-downloads after eviction
 
-### PIN-gate bypass between sibling profiles
+Cache-mode videos are evicted (least recently watched first) and
+downloaded again from the approved URL when a kid taps them. The URL may
+now serve something else. When the re-downloaded file's length differs
+from the approved length by more than 10 s **and** 5 %, the video goes
+back to `status='review'` with a note. This is a length check only: a
+same-length replacement, or a video whose length is unknown or can't be
+probed, is not caught. Videos marked **keep forever** are never evicted.
 
-If a parent leaves their browser logged in and a child uses
-`/profiles/select`, they can switch into any sibling profile that
-has no PIN configured. PIN-protected profiles still require the
-PIN. Once switched, the kid UI renders that profile's view.
+### PIN bypass between siblings
 
-What this **does not** unlock:
+With no PIN on a sibling's profile, a kid can switch into it from the
+picker. This never unlocks `/parent/*` (selecting a profile drops any
+parent login) or PIN-protected profiles. It does expose that sibling's
+visible channels and misattributes watch history in `/parent/stats`.
 
-- `/parent/*` — `require_parent` checks `is_parent`, which a child
-  profile in the session does not satisfy. The parent must sign
-  in again through `/parent/login` (which clears `profile_id`).
-- Sibling profiles that have a PIN set.
-- Anything off the box — there is no "share with friend" flow.
+### The kid device itself
 
-What it **does** unlock:
-
-- Visibility of a sibling's content, if that sibling has no PIN.
-- Watch-history attribution to the wrong profile. Parents reading
-  `/parent/stats` will see plays attributed to whichever profile
-  was selected at watch time.
+The kid UI has no outbound links, embeds, ads or "up next", but the
+tablet still has a browser and an address bar. Locking the device to
+Curatables (iOS Guided Access, Android screen pinning, a kiosk browser)
+is the parent's job; Curatables cannot enforce it.
 
 ## Parent-facing attack surface
 
-### Parent session theft on shared LAN
+### Session theft on the LAN
 
-The session cookie is signed (forgery-resistant) but not encrypted
-(value is opaque only because the parent hasn't decoded it). On a
-LAN with plaintext HTTP, a passive sniffer can capture the cookie
-and replay it. Mitigations:
+Plain HTTP: a passive sniffer on the LAN can capture the parent cookie
+and replay it until it expires or the password is changed (which bumps
+the session epoch). `HttpOnly` blocks script access; `SameSite=Strict`
+blocks cross-site use. There is no TLS option today. Don't run the
+dashboard on shared networks (apartment Wi-Fi, hotspots).
 
-- `SameSite=Strict` prevents cross-origin reuse — the cookie only
-  flows on requests originating from the same site.
-- `httponly` is set by `SessionMiddleware` by default, blocking
-  document.cookie access from injected JS.
-- Session lifetime is bounded by `parent.session_timeout_hours`.
+A parent session left open on a shared device is full parent access to
+anyone holding that device. Log out, or pick a kid profile (which drops
+the login) before handing it over.
 
-The honest residual risk: **on a hostile or compromised LAN
-without TLS, the parent cookie can be captured and replayed.**
-Curatables ships HTTP-only by default; HTTPS via local CA is on
-the v0.7+ roadmap. Parents on shared networks (apartment-block
-Wi-Fi, public hotspots) should not run the parent dashboard
-without TLS.
+### Browser-side hardening
 
-### CSRF on parent routes
+No `Content-Security-Policy`, `X-Frame-Options` or
+`X-Content-Type-Options` headers are sent. Inline `<script>` blocks
+remain in `parent/content.html`, `content_edit.html`, `upload.html`,
+`content_preview.html` and `kid/upload.html`, plus a few inline
+`onsubmit`/`onchange` handlers in parent templates, so a strict CSP
+would need those moved to static files first. XSS defense rests on
+Jinja autoescape and on not interpolating user data into scripts.
 
-Already covered above. The exempt paths are all session-establishment
-or non-state-changing telemetry. The one notable exemption is
-`/parent/upload` — the rationale is documented in `csrf.py` and
-hinges on the SameSite cookie carrying its weight.
+### Data-dir relocation
 
-### File-handling endpoints
+`/parent/settings/move-data` (parent only) is refused when the server
+was started with `--data-dir` (every systemd install), when the target
+is inside the current dir, not absolute, not empty, lacks free space, or
+while downloads are running. After a move it leaves a pointer
+`config.json` holding only `storage.path` at the old location. If that
+pointer's target is missing at the next start (e.g. an unmounted drive),
+the pointer is loaded as the config, which has no password, and
+first-run setup opens to the LAN. For external drives use
+`setup-external-drive.sh` instead.
 
-- Data directory relocation (`/parent/settings/move-data`) does
-  preflight checks (empty target, free space, no in-flight
-  downloads). It's a destructive admin action gated behind parent
-  auth; treat the parent password as the only thing standing
-  between disk-full and disk-rearranged.
-- Backup/restore scripts (`scripts/backup.sh`,
-  `scripts/restore.sh`) are intended to run as the curatables
-  user, not root. They produce an unencrypted tarball of
-  `~/curatables-data/` — including `config.json` (parent password
-  hash, session secret) and the SQLite DB (PINs in plaintext).
-  Treat backups as parent-secret material.
+### External drive and unmounted-drive guards
 
-## Supply-chain risk: `yt-dlp` extractors
+An external drive that fails to mount leaves an empty directory on the
+SD card. Without guards the app would start a fresh library there and
+offer first-run setup to anyone on the LAN. Guards:
 
-`yt-dlp` ships extractors for ~1,800 sites. Each extractor is
-arbitrary Python code, fetched in via `pip install yt-dlp`. We
-pin the version range in `requirements.txt` but do not
-audit extractors.
+- `RequiresMountsFor=` the data dir on the server and backup units.
+- `setup-external-drive.sh` mounts by UUID with `nofail` and installs a
+  drop-in setting `CURATABLES_REQUIRE_MOUNT=1`; `run.py` then refuses
+  to start unless the data dir is a mount point.
+- Crash recovery refuses to reset the library when at least 5 ready
+  videos and at least half of all ready videos are missing at once,
+  and logs why, instead of marking them all for re-download.
 
-The relevant exposure: any URL the parent pastes runs through
-the matching extractor inside the Curatables process, with the
-filesystem permissions of the Curatables user. We do not sandbox
-`yt-dlp`. Running Curatables under a dedicated unprivileged user
-(the shipped systemd unit does this) is the main mitigation —
-it bounds the impact to that user's home directory, including
-`config.json` and the SQLite DB.
+Without `CURATABLES_REQUIRE_MOUNT=1` (a drive mounted by hand), only the
+crash-recovery guard applies, and it protects the video rows, not
+`config.json`.
 
-Operators who plan to expose Curatables beyond their LAN (not
-the supported configuration) should be aware that the public
-add form would extend that extractor surface to unauthenticated
-callers — an additional reason the recommended deployment is
-LAN-only.
+### Backups
 
-## Defense-in-depth: what's already in place
+`scripts/backup.sh` (nightly via `curatables-backup.timer`, as the
+service user) writes a SQLite online-backup snapshot of the database
+plus a copy of `config.json` (parent password hash, session secret, all
+settings) to `/var/lib/curatables-backups`, with `umask 077` (files
+0600, directory 0700), keeping 14. Videos are not included. Snapshots
+are not encrypted; anyone with the session secret can forge a parent
+session cookie, so treat them as parent-secret material. Restoring
+them restores those secrets too.
 
-- PBKDF2-SHA256 with 600,000 iterations on the parent password.
-- `hmac.compare_digest` on parent password verification.
-- Per-session CSRF tokens with a small, audited exempt list.
-- `SameSite=Strict` session cookies.
-- Signed sessions via `itsdangerous`.
-- Per-request body size cap (`BodySizeMiddleware`).
-- Per-request correlation ID (`RequestIDMiddleware`).
-- Runtime ffmpeg codec allow-list on every upload path.
-- Rate-limited comment posts.
-- Forward-only schema migrator (no `IF NOT EXISTS` drift).
-- Disk quota guard refusing new uploads/downloads before disk-full.
+## The root-run updater
+
+The sandboxed service can't `pip install` or restart itself. The
+in-app "Update yt-dlp" button writes `update-request.json` in the data
+dir; `curatables-updater.path` notices it and starts
+`curatables-updater.service`, which runs
+[`scripts/updater.sh`](../scripts/updater.sh) **as root, unsandboxed**.
+This is the one place data controlled by the service user crosses into
+root.
+
+What bounds it:
+
+- It does one fixed thing: `pip install --upgrade 'yt-dlp>=2024.0'` in
+  `/opt/curatables/.venv`, then `systemctl restart curatables`. The
+  flag's only field read is `kind`, and anything but `yt-dlp` is
+  rejected. Nothing from the flag is executed.
+- Every read and write inside the service-owned data dir (parsing the
+  flag, writing `update-result.json` atomically) runs as the service
+  user via `runuser`, so a planted symlink can't redirect a root
+  write.
+- pip runs as the owner of the venv. Both install paths keep
+  `/opt/curatables` and its venv root-owned, so the code root runs is
+  code only root can modify.
+- `TimeoutStartSec=600`.
+
+What remains:
+
+- A compromised service process can trigger upgrades at will (fetching
+  the latest yt-dlp from PyPI); it cannot choose the package or version.
+- Root imports the freshly installed `yt_dlp` (to report its version),
+  so a malicious yt-dlp release on PyPI would run as root once, not
+  only inside the sandbox.
+- If an operator builds the venv as another user, the script still
+  runs that venv's `python` as root. Keep `/opt/curatables` root-owned.
+
+## Supply chain: `yt-dlp`, Deno, `ffmpeg`
+
+`yt-dlp` ships ~1,800 extractors, each arbitrary Python code, run
+inside the server process. It is installed unpinned from PyPI
+(`requirements.txt` sets a floor) and upgraded by the updater; we do not
+audit extractors. For YouTube, yt-dlp hands the site's player
+JavaScript to Deno. `ffmpeg` parses every downloaded and uploaded file.
+All of these parse untrusted remote media and metadata.
+
+Mitigations: only the parent can submit URLs (`/parent/*`); downloads
+use `noplaylist` and `storage.max_download_bytes` (default 4 GB); the
+service unit confines a compromise to the service user (data dir,
+network egress, update requests). There is no further sandbox.
+
+Remote thumbnails are fetched only from `http(s)` URLs, capped at 5 MB,
+and kept only if the bytes are an image. The fetch can still reach LAN
+addresses (a GET whose response is discarded unless it is an image).
+
+## Defense-in-depth: what's in place
+
+- PBKDF2-SHA256 parent password (600k) and PINs (100k), constant-time
+  compares, 8-char minimum password.
+- Login and PIN rate limits; session epoch revocation on password
+  change; kid/parent session separation.
+- Fail-closed channel visibility; anonymous viewers see nothing.
+- Parent "watched it all" approval gate; kid uploads to shared channels
+  held for review; changed-length re-downloads held for review.
+- Per-session CSRF tokens with a short, audited exempt list;
+  `SameSite=Strict`, `HttpOnly` signed session cookies.
+- Outermost per-route body size limits.
+- Image validation by magic bytes; `#rrggbb` channel colour; enum
+  validation; `data-confirm` instead of inline confirm scripts.
+- ffmpeg codec allow-list on uploads; comment rate limits.
+- Hardened systemd unit; root-owned code; updater touches the data dir
+  only as the service user.
+- Unmounted-drive guards; nightly 0600 backups off the media drive.
+- Forward-only schema migrations.
 
 ## Residual risks and known gaps
 
-| Gap                                  | Severity | Tracking |
-|--------------------------------------|----------|----------|
-| `/parent/login` not rate-limited     | Medium   | Roadmap  |
-| `/profiles/pin` not rate-limited     | Low      | Roadmap  |
-| PIN compared with `==`, not `compare_digest` | Low (timing channel not realistic on LAN) | Roadmap |
-| PIN stored plaintext in DB           | Low (the DB is already parent-secret) | Documented |
-| Minimum parent password length is 4 chars | Medium   | Roadmap  |
-| No HTTPS by default                  | Medium (LAN-dependent) | v0.7+ Roadmap |
-| `yt-dlp` extractors not sandboxed    | Medium   | Out of scope |
-| Backup tarball unencrypted           | Low (treat as parent-secret) | Documented |
-| Media-decoder vulnerabilities (ffmpeg, browser stack) | Low (upstream)   | Out of scope |
+| Gap | Severity | Status |
+|-----|----------|--------|
+| No TLS; parent cookie sniffable and replayable on the LAN | Medium (LAN-dependent) | Accepted for LAN-only use |
+| First-run setup: anyone on the LAN who gets there first sets the parent password | Medium | Documented; set the password right after first boot |
+| PIN is a sibling barrier (4-digit: ~3.5 days average under the rate limit), and a PIN-less single profile is auto-selected for any LAN device | Low | Documented |
+| Rate limits are in memory, per IP for login (a LAN host with many addresses gets more tries), reset on restart | Low | Documented |
+| A parent session left open on a shared device is full parent access | Medium | Documented; log out or pick a kid profile |
+| Kid device still has a browser; device lockdown (Guided Access / screen pinning / kiosk) is up to the parent | Medium | Out of scope |
+| `yt-dlp` extractors, Deno and `ffmpeg` parse untrusted media in-process / unsandboxed beyond systemd | Medium | Out of scope (upstream) |
+| Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
+| Re-download check compares length only | Low | Documented; use keep forever for favourites |
+| No CSP / framing / nosniff headers; inline scripts remain in some templates | Low | Known gap |
+| Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
+| Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
+| Wi-Fi PSK left in plaintext on the image's boot partition | Low (physical access) | Documented |
+| Deno installed by piping a remote script to a root shell | Low | Documented |
 
-"Roadmap" entries are accepted as future work; "Out of scope"
-items are explicit non-goals at the current product stage.
-"Documented" means we believe the current behavior is acceptable
-once the operator understands it.
+"Accepted" and "Documented" mean we believe the behaviour is acceptable
+once the operator understands it; "Out of scope" items are explicit
+non-goals; "Known gap" is unmitigated and open to improvement.
 
 ## Reporting issues
 

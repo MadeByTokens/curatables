@@ -1,4 +1,4 @@
-"""Guard tests for the playback & GUI delivery plan (docs/ui-and-playback-plan.md).
+"""Guard tests for the playback & GUI delivery plan (docs/history/ui-and-playback-plan.md).
 
 Two cross-cutting invariants, matched to the existing guard-test culture
 (test_template_response_signature.py, the youtube-drift grep rule):

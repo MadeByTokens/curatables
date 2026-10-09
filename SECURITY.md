@@ -8,15 +8,17 @@ mitigate today.
 
 ## Supported versions
 
-Curatables is pre-1.0. Only the **latest tagged release** and the
-**`main` branch** receive security fixes. There are no LTS branches
-or backports — if you're on an older tag, the fix is "upgrade."
+Curatables is pre-1.0 (`pyproject.toml` says 0.5.0). Releases are not
+tagged regularly: the only git tag, `v0.1.0`, is far behind. Security
+fixes land on the **`main` branch** only; the appliance image and
+`scripts/install.sh --systemd` are built from it. There are no LTS
+branches or backports. If you're behind `main`, the fix is "upgrade"
+(see [`docs/upgrade.md`](docs/upgrade.md)).
 
-| Version       | Status                          |
-|---------------|---------------------------------|
-| `main`        | Supported (active development)  |
-| Latest tag    | Supported                       |
-| Older tags    | Not supported — upgrade         |
+| Version            | Status                          |
+|--------------------|---------------------------------|
+| `main`             | Supported (active development)  |
+| Anything older (incl. `v0.1.0` and older images) | Not supported — upgrade |
 
 ## Reporting a vulnerability
 
@@ -59,10 +61,17 @@ side-project, not a funded vendor):
 
 **In scope:**
 
-- The Curatables server code under `app/`.
-- Shipped scripts (`scripts/install.sh`, `scripts/backup.sh`,
-  `scripts/restore.sh`, `run.py`, `tools/curatables-cli.py`).
-- The shipped systemd unit (`systemd/curatables.service`).
+- The Curatables server code under `app/` and its entry point `run.py`.
+- Shipped scripts: `scripts/install.sh`, `scripts/updater.sh` (runs as
+  root), `scripts/setup-external-drive.sh` (runs as root),
+  `scripts/backup.sh`, `scripts/restore.sh`, `scripts/firstboot.sh`.
+- The systemd units in `systemd/`: `curatables.service`,
+  `curatables-updater.path` / `curatables-updater.service`,
+  `curatables-backup.service` / `curatables-backup.timer`,
+  `curatables-firstboot.service`.
+- The Raspberry Pi appliance image build (`pi-gen/`): what it installs,
+  file ownership, default accounts and services.
+- `tools/curatables-cli.py`, the standalone yt-dlp helper.
 - Vendored client-side code (`app/static/`, including
   `tus-js-client`).
 - Documentation that misleads operators into an insecure config.
@@ -73,8 +82,8 @@ side-project, not a funded vendor):
   invokes `yt-dlp` as a library; vulnerabilities in extractors
   are upstream issues. We do, however, want to know about
   Curatables-specific ways an attacker could reach an unsafe
-  extractor (e.g. via the public add form on a server exposed
-  beyond the LAN).
+  extractor without a parent session (new URLs are accepted only
+  on `/parent/*` routes).
 - `ffmpeg` and other system binaries. Same upstream principle.
 - Browser-specific bugs in the kid UI's iOS-9-Safari fallback
   paths, unless Curatables itself is the vector.

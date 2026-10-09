@@ -68,7 +68,7 @@ nothing dynamic.** A JS-free snapshot is the reading equivalent of "H.264/AAC �
 constraint we already honour.
 
 It also happens to be a security win that lines up with
-[threat-model.md](threat-model.md): a stripped snapshot cannot phone home, cannot run
+[threat-model.md](../threat-model.md): a stripped snapshot cannot phone home, cannot run
 a tracker, and cannot execute anything on the kid device. Curated web pages that
 still ran arbitrary origin JS would blow a hole through the property that makes the
 kid side trustworthy today.
@@ -90,7 +90,7 @@ the open, documented, compressed, indexed archive format behind
 Attractive for us because:
 
 - **One file per curated item** beats thousands of little files for backup
-  ([backup.md](backup.md)), disk-quota accounting, and the storage report.
+  ([backup.md](../backup.md)), disk-quota accounting, and the storage report.
 - **Not our invention.** A ZIM written today opens in any ZIM reader years from now,
   so a family's library survives Curatables. That is the same reasoning behind our
   `.ytc` export existing at all.
@@ -113,7 +113,7 @@ trailing slash, is fetched exactly once; Ctrl-C saves crawl state and a re-run
 resumes; `--refresh` re-renders in place; packing is deterministic (archive UUID
 derived from content, not randomized) so the output is safe to checksum and cache.
 Curatables' dedup and crash-recovery story wants the same discipline
-([architecture.md](architecture.md)).
+([architecture.md](../architecture.md)).
 
 Also polite by default: reads `robots.txt`, seeds from `sitemap.xml`, stays on the
 seed host, honours `Crawl-delay`. If we ever crawl on a parent's behalf from their
@@ -125,7 +125,7 @@ home IP, defaults like these are not optional.
 executable that serves the site; `--app` wraps it as a macOS `.app` / Linux
 `.AppImage` with the site's favicon as the icon; a `webview` build tag opens it in a
 native OS window instead of a browser tab. Filed here because our
-[Roadmap → Future](../README.md#future) bucket has an AppImage/desktop-packaging item
+[Roadmap → Future](../../README.md#roadmap) bucket has an AppImage/desktop-packaging item
 and kage's approach (cross-compile by pointing `--base` at another platform's binary,
 read the executable header to infer the target) is a worked example. Not a
 content-side idea.
@@ -152,7 +152,7 @@ Sketch only — this is not a design doc.
 ## 5. Open questions / risks
 
 - **Dependency weight.** kage needs Chrome/Chromium on the host. Curatables' bill of
-  materials ([dependencies.md](dependencies.md)) is deliberately lean, and headless
+  materials ([dependencies.md](../dependencies.md)) is deliberately lean, and headless
   Chrome on a Pi 4 is not free — CPU, RAM, and a large apt footprint on the appliance
   image. Cheaper snapshotters exist (readability-style extraction, `monolith`,
   single-file) at the cost of fidelity on JS-heavy pages. A "reader mode" extract may

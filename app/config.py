@@ -22,7 +22,7 @@ class ServerConfig:
 @dataclass
 class StorageConfig:
     path: str = ""
-    default_mode: str = "cache"
+    default_mode: str = "cache"   # "library" = new videos are kept forever
     cache_days: int = 30
     default_resolution: str = "720p"
     subtitle_langs: str = "en"    # comma-separated codes, "all", or "" for none
@@ -34,9 +34,8 @@ class StorageConfig:
     max_kid_upload_bytes: int = 524_288_000   # per-upload ceiling for kid uploads (500 MB default)
     max_download_bytes: int = 4_294_967_296   # yt-dlp refuses source files larger than this (4 GB default)
     max_concurrent_downloads: int = 1         # download + transcode jobs run at once (1 suits a Raspberry Pi)
-    # Cache auto-cleanup: a background task in app/main.py lifespan runs
-    # StorageService.evict_expired every N minutes. Set to 0 to disable
-    # the sweep entirely; cache_days<=0 also short-circuits (keep forever).
+    # Maintenance sweep (app/lifecycle.py) every N minutes: cache eviction
+    # and event pruning. 0 disables it; cache_days<=0 keeps every video.
     cache_cleanup_interval_minutes: int = 60
     # Usage events (plays, views, searches) older than this are deleted
     # by the same background sweep. 0 keeps them forever.

@@ -21,8 +21,8 @@ avahi-daemon inside vs. outside the container).
 
 | Runtime | Min version | Why | Notes |
 |---|---|---|---|
-| **Python** | 3.10 | `app/config.py:38` uses PEP 604 `str \| None` union syntax without `from __future__ import annotations`. Older Pythons will fail to import the config module. | Development and type-checking target 3.11 (`pyproject.toml:[tool.mypy] python_version = "3.11"`). CI / prod should run 3.11+. |
-| **Deno** | any recent | yt-dlp uses Deno as a JavaScript runtime to run YouTube's player extraction code. Without Deno, YouTube extraction fails with an opaque "extractor" error. | Install script: `curl -fsSL https://deno.land/install.sh \| sh`. Must be on `PATH` when `run.py` starts; `run.py:check_dependencies` warns if missing. |
+| **Python** | 3.10 | `app/config.py` uses PEP 604 `str \| None` annotations in its dataclasses (e.g. `ParentConfig.password_hash`) without `from __future__ import annotations`, so older Pythons fail to import it. `pyproject.toml` has `requires-python = ">=3.10"`. | Supported and tested in CI: 3.10, 3.11, 3.12, 3.13. The Pi appliance image (Raspberry Pi OS trixie) runs 3.13. Type checking targets 3.11 (`[tool.mypy] python_version`). |
+| **Deno** | any recent | yt-dlp uses Deno as a JavaScript runtime to run YouTube's player extraction code. Without Deno, YouTube extraction fails with an opaque "extractor" error. | `scripts/install.sh` and the Pi image install it system-wide with `DENO_INSTALL=/usr/local` (binary at `/usr/local/bin/deno`, readable by the service user). Must be on `PATH` when `run.py` starts; `run.py:check_dependencies` warns if missing. |
 
 ---
 
@@ -42,10 +42,18 @@ These are installed via the host's package manager (`apt`, `brew`,
 | Binary | Debian/Ubuntu | macOS (brew) | Alpine | Why |
 |---|---|---|---|---|
 | `python3` (≥ 3.10) | `python3 python3-pip` | `python` | `python3 py3-pip` | Server runtime (see above). |
-| `ffmpeg` | `ffmpeg` | `ffmpeg` | `ffmpeg` | Merges yt-dlp's separate video+audio streams, processes subtitles, extracts frames for custom thumbnails (`app/services/thumbnails.py:extract_frame`). `run.py:check_dependencies` hard-fails if `ffmpeg` is missing from `PATH`. |
+| `ffmpeg` (incl. `ffprobe`) | `ffmpeg` | `ffmpeg` | `ffmpeg` | Merges yt-dlp's separate video+audio streams, processes subtitles, extracts frames for thumbnails (`app/services/thumbnails.py:extract_frame`), probes and normalizes every ingest (`media_probe.py`, `normalize.py`). `run.py:check_dependencies` hard-fails if `ffmpeg` is missing from `PATH`. |
 | `ca-certificates` | `ca-certificates` | (bundled) | `ca-certificates` | TLS roots for HTTPS outbound (yt-dlp, zeroconf timeservers, `curl_cffi`). Not a Curatables bug when missing; outbound requests just fail. |
 
-**Not currently needed but may be later**: git (only at install time, and only if you install by cloning — a sdist/wheel release wouldn't need it), a clock sync daemon (mDNS record TTLs care about wall clock, but a host running systemd-timesyncd is fine).
+Install-time and host tools (not probed by `run.py`): `python3-venv`
+(builds the venv), `curl` and `unzip` (Deno installer), `rsync`
+(`install.sh --systemd` copies the checkout to `/opt/curatables`),
+`avahi-daemon` + `libnss-mdns` (see §5). `git` is needed only to install
+or upgrade by cloning; the Pi image ships it so an appliance can be
+upgraded with `git clone` + `install.sh --systemd`.
+
+**Not needed:** the `sqlite3` CLI. `scripts/backup.sh` and `restore.sh`
+use Python's built-in `sqlite3` module (online backup API).
 
 ---
 
@@ -93,7 +101,11 @@ requirements.txt` so it also pulls production deps):
 | `pytest-asyncio>=0.21` | Runs `@pytest.mark.asyncio` tests, including the ZeroconfAdvertiser async suite. Pinned explicitly in `requirements-dev.txt` — without it, every async test collects as an error. |
 | `pytest-cov>=4.0` | Coverage reporting for CI (`pytest --cov=app`). |
 | `httpx>=0.24` | Required by `fastapi.testclient.TestClient`. |
-| `mypy>=1.0` | Type checker, configured in `pyproject.toml`. |
+| `mypy>=1.0` | Type checker, configured in `pyproject.toml` (advisory in CI). |
+| `ruff>=0.5` | Linter, rule set in `pyproject.toml` (`ruff check .`, blocking in CI). |
+
+`shellcheck` (lints `scripts/*.sh` and the pi-gen stage scripts) comes
+from the OS package manager, not pip.
 
 Not needed in a production container image.
 
@@ -137,21 +149,36 @@ container vs. on the host.
 
 ## 6. Runtime filesystem layout
 
-Curatables creates and writes to these paths under `config.storage.path`
-(default `~/curatables-data/`). See `app/config.py:ensure_directories`
-for the canonical list — update this table when it changes.
+Curatables writes only under its data dir: `--data-dir`, else
+`config.storage.path`, else `~/curatables-data/`. The systemd install and
+the Pi image use `/home/curatables/curatables-data` (optionally a USB
+drive mounted there, see
+[deployment.md](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)).
+`app/config.py:ensure_directories` creates `db/`, `videos/`,
+`thumbnails/`, `logs/`, `uploads/` and `uploads/.tmp/` at startup; the
+rest is created on demand.
 
 | Path | Purpose | Volume-mount in a container? |
 |---|---|---|
-| `db/curatables.db` | SQLite database (schema in `app/db/schema.sql`). | Yes — persist across container restarts. |
-| `videos/<id>/` | yt-dlp-downloaded video file, thumbnails, subtitle tracks. | Yes — these are big and expensive to re-download. |
-| `uploads/<id>/` | Parent- and kid-uploaded video files, normalized to the playback baseline (H.264/AAC ≤720p30 +faststart) on finalize, same as downloads. | Yes — user-generated content. |
-| `uploads/.tmp/` | In-progress resumable uploads. Swept at startup by `app/main.py` via `UploadService.sweep_abandoned(ttl_hours=24)`. | Yes — interrupted uploads can resume across restarts. |
-| `thumbnails/custom/` | Reserved for parent-uploaded custom thumbnails (pre-created). | Yes. |
-| `thumbnails/profiles/<profile_id>/` | Per-kid custom thumbnail overrides. Created on demand (not by `ensure_directories`). | Yes — user-generated content. |
-| `channels/<channel_id>/` | Kid channel art (banner, icon). Created on demand (not by `ensure_directories`). | Yes — user-generated content. |
-| `logs/` | Server access + error logs. | Optional — useful for post-mortems, safe to discard. |
-| `config.json` | Parsed by `app/config.py:load_config` at startup. Lives at the data-dir root. | Yes — contains the hashed parent password, session secret, and any user-tuned settings. |
+| `config.json` | Settings, PBKDF2 parent password hash, session secret and epoch. Read by `app/config.py:load_config`, written atomically. After a dashboard relocation the old location keeps a pointer `config.json` holding only the new `storage.path`. | Yes. |
+| `db/curatables.db` (+ `-wal`, `-shm`) | SQLite database, WAL mode. Schema from `app/db/migrations/` (snapshot in `app/db/schema.sql`). | Yes. |
+| `videos/<id>/` | Downloaded video (`video.mp4`, or the original `.webm`/`.mkv` if it could not be normalized) and subtitle tracks. Deleted when a cache video is evicted. | Yes — big and expensive to re-download. |
+| `uploads/<id>/` | Parent- and kid-uploaded videos, normalized on finalize like downloads. Never evicted. | Yes — user-generated content. |
+| `uploads/.tmp/` | In-progress resumable (tus) uploads. Files older than 24 h are swept at startup (`app/lifecycle.py:startup_jobs`). | Yes — interrupted uploads can resume across restarts. |
+| `thumbnails/videos/<id>.jpg` | Canonical thumbnail for each video. Kept when the video file is evicted. | Yes. |
+| `thumbnails/profiles/<profile_id>/` | Per-kid custom thumbnail overrides. | Yes — user-generated content. |
+| `channels/<channel_id>/` | Kid channel art (banner, icon). Removed with the channel. | Yes — user-generated content. |
+| `logs/curatables.log` | Application + access log, rotated at 5 MB with 3 backups (`app/logging_config.py`). Under systemd the same lines also go to the journal. `LOG_FORMAT=json` switches to one JSON object per line. | Optional — safe to discard. |
+| `update-request.json` | Written by the app to ask the root helper to update yt-dlp; removed by the helper (see [architecture.md](architecture.md#in-app-yt-dlp-update)). | Not relevant without systemd. |
+| `update-result.json` | Written by `scripts/updater.sh` (as the service user) with the outcome; shown in Settings. | Not relevant without systemd. |
+| `backups/` | Default target of a manual `scripts/backup.sh` run without an argument. | Optional. |
+
+Outside the data dir:
+
+| Path | Purpose |
+|---|---|
+| `/opt/curatables` | Code and `.venv` on a systemd install or the Pi image. Root-owned; read-only to the service. |
+| `/var/lib/curatables-backups` | Nightly snapshots (DB + `config.json`) from `curatables-backup.timer`, created by systemd (`StateDirectory=`, mode 0700, owned by the service user). On the system disk, so a failed media drive doesn't take the backups with it. See [backup.md](backup.md). |
 
 Container images should mount `/curatables-data` (or whatever path
 you pick) as a single volume and pass `--data-dir /curatables-data`
@@ -167,19 +194,23 @@ to `run.py` so every subdirectory lands under the mount.
 | **Port 80** | Optional. Requires `CAP_NET_BIND_SERVICE` on Linux. The shipped `systemd/curatables.service` unit grants this via `AmbientCapabilities=CAP_NET_BIND_SERVICE` — see `docs/deployment.md` for the full "unprivileged user + one capability" recipe. In a container, pass `--cap-add NET_BIND_SERVICE` (docker) or the equivalent (podman, k8s `securityContext.capabilities.add`). |
 | **mDNS** | Uses UDP/5353 on the `224.0.0.251` multicast group. Outbound and inbound. `zeroconf.asyncio.AsyncZeroconf` opens this automatically; no explicit port config in `config.json`. |
 | **Outbound HTTPS** | Required for yt-dlp to reach YouTube/etc. Containers that egress-filter must allow at least `*.youtube.com`, `*.googlevideo.com`, `*.ggpht.com` (thumbnails). |
-| **Cache sweep cadence** | `config.storage.cache_cleanup_interval_minutes` (default 60). Background asyncio task in `app/main.py` lifespan calls `StorageService.evict_expired` on this interval. Set to 0 to disable the sweep (the on-demand rehydrate path keeps working either way). |
+| **Maintenance cadence** | `config.storage.cache_cleanup_interval_minutes` (default 60). The lifespan task in `app/lifecycle.py` evicts cache videos not watched for `cache_days` and deletes usage events older than `events_retention_days` (default 365) on this interval. Set to 0 to disable it (the on-demand rehydrate path keeps working either way). |
+| **Downloads at once** | `config.storage.max_concurrent_downloads` (default 1) sizes the shared download queue; `max_download_bytes` (default 4 GB) caps a single download. |
 
 ---
 
 ## 8. Non-root user
 
 `systemd/curatables.service` runs as `curatables:curatables` — an
-unprivileged system user that owns `/home/curatables/curatables-data`
-and `/opt/curatables`. The container image should do the same:
+unprivileged system user that owns `/home/curatables/curatables-data`.
+`/opt/curatables` (code + venv) stays root-owned, so the service can
+read but not modify its own code, and the root-run yt-dlp updater
+never executes files the service user could have edited. The
+container image should do the same:
 
 - Create a `curatables` user in the Dockerfile (`adduser --system --home /curatables-data --shell /sbin/nologin curatables`).
-- `chown -R curatables:curatables /opt/curatables /curatables-data`.
-- `USER curatables` before `ENTRYPOINT ["python", "/opt/curatables/run.py"]`.
+- `chown -R curatables:curatables /curatables-data`; leave `/opt/curatables` owned by root.
+- `USER curatables` before `ENTRYPOINT ["/opt/curatables/.venv/bin/python", "/opt/curatables/run.py"]`.
 
 **Why non-root inside the container?** Because Curatables drives
 yt-dlp and curl_cffi, which fetch arbitrary URLs off the open
@@ -354,11 +385,24 @@ mentioning in any podman-specific deployment doc.
 ## Installer script
 
 `scripts/install.sh` is the one-shot installer for Debian/Ubuntu and
-consumes this file's rules at build time: the apt package list in the
-script mirrors §2, and it runs `run.py --check` as its acceptance
-test (which mirrors §3 + the `ffmpeg`/`deno` rows from §2). If you
-add or remove a runtime dep, update **both** `run.py:check_dependencies`
-and `scripts/install.sh`'s `APT_PACKAGES` in the same commit.
+runs `run.py --check` as its acceptance test (which mirrors §3 + the
+`ffmpeg`/`deno` rows from §2). Its apt list:
+
+```bash
+APT_PACKAGES=(
+    python3 python3-venv python3-pip
+    ffmpeg ca-certificates curl unzip rsync
+    avahi-daemon libnss-mdns
+)
+```
+
+The Pi image installs the same set from
+`pi-gen/stage-curatables/00-install-packages/00-packages`, minus
+`rsync` and plus `git`, and runs `run.py --check` in the chroot.
+
+If you add or remove a runtime dep, update `run.py:check_dependencies`,
+`scripts/install.sh`'s `APT_PACKAGES` and the pi-gen package list in the
+same commit.
 
 `scripts/install.sh --dry-run` is how to test installer changes from a
 workstation without root: it resolves apt package names via
@@ -386,5 +430,7 @@ entries are worse than missing ones. Rules:
 4. When you add a network capability, mDNS record, or port, update
    [§7 Runtime capabilities and ports](#7-runtime-capabilities-and-ports).
 5. When you change the runtime user, update
-   [§8 Non-root user](#8-non-root-user) and the systemd unit in
+   [§8 Non-root user](#8-non-root-user) and the systemd units in
    lockstep.
+6. When you add an apt package, add it to `scripts/install.sh` and
+   `pi-gen/stage-curatables/00-install-packages/00-packages`.

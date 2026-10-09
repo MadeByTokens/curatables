@@ -8,8 +8,7 @@ For operational concerns (running Curatables as a long-lived service,
 binding port 80, and the mDNS/`.local` discovery story) see
 [`deployment.md`](deployment.md). For the canonical list of every
 package, binary, filesystem path, port and capability Curatables
-needs — the bill of materials a Dockerfile or install script would
-consume — see [`dependencies.md`](dependencies.md).
+needs, see [`dependencies.md`](dependencies.md).
 
 ---
 
@@ -23,21 +22,22 @@ consume — see [`dependencies.md`](dependencies.md).
    Repositories own database queries. No layer may skip another — a route never
    executes SQL, a repository never raises an HTTP error.
 
-3. **Viewer context everywhere.** Every request carries a `ViewerContext` that
-   says who is looking (parent, child profile, anonymous) and what they can see.
-   Features query the context instead of reimplementing access checks.
+3. **One visibility policy.** Every request carries a `ViewerContext` that
+   says who is looking (parent, child profile, anonymous). What that viewer
+   may see is decided in one place, `ContentService.visible_channel_ids`
+   (see [Kid visibility](#kid-visibility)). Features ask it instead of
+   reimplementing access checks.
 
-4. **Data model supports the full vision.** The database schema covers child
-   profiles, internal channels, content sources, usage events, and per-profile
-   preferences from day one — even if the UI doesn't expose all of them yet.
+4. **Fail closed.** When the rules are ambiguous (an empty whitelist, an
+   anonymous visitor, a missing drive), the kid sees less, not more.
 
 5. **Old-device-first frontend.** The kid-facing UI must work on Safari iOS 9
    and old Android WebView. No ES6+, no CSS grid, no frameworks. The parent
    dashboard has no such constraint but stays server-rendered for simplicity.
 
-6. **Theming via directory overlay.** Themes are directories of templates and CSS
-   that override the base. Switching a child's theme is a config change, not a
-   code change.
+6. **Small-box friendly.** The reference host is a Raspberry Pi 4B with the
+   library on a USB drive. Heavy work (yt-dlp, ffmpeg) is queued, never run
+   on the event loop, and never fanned out without a limit.
 
 7. **No magic.** Explicit imports, explicit wiring, no classpath scanning, no
    decorators that hide control flow. A new contributor should be able to trace
@@ -45,208 +45,32 @@ consume — see [`dependencies.md`](dependencies.md).
 
 ---
 
-## Project Structure
+## Project Layout
 
-```
-curatables/
-├── app/                            # All server code lives here
-│   ├── main.py                     # FastAPI app factory, router wiring, lifespan
-│   ├── config.py                   # Configuration loading/saving (dataclass + JSON file)
-│   ├── dependencies.py             # Shared FastAPI Depends() — db, viewer context, services
-│   │
-│   ├── middleware/                 # ASGI middleware package
-│   │   ├── body_size.py            # Request body size limit
-│   │   ├── csrf.py                 # CSRF tokens (SameSite=Strict + signed per-session)
-│   │   └── request_id.py           # Per-request correlation ID + log binding
-│   │
-│   ├── db/
-│   │   ├── connection.py           # SQLite connection management (WAL, row_factory)
-│   │   ├── schema.sql              # Snapshot of the current schema (reference only)
-│   │   ├── schema.py               # init_schema shim + recover_from_crash
-│   │   ├── migrator.py             # Forward-only migration runner
-│   │   └── migrations/             # Numbered migration files (NNNN_slug.sql / .py)
-│   │
-│   ├── models/                     # Data classes — no logic, no imports from other layers
-│   │   ├── video.py                # Video, VideoSummary
-│   │   ├── channel.py              # InternalChannel
-│   │   ├── source.py               # ContentSource (YouTube channel/playlist/video)
-│   │   ├── profile.py              # ChildProfile, ProfilePreferences
-│   │   ├── event.py                # UsageEvent
-│   │   └── viewer.py               # ViewerContext (injected into every request)
-│   │
-│   ├── repositories/               # Database access — SQL lives here and nowhere else
-│   │   ├── base.py                 # BaseRepository with shared helpers
-│   │   ├── video_repo.py           # VideoRepository
-│   │   ├── channel_repo.py         # ChannelRepository (internal channels)
-│   │   ├── source_repo.py          # SourceRepository (upstream sources, any platform)
-│   │   ├── profile_repo.py         # ProfileRepository
-│   │   └── event_repo.py           # EventRepository
-│   │
-│   ├── backends/                   # Video source abstraction (yt-dlp today, replaceable)
-│   │   ├── base.py                 # VideoBackend abstract interface
-│   │   └── ytdlp.py                # yt-dlp implementation
-│   │
-│   ├── services/                   # Business logic — no HTTP, no SQL, no yt-dlp
-│   │   ├── auth.py                 # Password hashing, session management
-│   │   ├── content.py              # Add/remove/edit approved content, resolve sources
-│   │   ├── video_source.py         # Platform-agnostic URL parsing + VideoBackend delegate
-│   │   ├── ids.py                  # Composite video_id ({extractor}_{raw_id}) helpers
-│   │   ├── embeds.py               # Per-extractor iframe embed URL builder (Tier 1 allow-list)
-│   │   ├── storage.py              # Video file management, caching, disk quota guard
-│   │   ├── storage_report.py       # Read-only disk usage reporting (reused by topnav chip)
-│   │   ├── uploads.py              # Upload lifecycle (tus create/append/finalize), viewer-agnostic
-│   │   ├── media_probe.py          # ffprobe wrapper (codec/fps/faststart) + ffmpeg decoder allow-list
-│   │   ├── normalize.py            # Transcode/remux ingest to the client playback baseline (H.264/AAC ≤720p30 +faststart)
-│   │   ├── relocation.py           # Data directory relocation with preflight checks
-│   │   ├── thumbnails.py           # Thumbnail fetch, extract frame, delete, custom upload
-│   │   ├── events.py               # Usage logging and statistics aggregation
-│   │   ├── channels.py             # Internal channel management, kid-owned channel helpers
-│   │   ├── reactions.py            # Emoji reactions
-│   │   ├── comments.py             # Family comments
-│   │   ├── profiles.py             # Child profile management, preferences
-│   │   ├── mdns.py                 # Zeroconf / _http._tcp.local. advertisement
-│   │   ├── sharing.py              # .ytc / text / PDF encode/decode for shared curation
-│   │   ├── kid_library.py          # Per-kid title/thumbnail overrides, tags, channel bookmarks
-│   │   ├── stats.py                # Stats dashboard aggregation (windows, per-kid/per-video)
-│   │   ├── metrics.py              # Prometheus counters (opt-in via config)
-│   │   ├── rate_limit.py           # In-memory rate limiting (comment posts)
-│   │   └── csrf.py                 # CSRF token issue/validate (used by the CSRF middleware)
-│   │
-│   ├── features/                   # HTTP layer — routes grouped by feature
-│   │   ├── _template/              # Skeleton for new features (copy to start)
-│   │   │   ├── router.py
-│   │   │   ├── schemas.py
-│   │   │   └── README.md
-│   │   │
-│   │   ├── parent_auth/            # Setup wizard, login, logout
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_dashboard/       # Mission-control landing page
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_content/         # Add, edit, list, hide, delete content
-│   │   │   ├── router.py
-│   │   │   └── schemas.py          # Form validation models
-│   │   │
-│   │   ├── parent_channels/        # Manage internal channels
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_sharing/         # Export .ytc/.txt/.pdf; import .ytc/.txt
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_profiles/        # Manage child profiles
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_settings/        # Server config, password, storage, advanced settings
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_stats/           # Usage statistics dashboard
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_storage/         # Disk usage report + per-channel size breakdown
-│   │   │   └── router.py
-│   │   │
-│   │   ├── parent_uploads/         # Resumable tus.io 1.0.0 upload endpoints
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_profiles/           # Profile picker, PIN entry, switch
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_browse/             # Home page, channel view, pagination
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_watch/              # Video player page
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_search/             # Search (when enabled for profile)
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_comments/           # Family comments on videos
-│   │   │   └── router.py
-│   │   │
-│   │   ├── kid_uploads/            # Plain XHR multipart uploads + kid-created channels
-│   │   │   └── router.py
-│   │   │
-│   │   ├── media/                  # Video streaming, thumbnail serving
-│   │   │   └── router.py
-│   │   │
-│   │   └── api/                    # JSON API for frontend JS (logging, etc.)
-│   │       └── router.py
-│   │
-│   ├── templates/
-│   │   ├── base/                   # Default templates (always present)
-│   │   │   ├── kid/
-│   │   │   │   ├── base.html
-│   │   │   │   ├── home.html
-│   │   │   │   ├── watch.html
-│   │   │   │   ├── search.html
-│   │   │   │   ├── upload.html
-│   │   │   │   ├── profiles.html
-│   │   │   │   ├── pin.html
-│   │   │   │   ├── error.html
-│   │   │   │   └── help.html
-│   │   │   └── parent/
-│   │   │       ├── base.html
-│   │   │       ├── login.html
-│   │   │       ├── setup.html
-│   │   │       ├── dashboard.html
-│   │   │       ├── content.html
-│   │   │       ├── add.html
-│   │   │       ├── content_preview.html
-│   │   │       ├── content_edit.html
-│   │   │       ├── channels.html
-│   │   │       ├── channel_edit.html
-│   │   │       ├── profiles.html
-│   │   │       ├── profile_form.html
-│   │   │       ├── settings.html
-│   │   │       ├── stats.html
-│   │   │       ├── storage.html
-│   │   │       ├── upload.html
-│   │   │       └── help.html
-│   │   │
-│   │   └── themes/                 # Optional template overrides per theme
-│   │       ├── playful/            # (empty — CSS-only theme)
-│   │       └── calm/               # (empty — CSS-only theme)
-│   │
-│   └── static/
-│       ├── kid/
-│       │   ├── style.css           # Base kid styles (old-browser-safe)
-│       │   ├── theme-playful.css   # :root variable overrides for "playful"
-│       │   └── theme-calm.css      # :root variable overrides for "calm"
-│       └── parent/
-│           └── style.css           # Parent dashboard styles
-│
-├── tests/                          # Mirrors app/ structure
-│   ├── conftest.py                 # Fixtures: test db, test app, test client
-│   ├── repositories/
-│   ├── services/
-│   └── features/
-│
-├── curatables-cli.py                # Standalone CLI tool (independent of server)
-├── run.py                          # Entry point: python run.py
-├── pyproject.toml                  # Package metadata + build config + tool config
-├── requirements.txt                # Production dependencies
-├── requirements-dev.txt            # Test/lint dependencies
-├── README.md                       # Project landing page
-├── LICENSE                         # Apache 2.0
-├── .github/
-│   └── workflows/
-│       └── ci.yml                  # Test matrix (3.10/3.11/3.12), mypy, wheel build
-├── scripts/                        # install.sh + ops scripts (backup.sh, restore.sh)
-├── systemd/                        # Service unit + install/uninstall helpers
-├── docs/
-│   ├── architecture.md             # This file
-│   ├── deployment.md               # systemd, mDNS, port 80
-│   ├── dependencies.md             # Bill of materials
-│   ├── backup.md                   # Backup + restore ops guide
-│   ├── prd.md                      # Product requirements (historical)
-│   ├── filtered-search-and-proxy.md
-│   ├── open-source-media-center-features.md
-│   ├── search-research-playlists-at.md
-│   └── research/                   # Primary-source artifacts cited by docs
-│       └── playlists_at_script.js
-└── ...
-```
+Directory-level only; open the directory for the current file list.
+
+| Path | What lives there |
+|---|---|
+| `app/main.py` | `create_app()`: config, logging, middleware, Jinja setup, exception handlers, router wiring. |
+| `app/lifecycle.py` | Startup work and background tasks (see [Startup and background work](#startup-and-background-work)). |
+| `app/config.py` | `Config` dataclasses, loaded from and atomically saved to `<data dir>/config.json`. |
+| `app/dependencies.py` | Every FastAPI `Depends()` provider: DB connection, repositories, services, `get_viewer`, `require_parent`, `require_child`, `require_kid_feature`. The only place the layers are wired together. |
+| `app/web.py`, `app/template_utils.py` | Small shared request helpers (`is_xhr`) and template helpers (kid rendering, Jinja filters, asset fingerprint). |
+| `app/middleware/` | ASGI middleware: body size limit, CSRF, request ID, Prometheus. |
+| `app/db/` | Connection setup, forward-only migrator, `migrations/`, the `schema.sql` reference snapshot, and `recover_from_crash`. |
+| `app/models/` | Plain dataclasses (`Video`, `Channel`, `Profile`, `ViewerContext`, ...). No logic, no imports from other layers. |
+| `app/repositories/` | SQL, and only SQL. One repository per table or small cluster of tables. |
+| `app/services/` | Business logic. No HTTP, no SQL, no direct yt-dlp. |
+| `app/backends/` | `VideoBackend` interface and the yt-dlp implementation. |
+| `app/features/<name>/router.py` | HTTP layer, one directory per feature (`parent_*`, `kid_*`, `media`, `api`, `healthz`). `_template/` is the skeleton to copy. |
+| `app/templates/base/` | Jinja templates: `kid/` and `parent/`. Files starting with `_` are partials. |
+| `app/static/` | CSS/JS: `kid/` (old-browser-safe), `parent/`, `js/` (vendored tus client). |
+| `tests/` | Flat: one `test_*.py` per area, `conftest.py` fixtures, `fixtures/` (incl. a fake yt-dlp for the smoke suite). |
+| `scripts/` | `install.sh`, backup/restore, the root-side `updater.sh`, `setup-external-drive.sh`, Pi `firstboot.sh`, `seed_demo.py`. |
+| `systemd/` | Units for the server, the yt-dlp updater (path + service), the nightly backup (service + timer) and the Pi Wi-Fi first boot. |
+| `pi-gen/` | Raspberry Pi appliance image build ([`pi-gen/README.md`](../pi-gen/README.md)). |
+| `tools/` | `curatables-cli.py`, a standalone yt-dlp helper; not part of the server. |
+| `docs/` | User and contributor docs; `docs/design/` holds designs for unbuilt features, `docs/history/` superseded plans and research. |
 
 ---
 
@@ -254,52 +78,30 @@ curatables/
 
 ### 1. Models (`app/models/`)
 
-Plain Python dataclasses. No methods beyond `__init__`. No imports from other
-layers. These are the shared vocabulary of the entire application.
+Plain Python dataclasses, the shared vocabulary of the application. The
+one with the most reach is `ViewerContext`:
 
 ```python
 @dataclass
-class Video:
-    video_id: str
-    title: str
-    channel_name: str
-    description: str
-    duration: int
-    thumbnail_url: str
-    status: str          # "active" | "hidden" | "archived"
-    channel_id: int | None
-    resolution: str
-    cached_at: str | None
-    # ...
-
-@dataclass
 class ViewerContext:
-    viewer_type: str     # "parent" | "child" | "anonymous"
-    profile_id: int | None
-    profile_name: str
-    allowed_channel_ids: list[int] | None   # None = all
-    search_mode: str     # "disabled" | "curated" | "open"
-    theme: str           # "base" | "playful" | "calm"
+    viewer_type: str                            # "parent" | "child" | "anonymous"
+    profile_id: int | None = None
+    allowed_channel_ids: list[int] | None = None  # None = unrestricted profile
+    search_mode: str = "disabled"
+    theme: str = "base"
+    allow_comments: bool = True                 # per-profile feature switches
+    allow_reactions: bool = True
+    allow_tags: bool = True
+    allow_customize: bool = True
+    allow_upload: bool = True
+    auto_subtitles: bool = True
+    # ...
 ```
 
 ### 2. Repositories (`app/repositories/`)
 
 Each repository owns the SQL for one table (or a small cluster of related
 tables). Repositories accept a `sqlite3.Connection` and return model objects.
-
-```python
-class VideoRepository:
-    def __init__(self, db: sqlite3.Connection):
-        self.db = db
-
-    def get(self, video_id: str) -> Video | None: ...
-    def list_active(self, limit: int, offset: int) -> list[Video]: ...
-    def list_by_channel(self, channel_id: int) -> list[Video]: ...
-    def count(self, status: str | None = None) -> int: ...
-    def insert(self, video: Video) -> None: ...
-    def update(self, video_id: str, **fields) -> None: ...
-    def delete(self, video_id: str) -> None: ...
-```
 
 Rules:
 - No business logic. A repository does not decide **whether** a video should
@@ -310,75 +112,26 @@ Rules:
 ### 3. Services (`app/services/`)
 
 Services contain business logic. They call repositories (never raw SQL) and
-other services. They raise domain exceptions (e.g., `VideoNotFound`,
-`NotAuthorized`), never HTTP exceptions.
+other services. They raise domain exceptions (e.g. `VideoNotFound`), never
+HTTP exceptions. Services worth knowing about:
 
-```python
-class ContentService:
-    def __init__(self, video_repo: VideoRepository,
-                 source_repo: SourceRepository,
-                 channel_repo: ChannelRepository,
-                 source: VideoSourceService,
-                 thumbnail_svc: ThumbnailService):
-        self.video_repo = video_repo
-        # ...
-
-    def add_video_by_url(self, url: str, channel_id: int | None,
-                         resolution: str) -> Video:
-        """Fetch metadata, download thumbnail, insert into DB."""
-        parsed = self.source.parse_url(url)
-        info = self.source.fetch_video_info(parsed.clean_url)
-        stored_id = make_video_id(info.extractor, info.video_id)
-        self.thumbnail_svc.download(stored_id, info.thumbnail_url)
-        video = Video(video_id=stored_id, extractor=info.extractor,
-                      original_url=info.original_url,
-                      title=info.title, ...)
-        self.video_repo.insert(video)
-        return video
-
-    def list_for_viewer(self, viewer: ViewerContext,
-                        page: int, per_page: int) -> tuple[list[Video], int]:
-        """Return videos this viewer is allowed to see."""
-        if viewer.allowed_channel_ids is not None:
-            # Child with restricted channels
-            return self.video_repo.list_by_channels(
-                viewer.allowed_channel_ids, limit=per_page,
-                offset=(page - 1) * per_page)
-        return self.video_repo.list_active(
-            limit=per_page, offset=(page - 1) * per_page)
-```
-
-Key services worth knowing about:
-
-- **`ContentService`** — video add/list/search/moderation (above).
-- **`ChannelService`** — channel CRUD and kid-visibility helpers.
-- **`ReactionService`, `CommentService`** — emoji + threaded comments.
-- **`StatsService`** — aggregated dashboard (KPIs, top videos, per-kid
-  summary, per-video detail). Composes event, comment, reaction, and
-  profile repos; never touches SQL directly.
-- **`KidLibraryService`** — per-kid title/thumbnail overrides, personal
-  tags + tag cloud, channel bookmarks. Composes `ProfileVideoOverrideRepository`,
-  `TagRepository`, `ProfileChannelVideoRepository`, plus filesystem access
-  for custom thumbnails. Its `apply_overrides(profile_id, videos)` method
-  is called by the kid browse/watch/tag routes to patch `Video.title`
-  for the current kid's view before the template renders.
-- **`MediaNormalizer`** (`normalize.py`) — the ingest-time **playback
-  baseline** guarantee. Modern sources serve VP9/AV1 video + Opus audio,
-  which Safari and old devices can't decode; `merge_output_format=mp4`
-  only re-containers, it doesn't transcode. So after `StorageService.download`
-  (downloads) and inside `UploadService.finalize` (uploads), the pulled
-  file is probed via `MediaProbeService` and then either left as-is
-  (already baseline), **remuxed** (`-c copy -movflags +faststart`, no
-  re-encode, when only the moov-atom position is wrong), or **transcoded**
-  (`libx264` main / `aac` / scale ≤720p / cap 30 fps). The result is always
-  a `video.mp4` that is H.264/AAC, ≤720p30, with `+faststart`. It never
-  raises on media problems — an unreadable file is left untouched so the
-  ingest still completes. This runs in the background download thread (and
-  the upload finalize path), so it is off the request path; it is
-  queue-driven / bursty by construction, fitting the idle-box thermal
-  envelope. The yt-dlp format string (`app/backends/ytdlp.py`) prefers
-  `avc1`+`mp4a` so most ingests need only the cheap remux, not a full
-  transcode. Full design + verification: `docs/ui-and-playback-plan.md`.
+- **`ContentService`** (`content.py`) — add/list/search/moderate videos, the
+  visibility policy, download orchestration, rehydrating evicted videos.
+- **`StorageService`** (`storage.py`) — file layout, the free-space guard,
+  downloads through the backend, cache eviction.
+- **`DownloadQueue`** (`download_queue.py`) — the shared download worker
+  pool (see [Downloads](#downloads)).
+- **`MediaNormalizer`** (`normalize.py`) + **`MediaProbeService`** — the
+  ingest-time playback baseline (see [Playback baseline](#playback-baseline)).
+- **`ThumbnailService`**, **`ChannelService`** (incl. kid channel art),
+  **`UploadService`** (tus create/append/finalize), **`RelocationService`**.
+- **`ReactionService`**, **`CommentService`**, **`KidLibraryService`**
+  (per-kid title/thumbnail overrides, tags, channel bookmarks),
+  **`StatsService`**.
+- **`AuthService`** (PBKDF2 password + PIN hashing, parent session start/check),
+  **`CSRFService`**, **`RateLimiter`**, **`MetricsService`**.
+- **`updates.py`** — app-side half of the yt-dlp updater (see
+  [In-app yt-dlp update](#in-app-yt-dlp-update)).
 
 ### 4. Features / Routes (`app/features/`)
 
@@ -386,593 +139,418 @@ Each feature directory has a `router.py` that defines an `APIRouter`. Routes
 are thin — they parse the request, call a service, and return a response.
 
 ```python
-# app/features/kid_browse/router.py
-router = APIRouter(tags=["kid"])
-
-@router.get("/")
-def home(request: Request,
-         viewer: ViewerContext = Depends(get_viewer),
-         content: ContentService = Depends(get_content_service)):
-    videos, total = content.list_for_viewer(viewer, page=1, per_page=24)
-    return render(request, viewer, "kid/home.html", {"videos": videos})
+# app/features/kid_watch/router.py (abridged)
+@router.get("/watch/{video_id}", response_class=HTMLResponse)
+def watch(request: Request, video_id: str,
+          viewer: ViewerContext = Depends(get_viewer),
+          content: ContentService = Depends(get_content_service)):
+    try:
+        video = content.get_video_for_viewer(video_id, viewer)
+    except VideoNotFound:
+        ...
+    return render_kid_template(request, viewer, "kid/watch.html", {"video": video})
 ```
 
 Rules:
-- A route calls **one** service method (occasionally two).
-- A route never calls a repository directly.
-- A route never contains `if viewer.profile_type == ...` logic — that
-  belongs in the service.
+- A route calls services, never a repository directly.
+- A route never contains `if viewer.viewer_type == ...` access logic — that
+  belongs in the service or a `require_*` dependency.
+- Blocking work (transcodes, yt-dlp metadata fetches for imports) runs in
+  the threadpool (a sync `def` route or `run_in_threadpool`), never directly
+  in an `async def` handler.
 
 ### 5. Dependencies (`app/dependencies.py`)
 
-FastAPI's `Depends()` wires everything together. This is the only place where
-the layers connect.
+FastAPI's `Depends()` wires everything together. `get_db` opens one
+connection per request; every service has a `get_*_service` provider.
+Access is expressed as dependencies:
 
-```python
-def get_db(request: Request):
-    return request.app.state.db
+- `get_viewer` — builds the `ViewerContext`. A selected kid profile wins
+  on kid pages even if the parent is also logged in on that browser.
+- `require_parent` — raises `NotAuthenticated` → redirect to `/parent/login`.
+- `require_child` — raises `NotAChild` → redirect to `/profiles`.
+- `require_kid_feature("allow_comments", allow_parent=False)` — a kid whose
+  profile has that switch on. A switched-off feature raises
+  `FeatureDisabled`: GET redirects home, other methods get a 403. The
+  templates hide the same features, so the server check is the backstop.
 
-def get_viewer(request: Request, db=Depends(get_db)) -> ViewerContext:
-    """Build a ViewerContext from the session cookie."""
-    session = request.session
-    if session.get("parent_authenticated"):
-        return ViewerContext(viewer_type="parent", ...)
-    profile_id = session.get("profile_id")
-    if profile_id:
-        profile = ProfileRepository(db).get(profile_id)
-        return ViewerContext(viewer_type="child", ...)
-    return ViewerContext(viewer_type="anonymous", ...)
+For testing: `app.dependency_overrides[get_db] = ...` (see `tests/conftest.py`).
 
-def require_parent(viewer=Depends(get_viewer)) -> ViewerContext:
-    if viewer.viewer_type != "parent":
-        raise HTTPException(status_code=302, headers={"Location": "/parent/login"})
-    return viewer
+---
 
-def get_video_repo(db=Depends(get_db)) -> VideoRepository:
-    return VideoRepository(db)
+## Kid visibility
 
-def get_content_service(
-    video_repo=Depends(get_video_repo),
-    source_repo=Depends(get_source_repo),
-    channel_repo=Depends(get_channel_repo),
-    source=Depends(get_video_source_service),
-    thumbs=Depends(get_thumbnail_service),
-) -> ContentService:
-    return ContentService(video_repo, source_repo, channel_repo, source, thumbs)
-```
+`ContentService.visible_channel_ids(viewer)` is the single policy:
 
-For testing: `app.dependency_overrides[get_db] = lambda: in_memory_db`.
+- **parent** → `None` (everything, including videos without a channel);
+- **kid** → the parent-created channels their profile allows, plus the
+  channels the kid owns; a sibling's channel only if it is explicitly
+  whitelisted;
+- **anyone else** → `[]` (nothing).
+
+Restriction is an explicit flag, `profiles.channels_restricted`. When it is
+1 the kid sees only the channels listed in `profile_channels` (plus owned
+ones), so an empty list means *nothing*. When it is 0, `profile_channels`
+is ignored and every parent-created channel is visible.
+
+`can_view(video, viewer)` and `channels_for_viewer(viewer)` derive from it,
+and every list/search/get/rehydrate path, the media routes (`/media/video`,
+`/media/subs`, `/media/channel/*`), `/api/log`, `/api/react` and kid comments
+go through it. A video with no channel is visible to the parent only.
+Comments follow the same rule: a kid sees comments by family members who
+can see that video's channel. The SQL form of the rule lives in
+`ChannelRepository.list_visible_to` and in `comment_repo.py`
+(`_VISIBLE_TO_KID`); change them together.
+
+Two more states keep content hidden until a parent acts: `videos.status =
+'review'` (a kid upload into a shared channel, or a re-download that no
+longer matches what was approved) and `'hidden'`.
 
 ---
 
 ## Database Schema
 
-Schema changes are managed by a forward-only migrator. Each change is
-a numbered file under `app/db/migrations/` (either `.sql` applied via
-`executescript`, or `.py` with `def up(conn): ...` for logic that SQLite's
-DDL can't express — e.g. conditional `ALTER TABLE ADD COLUMN`). The
-migrator records applied versions in a `schema_migrations` table and
-skips anything already recorded. `app/db/schema.sql` stays on disk as a
-reference snapshot of the current canonical shape but is no longer
-executed at runtime.
+Schema changes are managed by a forward-only migrator (`app/db/migrator.py`).
+Each change is a numbered file under `app/db/migrations/`: either `.sql`
+applied via `executescript`, or `.py` with `def up(conn): ...` for logic
+SQLite's DDL can't express (e.g. conditional `ALTER TABLE ADD COLUMN`).
+Applied versions are recorded in `schema_migrations`; each migration runs
+in its own transaction. `app/db/schema.sql` is a **reference snapshot** of
+the current shape and is never executed.
 
-**Adding a column:** write `app/db/migrations/NNNN_slug.sql` with the
-`ALTER TABLE`, update `schema.sql` to match the new shape. Done. Every
-table is designed for the full PRD scope, not just the current MVP.
+**Adding a column or table:** write `app/db/migrations/NNNN_slug.sql` (or
+`.py`), update `schema.sql` to match. There is no downgrade path, so
+migrations must be idempotent and safe on existing data.
 
-```sql
--- Parent-defined channels for organizing content in the kid UI
-CREATE TABLE channels (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    name             TEXT NOT NULL UNIQUE,
-    description      TEXT DEFAULT '',
-    position         INTEGER DEFAULT 0,   -- display order
-    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
-    owner_profile_id INTEGER REFERENCES profiles(id) ON DELETE SET NULL,
-    -- owner_profile_id: NULL = parent-created (visible to all profiles
-    -- subject to profile_channels whitelist). Non-NULL = owned by a
-    -- specific kid profile; only visible to that kid by default.
-    banner_filename  TEXT,                -- kid channel art: banner.*
-    icon_filename    TEXT,                -- kid channel art: icon.*
-    color            TEXT DEFAULT '#2a9d8f'   -- accent color
-);
+| Migration | Change |
+|---|---|
+| `0001_initial.sql` | Base schema. |
+| `0002_bootstrap_existing.py` | Adds columns a pre-migrator database may lack. |
+| `0003_keep_forever_and_evicted.py` | `videos.keep_forever`; the `'evicted'` download status. |
+| `0004_profile_channels_restricted.py` | `profiles.channels_restricted`, backfilled from existing `profile_channels` rows. |
+| `0005_hash_profile_pins.py` | Rewrites plaintext kid PINs as PBKDF2 hashes. |
+| `0006_videos_last_played_at.py` | `videos.last_played_at`, backfilled from `video_play` events. |
+| `0007_profile_feature_switches.py` | Per-profile `allow_comments`, `allow_reactions`, `allow_tags`, `allow_customize`, `allow_upload`, `auto_subtitles` (existing profiles keep everything on). |
 
--- Content sources (YouTube channels, playlists, individual videos)
-CREATE TABLE sources (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_type  TEXT NOT NULL CHECK(source_type IN ('channel','playlist','video')),
-    youtube_id   TEXT NOT NULL UNIQUE,
-    title        TEXT NOT NULL,
-    description  TEXT DEFAULT '',
-    url          TEXT NOT NULL,
-    auto_sync    INTEGER DEFAULT 0,   -- future: auto-check for new uploads
-    added_at     TEXT NOT NULL DEFAULT (datetime('now')),
-    status       TEXT NOT NULL DEFAULT 'active',
-    metadata_json TEXT DEFAULT '{}'
-);
+Tables (see `schema.sql` for columns): `channels` (parent-created when
+`owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
+`sources`, `videos`, `profiles`, `profile_channels` (whitelist),
+`reactions`, `comments`, `events` (append-only usage log),
+`profile_video_overrides`, `tags`, `profile_video_tags`,
+`profile_channel_videos`.
 
--- Individual approved videos
-CREATE TABLE videos (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id       TEXT NOT NULL UNIQUE,   -- 11-char YouTube ID
-    source_id      INTEGER REFERENCES sources(id) ON DELETE SET NULL,
-    channel_id     INTEGER REFERENCES channels(id) ON DELETE SET NULL,
-    title          TEXT NOT NULL,
-    original_title TEXT NOT NULL,           -- YouTube's title, never edited
-    channel_name   TEXT DEFAULT '',         -- YouTube channel name
-    description    TEXT DEFAULT '',
-    duration       INTEGER DEFAULT 0,
-    upload_date    TEXT DEFAULT '',
-    view_count     INTEGER DEFAULT 0,
-    thumbnail_url  TEXT DEFAULT '',
-    thumbnail_type TEXT DEFAULT 'original', -- 'original' | 'frame' | 'custom'
-    status         TEXT NOT NULL DEFAULT 'active',
-    storage_mode   TEXT DEFAULT 'cache',    -- 'cache' | 'library'
-    resolution     TEXT DEFAULT '720p',
-    added_at       TEXT NOT NULL DEFAULT (datetime('now')),
-    cached_at      TEXT,
-    cache_expires_at TEXT,
-    file_size      INTEGER DEFAULT 0
-);
+`videos` carries two independent states: `status` (`active` / `hidden` /
+`review`, the parent's decision) and `download_status` (`pending` /
+`downloading` / `ready` / `error` / `evicted`, the file's state). The
+kid UI shows only `active` + `ready`.
 
--- Child profiles
-CREATE TABLE profiles (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    name         TEXT NOT NULL,
-    pin          TEXT DEFAULT '',            -- optional PIN for profile selection
-    avatar       TEXT DEFAULT 'default',     -- avatar identifier
-    theme        TEXT DEFAULT 'base',        -- template theme name
-    search_mode  TEXT DEFAULT 'disabled',    -- 'disabled' | 'curated' | 'open'
-    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-);
+### Kid library personalization
 
--- Which channels each profile can see (many-to-many)
--- If a profile has NO rows here, it can see ALL channels.
-CREATE TABLE profile_channels (
-    profile_id  INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    channel_id  INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-    PRIMARY KEY (profile_id, channel_id)
-);
+Each kid gets their own view of the shared library without copying data:
 
--- Usage events (append-only log)
-CREATE TABLE events (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id  INTEGER REFERENCES profiles(id) ON DELETE SET NULL,
-    event_type  TEXT NOT NULL,
-    video_id    TEXT,
-    timestamp   TEXT NOT NULL DEFAULT (datetime('now')),
-    data_json   TEXT DEFAULT '{}'
-);
-
--- Kid library personalization: per-kid title / thumbnail overlays on
--- any video the kid can see. No copies of the canonical video record
--- are made; this is a pure overlay applied at read time by KidLibraryService.
-CREATE TABLE profile_video_overrides (
-    profile_id       INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    video_id         TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
-    title            TEXT,
-    has_custom_thumb INTEGER DEFAULT 0,
-    PRIMARY KEY (profile_id, video_id)
-);
-
--- Shared tag name registry (case-insensitive uniqueness).
-CREATE TABLE tags (
-    id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE COLLATE NOCASE
-);
-
--- Per-kid tag assignment junction. Each kid has their own independent
--- organizational tag system; tags added by one kid are invisible to
--- siblings.
-CREATE TABLE profile_video_tags (
-    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    video_id   TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
-    tag_id     INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (profile_id, video_id, tag_id)
-);
-
--- Per-kid channel bookmarks (YouTube-style playlists). A kid can add
--- any visible video to any of their own channels without moving the
--- canonical video.channel_id. Same video can appear in multiple kid
--- channels simultaneously.
-CREATE TABLE profile_channel_videos (
-    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-    video_id   TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
-    position   INTEGER DEFAULT 0,
-    added_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (profile_id, channel_id, video_id)
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
-CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel_id);
-CREATE INDEX IF NOT EXISTS idx_videos_source ON videos(source_id);
-CREATE INDEX IF NOT EXISTS idx_events_profile ON events(profile_id);
-CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
-CREATE INDEX IF NOT EXISTS idx_events_video ON events(video_id);
-CREATE INDEX IF NOT EXISTS idx_profile_channels ON profile_channels(profile_id);
-CREATE INDEX IF NOT EXISTS idx_pvt_profile ON profile_video_tags(profile_id);
-CREATE INDEX IF NOT EXISTS idx_pvt_tag ON profile_video_tags(tag_id);
-CREATE INDEX IF NOT EXISTS idx_pcv_channel ON profile_channel_videos(profile_id, channel_id);
-```
-
-### Kid library personalization model
-
-The four tables above (`profile_video_overrides`, `tags`,
-`profile_video_tags`, `profile_channel_videos`) plus the three new
-columns on `channels` (`banner_filename`, `icon_filename`, `color`)
-support a YouTube-like personalization experience where each kid gets
-their own view of the shared video library without duplicating data:
-
-- **Title + thumbnail overrides** are overlays. When a kid views a
-  video, `KidLibraryService.apply_overrides()` patches the `title`
-  field on the returned `Video` objects in-place for that kid's
-  request. Custom thumbnails are served by the `/media/thumb/{id}`
-  route, which checks for a file at
-  `thumbnails/profiles/{profile_id}/{video_id}.*` before falling
-  back to the canonical thumbnail. Sibling kids and the parent still
-  see the canonical title/thumbnail.
-- **Tags** are personal per kid. `tags` is a shared registry (so
-  "science" typed twice doesn't create two rows), but
-  `profile_video_tags` carries `profile_id` in its primary key, so
-  each kid has an independent tagging system and their own tag
-  cloud. The cloud query joins through to `videos` to respect
-  channel visibility.
-- **Channel bookmarks** let a kid add any visible video (parent
-  downloads, uploads, other kids' shared content) into one of their
-  own channels, YouTube-playlist-style. Nothing about the video
-  changes — the bookmark is just a row in `profile_channel_videos`.
-  Kid-owned channels additionally carry banner/icon/color art
-  served by new `/media/channel/{id}/banner` and `/icon` routes.
+- **Title + thumbnail overrides** (`profile_video_overrides`) are overlays.
+  `KidLibraryService.apply_overrides()` patches titles for that kid's
+  request; `/media/thumb/{id}` serves
+  `thumbnails/profiles/<profile_id>/<video_id>.*` before the canonical
+  thumbnail. Siblings and the parent see the canonical version.
+- **Tags** are per kid: `tags` is a shared name registry, but
+  `profile_video_tags` is keyed on `profile_id`.
+- **Channel bookmarks** (`profile_channel_videos`) let a kid add any video
+  they can see to one of their own channels without moving the video.
+  Kid-owned channels have banner/icon/colour art served by
+  `/media/channel/{id}/banner` and `/icon`.
 
 ---
 
-## Theming System
+## Downloads
 
-Theming is primarily **CSS-only**: each theme ships a single stylesheet
-at `app/static/kid/theme-<name>.css` that overrides CSS custom properties
-declared in `app/static/kid/style.css`. `base/kid/base.html` links the
-theme stylesheet conditionally:
+All downloads — a new add, the startup resume, a re-download after
+eviction, a parent's Retry — go through `DownloadQueue`
+(`app/services/download_queue.py`), one process-wide thread pool sized by
+`storage.max_concurrent_downloads` (default 1). A video already queued or
+running is not queued again. Queued rows stay `download_status='pending'`
+and become `downloading` when a worker picks them up. Each job opens its
+own SQLite connection.
 
-```html
-<link rel="stylesheet" href="/static/kid/style.css">
-{% if viewer and viewer.theme and viewer.theme != 'base' %}
-<link rel="stylesheet" href="/static/kid/theme-{{ viewer.theme }}.css">
-{% endif %}
-```
+yt-dlp runs with `noplaylist` and a size cap (`storage.max_download_bytes`,
+default 4 GB). The backend's `last_error` is per thread and reset on each
+call, so concurrent jobs can't report each other's errors. Errors are
+stored as `[type] message`; the parent UI turns the type into plain advice.
 
-**Template overrides** are still supported for structural changes: drop
-a file under `app/templates/themes/<name>/kid/<template>.html` and it
-will take precedence over `base/`. This is implemented via Jinja2's
-`FileSystemLoader` with the theme directory placed ahead of the base
-directory. As of this writing neither bundled theme ships any
-structural overrides — both are pure CSS — but the mechanism is still
-available for future themes that need it.
+### Cache eviction
 
-**Resolution order** for template `kid/home.html` when profile theme is `playful`:
-1. `app/templates/themes/playful/kid/home.html` (if exists)
-2. `app/templates/base/kid/home.html` (fallback)
+Cache-mode videos (`storage_mode='cache'`, `keep_forever=0`) are evicted
+**least recently watched first**. Every play sets `videos.last_played_at`;
+age is `COALESCE(last_played_at, cached_at)`.
 
-```python
-theme_dir = f"app/templates/themes/{viewer.theme}"
-base_dir = "app/templates/base"
-loader = FileSystemLoader([theme_dir, base_dir])
-```
+- The maintenance loop evicts videos older than `storage.cache_days`
+  (no-op when `cache_days <= 0`).
+- When the disk is below the free-space floor before a download, the job
+  first evicts the least recently watched videos until it fits.
+- Eviction re-checks eligibility under the per-video lock, deletes the
+  files and sets `download_status='evicted'`. Uploads
+  (`storage_mode='uploaded'`) and `keep_forever` videos are never evicted.
 
-**CSS theming** uses CSS custom properties. The base stylesheet declares
-fallback values; theme stylesheets override them:
+When a kid opens an evicted video, `ContentService.try_rehydrate_evicted`
+atomically flips it back to `pending` (two taps queue one download) and
+the kid sees `kid/preparing.html`, which keeps refreshing while the video
+is pending or downloading. A re-download is compared with the length the
+parent approved; if it differs by more than 10 s **and** 5 % the URL now
+serves something else, and the video goes to `status='review'`.
 
-```css
-/* static/kid/style.css */
-:root {
-    --bg-color: #f5f5f5;
-    --accent: #2a9d8f;
-    --card-radius: 8px;
-    --font-size-title: 14px;
-}
+Canonical thumbnails live at `thumbnails/videos/<id>.jpg`, outside the
+video directory, so evicting a video keeps the picture the parent chose
+(older `videos/<id>/thumb.jpg` files are moved there on first access).
 
-/* static/kid/theme-playful.css */
-:root {
-    --bg-color: #fffbe6;
-    --accent: #ff6b6b;
-    --card-radius: 16px;
-    --font-size-title: 18px;
-}
-```
+### Playback baseline
 
-**Important:** don't duplicate the whole `kid/base.html` just to inject
-theme CSS variables — that silently forks the header/nav markup, which
-has bitten us before. Keep structural markup in `base/kid/base.html`
-and restrict theme overrides to either the static CSS file or
-intentionally-forked structural templates.
-
-**Note on old browsers:** CSS custom properties require iOS 9.3+. For older
-devices, the base stylesheet hardcodes fallback values before the variable
-declarations, so old browsers use the fallback and modern browsers use the
-variable.
+Modern sources serve VP9/AV1 + Opus, which Safari and old devices can't
+decode. After `StorageService.download` and inside `UploadService.finalize`,
+`MediaNormalizer` probes the file and leaves it alone (already baseline),
+**remuxes** it (`-c copy -movflags +faststart`), or **transcodes** it
+(`libx264` main / `aac` / ≤720p / ≤30 fps). The result is a `video.mp4`
+that is H.264/AAC ≤720p30 with `+faststart`. It never raises on media
+problems: an unconvertible file keeps its original `.webm`/`.mkv`, which
+playback, size accounting and crash recovery all find. The yt-dlp format
+string prefers `avc1`+`mp4a`, so most ingests need only the remux. Design
+notes: [`history/ui-and-playback-plan.md`](history/ui-and-playback-plan.md).
 
 ---
 
-## Request Flow (example: kid watches a video)
+## Startup and background work
 
-```
-Browser: GET /watch/dQw4w9WgXcQ
-    │
-    ▼
-kid_watch/router.py
-    │  viewer = Depends(get_viewer)        → ViewerContext(child, profile_id=2)
-    │  content = Depends(get_content_service)
-    │  events = Depends(get_event_service)
-    │
-    │  video = content.get_video_for_viewer("dQw4w9WgXcQ", viewer)
-    │  events.log("page_view", viewer, video_id="dQw4w9WgXcQ")
-    │
-    │  return render(request, viewer, "kid/watch.html", {"video": video})
-    │
-    ▼
-ContentService.get_video_for_viewer()
-    │  video = self.video_repo.get("dQw4w9WgXcQ")
-    │  if video is None or video.status != "active": raise VideoNotFound
-    │  if viewer has channel restrictions:
-    │      if video.channel_id not in viewer.allowed_channel_ids: raise NotAuthorized
-    │  return video
-    │
-    ▼
-VideoRepository.get("dQw4w9WgXcQ")
-    │  SELECT * FROM videos WHERE video_id = ?
-    │  return Video(...)
-```
+`app/lifecycle.py` holds everything that isn't a request. `create_app()`
+calls, in order:
 
-Every layer has a single responsibility. Adding a new check (e.g., "is this
-video age-appropriate for this profile?") means adding one line in
-`ContentService`, not touching routes or SQL.
+1. `prepare_data_dir(config)` — create the session secret if missing, run
+   pending migrations (`init_schema`), then `recover_from_crash`.
+2. `startup_jobs(config)` — re-queue `pending` downloads on the
+   `DownloadQueue` and sweep upload temp files older than 24 h. Failures
+   are logged, never fatal.
+3. `make_lifespan(config)` — the FastAPI lifespan: starts the mDNS
+   advertiser and the **maintenance loop**, and stops both on shutdown.
+
+The maintenance loop wakes every `storage.cache_cleanup_interval_minutes`
+(default 60; 0 disables it), re-reads the config, and on a worker thread
+evicts expired cache videos and deletes usage events older than
+`storage.events_retention_days` (default 365; 0 keeps them).
+
+Everything in this module opens its own SQLite connection.
 
 ---
 
-## Adding a New Feature (contributor guide)
+## Request pipeline
 
-Example: adding a "favorites" feature where kids can star videos.
+### Middleware order
 
-1. **Schema:** Create `app/db/migrations/NNNN_favorites.sql` with the
-   `CREATE TABLE favorites (...)`. Also update `app/db/schema.sql` to
-   reflect the new canonical shape (reference only). The migrator
-   applies your file on the next startup; existing DBs pick it up
-   automatically without a wipe.
+Starlette makes the **last** `add_middleware` call the outermost layer.
+From outermost to innermost:
 
-2. **Model:** Create `app/models/favorite.py` with a `Favorite` dataclass.
+1. **`BodySizeLimitMiddleware`** — rejects oversized bodies by
+   `Content-Length` and while streaming. It must be outermost because
+   anything that reads the body before it (CSRF parses form bodies)
+   would buffer an oversized request into memory first. Limits are per
+   route and read from config on each request: parent tus uploads →
+   `max_upload_bytes`; kid `POST /upload` → `max_kid_upload_bytes`;
+   picture edits and curation-list imports → 6 MB; everything else → 1 MB.
+2. **`PrometheusMiddleware`** — sees the final status code (no-op unless
+   `server.prometheus_enabled`).
+3. **`SessionMiddleware`** — signed cookie, `SameSite=Strict`.
+4. **`CSRFMiddleware`** — validates the per-session token on POST/PUT/
+   PATCH/DELETE, except a short audited list in `app/middleware/csrf.py`
+   (setup, login, profile select/PIN, `/api/log`, parent tus uploads).
+   Tokens live as long as the session.
+5. `anonymous_kid_redirect` — logged-out visitors on kid pages go to
+   `/profiles`.
+6. `first_run_redirect` — everything except setup, static and
+   `/healthz` goes to `/parent/setup` until a password exists.
+7. **`RequestIDMiddleware`** — per-request correlation ID, injected into
+   every log record.
+8. `RequestLoggingMiddleware` — access log line.
 
-3. **Repository:** Create `app/repositories/favorite_repo.py` with
-   `FavoriteRepository` (add, remove, list_for_profile).
+### Errors
 
-4. **Service:** Either add to `ContentService` or create
-   `app/services/favorites.py` if the logic is substantial.
+404/405, validation errors and unhandled exceptions render the kid error
+page (or `parent/error.html` under `/parent/`). `/api/`, `/media/`,
+`/healthz`, `/metrics` and the tus endpoints keep JSON.
 
-5. **Feature:** Create `app/features/kid_favorites/router.py` with routes
-   `POST /favorites/add`, `POST /favorites/remove`, `GET /favorites`.
+### Kid pages and JavaScript
 
-6. **Wire:** In `app/main.py`, add `app.include_router(kid_favorites.router)`.
-   In `app/dependencies.py`, add `get_favorite_repo()` and update the service
-   dependency if needed.
+- Every kid page extends `kid/_shell.html` (lang, theme CSS,
+  `<header>/<nav>/<main>`) and is rendered with `render_kid_template`.
+- Kid JavaScript lives in `app/static/kid/*.js` (`watch.js`, `pin.js`) and
+  must be **ES3**: no `const`/`let`, no arrow functions, no `fetch`; use XHR.
+  `tests/test_kid_js_es3.py` scans those files and inline kid `<script>`
+  blocks. Forms still work without JS through a plain POST + redirect.
+- Static asset URLs carry a content fingerprint, `?v={{ asset_v }}`
+  (computed once at startup in `template_utils._asset_version`), so
+  browsers fetch new CSS/JS after an upgrade.
 
-7. **Templates:** Add `app/templates/base/kid/favorites.html`. If needed, add
-   theme overrides.
+### Theming
 
-8. **Tests:** Add `tests/repositories/test_favorite_repo.py` and
-   `tests/features/test_kid_favorites.py`.
-
-Total files touched outside the new feature: `schema.sql`, `main.py`,
-`dependencies.py`. Everything else is new files in new directories.
+Themes are CSS only. `app/static/kid/style.css` declares custom properties
+in `:root` and keeps literal fallbacks for iOS 9, which ignores custom
+properties. `kid/_shell.html` adds `theme-<name>.css` for the profile's
+theme (`playful`, `calm`, `clear`); `base` uses the stylesheet alone.
+Adding a theme means a new `theme-<name>.css`, an entry in
+`app/constants.py:THEME_CHOICES`, and the name in `_shell.html`'s list.
+Don't fork templates per theme.
 
 ---
 
-## Testing Strategy
+## In-app yt-dlp update
 
-- **Repository tests:** Use an in-memory SQLite database with the full
-  schema applied via `conftest.py`. Test query methods directly. Fast,
-  no mocking.
-- **Service tests:** Use real repositories backed by in-memory SQLite
-  (simpler and more realistic than mocking). Test business logic through
-  the service API.
-- **Route tests:** Use FastAPI's `TestClient` with dependency overrides
-  to inject in-memory DB. Test HTTP status codes, redirects, and auth
-  enforcement.
-- **No end-to-end browser tests in the MVP.** We may add Playwright tests
-  later.
+The service unit (`systemd/curatables.service`) is sandboxed:
+`ProtectSystem=strict` with `ReadWritePaths=<data dir>` means the app can
+write **only** its data dir — the venv is read-only to it — and
+`NoNewPrivileges=true` means it cannot `sudo` or restart itself. So the
+dashboard's "Update yt-dlp" button cannot pip-install directly. Instead:
+
+1. The app (`app/services/updates.py`) atomically writes
+   `update-request.json` in the data dir. It never shells out.
+2. The root-owned `curatables-updater.path` unit sees the file and starts
+   `curatables-updater.service`, which runs `scripts/updater.sh` as root.
+3. `updater.sh` does one fixed thing: `pip install --upgrade yt-dlp`. It
+   reads the request and writes `update-result.json` **as the service
+   user** (the data dir belongs to that user, so root acting there by path
+   could be redirected by a planted symlink), and runs pip **as the venv
+   owner** (root on a normal install, where `/opt/curatables` is
+   root-owned), so root never executes files the service user can edit.
+   Then it removes the request and `systemctl restart curatables`.
+4. The dashboard reads the result file on its next render.
+
+Don't weaken the sandbox to add self-update; reuse this helper. The request
+carries a `kind` field (only `yt-dlp` is accepted today). yt-dlp is
+high-churn and low-risk to bump; Curatables itself has forward-only
+migrations, so any future app self-update must take a backup first, as
+`install.sh --systemd` does. User-facing flow: [`upgrade.md`](upgrade.md).
 
 ---
 
 ## Video Backend Abstraction
 
-All interaction with YouTube (metadata fetching, video downloading) goes
-through the `VideoBackend` abstract interface (`app/backends/base.py`).
-The only implementation today is `YtdlpBackend` (`app/backends/ytdlp.py`).
+All interaction with video sites goes through the `VideoBackend` interface
+(`app/backends/base.py`); the only implementation is `YtdlpBackend`
+(`app/backends/ytdlp.py`). Swapping to a fork or another tool means one
+new class and one line in `app/dependencies.py:get_backend()`.
 
-**Why:** yt-dlp is actively maintained but could be abandoned, forked, or
-blocked by YouTube. By isolating all yt-dlp-specific code behind an interface,
-we can swap to a fork or a completely different tool by implementing one class
-and changing one line in `app/dependencies.py` (`get_backend()`). No service,
-route, or template code changes.
-
-The interface requires four methods, all platform-agnostic (they
-take full URLs, not IDs, so yt-dlp's multi-site extractors all
-work uniformly):
-- `fetch_video_info(url)` → metadata for one video (any source)
-- `fetch_channel_videos(url, max_results)` → list of videos from a channel
-- `fetch_playlist(url, max_results)` → list of videos from a playlist
-- `download_video(url, output_dir, resolution, subtitle_langs)` → download to disk
-
-The returned `VideoMetadata` always carries `extractor` (from
-yt-dlp's `extractor_key` field, lowercased) and `original_url`
-(from `webpage_url`) so the service and template layers can make
-per-platform decisions (embed URL building, the "original" link,
-the composite storage `video_id`) without re-running yt-dlp.
-
-Services call these methods through `VideoSourceService` and
-`StorageService`, which add URL parsing, file management, and
-download locking on top.
+The interface is URL-based so every yt-dlp extractor works the same way:
+`fetch_video_info(url)`, `fetch_channel_videos(url, max_results)`,
+`fetch_playlist(url, max_results)`, `download_video(url, output_dir,
+resolution, subtitle_langs)`. The returned `VideoMetadata` carries
+`extractor` and `original_url`, which build the composite stored ID
+`{extractor}_{raw_id}` (`app/services/ids.py:make_video_id`; IDs that had
+to be sanitised get a short hash suffix so two can't collide).
 
 ---
 
 ## Crash Recovery & Data Integrity
 
-The server must survive unclean shutdowns (RPi power loss, laptop lid close,
-killed process) without data corruption or stuck state.
+The server must survive unclean shutdowns (power loss, killed process,
+unplugged drive) without corruption or stuck state.
 
-### Protections
+1. **SQLite WAL + `busy_timeout=5000`** (`app/db/connection.py`). Queue
+   workers, the maintenance loop and requests all write; each waits up to
+   5 s for a lock instead of failing.
+2. **Atomic config writes.** `Config.save()` writes a `.tmp`, `fsync`s and
+   renames.
+3. **`recover_from_crash`** (`app/db/schema.py`), on every start:
+   `downloading` → `pending`; `.part` files deleted; `ready` videos whose
+   file is missing → `pending`. If most `ready` videos are missing at once
+   (an unmounted external drive) it changes nothing and logs why.
+4. **Mount guard.** With `CURATABLES_REQUIRE_MOUNT=1` (set by
+   `scripts/setup-external-drive.sh`) `run.py` refuses to start when the
+   data dir is not a mount point, rather than serving an empty library
+   with first-run setup open. The systemd units also carry
+   `RequiresMountsFor=` on the data dir.
+5. **Per-video download lock** in `StorageService`, plus the queue's
+   de-duplication.
+6. **Backups.** `scripts/backup.sh` / `restore.sh` and the nightly
+   `curatables-backup.timer`; see [`backup.md`](backup.md).
+7. **Graceful shutdown cap.** `uvicorn.run(..., timeout_graceful_shutdown=3)`
+   so open `<video>` keep-alive sockets don't block Ctrl+C.
 
-1. **SQLite WAL mode.** Write-ahead logging is crash-safe by design. A power
-   loss mid-transaction rolls back cleanly on next open. Enabled in
-   `app/db/connection.py`.
-
-2. **Atomic config writes.** `Config.save()` writes to a `.tmp` file, calls
-   `fsync()`, then atomically renames over the target. If power dies mid-write,
-   the old config file survives intact.
-
-3. **Startup crash recovery** (`app/db/schema.py: recover_from_crash()`).
-   Runs on every server start, is idempotent:
-   - Videos stuck in `download_status='downloading'` → reset to `'pending'`
-   - `.part` files left by interrupted yt-dlp → deleted
-   - Videos marked `'ready'` but file missing from disk → reset to `'pending'`
-
-4. **Automatic pending resume** (`ContentService.resume_pending_downloads()`).
-   Right after `recover_from_crash`, `app/main.py` builds a one-shot
-   ContentService and re-queues every `'pending'` cache-mode video. Each
-   download runs in its own daemon thread with its own DB connection,
-   so the startup caller returns immediately after queuing. Without this
-   step, cache-mode videos orphaned by a kill-9 would stay pending until
-   a parent reloaded the Add flow and lazily re-triggered them.
-
-5. **Download locking.** Per-video `threading.Lock` in `StorageService`
-   prevents duplicate concurrent downloads of the same video. Locks are
-   in-memory and non-persistent — they reset naturally on restart.
-
-6. **CSRF + per-request correlation ID.** All state-changing form posts
-   are protected by signed per-session CSRF tokens (`app/middleware/csrf.py`)
-   with SameSite=Strict session cookies; every request gets a correlation
-   ID (`app/middleware/request_id.py`) that is bound into log records so a
-   crash traceback can be tied back to the originating request. Request
-   bodies are size-capped upstream of route handlers
-   (`app/middleware/body_size.py`) so a runaway upload can't OOM the box.
-
-7. **Backups.** `scripts/backup.sh` + `scripts/restore.sh` ship with a
-   systemd timer template; see [`backup.md`](backup.md). Restores are the
-   first-class recovery path if WAL-level protections aren't enough.
-
-8. **Cache lifecycle.** Cache-mode videos (`storage_mode='cache'`) set
-   `cached_at = utcnow()` when the download completes. A background
-   asyncio task in `app/main.py` lifespan runs
-   `StorageService.evict_expired` every
-   `config.storage.cache_cleanup_interval_minutes` (default 60). The
-   sweep deletes files on disk, transitions the row to
-   `download_status = 'evicted'`, and clears `cached_at` /
-   `cache_expires_at` / `file_size`. Eligibility is defined in
-   `VideoRepository.list_expired_cache`:
-   `storage_mode='cache'` AND `keep_forever=0` AND `download_status='ready'`
-   AND `cached_at < datetime('now', '-N days')`. The sweep is a no-op
-   when `cache_days <= 0` (keep-forever mode) or when the interval is
-   `0` (disabled). When a kid tries to watch an evicted video,
-   `ContentService.try_rehydrate_evicted` flips it back to `pending`
-   and queues a re-download; the kid sees a `kid/preparing.html` page
-   that auto-refreshes. Uploaded videos (`storage_mode='uploaded'`)
-   are never touched. Per-video library-mode (`keep_forever=1`) pins
-   favourites from the parent edit form.
-
-9. **Graceful shutdown timeout.** `uvicorn.run(..., timeout_graceful_shutdown=3)`
-   in `run.py` caps how long Ctrl+C waits for in-flight HTTP connections
-   to drain. Browsers holding a `<video>` keep-alive socket on
-   `/media/video/...` used to block graceful shutdown indefinitely — the
-   3-second cap closes them cleanly on a single Ctrl+C.
-
-### Shared curation (export / import)
-
-Parents share curated channels by file, not by network sync. Export
-lives at `GET /parent/channels/{id}/export?format=ytc|txt|pdf` in
-`app/features/parent_sharing/router.py`; import at
-`GET`/`POST /parent/channels/import`. All encode/decode/render logic
-lives in `app/services/sharing.py` and is deliberately pure (no DB
-writes, no HTTP — repositories are passed in for reads only).
-
-- **.ytc format** is JSON with a mandatory `"schema": "curatables.ytc/1"`
-  top-level field. Decode is strict on schema version (refuses any
-  other value with a clear error) but lenient on unknown keys within
-  v1 — so a v1.1 can add fields without breaking older clients.
-  Bumping to `curatables.ytc/2` is the escape hatch for breaking
-  changes.
-- **Security posture: re-fetch, don't trust.** The importer calls
-  `ContentService.fetch_previews_for_urls` for every URL, which
-  re-hits the source via yt-dlp. Titles/descriptions in the file are
-  hints only — never used to populate the parent's review page. This
-  closes the obvious injection surface.
-- **Import is review-gated.** After the batch fetch, the router
-  renders the same `parent/content_preview.html` template that the
-  URL-based add flow uses. The existing "I have already fully
-  watched this video" checkbox gate (`parent_content/router.py:133`)
-  still applies unchanged.
-- **PDF export is warn-and-degrade.** `reportlab` is optional; if
-  missing, the PDF route returns a clean 503 pointing at the install
-  command, and the `.ytc` + `.txt` paths keep working.
-- **No new DB tables.** Import is orchestration over the existing
-  `videos`/`sources`/`channels` write paths. Subscriptions (deferred
-  to Future) are where an `imports` ledger would live.
+Design rule: no operation may leave the system needing manual repair. If
+the server crashes at any point, the next startup recovers automatically.
 
 ### Concurrency
 
-Two tabs — or six — from the same kid writing to the DB at once is a
-real workload (reactions, comments, tag edits, page views from the
-watch page all fire independently). The story:
-
-- **SQLite WAL** lets any number of readers proceed concurrently; writers
-  serialize for microseconds, not whole requests. The
-  `check_same_thread=False` connection flag lets background download
-  threads share the file safely with request threads.
-- **Per-request connections** (via the `get_db` FastAPI dependency) mean
-  no connection state is shared across requests. A request that
-  deadlocks or errors out can't poison other requests.
-- **Race-free upserts.** Three places in the codebase do concurrent
-  upsert: reactions (`INSERT ... ON CONFLICT DO UPDATE`), per-kid
-  bookmarks (`INSERT OR IGNORE`), and tag/override upserts (`INSERT OR
-  IGNORE`-then-`SELECT` for tags; try-INSERT-fall-back-to-UPDATE for
-  overrides and channels). All four patterns are safe against two tabs
-  writing the same key at the same instant — no tab ever sees a 500.
-
-### Startup sequence
-
-`app/main.py:create_app()` runs these in order before the HTTP listener
-starts:
-
-1. `recover_from_crash(conn, data_dir)` — see above.
-2. `ContentService.resume_pending_downloads()` — kick pending videos.
-3. `UploadService.sweep_abandoned(ttl_hours=24)` — drop old `.tmp/` chunks.
-4. mDNS advertiser starts (inside the lifespan context manager).
-
-Each step logs a one-line summary so a post-restart tail of the log
-file shows exactly what was repaired.
-
-### Design rule
-
-No operation should leave the system in a state that requires manual
-intervention to fix. If the server crashes at any point, the next startup
-must recover automatically.
+- Per-request connections (`get_db`) share nothing between requests;
+  `check_same_thread=False` lets worker threads use their own.
+- Concurrent upserts are race-free: reactions use
+  `INSERT ... ON CONFLICT DO UPDATE`, bookmarks and tags `INSERT OR IGNORE`,
+  overrides try-insert-then-update.
 
 ---
 
-## What This Architecture Does NOT Include (Yet)
+## Shared curation (export / import)
 
-These are future concerns that the architecture can accommodate but that we
-will not build prematurely:
+Parents share curated channels by file. Export is
+`GET /parent/channels/{id}/export?format=ytc|txt|pdf`, import is
+`GET`/`POST /parent/channels/import` (`app/features/parent_sharing/`). All
+encode/decode/render logic is in `app/services/sharing.py`.
 
-- **Plugin system.** If needed, services can be made into interfaces with
-  swappable implementations. The DI layer already supports this.
-- **WebSocket push.** Can be added as a new feature directory without changing
-  existing code.
-- **LLM integration.** Will be a service (`app/services/recommender.py`) that
-  reads from `EventRepository` and writes suggestions. No architectural changes
-  needed.
-- **Shared curation export/import.** A feature directory
-  (`app/features/sharing/`) with its own schemas for the `.ytc` format.
-- **Background tasks.** FastAPI's `BackgroundTasks` or a simple thread pool
-  for cache cleanup, thumbnail downloads, and channel sync.
+- **`.ytc`** is JSON with a mandatory `"schema": "curatables.ytc/1"`. Decode
+  is strict on the schema version, lenient on unknown keys.
+- **Re-fetch, don't trust.** Every imported URL is re-fetched via yt-dlp;
+  titles in the file are never shown as the source of truth.
+- **Review-gated.** Import lands on the same preview page as the add flow,
+  with the same "I have already fully watched this video" gate.
+- **PDF is optional.** Without `reportlab` the PDF route returns 503; `.ytc`
+  and `.txt` keep working.
+
+---
+
+## Adding a New Feature (contributor guide)
+
+Example: a "favorites" feature where kids can star videos.
+
+1. **Schema:** `app/db/migrations/NNNN_favorites.sql` with the
+   `CREATE TABLE`; update `app/db/schema.sql` to match.
+2. **Model:** `app/models/favorite.py`.
+3. **Repository:** `app/repositories/favorite_repo.py`.
+4. **Service:** extend an existing service or add `app/services/favorites.py`.
+   Use `ContentService.can_view` for anything that touches videos.
+5. **Feature:** copy `app/features/_template/` to `app/features/kid_favorites/`.
+   If it should be switchable per kid, add a profile column (migration) and
+   guard the routes with `require_kid_feature(...)`.
+6. **Wire:** `app.include_router(...)` in `app/main.py`; providers in
+   `app/dependencies.py`.
+7. **Templates/JS:** `app/templates/base/kid/favorites.html` extending
+   `kid/base.html`; any JS in `app/static/kid/` (ES3).
+8. **Tests:** `tests/test_favorites.py`.
+
+---
+
+## Testing Strategy
+
+- **Repository and service tests** use in-memory SQLite with every
+  migration applied (`tests/conftest.py`). Real repositories, no mocking.
+- **Route tests** use FastAPI's `TestClient` on a full `create_app()` with
+  `get_db` overridden. Auth is enforced as in production; CSRF validation
+  is stubbed in the fixture and exercised for real in `tests/test_csrf.py`.
+- **Guard tests** pin cross-cutting rules: ES3 kid JS, the
+  `TemplateResponse(request, ...)` signature, the yt-dlp codec preference.
+- **Smoke suite** (`tests/test_smoke_e2e.py`, `pytest -m smoke`, excluded
+  by default) boots a real uvicorn subprocess against a fake yt-dlp and
+  walks setup → kid grid → add flow.
+
+Details: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+---
+
+## Not built (yet)
+
+The architecture can take these without restructuring; none exist today.
+
+- **Plugin system.** Services can become swappable interfaces through the
+  DI layer.
+- **WebSocket push.** A new feature directory.
+- **Content-safety agent / LLM features.** Designed in
+  [`design/v0.6-safety-agent.md`](design/v0.6-safety-agent.md).
+- **Filtered search / proxy, offline web pages.** See
+  [`design/`](design/).
+- **Source subscriptions** (auto-sync of channels/playlists).
 
 ---
 

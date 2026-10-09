@@ -479,7 +479,7 @@ class DwnloadybShell(cmd.Cmd):
             print("  yt-dlp not found in PATH.")
             return
         extra = shlex.split(arg) if arg else []
-        cmd_args = [ytdlp] + YTDLP_DEFAULT_ARGS + extra + urls
+        cmd_args = [ytdlp] + YTDLP_DEFAULT_ARGS + extra + ["--"] + urls
         print(f"  Downloading {len(urls)} video(s)...")
         try:
             subprocess.run(cmd_args)
@@ -652,7 +652,7 @@ def main():
             sys.exit(1)
         extra = shlex.split(args.dl_args) if args.dl_args else []
         urls = [v["url"] for v in videos]
-        cmd_args = [ytdlp] + YTDLP_DEFAULT_ARGS + extra + urls
+        cmd_args = [ytdlp] + YTDLP_DEFAULT_ARGS + extra + ["--"] + urls
         print(f"Downloading {len(urls)} video(s)...")
         sys.exit(subprocess.call(cmd_args))
 

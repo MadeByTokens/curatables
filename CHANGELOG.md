@@ -8,7 +8,68 @@ Milestones are development phases, not released package versions — there
 is no PyPI/Docker release cadence yet (bare-metal Linux is the supported
 install, see [docs/deployment.md](docs/deployment.md)).
 
-## Unreleased — Appliance image & no-terminal updates
+## Unreleased — Safety, Raspberry Pi robustness and a simpler kid screen
+
+**Child safety**
+- Channel restriction is an explicit per-profile flag and fails closed:
+  deleting a restricted kid's channels no longer unrestricts them; search
+  never falls back to the whole library; anonymous visitors see nothing;
+  subtitles and channel art check the viewer. One visibility policy
+  (`ContentService.visible_channel_ids`) serves every list, search and
+  media route.
+- Picking a kid profile ends any parent sign-in on that device; changing
+  the parent password signs out every other device.
+- Kid uploads into shared channels wait for parent approval
+  (dashboard: "waiting for your OK").
+- Videos re-downloaded after cache eviction go back to review if their
+  length changed.
+- PIN and password guessing are rate-limited; PINs are stored hashed;
+  parent passwords need 8+ characters.
+- The root yt-dlp updater touches the data dir only as the service user.
+- Fixed stored XSS in parent delete confirmations, CSS injection via
+  channel colour, unrestricted image uploads and `file://` thumbnail
+  fetches.
+
+**Raspberry Pi + external drive**
+- Downloads go through a queue (one at a time by default) with a size
+  limit; blocking work moved off the event loop; request-size limits run
+  before anything reads the body.
+- Cache eviction is least-recently-watched, and frees space when the disk
+  is full; thumbnails survive eviction.
+- `install.sh --systemd` is a complete permanent install (the shipped
+  unit used to run the wrong Python); nightly backups of the database
+  and `config.json` work out of the box (they needed a `sqlite3` binary
+  that was never installed).
+- `scripts/setup-external-drive.sh` moves the library onto a USB drive;
+  Curatables refuses to start without the drive instead of opening a
+  fresh install, and crash recovery won't reset the library when the
+  drive is missing.
+
+**Kid screen**
+- Per-child switches for reactions, comments, tags, customizing, uploads
+  and automatic subtitles; new profiles start with "watch + react".
+- On-screen PIN pad, "Again / Home" card when a video ends, no
+  download/cast/picture-in-picture, pictures instead of text for empty
+  and error pages, current page marked in the nav, reaction emoji on
+  cards, friendly dates, higher contrast, focus ring, reduced-motion
+  support and a new "Big & clear" theme.
+
+**Parent dashboard**
+- Getting-started checklist, content filters (waiting / downloading /
+  failed / hidden), Retry for failed downloads with plain-language
+  advice, no more 5-second page reloads, a tidier nav that works on
+  phones, working upload progress, and Approve buttons for kid uploads.
+
+**Docs and tooling**
+- New: [safety model](docs/safety-model.md), [FAQ](docs/faq.md),
+  [configuration reference](docs/configuration.md); install, backup and
+  upgrade guides rewritten; design and history docs moved under
+  `docs/design/` and `docs/history/`.
+- CI lints with ruff and shellcheck and tests Python 3.13.
+- Migrations 0004–0007: `profiles.channels_restricted`, hashed PINs,
+  `videos.last_played_at`, per-profile feature switches.
+
+## Appliance image & no-terminal updates
 
 - **In-app yt-dlp update:** a **Settings → Updates → Update yt-dlp** button
   updates the downloader from the dashboard with no terminal. The sandboxed
@@ -35,7 +96,7 @@ install, see [docs/deployment.md](docs/deployment.md)).
   devices (Safari/iOS 9, ~2015 tablets) even when the source is VP9/AV1 or
   Opus. The yt-dlp format string prefers `avc1`+`mp4a`; only non-baseline
   pulls pay for a transcode (`app/services/normalize.py`). Design +
-  verification: [docs/ui-and-playback-plan.md](docs/ui-and-playback-plan.md).
+  verification: [docs/history/ui-and-playback-plan.md](docs/history/ui-and-playback-plan.md).
 - **GUI refresh within the iOS-9 baseline:** inline styles consolidated into
   a utility + token CSS layer (single-sourced teal accent), system font
   stack, fixed-aspect thumbnails (no layout shift), ≥44px touch targets,
