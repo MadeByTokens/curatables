@@ -8,6 +8,39 @@ Milestones are development phases, not released package versions — there
 is no PyPI/Docker release cadence yet (bare-metal Linux is the supported
 install, see [docs/deployment.md](docs/deployment.md)).
 
+## Unreleased — Wishlist, languages, picture PIN and hardening
+
+**New for kids and parents**
+- Kids can ask for new videos (off by default per kid): a Find new page
+  searches YouTube through the server under the parent's rules, and the
+  parent reviews requests in a Video requests inbox before anything is
+  downloaded.
+- Kid screens in English, Portuguese (Brazil) and Spanish, per profile.
+- Picture PIN: three taps from nine animals, for a child who doesn't
+  read numbers yet.
+- QR code of the kid address for setting up a tablet.
+- Playlist review shows progress and can add just the watched videos;
+  Settings has section links and clearer "keep forever" wording.
+
+**Security**
+- Content-Security-Policy (no inline scripts left); logout is a POST
+  with a CSRF token.
+- Thumbnail fetches refuse home-network addresses.
+- Failed parent logins are stored, so restarts don't reset the limit,
+  and there is a cap across all addresses.
+- First-run setup only works during the first 30 minutes after start.
+- The Wi-Fi password is removed from the boot partition once applied.
+- Deno is installed from a pinned, checksummed release.
+
+**Fixes and maintenance**
+- mypy is clean and blocking in CI; the kid visibility rule is one SQL
+  fragment; one apt package list for install.sh and the Pi image.
+- Deleting a video during its download left its files behind;
+  re-uploading a file into another channel silently returned the old
+  video (a kid could also skip review that way); firstboot exited early
+  for an open network with no psk line; the wheel was missing the
+  migrations and schema.
+
 ## Unreleased — Safety, Raspberry Pi robustness and a simpler kid screen
 
 **Child safety**
