@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Move the curatables data dir onto an external drive (USB HDD/SSD).
+# Put the curatables library on an external drive (USB HDD/SSD).
 #
 # Usage:
 #   sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sda1
+#   sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
 #
-# The partition must already be formatted as ext4 (FAT/exFAT/NTFS cannot
-# hold Linux file ownership and are unreliable for the SQLite database).
-# This script never formats anything. To format a NEW, EMPTY drive
-# (this erases everything on it):
+# Two modes:
+#
+# WHOLE LIBRARY (default): the drive is mounted AT the data dir, so the
+# database moves too. The partition must already be ext4 (FAT/exFAT/NTFS
+# cannot hold Linux file ownership and are unreliable for the SQLite
+# database). To format a NEW, EMPTY drive (this erases everything on it):
 #   sudo mkfs.ext4 -L curatables /dev/sda1
 #
-# What it does:
 #   1. stops curatables
 #   2. copies the current data dir onto the drive (skipped if the drive
 #      already holds a curatables library)
@@ -22,8 +24,32 @@
 #      silently starting an empty library on the SD card
 #   6. starts curatables again
 #
+# MEDIA ONLY (--media-only): the database, settings and logs stay on the
+# SD card; videos, uploads, thumbnails and channel pictures go to a
+# curatables-library/ folder on the drive. The drive may be ext4, exFAT
+# or NTFS and may already hold other files (e.g. a movie collection to
+# import), which are left alone. FAT32 is refused: it cannot hold files
+# over 4 GB.
+#
+#   1. stops curatables
+#   2. makes the empty mount point immutable, so nothing can be written
+#      to the SD card through it while the drive is unplugged
+#   3. adds an /etc/fstab entry by UUID with nofail and mounts the drive
+#      at /mnt/curatables-media (exFAT/NTFS get uid/gid/umask options,
+#      since they have no Linux owners)
+#   4. copies the existing videos/uploads/thumbnails/channels onto the
+#      drive (skipped if the drive already holds a curatables-library),
+#      checks the copy, and keeps the SD-card originals under
+#      <data dir>/media.before-external-<date>
+#   5. sets storage.media_path and storage.import_roots in config.json
+#   6. installs a systemd drop-in with RequiresMountsFor= and
+#      ReadWritePaths= for the mount
+#   7. starts curatables again
+#
+# This script never formats anything.
+#
 # Environment overrides: CURATABLES_DATA (/home/curatables/curatables-data),
-# CURATABLES_USER (curatables).
+# CURATABLES_USER (curatables), CURATABLES_MEDIA_MOUNT (/mnt/curatables-media).
 
 set -euo pipefail
 
@@ -36,17 +62,31 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 say() { echo "==> $*"; }
 
 [ "$(id -u)" -eq 0 ] || die "run as root (sudo $0 $*)"
-[ $# -eq 1 ] || die "usage: $0 /dev/<partition>   (see: lsblk -f)"
+MODE=whole
+if [ "${1:-}" = "--media-only" ]; then
+    MODE=media
+    shift
+fi
+[ $# -eq 1 ] || die "usage: $0 [--media-only] /dev/<partition>   (see: lsblk -f)"
 DEV="$1"
 [ -b "$DEV" ] || die "$DEV is not a block device. List drives with: lsblk -f"
 
 FSTYPE="$(blkid -o value -s TYPE "$DEV" || true)"
 UUID="$(blkid -o value -s UUID "$DEV" || true)"
-[ -n "$UUID" ] || die "$DEV has no filesystem. Format it first: sudo mkfs.ext4 -L curatables $DEV (erases it)"
-[ "$FSTYPE" = "ext4" ] || die "$DEV is $FSTYPE; curatables needs ext4. Reformat (erases it): sudo mkfs.ext4 -L curatables $DEV"
 
 ROOT_SRC="$(findmnt -n -o SOURCE /)"
 case "$ROOT_SRC" in "$DEV"*) die "$DEV holds the root filesystem; pick the external drive";; esac
+
+id -u "$SVC_USER" >/dev/null 2>&1 || die "service user $SVC_USER does not exist"
+
+if [ "$MODE" = media ]; then
+    # shellcheck source=scripts/setup-media-drive.sh
+    . "$(dirname "$(readlink -f "$0")")/setup-media-drive.sh"
+    exit 0
+fi
+
+[ -n "$UUID" ] || die "$DEV has no filesystem. Format it first: sudo mkfs.ext4 -L curatables $DEV (erases it)"
+[ "$FSTYPE" = "ext4" ] || die "$DEV is $FSTYPE; moving the whole library needs ext4. Keep the database on the SD card instead with: sudo $0 --media-only $DEV   (or reformat, which erases it: sudo mkfs.ext4 -L curatables $DEV)"
 
 if findmnt -n "$DATA" >/dev/null 2>&1; then
     CURRENT="$(findmnt -n -o SOURCE "$DATA")"
@@ -57,8 +97,6 @@ fi
 
 EXISTING_MNT="$(findmnt -n -o TARGET --source "$DEV" || true)"
 [ -z "$EXISTING_MNT" ] || die "$DEV is mounted at $EXISTING_MNT. Unmount it first: sudo umount $EXISTING_MNT"
-
-id -u "$SVC_USER" >/dev/null 2>&1 || die "service user $SVC_USER does not exist"
 
 say "Stopping curatables"
 systemctl stop curatables.service 2>/dev/null || true
