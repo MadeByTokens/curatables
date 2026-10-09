@@ -143,8 +143,24 @@ while [ "$waited" -lt "$WAIT_SECONDS" ]; do
 	fi
 done
 
+hidden=0
+if [ "$connected" = 0 ] && [ "$seen" = 0 ]; then
+	say "'${SSID}' did not show up in a scan; trying it as a hidden network"
+	if nmcli connection modify "$CON_NAME" 802-11-wireless.hidden yes >/dev/null 2>&1 &&
+		out="$(nmcli --wait 45 connection up "$CON_NAME" ifname "$IFACE" 2>&1)"; then
+		connected=1
+		hidden=1
+	else
+		nmcli connection modify "$CON_NAME" 802-11-wireless.hidden no >/dev/null 2>&1 || true
+	fi
+fi
+
 if [ "$connected" = 1 ]; then
-	say "connected to '${SSID}'"
+	if [ "$hidden" = 1 ]; then
+		say "connected to hidden network '${SSID}'"
+	else
+		say "connected to '${SSID}'"
+	fi
 	forget_credentials || say "warning: could not clear the password from ${WIFI_FILE}"
 elif [ "$seen" = 0 ]; then
 	say "error: '${SSID}' was not found in ${WAIT_SECONDS}s. Check the name (it is case-sensitive) and that the Pi is in range. The password stays in the file for the next boot."

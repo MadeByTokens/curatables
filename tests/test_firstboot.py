@@ -29,7 +29,14 @@ case "$*" in
     echo "Neighbour"
     [ "$FAKE_VISIBLE" = 1 ] && echo "$FAKE_SSID" ;;
   "connection add"*) exit "$FAKE_ADD_EXIT" ;;
+  *"802-11-wireless.hidden yes"*) touch "$FAKE_LOG.hidden" ;;
+  *"802-11-wireless.hidden no"*) rm -f "$FAKE_LOG.hidden" ;;
   *"connection up"*)
+    if [ "$FAKE_VISIBLE" != 1 ]; then
+      [ "$FAKE_HIDDEN" = 1 ] && [ -e "$FAKE_LOG.hidden" ] && exit 0
+      echo "Error: No network with SSID found."
+      exit 10
+    fi
     [ "$FAKE_UP_EXIT" = 0 ] || echo "Error: Secrets were required, but not provided."
     exit "$FAKE_UP_EXIT" ;;
 esac
@@ -38,7 +45,7 @@ exit 0
 
 
 def _run(tmp_path, wifi_text, *, iface="wlan0", visible=True, up_exit=0, add_exit=0,
-         ssid="Home Net"):
+         ssid="Home Net", hidden=False):
     wifi = tmp_path / "curatables-wifi.txt"
     wifi.write_text(wifi_text, newline="")
     bindir = tmp_path / "bin"
@@ -53,7 +60,8 @@ def _run(tmp_path, wifi_text, *, iface="wlan0", visible=True, up_exit=0, add_exi
                CURATABLES_WIFI_FILE=str(wifi), CURATABLES_WIFI_WAIT="20",
                CURATABLES_WIFI_STEP="5", FAKE_LOG=str(log), FAKE_IFACE=iface,
                FAKE_VISIBLE="1" if visible else "0", FAKE_UP_EXIT=str(up_exit),
-               FAKE_ADD_EXIT=str(add_exit), FAKE_SSID=ssid)
+               FAKE_ADD_EXIT=str(add_exit), FAKE_SSID=ssid,
+               FAKE_HIDDEN="1" if hidden else "0")
     proc = subprocess.run(["bash", str(SCRIPT)], env=env,
                           capture_output=True, text=True, timeout=30)
     boot_log = tmp_path / "curatables-firstboot.log"
@@ -91,8 +99,18 @@ def test_network_not_in_range_keeps_the_file_and_says_why(tmp_path):
     proc, after, calls = _run(tmp_path, WIFI, visible=False)
     assert proc.returncode == 0
     assert "psk=hunter2-secret" in after
-    assert "connection add" in calls and "connection up" not in calls
+    assert "connection add" in calls
+    assert "802-11-wireless.hidden yes" in calls
+    assert calls.rstrip().endswith("802-11-wireless.hidden no")
     assert "'Home Net' was not found" in proc.boot_log
+
+
+def test_hidden_network_connects_after_the_scan_never_shows_it(tmp_path):
+    proc, after, calls = _run(tmp_path, WIFI, visible=False, hidden=True)
+    assert proc.returncode == 0
+    assert "connection modify curatables-wifi 802-11-wireless.hidden yes" in calls
+    assert "connected to hidden network 'Home Net'" in proc.boot_log
+    assert "hunter2-secret" not in after
 
 
 def test_wrong_password_keeps_the_file_and_hides_it_in_the_log(tmp_path):
