@@ -15,7 +15,7 @@ import shutil
 import time
 from pathlib import Path
 
-from syshelper import runner, system
+from syshelper import runner, safefs, system
 from syshelper.errors import HelperError
 from syshelper.jobs import Job
 from syshelper.registry import action, text
@@ -280,14 +280,23 @@ def _tree_stats(root: Path) -> tuple[int, int]:
     return files, size
 
 
-def _copy_library(job: Job, src: Path, dst: Path, same_owners: bool) -> None:
+def _as_service_user(argv: list[str]) -> list[str]:
+    return ["runuser", "-u", SETTINGS.service_user, "--", *argv]
+
+
+def _copy_library(job: Job, src: Path, dst: Path, same_owners: bool, *, as_service_user: bool = False) -> None:
     files, size = _tree_stats(src)
     free = shutil.disk_usage(dst.parent).free
     if free < size + 512 * 1024 ** 2:
         raise HelperError(f"The new drive has {_gb(free)} free but the videos need {_gb(size)}.")
     job.log(f"Copying {files} files ({_gb(size)}). This can take a long time; leave the box on.")
-    dst.mkdir(parents=True, exist_ok=True)
-    rc = runner.stream(["cp", "-R", "--preserve=timestamps", f"{src}/.", str(dst)], job.log)
+    copy = ["cp", "-R", "--preserve=timestamps", f"{src}/.", str(dst)]
+    if as_service_user:
+        runner.run(_as_service_user(["mkdir", "-p", str(dst)]))
+        copy = _as_service_user(copy)
+    else:
+        dst.mkdir(parents=True, exist_ok=True)
+    rc = runner.stream(copy, job.log)
     runner.run(["sync"], timeout=3600)
     copied_files, copied_size = _tree_stats(dst)
     if rc != 0 or copied_files < files or (same_owners and copied_size < size):
@@ -308,17 +317,14 @@ def _device_arg(params: dict, key: str = "device") -> str:
 
 def _write_config(update) -> None:
     path = SETTINGS.data_dir / "config.json"
-    data = json.loads(path.read_text()) if path.exists() else {}
-    update(data)
     uid, gid = _svc_ids()
-    tmp = path.with_name("config.json.helper-tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, "w") as f:
-        json.dump(data, f, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.chown(tmp, uid, gid)
-    os.replace(tmp, path)
+    data = safefs.read_owned_json(path, uid)
+    if data is None:
+        if os.path.lexists(path):
+            raise HelperError("The settings file looks damaged, so it was not changed.")
+        data = {}
+    update(data)
+    safefs.write_owned(path, json.dumps(data, indent=2), uid, gid)
 
 
 # --- actions ------------------------------------------------------------------
@@ -394,9 +400,7 @@ def drive_back_to_sd(params: dict):
             staging = SETTINGS.data_dir / ".from-drive"
             if staging.exists():
                 shutil.rmtree(staging)
-            _copy_library(job, lib, staging, True)
-            uid, gid = _svc_ids()
-            runner.run(["chown", "-R", f"{uid}:{gid}", str(staging)], timeout=3600)
+            _copy_library(job, lib, staging, True, as_service_user=True)
             for sub in MEDIA_SUBDIRS:
                 src, dst = staging / sub, SETTINGS.data_dir / sub
                 if src.exists():

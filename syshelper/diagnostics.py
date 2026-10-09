@@ -3,15 +3,15 @@ that is safe to send to someone helping (passwords and keys removed)."""
 
 from __future__ import annotations
 
-import json
 import os
+import pwd
 import re
 import shutil
 import socket
 import time
 from pathlib import Path
 
-from syshelper import drives, nm, runner, system
+from syshelper import drives, nm, runner, safefs, system
 from syshelper.registry import action
 from syshelper.settings import SETTINGS
 
@@ -188,6 +188,13 @@ def diagnostics(params: dict) -> dict:
 
 # --- report -------------------------------------------------------------------
 
+def _service_uid() -> int:
+    try:
+        return pwd.getpwnam(SETTINGS.service_user).pw_uid
+    except KeyError:
+        return -1
+
+
 def secrets() -> set[str]:
     """Literal values that must never appear in a report."""
     found: set[str] = set()
@@ -199,15 +206,12 @@ def secrets() -> set[str]:
                     found.add(value.strip())
         except OSError:
             pass
-    try:
-        cfg = json.loads((SETTINGS.data_dir / "config.json").read_text())
-        for section, key in (("parent", "password_hash"), ("parent", "session_secret"),
-                             ("imports", "tmdb_api_key")):
-            secret = (cfg.get(section) or {}).get(key)
-            if isinstance(secret, str) and secret:
-                found.add(secret)
-    except (OSError, ValueError):
-        pass
+    cfg = safefs.read_owned_json(SETTINGS.data_dir / "config.json", _service_uid()) or {}
+    for section, key in (("parent", "password_hash"), ("parent", "session_secret"),
+                         ("imports", "tmdb_api_key")):
+        secret = (cfg.get(section) or {}).get(key)
+        if isinstance(secret, str) and secret:
+            found.add(secret)
     return {s for s in found if len(s) >= 4}
 
 
@@ -298,9 +302,10 @@ def build_report() -> str:
                                                      "-u", "curatables-firstboot.service"]))
     parts.append(_section("Kernel messages", ["journalctl", "-k", "-b", "-n", "150", "--no-pager",
                                               "-o", "short-iso"]))
-    app_log = SETTINGS.data_dir / "logs" / "curatables.log"
-    if app_log.exists():
-        parts.append(_file("Curatables app log", app_log, tail=300))
+    app_log = safefs.read_owned(SETTINGS.data_dir / "logs" / "curatables.log", _service_uid(),
+                                tail_bytes=256 * 1024)
+    if app_log is not None:
+        parts.append("\n===== Curatables app log =====\n" + "\n".join(app_log.splitlines()[-300:]) + "\n")
     return redact("".join(parts), secrets())
 
 

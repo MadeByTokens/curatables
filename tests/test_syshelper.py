@@ -568,3 +568,50 @@ def test_the_app_client_talks_to_the_helper_over_a_socket(tmp_path):
     assert not client.available
     with pytest.raises(HelperUnavailable):
         client.call("ping")
+
+
+# --- files in the service user's folders -------------------------------------
+
+def test_symlinks_in_the_data_dir_are_never_followed(tmp_path):
+    from syshelper import safefs
+    secret = tmp_path / "shadow"
+    secret.write_text("root:$6$secret\n")
+    link = tmp_path / "curatables.log"
+    link.symlink_to(secret)
+    assert safefs.read_owned(link, os.getuid()) is None
+    assert safefs.read_owned(secret, os.getuid()) == "root:$6$secret\n"
+    assert safefs.read_owned(secret, os.getuid() + 1) is None
+
+
+def test_owned_writes_replace_a_planted_symlink_instead_of_writing_through_it(tmp_path):
+    from syshelper import safefs
+    victim = tmp_path / "victim"
+    victim.write_text("untouched")
+    target = tmp_path / "config.json"
+    (tmp_path / "config.json.helper-tmp").symlink_to(victim)
+    safefs.write_owned(target, "{}", os.getuid(), os.getgid())
+    assert victim.read_text() == "untouched"
+    assert target.read_text() == "{}" and not target.is_symlink()
+    assert oct(target.stat().st_mode & 0o777) == "0o600"
+
+
+def test_report_skips_an_app_log_that_points_elsewhere(fake, tmp_path, monkeypatch):
+    monkeypatch.setattr(diagnostics, "_tcp", lambda host, port, timeout=5: "")
+    secret = tmp_path / "root-only"
+    secret.write_text("TOP SECRET LINE\n")
+    logs = SETTINGS.data_dir / "logs"
+    logs.mkdir()
+    (logs / "curatables.log").symlink_to(secret)
+    assert "TOP SECRET LINE" not in diagnostics.build_report()
+    (logs / "curatables.log").unlink()
+    (logs / "curatables.log").write_text("ordinary app line\n")
+    assert "ordinary app line" in diagnostics.build_report()
+
+
+def test_config_edits_refuse_a_config_that_is_a_symlink(fake, tmp_path):
+    victim = tmp_path / "other.json"
+    victim.write_text('{"parent": {"password_hash": "x"}}')
+    (SETTINGS.data_dir / "config.json").symlink_to(victim)
+    with pytest.raises(HelperError, match="damaged"):
+        drives._write_config(lambda cfg: cfg.update(storage={}))
+    assert victim.read_text() == '{"parent": {"password_hash": "x"}}'
