@@ -1,11 +1,13 @@
+/* Calm: muted blue-grey, flat cards, no shadows. Text stays full size. */
 :root {
   --bg-color: #f0f4f8;
-  --accent: #5a7fa0;
-  --accent-hover: #4a6b88;
-  --header-bg: #5a7fa0;
+  --accent: #46667f;
+  --accent-hover: #3a5569;
+  --header-bg: #46667f;
+  --chip-bg: #e3eaf0;
   --card-bg: #fff;
-  --card-radius: 4px;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --font-size-title: 13px;
-  --font-size-header: 20px;
+  --card-radius: 6px;
+  --card-shadow: none;
+  --font-size-title: 15px;
+  --font-size-header: 22px;
 }

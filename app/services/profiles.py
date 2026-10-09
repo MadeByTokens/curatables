@@ -46,7 +46,8 @@ class ProfileService:
                avatar: str = "default", theme: str = "base",
                search_mode: str = "disabled",
                allowed_channel_ids: list[int] | None = None,
-               channels_restricted: bool | None = None) -> int:
+               channels_restricted: bool | None = None,
+               **features: bool) -> int:
         profile = Profile(
             name=name, display_name=display_name,
             pin=hash_pin(pin) if pin else "",
@@ -55,6 +56,7 @@ class ProfileService:
             channels_restricted=(bool(allowed_channel_ids)
                                  if channels_restricted is None
                                  else channels_restricted),
+            **features,
         )
         return self.profile_repo.create(profile)
 

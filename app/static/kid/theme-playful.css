@@ -1,11 +1,13 @@
+/* Playful: warm colours and round cards. */
 :root {
   --bg-color: #fffbe6;
-  --accent: #ff6b6b;
-  --accent-hover: #e55a5a;
-  --header-bg: #ff6b6b;
+  --accent: #b5452f;
+  --accent-hover: #963826;
+  --header-bg: #b5452f;
+  --chip-bg: #fde8e1;
   --card-bg: #fff;
   --card-radius: 16px;
-  --card-shadow: 0 2px 10px rgba(255,107,107,0.15);
+  --card-shadow: 0 2px 10px rgba(181,69,47,0.15);
   --font-size-title: 16px;
   --font-size-header: 28px;
 }

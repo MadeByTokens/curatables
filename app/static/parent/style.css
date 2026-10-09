@@ -5,8 +5,8 @@
    used directly (no iOS-9 two-line fallback needed here). This :root is
    the single canonical definition of the accent for the parent side. */
 :root {
-  --accent: #2a9d8f;
-  --accent-hover: #238577;
+  --accent: #1f7a70;
+  --accent-hover: #19625a;
 }
 
 /* === Base layout + typography === */
@@ -113,7 +113,7 @@ th {
   cursor: pointer;
   border-radius: 3px;
 }
-.btn:hover { background: #238577; }
+.btn:hover { background: #19625a; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 .btn-secondary { background: #666; }
 .btn-secondary:hover { background: #444; }
@@ -138,6 +138,16 @@ th {
 }
 
 /* === Forms === */
+
+fieldset.form-group {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+fieldset.form-group legend {
+  font-weight: bold;
+  padding: 0 6px;
+}
 
 input[type=text],
 input[type=password],
@@ -432,7 +442,7 @@ label {
 
 
 /* === Phase 2: utilities + extracted inline styles === */
-.accent-text{color:#2a9d8f;color:var(--accent)}
+.accent-text{color:#1f7a70;color:var(--accent)}
 .ai-c{align-items:center}
 .ai-fs{align-items:flex-start}
 .bb{box-sizing:border-box}

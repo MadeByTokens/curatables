@@ -12,6 +12,12 @@ class ViewerContext:
     search_mode: str = "disabled"
     theme: str = "base"
     has_multiple_profiles: bool = False  # drives "Switch profile" affordance visibility
+    allow_comments: bool = True
+    allow_reactions: bool = True
+    allow_tags: bool = True
+    allow_customize: bool = True
+    allow_upload: bool = True
+    auto_subtitles: bool = True
 
     @property
     def kid_header_name(self) -> str:

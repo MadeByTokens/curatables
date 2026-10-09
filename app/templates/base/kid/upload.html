@@ -22,6 +22,7 @@
     <option value="{{ c.id }}" {% if selected_channel_id and c.id == selected_channel_id %}selected{% endif %}>{{ c.name }}{% if c.owner_profile_id == viewer.profile_id %} (yours){% endif %}</option>
     {% endfor %}
   </select>
+  <small class="upload-hint">Videos sent to a channel that isn't yours wait for a grown-up to look first.</small>
 
   <label for="title">Title (optional)</label>
   <input type="text" id="title" name="title" placeholder="What is this video about?">
@@ -61,39 +62,43 @@
     return Math.round(n / 1048576) + ' MB';
   }
 
+  function show(el) {
+    el.className = el.className.replace(/(^|\s)d-none(\s|$)/, ' ');
+  }
+
   function setStatus(msg) {
-    if (status) { status.innerHTML = ''; status.appendChild(document.createTextNode(msg)); }
+    show(progressWrap);
+    status.innerHTML = '';
+    status.appendChild(document.createTextNode(msg));
   }
 
   form.onsubmit = function (e) {
     if (e && e.preventDefault) { e.preventDefault(); }
     var file = fileInput.files && fileInput.files[0];
     if (!file) {
-      progressWrap.style.display = '';
-      setStatus('Pick a file first.');
+      setStatus('Pick a video first.');
       return false;
     }
     if (file.size > MAX_BYTES) {
-      progressWrap.style.display = '';
-      setStatus('That file is too big (' + humanMB(file.size) + '). Maximum is ' + humanMB(MAX_BYTES) + '.');
+      setStatus('That video is too big (' + humanMB(file.size) + '). Ask a grown-up.');
       return false;
     }
 
-    progressWrap.style.display = '';
     startBtn.disabled = true;
-    setStatus('Sending...');
     bar.value = 0;
+    setStatus('Sending...');
 
     var fd = new FormData(form);
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/upload', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
     if (xhr.upload) {
       xhr.upload.onprogress = function (evt) {
         if (evt.lengthComputable) {
           var pct = Math.floor((evt.loaded / evt.total) * 100);
           bar.value = pct;
-          setStatus('Sending: ' + pct + '%');
+          setStatus(pct < 100 ? 'Sending: ' + pct + '%' : 'Getting it ready...');
         }
       };
     }
@@ -101,24 +106,17 @@
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) { return; }
       startBtn.disabled = false;
-      /* Browsers follow 302 automatically on XHR, so a success comes
-         back as 200 with the final page HTML. Navigate manually. */
-      if (xhr.status === 200) {
-        /* Server re-rendered the upload page on error, or redirected
-           and we got the watch page. If the final URL contains
-           /watch/ we go there; otherwise we show the server message. */
-        var finalUrl = xhr.responseURL || '';
-        if (finalUrl.indexOf('/watch/') !== -1 || finalUrl.indexOf('/upload?sent=1') !== -1) {
-          window.location = finalUrl;
-          return;
-        }
-        /* Server re-rendered upload page with an error. Replace page. */
-        document.open();
-        document.write(xhr.responseText);
-        document.close();
-        return;
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (err) {}
+      if (data && data.redirect) {
+        window.location = data.redirect;
+      } else if (data && data.error) {
+        setStatus(data.error);
+      } else if (xhr.status === 413) {
+        setStatus('This video is too big. Ask a grown-up to help.');
+      } else {
+        setStatus('That didn\u2019t work. Try again.');
       }
-      setStatus('Upload failed (status ' + xhr.status + ').');
     };
 
     xhr.send(fd);

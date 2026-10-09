@@ -14,14 +14,15 @@ import logging
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.config import Config
 from app.dependencies import (
     get_channel_service, get_config, get_event_service,
-    get_storage_service, get_upload_service, require_child,
+    get_storage_service, get_upload_service, require_kid_feature,
 )
 from app.models import ViewerContext
+from app.template_utils import render_kid_template
 from app.services.channels import ChannelService
 from app.services.events import EventService
 from app.services.storage import StorageService, InsufficientDiskSpace
@@ -31,6 +32,8 @@ from app.services.media_probe import UnsupportedCodec, ProbeError
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["kid-uploads"])
+
+_uploads = require_kid_feature("allow_upload")
 
 
 _CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB copy buffer
@@ -51,20 +54,20 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
         viewer.profile_id, viewer.allowed_channel_ids)
     if selected_channel_id is None and channels:
         selected_channel_id = channels[0].id
-    return request.app.state.templates.TemplateResponse(request, "kid/upload.html", {
-        "request": request,
-        "viewer": viewer,
+    response = render_kid_template(request, viewer, "kid/upload.html", {
         "channels": channels,
         "selected_channel_id": selected_channel_id,
         "max_upload_bytes": _effective_max(config),
         "error": error,
         "sent_for_review": sent_for_review,
-    }, status_code=status_code)
+    })
+    response.status_code = status_code
+    return response
 
 
 @router.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request,
-                viewer: ViewerContext = Depends(require_child),
+                viewer: ViewerContext = Depends(_uploads),
                 channels_svc: ChannelService = Depends(get_channel_service),
                 config: Config = Depends(get_config)):
     selected = request.query_params.get("selected")
@@ -79,7 +82,7 @@ def upload_page(request: Request,
 @router.post("/upload/new-channel")
 def create_kid_channel(request: Request,
                        name: str = Form(...),
-                       viewer: ViewerContext = Depends(require_child),
+                       viewer: ViewerContext = Depends(_uploads),
                        channels_svc: ChannelService = Depends(get_channel_service),
                        events: EventService = Depends(get_event_service),
                        config: Config = Depends(get_config)):
@@ -102,12 +105,28 @@ async def kid_upload(request: Request,
                      channel_id: int = Form(...),
                      title: str = Form(""),
                      file: UploadFile = File(...),
-                     viewer: ViewerContext = Depends(require_child),
+                     viewer: ViewerContext = Depends(_uploads),
                      uploads: UploadService = Depends(get_upload_service),
                      channels_svc: ChannelService = Depends(get_channel_service),
                      storage: StorageService = Depends(get_storage_service),
                      events: EventService = Depends(get_event_service),
                      config: Config = Depends(get_config)):
+    # The upload page posts with XHR (for the progress bar) and gets
+    # JSON back; a plain form post (no JS) gets the page / a redirect.
+    xhr = request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
+
+    def fail(message: str, status_code: int):
+        if xhr:
+            return JSONResponse({"error": message}, status_code=status_code)
+        return _render_upload_page(
+            request, viewer, channels_svc, config, error=message,
+            selected_channel_id=channel_id, status_code=status_code)
+
+    def done(url: str):
+        if xhr:
+            return JSONResponse({"redirect": url})
+        return RedirectResponse(url=url, status_code=302)
+
     # 1. Channel must be in the kid's visible set. Guessing a sibling's
     #    private channel_id is not enough — it has to be reachable
     #    through list_visible_to.
@@ -117,11 +136,7 @@ async def kid_upload(request: Request,
     if channel_id not in visible_by_id:
         logger.info("Kid %s tried to upload to channel %s outside their visible set",
                     viewer.profile_id, channel_id)
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="That channel isn't available. Pick one from the list.",
-            status_code=403,
-        )
+        return fail("That channel isn't available. Pick one from the list.", 403)
 
     # 2. Measure the file size via the underlying SpooledTemporaryFile.
     #    UploadFile.seek only accepts (offset,) so use file.file directly.
@@ -132,23 +147,12 @@ async def kid_upload(request: Request,
     # 3. Enforce the kid-specific ceiling and the system quota.
     max_bytes = _effective_max(config)
     if total_size > max_bytes:
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error=(f"This file is too big ({total_size // 1_048_576} MB). "
-                   f"Maximum is {max_bytes // 1_048_576} MB."),
-            selected_channel_id=channel_id,
-            status_code=413,
-        )
+        return fail("This video is too big. Ask a grown-up to help.", 413)
 
     allowed, reason = storage.check_can_write(required_bytes=total_size)
     if not allowed:
         logger.info("Kid upload refused for %s: %s", viewer.profile_id, reason)
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="There isn't enough free space on this computer. Ask a grown-up.",
-            selected_channel_id=channel_id,
-            status_code=507,
-        )
+        return fail("There isn't enough free space on this computer. Ask a grown-up.", 507)
 
     # 4. Stream into the tus staging area via the existing UploadService
     #    lifecycle (create -> append -> finalize). The kid route does
@@ -183,34 +187,14 @@ async def kid_upload(request: Request,
     except UnsupportedCodec as e:
         logger.info("Kid %s upload rejected: unsupported codec '%s'. Hint: %s",
                     viewer.profile_id, e.codec_name, e.conversion_hint)
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="This video is in a format we can't read. Ask a grown-up for help.",
-            selected_channel_id=channel_id,
-            status_code=415,
-        )
+        return fail("This video is in a format we can't read. Ask a grown-up for help.", 415)
     except ProbeError as e:
         logger.info("Kid %s upload rejected: probe failure: %s", viewer.profile_id, e)
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="We couldn't read this video file. Try a different one.",
-            selected_channel_id=channel_id,
-            status_code=400,
-        )
+        return fail("We couldn't read this video file. Try a different one.", 400)
     except InsufficientDiskSpace as e:
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="There isn't enough free space on this computer. Ask a grown-up.",
-            selected_channel_id=channel_id,
-            status_code=507,
-        )
+        return fail("There isn't enough free space on this computer. Ask a grown-up.", 507)
     except UploadError as e:
-        return _render_upload_page(
-            request, viewer, channels_svc, config,
-            error="Upload failed. Try again.",
-            selected_channel_id=channel_id,
-            status_code=400,
-        )
+        return fail("Upload failed. Try again.", 400)
 
     events.log(
         "video_uploaded_by_kid",
@@ -218,6 +202,5 @@ async def kid_upload(request: Request,
         profile_id=viewer.profile_id,
         data={"title": video.title, "channel_id": channel_id},
     )
-    if video.status != "active":
-        return RedirectResponse(url="/upload?sent=1", status_code=302)
-    return RedirectResponse(url=f"/watch/{video.video_id}", status_code=302)
+    return done("/upload?sent=1" if video.status != "active"
+                else f"/watch/{video.video_id}")

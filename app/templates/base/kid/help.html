@@ -1,61 +1,35 @@
 {% extends "kid/base.html" %}
+{% set nav_active = "help" %}
+{% macro tile(icon, text) %}
+<div class="help-item">
+  <div class="help-icon" aria-hidden="true">{{ icon }}</div>
+  <div class="help-text">{{ text }}</div>
+</div>
+{% endmacro %}
 {% block content %}
 <div class="help-page">
   <h2>How it works</h2>
 
   <div class="help-grid">
-    <div class="help-item">
-      <div class="help-icon">&#127968;</div>
-      <div class="help-text">Home<br>All your videos</div>
-    </div>
-
-    <div class="help-item">
-      <div class="help-icon">&#127916;</div>
-      <div class="help-text">Tap a video<br>to watch it</div>
-    </div>
-
-    {% if viewer and viewer.is_child %}
-    <div class="help-item">
-      <div class="help-icon">&#128522;</div>
-      <div class="help-text">React with<br>an emoji</div>
-    </div>
-
-    <div class="help-item">
-      <div class="help-icon">&#128172;</div>
-      <div class="help-text">Write a<br>comment</div>
-    </div>
+    {{ tile("&#127968;"|safe, "Home shows all your videos") }}
+    {{ tile("&#127916;"|safe, "Tap a video to watch it") }}
+    {% if viewer and viewer.is_child and viewer.allow_reactions %}
+    {{ tile("&#128522;"|safe, "Tap a face to say how you liked it") }}
     {% endif %}
-
+    {% if viewer and viewer.is_child and viewer.allow_comments %}
+    {{ tile("&#128172;"|safe, "Write a comment") }}
+    {% endif %}
     {% if viewer and viewer.search_mode != 'disabled' %}
-    <div class="help-item">
-      <div class="help-icon">&#128269;</div>
-      <div class="help-text">Search<br>for videos</div>
-    </div>
+    {{ tile("&#128269;"|safe, "Search for videos") }}
     {% endif %}
-
-    {% if viewer and viewer.is_child %}
-    <div class="help-item">
-      <div class="help-icon">&#128228;</div>
-      <div class="help-text">Upload a<br>video or photo</div>
-    </div>
+    {% if viewer and viewer.is_child and viewer.allow_upload %}
+    {{ tile("&#128228;"|safe, "Upload a video") }}
     {% endif %}
-
     {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
-    <div class="help-item">
-      <div class="help-icon">&#128101;</div>
-      <div class="help-text">Switch to<br>another kid</div>
-    </div>
+    {{ tile("&#128101;"|safe, "Switch to another kid") }}
     {% endif %}
-
-    <div class="help-item">
-      <div class="help-icon">&#127968;</div>
-      <div class="help-text">Lost? Tap Home<br>to start over</div>
-    </div>
+    {{ tile("&#129517;"|safe, "Lost? Tap Home to start over") }}
   </div>
   <div class="clear"></div>
-
-  <div class="ta-c mt-20">
-    <a href="/" class="back-link">&larr; Back to videos</a>
-  </div>
 </div>
 {% endblock %}

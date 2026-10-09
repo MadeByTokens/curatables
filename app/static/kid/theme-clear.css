@@ -1,0 +1,23 @@
+/* Big & clear: high contrast, larger text, thicker outlines. For kids
+   with low vision or who are overwhelmed by colour. */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --accent: #003f8a;
+  --accent-hover: #002d63;
+  --header-bg: #000000;
+  --header-text: #ffffff;
+  --chip-bg: #e8eefa;
+  --focus-ring: #ffbf00;
+  --card-bg: #ffffff;
+  --card-radius: 10px;
+  --card-shadow: 0 0 0 3px #000000;
+  --font-size-title: 20px;
+  --font-size-header: 30px;
+  --font-size-body: 19px;
+}
+.header-btn-label { font-size: 16px; }
+.header-btn-icon { font-size: 32px; }
+.channel-link { font-size: 18px; border: 2px solid #000; }
+.reaction-btn { font-size: 30px; border-color: #000; }
+.muted, .muted-2, .muted-3, .page-info, .comment-meta, .reaction-label { color: #000; }

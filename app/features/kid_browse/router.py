@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query, Request
 from starlette.responses import (
-    HTMLResponse, RedirectResponse, JSONResponse, Response,
+    HTMLResponse, RedirectResponse, Response,
 )
 
 from fastapi import Form
@@ -10,7 +10,7 @@ from fastapi import Form
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
     get_reaction_service, get_kid_library_service, get_channel_service,
-    get_config, require_child,
+    require_kid_feature,
 )
 from app.services.content import ContentService
 from app.services.profiles import ProfileService
@@ -23,6 +23,9 @@ from app.template_utils import render_kid_template
 router = APIRouter(tags=["kid-browse"])
 
 ITEMS_PER_PAGE = 24
+
+_customize = require_kid_feature("allow_customize")
+_tags = require_kid_feature("allow_tags")
 
 
 def _build_home_context(videos, content, reactions, viewer, page, total,
@@ -37,6 +40,7 @@ def _build_home_context(videos, content, reactions, viewer, page, total,
         "page": page,
         "total_pages": total_pages,
         "reaction_counts": bulk_counts,
+        "emojis": dict(reactions.get_emoji_list()),
         "current_channel_id": current_channel_id,
     }
 
@@ -96,7 +100,7 @@ def channel_view(request: Request, channel_id: int,
 
 @router.get("/video/{video_id}/edit", response_class=HTMLResponse)
 def video_edit_page(request: Request, video_id: str,
-                    viewer: ViewerContext = Depends(require_child),
+                    viewer: ViewerContext = Depends(_customize),
                     content: ContentService = Depends(get_content_service),
                     kid_lib: KidLibraryService = Depends(get_kid_library_service),
                     channels_svc: ChannelService = Depends(get_channel_service)):
@@ -117,7 +121,7 @@ def video_edit_page(request: Request, video_id: str,
 
 @router.post("/video/{video_id}/edit")
 async def video_edit_save(request: Request, video_id: str,
-                          viewer: ViewerContext = Depends(require_child),
+                          viewer: ViewerContext = Depends(_customize),
                           content: ContentService = Depends(get_content_service),
                           kid_lib: KidLibraryService = Depends(get_kid_library_service),
                           channels_svc: ChannelService = Depends(get_channel_service)):
@@ -162,7 +166,7 @@ async def video_edit_save(request: Request, video_id: str,
 @router.post("/video/{video_id}/reset")
 def video_reset_field(request: Request, video_id: str,
                       field: str = Form(...),
-                      viewer: ViewerContext = Depends(require_child),
+                      viewer: ViewerContext = Depends(_customize),
                       content: ContentService = Depends(get_content_service),
                       kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     """Roll back one override field (title / description / thumbnail)
@@ -190,7 +194,7 @@ def _is_xhr(request: Request) -> bool:
 @router.post("/video/{video_id}/tags/add")
 def video_tag_add(request: Request, video_id: str,
                   tag: str = Form(""),
-                  viewer: ViewerContext = Depends(require_child),
+                  viewer: ViewerContext = Depends(_tags),
                   content: ContentService = Depends(get_content_service),
                   kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     content.get_video_for_viewer(video_id, viewer)
@@ -199,14 +203,15 @@ def video_tag_add(request: Request, video_id: str,
     if _is_xhr(request):
         if tag_id is None:
             return Response(status_code=204)
-        return JSONResponse({"id": tag_id, "name": tag})
+        return render_kid_template(request, viewer, "kid/_tag_chip_response.html", {
+            "tag": {"id": tag_id, "name": tag}, "video_id": video_id})
     return RedirectResponse(url=f"/watch/{video_id}#tags", status_code=302)
 
 
 @router.post("/video/{video_id}/tags/remove")
 def video_tag_remove(request: Request, video_id: str,
                      tag_id: int = Form(...),
-                     viewer: ViewerContext = Depends(require_child),
+                     viewer: ViewerContext = Depends(_tags),
                      content: ContentService = Depends(get_content_service),
                      kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     content.get_video_for_viewer(video_id, viewer)
@@ -220,7 +225,7 @@ def video_tag_remove(request: Request, video_id: str,
 
 @router.get("/channel/{channel_id}/edit", response_class=HTMLResponse)
 def channel_edit_page(request: Request, channel_id: int,
-                      viewer: ViewerContext = Depends(require_child),
+                      viewer: ViewerContext = Depends(_customize),
                       channels_svc: ChannelService = Depends(get_channel_service)):
     channel = channels_svc.get(channel_id)
     if not channel or channel.owner_profile_id != viewer.profile_id:
@@ -232,7 +237,7 @@ def channel_edit_page(request: Request, channel_id: int,
 
 @router.post("/channel/{channel_id}/edit")
 async def channel_edit_save(request: Request, channel_id: int,
-                            viewer: ViewerContext = Depends(require_child),
+                            viewer: ViewerContext = Depends(_customize),
                             channels_svc: ChannelService = Depends(get_channel_service)):
     channel = channels_svc.get(channel_id)
     if not channel or channel.owner_profile_id != viewer.profile_id:
@@ -266,7 +271,7 @@ async def channel_edit_save(request: Request, channel_id: int,
 
 @router.get("/tags", response_class=HTMLResponse)
 def tags_page(request: Request,
-              viewer: ViewerContext = Depends(get_viewer),
+              viewer: ViewerContext = Depends(_tags),
               content: ContentService = Depends(get_content_service),
               kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     if not viewer.is_child or not viewer.profile_id:
@@ -281,7 +286,7 @@ def tags_page(request: Request,
 @router.get("/tags/{tag_name}", response_class=HTMLResponse)
 def tag_videos(request: Request, tag_name: str,
                page: int = Query(1, ge=1),
-               viewer: ViewerContext = Depends(get_viewer),
+               viewer: ViewerContext = Depends(_tags),
                content: ContentService = Depends(get_content_service),
                kid_lib: KidLibraryService = Depends(get_kid_library_service),
                reactions: ReactionService = Depends(get_reaction_service)):
@@ -300,6 +305,7 @@ def tag_videos(request: Request, tag_name: str,
         "page": page,
         "total_pages": total_pages,
         "reaction_counts": bulk_counts,
+        "emojis": dict(reactions.get_emoji_list()),
         "current_channel_id": None,
         "tag_name": tag_name,
     })

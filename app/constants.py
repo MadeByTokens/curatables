@@ -19,5 +19,10 @@ AVATAR_EMOJIS = {
 # For parent form dropdowns: list of (key, emoji) tuples
 AVATAR_CHOICES = list(AVATAR_EMOJIS.items())
 
-THEME_CHOICES = [("base", "Default"), ("playful", "Playful"), ("calm", "Calm")]
+THEME_CHOICES = [
+    ("base", "Default"),
+    ("playful", "Playful"),
+    ("calm", "Calm"),
+    ("clear", "Big & clear (large text, high contrast)"),
+]
 SEARCH_CHOICES = [("disabled", "Disabled"), ("curated", "Curated (approved content only)")]

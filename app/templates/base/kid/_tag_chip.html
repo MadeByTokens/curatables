@@ -1,0 +1,10 @@
+{% macro tag_chip(tag, video_id, csrf_token) %}
+<span class="tag-item">
+  <a href="/tags/{{ tag.name|urlencode }}" class="tag-link">{{ tag.name }}</a>
+  <form method="POST" action="/video/{{ video_id }}/tags/remove" class="d-inline m-0" data-xhr="tag-remove">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="tag_id" value="{{ tag.id }}">
+    <button type="submit" class="tag-remove" aria-label="Remove tag {{ tag.name }}">&times;</button>
+  </form>
+</span>
+{% endmacro %}

@@ -1,49 +1,31 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ viewer.kid_header_name if viewer else 'curatables' }}</title>
-<link rel="stylesheet" href="/static/kid/style.css">
-{% if viewer and viewer.theme and viewer.theme != 'base' %}
-<link rel="stylesheet" href="/static/kid/theme-{{ viewer.theme }}.css">
-{% endif %}
-{% block theme_css %}{% endblock %}
-{% block head_extra %}{% endblock %}
-</head>
-<body>
-<div class="header">
-  {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
-  <a href="/profiles/switch" class="header-corner" title="Switch profile">switch &rarr;</a>
-  {% endif %}
+{% extends "kid/_shell.html" %}
+{% macro nav_btn(href, key, icon, label, active) -%}
+<a href="{{ href }}" class="header-btn{% if active == key %} active{% endif %}"{% if active == key %} aria-current="page"{% endif %}>
+  <span class="header-btn-icon" aria-hidden="true">{{ icon }}</span>
+  <span class="header-btn-label">{{ label }}</span>
+</a>
+{%- endmacro %}
+{% block body %}
+<header class="header">
   <h1>{{ viewer.kid_header_name if viewer else 'curatables' }}</h1>
-  <div class="header-nav">
-    <a href="/" class="header-btn" title="Home">
-      <span class="header-btn-icon">&#127968;</span>
-      <span class="header-btn-label">Home</span>
-    </a>
+  <nav class="header-nav" aria-label="Main">
+    {{ nav_btn("/", "home", "&#127968;"|safe, "Home", nav_active) }}
     {% if viewer and viewer.search_mode != 'disabled' %}
-    <a href="/search" class="header-btn" title="Search">
-      <span class="header-btn-icon">&#128269;</span>
-      <span class="header-btn-label">Search</span>
-    </a>
+    {{ nav_btn("/search", "search", "&#128269;"|safe, "Search", nav_active) }}
     {% endif %}
-    {% if viewer and viewer.is_child %}
-    <a href="/tags" class="header-btn" title="Tags">
-      <span class="header-btn-icon">&#127991;</span>
-      <span class="header-btn-label">Tags</span>
-    </a>
-    <a href="/upload" class="header-btn" title="Upload">
-      <span class="header-btn-icon">&#128228;</span>
-      <span class="header-btn-label">Upload</span>
-    </a>
+    {% if viewer and viewer.is_child and viewer.allow_tags %}
+    {{ nav_btn("/tags", "tags", "&#127991;"|safe, "Tags", nav_active) }}
     {% endif %}
-    <a href="/help" class="header-btn" title="Help">
-      <span class="header-btn-icon">&#10067;</span>
-      <span class="header-btn-label">Help</span>
-    </a>
-  </div>
-</div>
+    {% if viewer and viewer.is_child and viewer.allow_upload %}
+    {{ nav_btn("/upload", "upload", "&#128228;"|safe, "Upload", nav_active) }}
+    {% endif %}
+    {{ nav_btn("/help", "help", "&#10067;"|safe, "Help", nav_active) }}
+    {% if viewer and viewer.is_child and viewer.has_multiple_profiles %}
+    {{ nav_btn("/profiles/switch", "switch", "&#128101;"|safe, "Switch", nav_active) }}
+    {% endif %}
+  </nav>
+</header>
+<main id="main">
 {% block content %}{% endblock %}
-</body>
-</html>
+</main>
+{% endblock %}

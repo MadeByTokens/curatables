@@ -9,6 +9,7 @@ from app.services.profiles import ProfileService
 from app.services.content import ContentService
 from app.models import ViewerContext
 from app.constants import AVATAR_CHOICES, THEME_CHOICES, SEARCH_CHOICES
+from app.models.profile import FEATURE_SWITCHES
 
 router = APIRouter(prefix="/parent/profiles", tags=["parent-profiles"])
 
@@ -27,6 +28,7 @@ def _profile_fields(form) -> dict:
         "channels_restricted": (form.get("channels_restricted") == "1"
                                 or bool(channel_ids)),
         "allowed_channel_ids": channel_ids,
+        **{field: form.get(field) == "1" for field, _l, _d in FEATURE_SWITCHES},
     }
 
 
@@ -46,6 +48,7 @@ def _render_form(request: Request, content: ContentService, profile=None,
         "theme_choices": THEME_CHOICES,
         "search_choices": SEARCH_CHOICES,
         "selected_channel_ids": (profile.allowed_channel_ids or []) if profile else [],
+        "feature_switches": FEATURE_SWITCHES,
         "error": error,
     }, status_code=status_code)
 

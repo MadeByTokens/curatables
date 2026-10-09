@@ -83,7 +83,14 @@ CREATE TABLE IF NOT EXISTS profiles (
     search_mode TEXT DEFAULT 'disabled',
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     -- channels_restricted=1: only profile_channels rows (+ owned) are visible.
-    channels_restricted INTEGER NOT NULL DEFAULT 0
+    channels_restricted INTEGER NOT NULL DEFAULT 0,
+    -- Per-kid feature switches (1 = on).
+    allow_comments  INTEGER NOT NULL DEFAULT 1,
+    allow_reactions INTEGER NOT NULL DEFAULT 1,
+    allow_tags      INTEGER NOT NULL DEFAULT 1,
+    allow_customize INTEGER NOT NULL DEFAULT 1,
+    allow_upload    INTEGER NOT NULL DEFAULT 1,
+    auto_subtitles  INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (

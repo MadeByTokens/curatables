@@ -157,8 +157,8 @@ def test_bad_query_param_shows_friendly_error(app):
     assert "Home" in resp.text
 
 
-def test_api_errors_stay_json(client):
-    resp = client.post("/api/react", data={})
+def test_api_errors_stay_json(app):
+    resp = _as_kid(app, _kid(_conn(app), "lou")).post("/api/react", data={})
     assert resp.status_code == 422
     assert resp.json()["detail"]
 

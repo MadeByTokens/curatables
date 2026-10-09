@@ -1,31 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Enter PIN</title>
-<link rel="stylesheet" href="/static/kid/style.css">
-</head>
-<body>
-<div class="header">
-  <h1>Enter PIN</h1>
-</div>
-<div class="pin-page">
-  <div class="profile-avatar fs-64 ta-c mt-32">{{ avatar_emoji }}</div>
-  <div class="ta-c fs-20 x-020">{{ profile.display_name or profile.name }}</div>
+{% extends "kid/_shell.html" %}
+{% block title %}{{ profile.display_name or profile.name }}{% endblock %}
+{% block body %}
+<header class="header">
+  <h1>{{ profile.display_name or profile.name }}</h1>
+</header>
+<main id="main" class="pin-page">
+  <div class="profile-avatar pin-avatar" aria-hidden="true">{{ avatar_emoji }}</div>
   {% if error %}
-  <div class="ta-c danger-text fw-bold x-021">{{ error }}</div>
+  <div class="pin-error" role="alert"><span aria-hidden="true">&#10060;</span> {{ error }}</div>
   {% endif %}
-  <form method="POST" action="/profiles/pin" class="ta-c mt-16">
+  {% if not locked %}
+  <form method="POST" action="/profiles/pin" id="pin-form" class="pin-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="profile_id" value="{{ profile.id }}">
-    <input type="tel" name="pin" maxlength="4" placeholder="PIN"
-           autofocus class="tappable ta-c p-12 r-8 x-022">
-    <br>
-    <button type="submit" class="tappable mt-16 fs-18 accent-bg on-dark bd-none r-6 clickable x-023">Go</button>
+    <label for="pin" class="sr-only">PIN</label>
+    <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
+           maxlength="6" autocomplete="off" class="pin-input">
+    <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
+    <div class="pin-pad" id="pin-pad">
+      {% for d in "123456789" %}
+      <button type="button" class="pin-key" data-digit="{{ d }}">{{ d }}</button>
+      {% endfor %}
+      <button type="button" class="pin-key pin-key-back" data-digit="back" aria-label="Delete">&#9003;</button>
+      <button type="button" class="pin-key" data-digit="0">0</button>
+      <button type="submit" class="pin-key pin-key-go" aria-label="Go">&#10003;</button>
+    </div>
+    <noscript><button type="submit" class="pin-key pin-key-go">&#10003;</button></noscript>
   </form>
+  {% endif %}
   <div class="ta-c mt-24">
-    <a href="/profiles" class="back-link">Back to profiles</a>
+    <a href="/profiles" class="big-home-btn"><span aria-hidden="true">&#8592;</span> Back</a>
   </div>
-</div>
-</body>
-</html>
+</main>
+<script src="/static/kid/pin.js?v={{ asset_v }}"></script>
+{% endblock %}

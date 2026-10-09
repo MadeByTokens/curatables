@@ -435,20 +435,21 @@ class TestTagInlineEditXHR:
         client.post("/profiles/select", data={"profile_id": str(pid)})
         return "youtube_v1"
 
-    def test_xhr_add_returns_json_with_id(self, client, app):
+    def test_xhr_add_returns_rendered_chip(self, client, app):
         vid = self._kid_with_video(client, app)
         resp = client.post(f"/video/{vid}/tags/add", data={"tag": "volcano"},
                            headers={"X-Requested-With": "XMLHttpRequest"})
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["name"] == "volcano"
-        assert isinstance(body["id"], int)
+        assert 'class="tag-item"' in resp.text
+        assert ">volcano</a>" in resp.text
+        assert 'name="tag_id"' in resp.text
 
     def test_xhr_remove_returns_204(self, client, app):
+        import re
         vid = self._kid_with_video(client, app)
         add = client.post(f"/video/{vid}/tags/add", data={"tag": "x"},
                           headers={"X-Requested-With": "XMLHttpRequest"})
-        tid = add.json()["id"]
+        tid = re.search(r'name="tag_id" value="(\d+)"', add.text).group(1)
         resp = client.post(f"/video/{vid}/tags/remove",
                            data={"tag_id": str(tid)},
                            headers={"X-Requested-With": "XMLHttpRequest"})

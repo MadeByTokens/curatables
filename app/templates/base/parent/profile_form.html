@@ -59,6 +59,18 @@
     </select>
   </div>
 
+  <fieldset class="form-group feature-switches">
+    <legend>What this kid can do</legend>
+    <small class="muted d-block mb-6">Fewer options make the screen simpler. Watching and the Home button are always there.</small>
+    {% for field, label, new_default in feature_switches %}
+    <label class="fw-normal d-block">
+      <input type="checkbox" name="{{ field }}" value="1"
+             {% if (profile and profile[field]) or (not profile and new_default) %}checked{% endif %}>
+      {{ label }}
+    </label>
+    {% endfor %}
+  </fieldset>
+
   {% if channels %}
   <div class="form-group">
     <label>Visible Channels</label>

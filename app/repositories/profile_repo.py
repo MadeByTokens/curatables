@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import sqlite3
 from app.models import Profile
+from app.models.profile import FEATURE_SWITCHES
+
+FEATURE_FIELDS = tuple(field for field, _label, _default in FEATURE_SWITCHES)
 from app.repositories.base import BaseRepository
 
 
@@ -36,11 +39,13 @@ class ProfileRepository(BaseRepository):
     def create(self, profile: Profile) -> int:
         cur = self.db.execute(
             "INSERT INTO profiles (name, display_name, pin, avatar, theme, "
-            "search_mode, channels_restricted) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "search_mode, channels_restricted, "
+            + ", ".join(FEATURE_FIELDS) + ") "
+            "VALUES (?, ?, ?, ?, ?, ?, ?" + ", ?" * len(FEATURE_FIELDS) + ")",
             (profile.name, profile.display_name, profile.pin,
              profile.avatar, profile.theme, profile.search_mode,
-             int(profile.channels_restricted or bool(profile.allowed_channel_ids))),
+             int(profile.channels_restricted or bool(profile.allowed_channel_ids)),
+             *(int(bool(getattr(profile, f))) for f in FEATURE_FIELDS)),
         )
         self.db.commit()
         profile_id = cur.lastrowid
@@ -50,7 +55,7 @@ class ProfileRepository(BaseRepository):
 
     _UPDATABLE_FIELDS = {
         "name", "display_name", "pin", "avatar", "theme", "search_mode",
-        "channels_restricted",
+        "channels_restricted", *FEATURE_FIELDS,
     }
 
     def update(self, profile_id: int, **fields) -> None:
@@ -61,8 +66,9 @@ class ProfileRepository(BaseRepository):
             bad = set(fields) - self._UPDATABLE_FIELDS
             if bad:
                 raise ValueError(f"Invalid fields for profile update: {bad}")
-            if "channels_restricted" in fields:
-                fields["channels_restricted"] = int(bool(fields["channels_restricted"]))
+            for flag in ("channels_restricted", *FEATURE_FIELDS):
+                if flag in fields:
+                    fields[flag] = int(bool(fields[flag]))
             set_clause = ", ".join(f"{k} = ?" for k in fields)
             values = list(fields.values())
             values.append(profile_id)
@@ -107,4 +113,5 @@ class ProfileRepository(BaseRepository):
             search_mode=d.get("search_mode", "disabled"),
             created_at=d.get("created_at", ""),
             channels_restricted=bool(d.get("channels_restricted", 0)),
+            **{f: bool(d.get(f, 1)) for f in FEATURE_FIELDS},
         )

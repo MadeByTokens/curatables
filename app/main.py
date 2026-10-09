@@ -9,12 +9,12 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse
 
 from app.config import load_config, ensure_directories
 from app.db.connection import create_connection, get_db_path
 from app.db.schema import init_schema, recover_from_crash
-from app.dependencies import NotAuthenticated, NotAChild
+from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
 from app.logging_config import setup_logging
 from app.middleware import (
     RequestLoggingMiddleware, BodySizeLimitMiddleware, RequestIDMiddleware,
@@ -257,6 +257,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         directory=templates_dir,
         context_processors=[_csrf_context],
     )
+    from app.template_utils import register_filters
+    register_filters(app.state.templates)
 
     # Jinja global: live disk status chip used by parent/base.html topnav.
     # Reads free space fresh on every render so the chip is always current.
@@ -381,6 +383,12 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     @app.exception_handler(NotAChild)
     async def not_a_child_handler(request: Request, exc: NotAChild):
         return RedirectResponse(url="/profiles", status_code=302)
+
+    @app.exception_handler(FeatureDisabled)
+    async def feature_disabled_handler(request: Request, exc: FeatureDisabled):
+        if request.method == "GET":
+            return RedirectResponse(url="/", status_code=302)
+        return PlainTextResponse("", status_code=403)
 
     from fastapi.exceptions import RequestValidationError
     from fastapi.exception_handlers import (

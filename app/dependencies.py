@@ -286,6 +286,12 @@ def get_viewer(
                 search_mode=profile.search_mode,
                 theme=profile.theme,
                 has_multiple_profiles=profile_repo.count() > 1,
+                allow_comments=profile.allow_comments,
+                allow_reactions=profile.allow_reactions,
+                allow_tags=profile.allow_tags,
+                allow_customize=profile.allow_customize,
+                allow_upload=profile.allow_upload,
+                auto_subtitles=profile.auto_subtitles,
             )
 
     if auth.is_parent_session(session):
@@ -309,6 +315,24 @@ def require_parent(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext
     if not viewer.is_parent:
         raise NotAuthenticated()
     return viewer
+
+
+class FeatureDisabled(Exception):
+    """Raised when a kid uses a feature the parent switched off."""
+
+
+def require_kid_feature(flag: str, allow_parent: bool = False):
+    """Dependency factory: a kid viewer whose profile has `flag` on
+    (or, with allow_parent, the parent). Anyone else goes to /profiles."""
+    def _dep(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext:
+        if allow_parent and viewer.is_parent:
+            return viewer
+        if not viewer.is_child:
+            raise NotAChild()
+        if not getattr(viewer, flag):
+            raise FeatureDisabled(flag)
+        return viewer
+    return _dep
 
 
 def require_child(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext:

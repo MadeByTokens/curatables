@@ -32,6 +32,15 @@ class ReactionService:
             json.dumps({"emoji": emoji}),
         )
 
+    def toggle(self, profile_id: int, video_id: str, emoji: str) -> str | None:
+        """Tap a reaction: set it, or clear it if it was already the
+        current one. Returns the reaction now in place (or None)."""
+        if self.get_for_video(profile_id, video_id) == emoji:
+            self.remove(profile_id, video_id)
+            return None
+        self.react(profile_id, video_id, emoji)
+        return self.get_for_video(profile_id, video_id)
+
     def remove(self, profile_id: int, video_id: str) -> None:
         self.reaction_repo.delete(profile_id, video_id)
 

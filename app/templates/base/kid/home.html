@@ -1,14 +1,16 @@
 {% extends "kid/base.html" %}
+{% from "kid/_video_grid.html" import video_grid %}
+{% set nav_active = "tags" if tag_name else ("home" if not channel else "") %}
 {% block content %}
 
 {% if channel %}
 <div class="channel-header" style="--ch: {{ channel.color or '' }}">
   {% if channel.banner_filename %}
-  <img src="/media/channel/{{ channel.id }}/banner" class="channel-banner w-100 of-cover r-6 x-025">
+  <img src="/media/channel/{{ channel.id }}/banner" alt="" class="channel-banner w-100 of-cover r-6 x-025">
   {% endif %}
   <div class="d-flex ai-c gap-12 x-026">
     {% if channel.icon_filename %}
-    <img src="/media/channel/{{ channel.id }}/icon" class="r-circle of-cover x-027">
+    <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover x-027">
     {% endif %}
     <div>
       <h2 class="m-0 on-dark">{{ channel.name }}</h2>
@@ -16,65 +18,42 @@
       <p class="fs-14 x-028">{{ channel.description }}</p>
       {% endif %}
     </div>
-    {% if viewer and viewer.is_child and channel.owner_profile_id == viewer.profile_id %}
-    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-13 x-029">Edit Channel</a>
+    {% if viewer and viewer.is_child and viewer.allow_customize and channel.owner_profile_id == viewer.profile_id %}
+    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-14 tappable x-029">Edit Channel</a>
     {% endif %}
   </div>
 </div>
 {% endif %}
 
 {% if tag_name %}
-<div class="fs-16 x-030">
-  Showing videos tagged <strong>{{ tag_name }}</strong>
-  &middot; <a href="/tags">All tags</a> &middot; <a href="/">Clear filter</a>
+<div class="tag-filter">
+  <span aria-hidden="true">&#127991;</span> <strong>{{ tag_name }}</strong>
+  <a href="/" class="tappable">&#10005; Clear</a>
 </div>
 {% endif %}
 
 {% if channels %}
-<div class="channel-nav">
-  <a href="/" class="channel-link">All</a>
+<nav class="channel-nav" aria-label="Channels">
+  <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>All</a>
   {% for ch in channels %}
-  <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}">
-    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" class="r-circle va-mid mr-4 x-031">{% endif %}{{ ch.name }}</a>
+  <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
+    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 x-031">{% endif %}{{ ch.name }}</a>
   {% endfor %}
-  <a href="/tags" class="channel-link">Tags</a>
-</div>
+</nav>
 {% endif %}
 
-<div class="video-grid">
-{% if videos %}
-  {% for v in videos %}
-  <div class="video-card">
-    <a href="/watch/{{ v.video_id }}">
-      <span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt="{{ v.title }}"></span>
-      <div class="video-title">{{ v.title }}</div>
-      {% if reaction_counts and reaction_counts.get(v.video_id) %}
-      <div class="fs-12 muted x-032">
-        {% for emoji_name, cnt in reaction_counts[v.video_id].items() %}
-        <span class="mr-6">{{ cnt }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </a>
-  </div>
-  {% endfor %}
-  <div class="clear"></div>
+{{ video_grid(videos, "&#128250;"|safe, "No videos here yet. Ask a grown-up to add some!", reaction_counts, emojis) }}
 
-  {% if total_pages > 1 %}
-  <div class="pagination">
-    {% set base_url = "/channel/" ~ current_channel_id if current_channel_id else "/" %}
-    {% if page > 1 %}
-    <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link">&larr; Previous</a>
-    {% endif %}
-    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
-    {% if page < total_pages %}
-    <a href="{{ base_url }}?page={{ page + 1 }}" class="page-link">Next &rarr;</a>
-    {% endif %}
-  </div>
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% set base_url = ("/tags/" ~ tag_name|urlencode) if tag_name else ("/channel/" ~ current_channel_id if current_channel_id else "/") %}
+  {% if page > 1 %}
+  <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link" aria-label="Previous page">&larr;</a>
   {% endif %}
-
-{% else %}
-  <p class="empty">No videos yet. Ask a parent to add some!</p>
-{% endif %}
+  <span class="page-info">{{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="{{ base_url }}?page={{ page + 1 }}" class="page-link" aria-label="Next page">&rarr;</a>
+  {% endif %}
 </div>
+{% endif %}
 {% endblock %}

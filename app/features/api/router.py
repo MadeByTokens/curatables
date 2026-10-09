@@ -1,10 +1,11 @@
 """API endpoints for kid UI (event logging)."""
 
 from fastapi import APIRouter, Depends, Form, Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from app.dependencies import (
     get_viewer, get_event_service, get_reaction_service, get_content_service,
+    require_kid_feature,
 )
 from app.services.content import ContentService, VideoNotFound
 from app.services.events import EventService
@@ -44,7 +45,7 @@ def log_event(request: Request,
 def react(request: Request,
           video_id: str = Form(...),
           emoji: str = Form(...),
-          viewer: ViewerContext = Depends(get_viewer),
+          viewer: ViewerContext = Depends(require_kid_feature("allow_reactions")),
           content: ContentService = Depends(get_content_service),
           reactions: ReactionService = Depends(get_reaction_service)):
     if not viewer.profile_id:
@@ -53,5 +54,5 @@ def react(request: Request,
         content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404)
-    reactions.react(viewer.profile_id, video_id, emoji)
-    return Response(status_code=204)
+    mine = reactions.toggle(viewer.profile_id, video_id, emoji)
+    return JSONResponse({"mine": mine, "counts": reactions.get_counts(video_id)})
