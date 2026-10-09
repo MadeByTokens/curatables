@@ -123,7 +123,7 @@
   <input type="hidden" name="source_url" value="{{ source_url }}">
   <input type="hidden" name="source_title" value="{{ source_title }}">
 
-  <div class="p-16 r-6 mb-24 mw-600 x-049">
+  <div class="p-16 r-6 mb-24 mw-600 panel-muted">
     <h3 class="mt-0">Settings for all videos</h3>
 
     <div class="form-group">
@@ -316,8 +316,8 @@
           : '<em>No original URL recorded.</em>';
         player.innerHTML =
           '<div class="placeholder fd-col p-20">' +
-          '  <p class="x-050"><strong>Embed video player not available.</strong></p>' +
-          '  <p class="x-051">Click below to watch the original URL (opens in a new tab).</p>' +
+          '  <p class="embed-note-title"><strong>Embed video player not available.</strong></p>' +
+          '  <p class="embed-note">Click below to watch the original URL (opens in a new tab).</p>' +
           linkHtml +
           (ext ? '<div class="mt-10 fs-12 muted-5">source: ' + escapeHtml(ext) + '</div>' : '') +
           '</div>';

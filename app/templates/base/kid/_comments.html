@@ -16,7 +16,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
     <label class="sr-only" for="reply-{{ comment.id }}">Reply to {{ comment.author_name }}</label>
-    <input type="text" id="reply-{{ comment.id }}" name="body" maxlength="500" placeholder="Reply..." class="w-70 fs-14 bd-ddd r-3 x-012">
+    <input type="text" id="reply-{{ comment.id }}" name="body" maxlength="500" placeholder="Reply..." class="w-70 fs-14 bd-ddd r-3 reply-input">
     <button type="submit" class="comment-reply-btn">Reply</button>
   </form>
   {% endif %}

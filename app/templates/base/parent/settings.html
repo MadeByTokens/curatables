@@ -108,7 +108,7 @@
 <details {% if advanced_open %}open{% endif %} class="mt-40 mw-500">
   <summary class="clickable fs-18 fw-bold txt">Advanced Settings</summary>
 
-  <div class="mt-12 warn-bg warn-text r-4 fs-13 x-053">
+  <div class="mt-12 warn-bg warn-text r-4 fs-13 warn-box">
     Changes to port, host, log level, and session timeout require a <strong>server restart</strong> to take effect.
   </div>
 
@@ -227,14 +227,14 @@
 
   <h3 class="mt-32">Move Data Directory</h3>
   {% if request.app.state.data_dir_pinned %}
-  <div class="warn-bg warn-text r-4 fs-13 mb-12 x-053">
+  <div class="warn-bg warn-text r-4 fs-13 mb-12 warn-box">
     This server runs as a system service with a fixed library location, so the
     library can't be moved from here. To put it on an external drive, plug the
     drive in and run <code>sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sdX1</code>
     (see docs/deployment.md, "Media on an external drive").
   </div>
   {% else %}
-  <div class="warn-bg warn-text r-4 fs-13 mb-12 x-053">
+  <div class="warn-bg warn-text r-4 fs-13 mb-12 warn-box">
     Moves every file — videos, uploads, database, config — to a new location.
     Useful when the current disk is getting full and you want to relocate Curatables to a bigger drive.
     Runs some safety checks first: target must be empty, must have enough free space, and no videos can be currently downloading.

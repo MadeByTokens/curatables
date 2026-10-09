@@ -154,8 +154,8 @@
 <div class="dash-section">
   <h2>Recent activity</h2>
   <div class="recent-row">
-    <div class="recent-col card x-035">
-      <div class="fw-bold muted-4 x-036">Recently added</div>
+    <div class="recent-col card recent-card">
+      <div class="fw-bold muted-4 recent-heading">Recently added</div>
       {% if recent_videos %}
         {% for v in recent_videos %}
         <div class="recent-item">
@@ -178,12 +178,12 @@
         </div>
         {% endfor %}
       {% else %}
-      <div class="muted fs-13 x-037">No videos yet. <a href="/parent/add">Add some →</a></div>
+      <div class="muted fs-13 recent-empty">No videos yet. <a href="/parent/add">Add some →</a></div>
       {% endif %}
     </div>
 
-    <div class="recent-col card x-035">
-      <div class="fw-bold muted-4 x-036">
+    <div class="recent-col card recent-card">
+      <div class="fw-bold muted-4 recent-heading">
         Recent comments
         {% if attention.new_comments_count %}
         <span class="fw-normal fs-12 accent-text">
@@ -195,7 +195,7 @@
         {% for c in recent_comments %}
         <div class="recent-item ai-fs">
           <div class="meta">
-            <div class="title-line x-038">
+            <div class="title-line wrap-normal">
               <strong>{% if c.is_parent_user %}You{% else %}{{ c.author_name }}{% endif %}:</strong>
               "{{ c.body[:80] }}{% if c.body|length > 80 %}…{% endif %}"
             </div>
@@ -207,7 +207,7 @@
         </div>
         {% endfor %}
       {% else %}
-      <div class="muted fs-13 x-037">No comments yet.</div>
+      <div class="muted fs-13 recent-empty">No comments yet.</div>
       {% endif %}
     </div>
   </div>

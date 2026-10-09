@@ -2,11 +2,11 @@
 {% block content %}
 <h1>Channels</h1>
 
-<p class="x-066">
+<p class="page-intro">
   <a href="/parent/channels/import" class="btn btn-sm btn-secondary">&#128228; Import shared channel</a>
 </p>
 
-<div class="p-16 r-6 mb-24 mw-500 x-049">
+<div class="p-16 r-6 mb-24 mw-500 panel-muted">
   <h3 class="mt-0">Create Channel</h3>
   <form method="POST" action="/parent/channels/create">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -39,7 +39,7 @@
         {{ count }} video(s) &middot; Position: {{ ch.position }}
       </div>
       <div class="actions">
-        <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm x-047">Edit</a>
+        <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm btn-primary">Edit</a>
         <span class="export-group">
           <a href="/parent/channels/{{ ch.id }}/export?format=ytc"
              class="btn btn-sm btn-secondary" title="Machine-readable format for import into another Curatables">Export .ytc</a>

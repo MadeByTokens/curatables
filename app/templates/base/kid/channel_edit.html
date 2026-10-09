@@ -18,13 +18,13 @@
 
     <div class="mb-16">
       <label for="color" class="d-block fw-bold mb-4">Color</label>
-      <input type="color" id="color" name="color" value="{{ channel.color or '#2a9d8f' }}" class="bd-ccc r-4 clickable x-033">
+      <input type="color" id="color" name="color" value="{{ channel.color or '#2a9d8f' }}" class="bd-ccc r-4 clickable color-swatch">
     </div>
 
     <div class="mb-16">
       <label class="d-block fw-bold mb-4">Banner Image</label>
       {% if channel.banner_filename %}
-      <img src="/media/channel/{{ channel.id }}/banner" alt="" class="w-100 of-cover r-4 mb-6 x-034">
+      <img src="/media/channel/{{ channel.id }}/banner" alt="" class="w-100 of-cover r-4 mb-6 banner-preview">
       {% endif %}
       <input type="file" name="banner" accept="image/*" class="fs-14">
     </div>
@@ -32,14 +32,14 @@
     <div class="mb-16">
       <label class="d-block fw-bold mb-4">Channel Icon</label>
       {% if channel.icon_filename %}
-      <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover mb-6 x-027">
+      <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover mb-6 channel-icon">
       {% endif %}
       <input type="file" name="icon" accept="image/*" class="fs-14">
     </div>
 
     <div class="d-flex gap-8">
-      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable x-018">Save</button>
-      <a href="/channel/{{ channel.id }}" class="on-dark r-4 no-underline fs-15 x-019">Cancel</a>
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn">Save</button>
+      <a href="/channel/{{ channel.id }}" class="on-dark r-4 no-underline fs-15 cancel-link">Cancel</a>
     </div>
   </form>
 </div>

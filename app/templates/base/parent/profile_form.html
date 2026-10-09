@@ -81,7 +81,7 @@
     </label>
     <small class="muted d-block mb-6">Ticking any channel limits the kid to those channels. Untick everything to show all channels. Tick only this box to hide every parent channel.</small>
     {% for ch in channels %}
-    <div class="x-042">
+    <div class="my-4">
       <label class="fw-normal d-inline">
         <input type="checkbox" name="channel_ids" value="{{ ch.id }}"
                {% if ch.id in selected_channel_ids %}checked{% endif %}>

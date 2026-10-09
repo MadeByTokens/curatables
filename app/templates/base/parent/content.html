@@ -91,11 +91,11 @@ function confirmBulk() {
         <strong>{{ v.status }}</strong>
         &middot;
         {% if v.download_status == 'ready' %}
-          <span class="x-043">&#10003; downloaded</span>
+          <span class="status-ok">&#10003; downloaded</span>
         {% elif v.download_status == 'downloading' %}
-          <span class="x-044">&#8635; downloading...</span>
+          <span class="status-busy">&#8635; downloading...</span>
         {% elif v.download_status == 'error' %}
-          <span class="x-045">&#10007; failed</span>
+          <span class="status-failed">&#10007; failed</span>
           <br><small class="danger-text">{{ v.download_error|friendly_download_error }}</small>
           {% if v.download_error %}
           <details class="fs-12 muted-3"><summary>Details</summary>{{ v.download_error }}</details>
@@ -103,7 +103,7 @@ function confirmBulk() {
         {% elif v.download_status == 'evicted' %}
           <span title="Cache expired; re-downloads on next play" class="muted">&#128465; evicted</span>
         {% else %}
-          <span class="x-046">&#8987; pending</span>
+          <span class="status-pending">&#8987; pending</span>
         {% endif %}
         {% if v.keep_forever %}
         &middot; <span title="Pinned — never auto-evicted" class="accent-text">&#128204; library</span>
@@ -147,7 +147,7 @@ function confirmBulk() {
   {% if page > 1 %}
   <a href="/parent/content?page={{ page - 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
   {% endif %}
-  <span class="x-048">Page {{ page }} of {{ total_pages }}</span>
+  <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
   {% if page < total_pages %}
   <a href="/parent/content?page={{ page + 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
   {% endif %}

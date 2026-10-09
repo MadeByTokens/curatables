@@ -3,14 +3,14 @@
 <div class="mw-600 mx-auto p-16">
   <h2>Customize Video</h2>
   <div class="mb-16">
-    <img id="thumb-preview" src="/media/thumb/{{ video.video_id }}" alt="" class="w-100 r-4 x-014">
+    <img id="thumb-preview" src="/media/thumb/{{ video.video_id }}" alt="" class="w-100 r-4 thumb-preview-sm">
     <div class="mt-6">
-      <a href="/media/thumb/{{ video.video_id }}" download="thumb-{{ video.video_id }}.jpg" class="tappable d-ib txt r-4 no-underline fs-13 x-015">Download current</a>
+      <a href="/media/thumb/{{ video.video_id }}" download="thumb-{{ video.video_id }}.jpg" class="tappable d-ib txt r-4 no-underline fs-13 secondary-btn">Download current</a>
       {% if overrides and overrides.has_custom_thumb %}
       <form method="POST" action="/video/{{ video.video_id }}/reset" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="field" value="thumbnail">
-        <button type="submit" class="txt bd-none r-4 fs-13 clickable x-015">Reset to original</button>
+        <button type="submit" class="txt bd-none r-4 fs-13 clickable secondary-btn">Reset to original</button>
       </form>
       {% endif %}
     </div>
@@ -35,7 +35,7 @@
       <label for="title" class="d-flex jc-sb ai-c fw-bold mb-4">
         <span>Title</span>
         {% if overrides and overrides.title %}
-        <button type="submit" form="reset-title" class="txt bd-none r-3 fs-12 clickable fw-normal x-016">Reset to original</button>
+        <button type="submit" form="reset-title" class="txt bd-none r-3 fs-12 clickable fw-normal reset-btn">Reset to original</button>
         {% endif %}
       </label>
       <input type="text" id="title" name="title" maxlength="200"
@@ -47,7 +47,7 @@
       <label for="description" class="d-flex jc-sb ai-c fw-bold mb-4">
         <span>Description</span>
         {% if overrides and overrides.description %}
-        <button type="submit" form="reset-description" class="txt bd-none r-3 fs-12 clickable fw-normal x-016">Reset to original</button>
+        <button type="submit" form="reset-description" class="txt bd-none r-3 fs-12 clickable fw-normal reset-btn">Reset to original</button>
         {% endif %}
       </label>
       <textarea id="description" name="description" rows="4" maxlength="2000" class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans">{{ overrides.description if overrides and overrides.description else video.description }}</textarea>
@@ -81,7 +81,7 @@
     <div class="mb-16">
       <label class="d-block fw-bold mb-4">My Channels</label>
       {% for ch in owned_channels %}
-      <label class="d-block x-017">
+      <label class="d-block check-row">
         <input type="checkbox" name="channel_{{ ch.id }}" value="1"
                {% if ch.id in bookmarked_channel_ids %}checked{% endif %}>
         {{ ch.name }}
@@ -92,8 +92,8 @@
     {% endif %}
 
     <div class="d-flex gap-8">
-      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable x-018">Save</button>
-      <a href="/watch/{{ video.video_id }}" class="on-dark r-4 no-underline fs-15 x-019">Cancel</a>
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn">Save</button>
+      <a href="/watch/{{ video.video_id }}" class="on-dark r-4 no-underline fs-15 cancel-link">Cancel</a>
     </div>
   </form>
 </div>

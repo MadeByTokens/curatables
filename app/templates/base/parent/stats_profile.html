@@ -87,9 +87,9 @@
 <h2 class="mt-32">Recent Comments</h2>
 {% if recent_comments %}
   {% for c in recent_comments %}
-  <div class="card x-041">
+  <div class="card comment-card">
     <div class="fs-13 muted">{{ c.created_at }}</div>
-    <div class="x-042">{{ c.body }}</div>
+    <div class="my-4">{{ c.body }}</div>
     <div class="fs-12 muted-3">on {{ c.video_id }}</div>
     <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/stats/profiles/{{ profile.id }}%3Fwindow%3D{{ window }}"
           data-confirm="Delete this comment?" class="d-inline mt-4">

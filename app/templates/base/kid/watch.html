@@ -20,12 +20,12 @@
   </div>
 
   <div class="d-flex jc-sb ai-fs gap-12 mt-10">
-    <div class="flex-1 x-005">
+    <div class="flex-1 watch-meta">
       <h2 class="m-0">{{ video.title }}</h2>
       {% if video.channel_name %}<div class="channel">{{ video.channel_name }}</div>{% endif %}
     </div>
     {% if kid and viewer.allow_customize %}
-    <a href="/video/{{ video.video_id }}/edit" class="customize-btn ai-c gap-6 accent-bg on-dark r-4 no-underline fs-14 fw-500 x-006">
+    <a href="/video/{{ video.video_id }}/edit" class="customize-btn ai-c gap-6 accent-bg on-dark r-4 no-underline fs-14 fw-500 pill-btn">
       <span class="fs-16 lh-1" aria-hidden="true">&#9881;</span>
       <span>Customize</span>
     </a>
@@ -99,7 +99,7 @@
       {% if comments_page > 1 %}
       <a href="/watch/{{ video.video_id }}?cp={{ comments_page - 1 }}#comments" class="accent-text tappable">&larr; Newer</a>
       {% endif %}
-      <span class="muted x-013">{{ comments_page }} / {{ comments_total_pages }}</span>
+      <span class="muted page-indicator">{{ comments_page }} / {{ comments_total_pages }}</span>
       {% if comments_page < comments_total_pages %}
       <a href="/watch/{{ video.video_id }}?cp={{ comments_page + 1 }}#comments" class="accent-text tappable">Older &rarr;</a>
       {% endif %}

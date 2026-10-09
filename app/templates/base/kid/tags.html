@@ -5,7 +5,7 @@
   <h2><span aria-hidden="true">&#127991;</span> My Tags</h2>
 
   {% if tag_cloud %}
-  <div class="tag-cloud x-003">
+  <div class="tag-cloud tag-cloud-roomy">
     {% set max_count = tag_cloud[0].count if tag_cloud else 1 %}
     {% for t in tag_cloud %}
       {% set scale = 0.8 + 1.2 * (t.count / max_count) %}

@@ -6,20 +6,20 @@
 {% if channel %}
 <div class="channel-header" style="--ch: {{ channel.color or '' }}">
   {% if channel.banner_filename %}
-  <img src="/media/channel/{{ channel.id }}/banner" alt="" class="channel-banner w-100 of-cover r-6 x-025">
+  <img src="/media/channel/{{ channel.id }}/banner" alt="" class="channel-banner w-100 of-cover r-6 banner-max">
   {% endif %}
-  <div class="d-flex ai-c gap-12 x-026">
+  <div class="d-flex ai-c gap-12 channel-heading-row">
     {% if channel.icon_filename %}
-    <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover x-027">
+    <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover channel-icon">
     {% endif %}
     <div>
       <h2 class="m-0 on-dark">{{ channel.name }}</h2>
       {% if channel.description %}
-      <p class="fs-14 x-028">{{ channel.description }}</p>
+      <p class="fs-14 channel-desc">{{ channel.description }}</p>
       {% endif %}
     </div>
     {% if viewer and viewer.is_child and viewer.allow_customize and channel.owner_profile_id == viewer.profile_id %}
-    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-14 tappable x-029">Edit Channel</a>
+    <a href="/channel/{{ channel.id }}/edit" class="ml-auto on-dark r-4 no-underline fs-14 tappable channel-edit-btn">Edit Channel</a>
     {% endif %}
   </div>
 </div>
@@ -37,7 +37,7 @@
   <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>All</a>
   {% for ch in channels %}
   <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
-    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 x-031">{% endif %}{{ ch.name }}</a>
+    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
   {% endfor %}
 </nav>
 {% endif %}
