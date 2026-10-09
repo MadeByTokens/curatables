@@ -116,15 +116,23 @@ class StorageService:
         return path
 
     def sweep_upload_tmp(self, ttl_hours: int = 24) -> int:
-        """Delete tmp upload files older than ttl_hours. Returns count deleted."""
+        """Delete tmp upload files and finalize work folders older than
+        ttl_hours. Import job folders (``import-*``) belong to the import
+        worker, which sweeps its own. Returns count deleted."""
         tmp_dir = self.upload_tmp_dir()
         cutoff = time.time() - ttl_hours * 3600
         removed = 0
         for entry in tmp_dir.iterdir():
             try:
-                if entry.stat().st_mtime < cutoff:
+                if entry.stat().st_mtime >= cutoff:
+                    continue
+                if entry.is_dir():
+                    if entry.name.startswith("import-"):
+                        continue
+                    shutil.rmtree(entry)
+                else:
                     entry.unlink()
-                    removed += 1
+                removed += 1
             except OSError:
                 continue
         return removed

@@ -11,18 +11,17 @@ bytes into `{media_dir}/uploads/up_<hash[:16]>/video.<ext>`, run
 ffprobe validation, extract a thumbnail, and insert the videos row.
 """
 
-import hashlib
 import json
 import logging
 import secrets
 import shutil
 import time
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
 from pathlib import Path
 
 from app.models import Video
 from app.repositories import VideoRepository, ChannelRepository
+from app.services.ingest import IngestService, VideoDetails, upload_video_id
 from app.services.storage import StorageService
 from app.services.media_probe import MediaProbeService, UnsupportedCodec, ProbeError
 from app.services.thumbnails import ThumbnailService
@@ -30,7 +29,6 @@ from app.services.thumbnails import ThumbnailService
 logger = logging.getLogger(__name__)
 
 
-_HASH_CHUNK = 1024 * 1024
 _ALLOWED_EXTS = {"mp4", "mkv", "webm", "mov", "m4v", "avi", "mpg", "mpeg"}
 
 
@@ -76,6 +74,7 @@ class UploadService:
         self.video_repo = video_repo
         self.channel_repo = channel_repo
         self.thumbnails = thumbnails
+        self.ingest = IngestService(storage, probe, video_repo, thumbnails)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -166,9 +165,7 @@ class UploadService:
             self.cancel(token)
             raise
 
-        # Compute content hash and derive the video_id.
-        digest = self._hash_file(tmp_path)
-        video_id = f"up_{digest[:16]}"
+        video_id = upload_video_id(self.ingest.hash_file(tmp_path))
 
         # Dedup: if this exact file was already uploaded, drop the new
         # bytes and return the existing video.
@@ -179,65 +176,23 @@ class UploadService:
                 raise DuplicateUpload(existing)
             return existing
 
-        # Move to the final location.
-        target_dir = self.storage.upload_video_dir(video_id)
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / f"video.{ext}"
-        shutil.move(str(tmp_path), str(target_path))
-        (self.storage.upload_tmp_dir() / f"{token}.json").unlink(missing_ok=True)
-
-        # Bring the upload into the client playback baseline, exactly as
-        # downloaded videos are normalized. validate() above already
-        # guaranteed the server can decode it; here we transcode/remux
-        # 1080p, H.265, VP9, Opus, non-faststart uploads down to
+        # Bring the upload into the client playback baseline inside a
+        # work folder, exactly as downloaded videos are normalized:
+        # 1080p, H.265, VP9, Opus, non-faststart uploads become
         # H.264/AAC ≤720p30 +faststart so they play on old devices.
-        if self.storage.normalizer is not None:
-            norm = self.storage.normalizer.normalize(target_path)
-            target_path = norm.path
-            if norm.action in ("transcode", "remux"):
-                try:
-                    probe = self.probe.probe(target_path)  # refresh height/duration
-                except ProbeError:
-                    pass  # keep the pre-normalize probe values
-
-        # Extract a thumbnail from the newly placed file.
+        work = self.ingest.work_dir(f"{token}.work")
+        staged = work / f"video.{ext}"
+        tmp_path.replace(staged)
+        (self.storage.upload_tmp_dir() / f"{token}.json").unlink(missing_ok=True)
         try:
-            self.thumbnails.extract_frame(video_id, source_path=target_path)
-        except Exception as e:
-            logger.warning("Thumbnail extract failed for %s: %s", video_id, e)
+            staged, probe, _ = self.ingest.normalize(staged, probe)
+        except BaseException:
+            shutil.rmtree(work, ignore_errors=True)
+            raise
 
-        # Derive a user-facing title.
         title = session.title.strip() or self._title_from_filename(session.filename)
-
-        # Build and insert the videos row.
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        video = Video(
-            video_id=video_id,
-            title=title,
-            original_title=title,
-            channel_name="",
-            description="",
-            duration=int(probe.duration_seconds or 0),
-            upload_date=now[:10],
-            view_count=0,
-            thumbnail_url="",
-            thumbnail_type="frame",
-            status=status,
-            download_status="ready",
-            storage_mode="uploaded",
-            resolution=f"{probe.height}p" if probe.height else "",
-            source_id=None,
-            channel_id=session.channel_id,
-            file_size=target_path.stat().st_size,
-        )
-        self.video_repo.insert(video)
-        self.video_repo.update(
-            video_id,
-            cached_at=now,
-            file_size=video.file_size,
-        )
-        inserted = self.video_repo.get(video_id)
-        return inserted or video
+        return self.ingest.commit(work, staged, video_id, probe, VideoDetails(
+            title=title, channel_id=session.channel_id, status=status))
 
     def sweep_abandoned(self, ttl_hours: int = 24) -> int:
         """Delete tmp upload files older than ttl_hours. Returns count deleted."""
@@ -246,14 +201,6 @@ class UploadService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _hash_file(path: Path) -> str:
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            for chunk in iter(lambda: f.read(_HASH_CHUNK), b""):
-                h.update(chunk)
-        return h.hexdigest()
 
     @staticmethod
     def _pick_extension(filename: str) -> str:
