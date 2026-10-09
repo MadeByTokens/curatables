@@ -89,3 +89,28 @@ def test_templates_have_no_inline_scripts_or_handlers():
         if "javascript:" in text:
             offenders.append(f"{tpl.name}: javascript: URL")
     assert offenders == []
+
+
+def test_kid_qr_code_is_parent_only_svg(client, authed_client):
+    assert client.get("/parent/kid-qr.svg").status_code in (302, 303)
+    resp = authed_client.get("/parent/kid-qr.svg")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in resp.content
+    page = authed_client.get("/parent/profiles/")
+    assert 'src="/parent/kid-qr.svg"' in page.text
+    assert "Set up a tablet" in page.text
+
+
+def test_kid_address_replaces_loopback_with_lan_name(app):
+    from starlette.requests import Request
+    from app.web import kid_address
+
+    def req(host):
+        return Request({"type": "http", "app": app, "scheme": "http", "path": "/",
+                        "server": (host, 8080), "headers": [(b"host", f"{host}:8080".encode())]})
+
+    app.state.config.server.mdns_enabled = True
+    app.state.config.server.mdns_name = "Curatables"
+    assert kid_address(req("127.0.0.1")) == "http://curatables.local:8080/"
+    assert kid_address(req("192.0.2.9")) == "http://192.0.2.9:8080/"

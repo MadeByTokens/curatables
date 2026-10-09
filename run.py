@@ -45,7 +45,7 @@ def check_dependencies(verbose=False):
         print(f"ffmpeg:          {ff or 'NOT FOUND'}")
         de = _tool_version("deno")
         print(f"deno:            {de or 'NOT FOUND'}")
-        for mod in ("fastapi", "uvicorn", "jinja2", "python_multipart", "yt_dlp", "curl_cffi", "zeroconf", "itsdangerous", "reportlab", "prometheus_client"):
+        for mod in ("fastapi", "uvicorn", "jinja2", "python_multipart", "yt_dlp", "curl_cffi", "zeroconf", "itsdangerous", "reportlab", "prometheus_client", "segno"):
             try:
                 m = __import__(mod)
                 # yt-dlp keeps its version in yt_dlp.version.__version__, not
@@ -122,6 +122,11 @@ def check_dependencies(verbose=False):
         import reportlab  # noqa: F401
     except ImportError:
         warnings.append("reportlab is not installed. PDF export in shared curation will be disabled. Install with: pip install 'reportlab>=4.0,<5.0'")
+
+    try:
+        import segno  # noqa: F401
+    except ImportError:
+        warnings.append("segno is not installed. The tablet-setup QR code will not be shown. Install with: pip install 'segno>=1.6,<2.0'")
 
     # prometheus_client is imported unconditionally by app.services.metrics
     # (cheap, ~64 KB wheel, no transitive deps), so it is a hard runtime

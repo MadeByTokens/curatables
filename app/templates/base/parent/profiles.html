@@ -29,4 +29,17 @@
 {% else %}
 <p class="muted mt-16">No profiles yet. Create one to enable the profile picker for kids.</p>
 {% endif %}
+
+{% set kid_url = kid_address(request) %}
+<section class="card tablet-setup" aria-labelledby="tablet-setup-title">
+  <div class="info">
+    <h2 id="tablet-setup-title" class="fs-18">Set up a tablet</h2>
+    <p>On the kid's tablet, open <strong class="kid-url">{{ kid_url }}</strong>{% if qr_available() %} or scan the code with its camera{% endif %},
+    then add it to the home screen (Share &rarr; Add to Home Screen on iPad).
+    Guided Access (iPad) or App pinning (Android) keeps your child inside it.</p>
+  </div>
+  {% if qr_available() %}
+  <img src="/parent/kid-qr.svg" alt="QR code for {{ kid_url }}" width="174" height="174" class="tablet-qr-img">
+  {% endif %}
+</section>
 {% endblock %}

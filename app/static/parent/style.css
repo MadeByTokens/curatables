@@ -620,3 +620,6 @@ label {
 .auth-box input[type=password],
 .auth-box input[type=text] { width: 100%; box-sizing: border-box; }
 
+.tablet-qr { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.tablet-qr img, .tablet-qr-img { background: #fff; border-radius: 6px; flex-shrink: 0; }
+.tablet-setup { align-items: center; margin-top: 24px; }

@@ -21,6 +21,12 @@
     <li>
       On the kid's tablet, open <strong class="kid-url">{{ kid_url }}</strong>
       and add it to the home screen (Share &rarr; Add to Home Screen on iPad).
+      {% if qr_available() %}
+      <div class="tablet-qr">
+        <img src="/parent/kid-qr.svg" alt="QR code for {{ kid_url }}" width="174" height="174">
+        <span class="muted fs-13">Or point the tablet's camera at this code.</span>
+      </div>
+      {% endif %}
     </li>
   </ol>
 </div>

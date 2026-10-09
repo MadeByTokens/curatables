@@ -7,7 +7,7 @@ its own feature.
 """
 
 from fastapi import APIRouter, Depends, Request
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 
 from app.dependencies import (
     require_parent, get_channel_service, get_content_service, get_stats_service,
@@ -16,6 +16,8 @@ from app.services.channels import ChannelService
 from app.services.content import ContentService
 from app.services.stats import StatsService
 from app.models import ViewerContext
+from app.services.qr import qr_svg
+from app.web import kid_address
 
 router = APIRouter(prefix="/parent", tags=["parent-dashboard"])
 
@@ -38,6 +40,15 @@ def dashboard(request: Request,
             "request": request,
             "video_count": total,
             "setup": setup,
-            "kid_url": f"{request.url.scheme}://{request.url.netloc}/",
+            "kid_url": kid_address(request),
             **overview,
         })
+
+
+@router.get("/kid-qr.svg")
+def kid_qr(request: Request, viewer: ViewerContext = Depends(require_parent)):
+    svg = qr_svg(kid_address(request))
+    if svg is None:
+        return Response(status_code=404)
+    return Response(svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "private, max-age=3600"})

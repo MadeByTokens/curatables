@@ -28,7 +28,8 @@ password doesn't stay on the card; to move to another network, fill
 them in again and reboot.
 
 **How do I put it on the kid's tablet like an app?**
-iPad: open the kid address in Safari → **Share → Add to Home Screen**.
+The **Kids** page shows the kid address and a QR code; point the tablet's
+camera at it to open the address. iPad: open the kid address in Safari → **Share → Add to Home Screen**.
 Android: Chrome menu → **Add to Home screen**. To keep the child inside
 it, see [safety-model.md → What you still need to do on the
 device](safety-model.md#what-you-still-need-to-do-on-the-device).

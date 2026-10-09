@@ -73,6 +73,7 @@ Authoritative list lives in `requirements.txt`. Rationale for each:
 | `itsdangerous>=2.0,<3.0` | Session cookie signing. Required by Starlette's `SessionMiddleware`. | Parent login flow fails at import time. |
 | `zeroconf>=0.130,<1.0` | mDNS / `_http._tcp.local.` advertisement via `zeroconf.asyncio.AsyncZeroconf`. | `run.py:check_dependencies` emits a warning; `ZeroconfAdvertiser.start()` logs an "skipped: library not installed" message and returns False; server still boots; `curatables.local` just won't resolve. |
 | `reportlab>=4.0,<5.0` | PDF export for shared-curation channels (`app/services/sharing.py:render_pdf`). Pure Python, no system deps. | `run.py:check_dependencies` emits a warning; `pdf_available()` returns False; `GET /parent/channels/{id}/export?format=pdf` returns a 503 page pointing at `pip install reportlab`; `.ytc` + `.txt` export keep working. |
+| `segno>=1.6,<2.0` | QR code of the kid address on the Kids page and the dashboard checklist (`app/services/qr.py`, served at `/parent/kid-qr.svg`). Pure Python, no dependencies. | `run.py:check_dependencies` warns; the pages show only the address and `/parent/kid-qr.svg` returns 404. |
 | `prometheus_client>=0.20,<1.0` | Prometheus exposition for `/metrics` (`app/services/metrics.py`). ~64 KB wheel, no transitive deps. | `app/services/metrics.py` imports unconditionally, so a missing install crashes startup; `run.py:check_dependencies` flags it as a hard error. The `/metrics` route itself is opt-in via `config.server.prometheus_enabled` (default off) — when disabled it returns 404 and no counters are collected. |
 
 ### Optional vs. required at runtime
@@ -86,7 +87,7 @@ runs.
 Current classification (mirror this when editing):
 
 - **Hard-required** (errors): `yt_dlp`, `fastapi`, `uvicorn`, `jinja2`, `python_multipart` (imported as `multipart`), `itsdangerous`, `prometheus_client`, `ffmpeg` on PATH.
-- **Warn-and-degrade** (warnings): `deno` on PATH, `curl_cffi`, `zeroconf`, `reportlab`.
+- **Warn-and-degrade** (warnings): `deno` on PATH, `curl_cffi`, `zeroconf`, `reportlab`, `segno`.
 
 ---
 

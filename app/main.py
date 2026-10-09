@@ -123,6 +123,10 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # uses as the "show link-out fallback" signal.
     from app.services.embeds import embed_url_for
     app.state.templates.env.globals["embed_url_for"] = embed_url_for
+    from app.services.qr import qr_available
+    app.state.templates.env.globals["qr_available"] = qr_available
+    from app.web import kid_address
+    app.state.templates.env.globals["kid_address"] = kid_address
 
     # Jinja global: build the composite "{extractor}_{raw}" storage
     # key from a raw yt-dlp ID. Used by content_preview.html to

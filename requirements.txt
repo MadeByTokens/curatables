@@ -26,3 +26,6 @@ reportlab>=4.0,<5.0
 # tiny (~64 KB wheel, no transitive deps) so it ships always rather
 # than gating the import.
 prometheus_client>=0.20,<1.0
+# segno draws the QR code a parent scans to open the kid address on a
+# tablet. Pure Python, no dependencies; optional (warn-and-degrade).
+segno>=1.6,<2.0
