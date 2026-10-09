@@ -25,6 +25,13 @@ class ViewerContext:
         return self.display_name or self.profile_name or "curatables"
 
     @property
+    def kid_id(self) -> int:
+        """The child's profile id; only for routes that require a child."""
+        if self.profile_id is None:
+            raise LookupError("viewer is not a child")
+        return self.profile_id
+
+    @property
     def is_parent(self) -> bool:
         return self.viewer_type == "parent"
 

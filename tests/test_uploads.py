@@ -259,6 +259,29 @@ class TestUploadLifecycle:
         tmp_dir = tmp_path / "uploads" / ".tmp"
         assert list(tmp_dir.iterdir()) == []
 
+    def test_finalize_dedup_into_other_channel_raises(self, tmp_path, db):
+        from app.services.uploads import DuplicateUpload
+        uploads, video_repo, channel_repo = _make_services(tmp_path, db)
+        family = channel_repo.create("Family")
+        music = channel_repo.create("Music")
+        content = b"d" * 50
+
+        def _upload_into(cid):
+            s = uploads.create("clip.mp4", len(content), cid, "")
+            uploads.append(s.token, 0, content)
+            with patch.object(uploads.probe, "validate", return_value=ProbeResult(
+                    codec_name="h264", width=320, height=240,
+                    duration_seconds=1.0, container="mov")):
+                with patch.object(uploads.thumbnails, "extract_frame", return_value=None):
+                    return uploads.finalize(s.token)
+
+        first = _upload_into(family)
+        with pytest.raises(DuplicateUpload) as exc:
+            _upload_into(music)
+        assert exc.value.video.video_id == first.video_id
+        assert video_repo.get(first.video_id).channel_id == family
+        assert list((tmp_path / "uploads" / ".tmp").iterdir()) == []
+
     def test_finalize_unsupported_codec_cleans_up(self, tmp_path, db):
         uploads, video_repo, channel_repo = _make_services(tmp_path, db)
         cid = channel_repo.create("Family")

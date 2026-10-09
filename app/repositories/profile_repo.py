@@ -1,7 +1,9 @@
 from __future__ import annotations
 """Profile repository — child profiles and their channel permissions."""
 
+import builtins
 import sqlite3
+from typing import Any
 from app.models import Profile
 from app.models.profile import FEATURE_SWITCHES
 
@@ -32,7 +34,7 @@ class ProfileRepository(BaseRepository):
         profiles = []
         for r in rows:
             p = self._to_model(r)
-            p.allowed_channel_ids = self._get_channel_ids(p.id)
+            p.allowed_channel_ids = self._get_channel_ids(r["id"])
             profiles.append(p)
         return profiles
 
@@ -48,7 +50,7 @@ class ProfileRepository(BaseRepository):
              *(int(bool(getattr(profile, f))) for f in FEATURE_FIELDS)),
         )
         self.db.commit()
-        profile_id = cur.lastrowid
+        profile_id = self._new_id(cur)
         if profile.allowed_channel_ids:
             self._set_channel_ids(profile_id, profile.allowed_channel_ids)
         return profile_id
@@ -84,14 +86,14 @@ class ProfileRepository(BaseRepository):
         self.db.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
         self.db.commit()
 
-    def _get_channel_ids(self, profile_id: int) -> list[int]:
+    def _get_channel_ids(self, profile_id: int) -> builtins.list[int]:
         rows = self.db.execute(
             "SELECT channel_id FROM profile_channels WHERE profile_id = ?",
             (profile_id,),
         ).fetchall()
         return [r["channel_id"] for r in rows]
 
-    def _set_channel_ids(self, profile_id: int, channel_ids: list[int]) -> None:
+    def _set_channel_ids(self, profile_id: int, channel_ids: builtins.list[int]) -> None:
         self.db.execute(
             "DELETE FROM profile_channels WHERE profile_id = ?", (profile_id,)
         )
@@ -113,5 +115,9 @@ class ProfileRepository(BaseRepository):
             search_mode=d.get("search_mode", "disabled"),
             created_at=d.get("created_at", ""),
             channels_restricted=bool(d.get("channels_restricted", 0)),
-            **{f: bool(d.get(f, 1)) for f in FEATURE_FIELDS},
+            **self._features(d),
         )
+
+    @staticmethod
+    def _features(d: dict) -> dict[str, Any]:
+        return {f: bool(d.get(f, 1)) for f in FEATURE_FIELDS}

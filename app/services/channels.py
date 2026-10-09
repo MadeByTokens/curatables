@@ -1,6 +1,7 @@
 from __future__ import annotations
 """Channel service — internal channel management."""
 
+import builtins
 import re
 import shutil
 from pathlib import Path
@@ -68,11 +69,10 @@ class ChannelService:
             raise RuntimeError(f"Failed to read back created channel {channel_id}")
         return channel
 
-    def visible_to_kid(self, profile_id: int,
-                       whitelist_ids: list[int] | None) -> list[Channel]:
+    def visible_to_kid(self, profile_id: int) -> builtins.list[Channel]:
         """Return Channel objects visible to a kid profile."""
-        ids = self.channel_repo.list_visible_to(profile_id, whitelist_ids)
-        channels: list[Channel] = []
+        ids = self.channel_repo.list_visible_to(profile_id)
+        channels: builtins.list[Channel] = []
         for cid in ids:
             ch = self.channel_repo.get(cid)
             if ch is not None:
@@ -98,6 +98,6 @@ class ChannelService:
     def count_videos(self, channel_id: int) -> int:
         return self.channel_repo.count_videos(channel_id)
 
-    def list_with_counts(self) -> list[tuple[Channel, int]]:
+    def list_with_counts(self) -> builtins.list[tuple[Channel, int]]:
         """Return channels with their video counts."""
         return self.channel_repo.list_with_counts()

@@ -84,10 +84,6 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run mypy
-        # Non-blocking for now — the codebase has `disallow_untyped_defs = false`
-        # (per pyproject.toml) and is not fully annotated. Flip `continue-on-error`
-        # to false once the type coverage is acceptable.
-        continue-on-error: true
         run: mypy app
 
   build:

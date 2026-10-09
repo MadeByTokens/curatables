@@ -26,7 +26,7 @@ from app.template_utils import render_kid_template
 from app.services.channels import ChannelService
 from app.services.events import EventService
 from app.services.storage import StorageService, InsufficientDiskSpace
-from app.services.uploads import UploadService, UploadError
+from app.services.uploads import DuplicateUpload, UploadService, UploadError
 from app.services.media_probe import UnsupportedCodec, ProbeError
 
 logger = logging.getLogger(__name__)
@@ -50,8 +50,7 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
                         selected_channel_id: int | None = None,
                         status_code: int = 200,
                         sent_for_review: bool = False):
-    channels = channels_svc.visible_to_kid(
-        viewer.profile_id, viewer.allowed_channel_ids)
+    channels = channels_svc.visible_to_kid(viewer.kid_id)
     if selected_channel_id is None and channels:
         selected_channel_id = channels[0].id
     response = render_kid_template(request, viewer, "kid/upload.html", {
@@ -87,7 +86,7 @@ def create_kid_channel(request: Request,
                        events: EventService = Depends(get_event_service),
                        config: Config = Depends(get_config)):
     try:
-        channel = channels_svc.create_for_kid(name, owner_profile_id=viewer.profile_id)
+        channel = channels_svc.create_for_kid(name, owner_profile_id=viewer.kid_id)
     except ValueError as e:
         return _render_upload_page(request, viewer, channels_svc, config,
                                    error=str(e), status_code=400)
@@ -130,8 +129,7 @@ async def kid_upload(request: Request,
     # 1. Channel must be in the kid's visible set. Guessing a sibling's
     #    private channel_id is not enough — it has to be reachable
     #    through list_visible_to.
-    visible_channels = channels_svc.visible_to_kid(
-        viewer.profile_id, viewer.allowed_channel_ids)
+    visible_channels = channels_svc.visible_to_kid(viewer.kid_id)
     visible_by_id = {c.id: c for c in visible_channels}
     if channel_id not in visible_by_id:
         logger.info("Kid %s tried to upload to channel %s outside their visible set",
@@ -193,6 +191,12 @@ async def kid_upload(request: Request,
         return fail("We couldn't read this video file. Try a different one.", 400)
     except InsufficientDiskSpace:
         return fail("There isn't enough free space on this computer. Ask a grown-up.", 507)
+    except DuplicateUpload as e:
+        dup = e.video
+        if (dup.channel_id in visible_by_id and dup.status == "active"
+                and dup.download_status == "ready"):
+            return done(f"/watch/{dup.video_id}")
+        return fail("This video is already here. Ask a grown-up to find it.", 409)
     except UploadError:
         return fail("Upload failed. Try again.", 400)
 

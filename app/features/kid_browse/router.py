@@ -6,6 +6,7 @@ from starlette.responses import (
 )
 
 from fastapi import Form
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
@@ -17,7 +18,7 @@ from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
-from app.web import is_xhr
+from app.web import form_str, is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 
@@ -126,11 +127,10 @@ def video_edit_page(request: Request, video_id: str,
                     kid_lib: KidLibraryService = Depends(get_kid_library_service),
                     channels_svc: ChannelService = Depends(get_channel_service)):
     video = content.get_video_for_viewer(video_id, viewer)
-    overrides = kid_lib.get_overrides(viewer.profile_id, video_id)
-    tags = kid_lib.tags_for_video(viewer.profile_id, video_id)
-    kid_channels = channels_svc.visible_to_kid(
-        viewer.profile_id, viewer.allowed_channel_ids)
-    bookmarked_ids = kid_lib.channels_for_video(viewer.profile_id, video_id)
+    overrides = kid_lib.get_overrides(viewer.kid_id, video_id)
+    tags = kid_lib.tags_for_video(viewer.kid_id, video_id)
+    kid_channels = channels_svc.visible_to_kid(viewer.kid_id)
+    bookmarked_ids = kid_lib.channels_for_video(viewer.kid_id, video_id)
     return render_kid_template(request, viewer, "kid/video_edit.html", {
         "video": video,
         "overrides": overrides,
@@ -149,37 +149,37 @@ async def video_edit_save(request: Request, video_id: str,
     content.get_video_for_viewer(video_id, viewer)
     form = await request.form()
 
-    title = (form.get("title") or "").strip()
-    kid_lib.set_title(viewer.profile_id, video_id, title)
+    title = form_str(form, "title").strip()
+    kid_lib.set_title(viewer.kid_id, video_id, title)
 
-    description = (form.get("description") or "").strip()
-    kid_lib.set_description(viewer.profile_id, video_id, description)
+    description = form_str(form, "description").strip()
+    kid_lib.set_description(viewer.kid_id, video_id, description)
 
     thumbnail = form.get("thumbnail")
-    if thumbnail and hasattr(thumbnail, "read"):
+    if isinstance(thumbnail, StarletteUploadFile):
         data = await thumbnail.read()
         if data:
             try:
                 kid_lib.upload_thumbnail(
-                    viewer.profile_id, video_id, data, thumbnail.filename)
+                    viewer.kid_id, video_id, data, thumbnail.filename or "")
             except ValueError:
                 pass
 
     if form.get("clear_thumbnail"):
-        kid_lib.clear_thumbnail(viewer.profile_id, video_id)
+        kid_lib.clear_thumbnail(viewer.kid_id, video_id)
 
-    tags_raw = (form.get("tags") or "").strip()
+    tags_raw = form_str(form, "tags").strip()
     tag_names = [t.strip() for t in tags_raw.split(",") if t.strip()]
-    kid_lib.sync_tags(viewer.profile_id, video_id, tag_names)
+    kid_lib.sync_tags(viewer.kid_id, video_id, tag_names)
 
-    kid_channels = channels_svc.visible_to_kid(
-        viewer.profile_id, viewer.allowed_channel_ids)
-    owned_ids = [c.id for c in kid_channels if c.owner_profile_id == viewer.profile_id]
+    kid_channels = channels_svc.visible_to_kid(viewer.kid_id)
+    owned_ids = [c.id for c in kid_channels
+                 if c.id is not None and c.owner_profile_id == viewer.profile_id]
     for ch_id in owned_ids:
         if form.get(f"channel_{ch_id}"):
-            kid_lib.bookmark_video(viewer.profile_id, ch_id, video_id)
+            kid_lib.bookmark_video(viewer.kid_id, ch_id, video_id)
         else:
-            kid_lib.unbookmark_video(viewer.profile_id, ch_id, video_id)
+            kid_lib.unbookmark_video(viewer.kid_id, ch_id, video_id)
 
     return RedirectResponse(url=f"/watch/{video_id}", status_code=302)
 
@@ -194,11 +194,11 @@ def video_reset_field(request: Request, video_id: str,
     without touching the others."""
     content.get_video_for_viewer(video_id, viewer)
     if field == "title":
-        kid_lib.clear_title(viewer.profile_id, video_id)
+        kid_lib.clear_title(viewer.kid_id, video_id)
     elif field == "description":
-        kid_lib.clear_description(viewer.profile_id, video_id)
+        kid_lib.clear_description(viewer.kid_id, video_id)
     elif field == "thumbnail":
-        kid_lib.clear_thumbnail(viewer.profile_id, video_id)
+        kid_lib.clear_thumbnail(viewer.kid_id, video_id)
     return RedirectResponse(
         url=f"/video/{video_id}/edit", status_code=302)
 
@@ -212,7 +212,7 @@ def video_tag_add(request: Request, video_id: str,
                   kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     content.get_video_for_viewer(video_id, viewer)
     tag = tag.strip()
-    tag_id = kid_lib.add_tag(viewer.profile_id, video_id, tag) if tag else None
+    tag_id = kid_lib.add_tag(viewer.kid_id, video_id, tag) if tag else None
     if is_xhr(request):
         if tag_id is None:
             return Response(status_code=204)
@@ -228,7 +228,7 @@ def video_tag_remove(request: Request, video_id: str,
                      content: ContentService = Depends(get_content_service),
                      kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     content.get_video_for_viewer(video_id, viewer)
-    kid_lib.remove_tag(viewer.profile_id, video_id, tag_id)
+    kid_lib.remove_tag(viewer.kid_id, video_id, tag_id)
     if is_xhr(request):
         return Response(status_code=204)
     return RedirectResponse(url=f"/watch/{video_id}#tags", status_code=302)
@@ -257,11 +257,11 @@ async def channel_edit_save(request: Request, channel_id: int,
         return RedirectResponse(url="/", status_code=302)
 
     form = await request.form()
-    name = (form.get("name") or "").strip()[:64] or channel.name
+    name = form_str(form, "name").strip()[:64] or channel.name
     if channels_svc.name_taken(name, channel_id):
         name = channel.name
-    description = (form.get("description") or "").strip()[:1000]
-    color = (form.get("color") or "").strip()
+    description = form_str(form, "description").strip()[:1000]
+    color = form_str(form, "color").strip()
     if not valid_color(color):
         color = channel.color
 

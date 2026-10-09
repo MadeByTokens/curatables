@@ -1,6 +1,7 @@
-from __future__ import annotations
 """Video repository — all video-related SQL."""
+from __future__ import annotations
 
+import builtins
 import sqlite3
 from app.models import Video
 from app.repositories.base import BaseRepository
@@ -57,10 +58,10 @@ class VideoRepository(BaseRepository):
         row = self.db.execute(
             f"SELECT COUNT(*) as cnt FROM videos {where}", params
         ).fetchone()
-        return row["cnt"]
+        return int(row["cnt"])
 
     def list_ready(self, channel_id: int | None = None,
-                   limit: int = 30, offset: int = 0) -> list[Video]:
+                   limit: int = 30, offset: int = 0) -> builtins.list[Video]:
         """List videos that are active AND downloaded (visible to kids)."""
         clauses = ["status = 'active'", "download_status = 'ready'"]
         params: list = []
@@ -85,10 +86,10 @@ class VideoRepository(BaseRepository):
         row = self.db.execute(
             f"SELECT COUNT(*) as cnt FROM videos {where}", params
         ).fetchone()
-        return row["cnt"]
+        return int(row["cnt"])
 
-    def list_ready_by_channels(self, channel_ids: list[int],
-                               limit: int = 30, offset: int = 0) -> list[Video]:
+    def list_ready_by_channels(self, channel_ids: builtins.list[int],
+                               limit: int = 30, offset: int = 0) -> builtins.list[Video]:
         if not channel_ids:
             return []
         placeholders = ",".join("?" for _ in channel_ids)
@@ -102,7 +103,7 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def count_ready_by_channels(self, channel_ids: list[int]) -> int:
+    def count_ready_by_channels(self, channel_ids: builtins.list[int]) -> int:
         if not channel_ids:
             return 0
         placeholders = ",".join("?" for _ in channel_ids)
@@ -112,10 +113,10 @@ class VideoRepository(BaseRepository):
             f"AND channel_id IN ({placeholders})",
             channel_ids,
         ).fetchone()
-        return row["cnt"]
+        return int(row["cnt"])
 
-    def search_ready(self, query: str, channel_ids: list[int] | None = None,
-                     limit: int = 24, offset: int = 0) -> list[Video]:
+    def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
+                     limit: int = 24, offset: int = 0) -> builtins.list[Video]:
         """Search within ready videos by title and description.
 
         channel_ids=None searches every video; an empty list matches nothing.
@@ -202,7 +203,7 @@ class VideoRepository(BaseRepository):
         ).fetchone()
         return int(row["cnt"])
 
-    def list_pending(self) -> list[Video]:
+    def list_pending(self) -> builtins.list[Video]:
         """Videos stuck in 'pending' — used by the startup resume path
         that kicks off downloads orphaned by a server restart."""
         rows = self.db.execute(
@@ -220,7 +221,7 @@ class VideoRepository(BaseRepository):
     }
 
     def list_filtered(self, filter_name: str, limit: int = 30,
-                      offset: int = 0) -> list[Video]:
+                      offset: int = 0) -> builtins.list[Video]:
         where = self.LIST_FILTERS[filter_name]
         rows = self.db.execute(
             f"SELECT * FROM videos WHERE {where} "
@@ -235,7 +236,7 @@ class VideoRepository(BaseRepository):
             f"SELECT COUNT(*) AS cnt FROM videos WHERE {where}").fetchone()
         return int(row["cnt"])
 
-    def download_statuses(self, video_ids: list[str]) -> dict[str, str]:
+    def download_statuses(self, video_ids: builtins.list[str]) -> dict[str, str]:
         if not video_ids:
             return {}
         placeholders = ",".join("?" for _ in video_ids)
@@ -246,7 +247,7 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return {r["video_id"]: r["download_status"] for r in rows}
 
-    def list_awaiting_review(self, limit: int = 20) -> list[Video]:
+    def list_awaiting_review(self, limit: int = 20) -> builtins.list[Video]:
         rows = self.db.execute(
             "SELECT * FROM videos WHERE status = 'review' "
             "ORDER BY added_at DESC LIMIT ?",
@@ -254,7 +255,7 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_failed_downloads(self, limit: int = 20) -> list[Video]:
+    def list_failed_downloads(self, limit: int = 20) -> builtins.list[Video]:
         rows = self.db.execute(
             "SELECT * FROM videos WHERE download_status = 'error' "
             "ORDER BY added_at DESC LIMIT ?",
@@ -268,7 +269,7 @@ class VideoRepository(BaseRepository):
     )
 
     def list_expired_cache(self, cache_days: float,
-                           now_iso: str | None = None) -> list[Video]:
+                           now_iso: str | None = None) -> builtins.list[Video]:
         """Cached videos not played (or, if never played, not downloaded)
         within the last `cache_days`, oldest first.
 
@@ -287,7 +288,7 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_evictable_lru(self, limit: int = 200) -> list[Video]:
+    def list_evictable_lru(self, limit: int = 200) -> builtins.list[Video]:
         """Every evictable cached video, least recently watched first."""
         rows = self.db.execute(
             f"SELECT * FROM videos WHERE {self._EVICTABLE} "
@@ -330,7 +331,7 @@ class VideoRepository(BaseRepository):
         self.db.commit()
 
     def list_stuck_pending(self, older_than_hours: float = 1,
-                           limit: int = 20) -> list[Video]:
+                           limit: int = 20) -> builtins.list[Video]:
         """Pending videos whose added_at is more than `older_than_hours`
         in the past. Uses SQLite datetime arithmetic so the comparison
         stays in UTC (videos.added_at defaults to datetime('now'), which
@@ -344,14 +345,14 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_recent(self, limit: int = 5) -> list[Video]:
+    def list_recent(self, limit: int = 5) -> builtins.list[Video]:
         rows = self.db.execute(
             "SELECT * FROM videos ORDER BY added_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def size_by_channel(self) -> list[tuple[int | None, str, int, int]]:
+    def size_by_channel(self) -> builtins.list[tuple[int | None, str, int, int]]:
         """Return (channel_id, channel_name, video_count, total_bytes) per channel.
 
         Videos without a channel are grouped under channel_id=NULL, name='Unassigned'.

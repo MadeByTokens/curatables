@@ -71,8 +71,11 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # CSRF service — shared between CSRFMiddleware (validates) and the
     # Jinja csrf_token context processor (mints). Created here, ahead
     # of the Jinja2Templates constructor that closes over it.
+    session_secret = config.parent.session_secret
+    if not session_secret:
+        raise RuntimeError("prepare_data_dir() did not set a session secret")
     csrf_service = CSRFService(
-        secret_key=config.parent.session_secret,
+        secret_key=session_secret,
         max_age_seconds=config.parent.session_timeout_hours * 3600,
     )
     app.state.csrf = csrf_service
@@ -191,7 +194,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
 
     app.add_middleware(
         SessionMiddleware,
-        secret_key=config.parent.session_secret,
+        secret_key=session_secret,
         max_age=config.parent.session_timeout_hours * 3600,
         # same_site='strict' defeats nearly all CSRF vectors on its
         # own: a malicious cross-origin POST cannot include the session

@@ -39,7 +39,8 @@ class ProfileVideoOverrideRepository(BaseRepository):
         # Row already exists — UPDATE only the fields the caller specified.
         # None means "don't touch this column" (clear_field handles the
         # explicit set-to-NULL case).
-        parts, vals = [], []
+        parts: list[str] = []
+        vals: list[object] = []
         if title is not None:
             parts.append("title = ?")
             vals.append(title)

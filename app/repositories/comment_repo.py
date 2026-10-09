@@ -1,25 +1,22 @@
-from __future__ import annotations
 """Comment repository — threaded comments on videos."""
+from __future__ import annotations
 
 from app.models.comment import Comment
 from app.repositories.base import BaseRepository
+from app.repositories.channel_repo import kid_sees_channel
 
 
 # A comment on a video is visible to a kid (bound as the single ?) when
 # it is the parent's, the kid's own, or written by a profile that can see
-# the video's channel: a parent-created channel the author isn't
-# restricted from, a channel the author owns, or one whitelisted for them.
-_VISIBLE_TO_KID = """(
+# the video's channel.
+_VISIBLE_TO_KID = f"""(
   c.is_parent_user = 1
   OR c.profile_id = ?
   OR c.profile_id IN (
     SELECT a.id FROM profiles a
     JOIN videos v ON v.video_id = c.video_id
     JOIN channels ch ON ch.id = v.channel_id
-    WHERE (ch.owner_profile_id IS NULL AND a.channels_restricted = 0)
-       OR ch.owner_profile_id = a.id
-       OR EXISTS (SELECT 1 FROM profile_channels pc
-                  WHERE pc.profile_id = a.id AND pc.channel_id = ch.id)
+    WHERE {kid_sees_channel('a', 'ch')}
   )
 )"""
 
@@ -35,7 +32,7 @@ class CommentRepository(BaseRepository):
             (video_id, body, profile_id, is_parent_user, parent_comment_id),
         )
         self.db.commit()
-        return cur.lastrowid
+        return self._new_id(cur)
 
     def delete(self, comment_id: int) -> None:
         # Delete replies first, then the comment
@@ -62,7 +59,7 @@ class CommentRepository(BaseRepository):
             "SELECT COUNT(*) as cnt FROM comments WHERE video_id = ?",
             (video_id,),
         ).fetchone()
-        return row["cnt"]
+        return int(row["cnt"])
 
     # --- Paginated reads: page by top-level comment so reply threads
     # stay intact (no half-thread cut off at the page boundary). ---

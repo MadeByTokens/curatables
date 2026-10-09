@@ -101,7 +101,7 @@ class TestChannelVisibility:
         alice_owned = repo.create("Alice's Art", owner_profile_id=alice)
         bob_owned = repo.create("Bob's Films", owner_profile_id=bob)
 
-        visible = set(repo.list_visible_to(alice, whitelist_ids=None))
+        visible = set(repo.list_visible_to(alice))
         assert family in visible
         assert science in visible
         assert alice_owned in visible
@@ -117,8 +117,8 @@ class TestChannelVisibility:
         alice_owned = repo.create("Alice's Art", owner_profile_id=alice)
         bob_owned = repo.create("Bob's Films", owner_profile_id=bob)
 
-        # Alice is restricted to Family + Science
-        visible = set(repo.list_visible_to(alice, whitelist_ids=[family, science]))
+        ProfileRepository(db).update(alice, allowed_channel_ids=[family, science])
+        visible = set(repo.list_visible_to(alice))
         assert family in visible
         assert science in visible
         assert cartoons not in visible  # not whitelisted
@@ -132,8 +132,8 @@ class TestChannelVisibility:
         bob = _make_kid_profile(db, "bob")
         repo = ChannelRepository(db)
         bob_owned = repo.create("Bob's Films", owner_profile_id=bob)
-        # Parent explicitly shares Bob's channel with Alice
-        visible = set(repo.list_visible_to(alice, whitelist_ids=[bob_owned]))
+        ProfileRepository(db).update(alice, allowed_channel_ids=[bob_owned])
+        visible = set(repo.list_visible_to(alice))
         assert bob_owned in visible
 
     def test_list_owned_by(self, db):
@@ -395,6 +395,30 @@ class TestKidUploadRoutes:
                 )
         assert resp.status_code == 302
         assert resp.headers["location"].startswith("/watch/up_")
+
+    def test_reupload_into_own_channel_does_not_skip_review(self, client, app):
+        alice = _make_kid_in_app(app, "alice")
+        family = _make_channel_in_app(app, "Family")
+        mine = _make_channel_in_app(app, "Alice Art", owner_profile_id=alice)
+        _login_kid(client, app, alice)
+
+        def _upload(cid):
+            with patch("app.services.uploads.MediaProbeService.validate",
+                       return_value=ProbeResult(codec_name="h264", width=320,
+                                                height=240, duration_seconds=1.0,
+                                                container="mov")):
+                with patch("app.services.uploads.ThumbnailService.extract_frame",
+                           return_value=None):
+                    return client.post(
+                        "/upload",
+                        data={"channel_id": str(cid), "title": "Same"},
+                        files={"file": ("same.mp4", b"s" * 200, "video/mp4")},
+                    )
+
+        assert _upload(family).headers["location"] == "/upload?sent=1"
+        resp = _upload(mine)
+        assert resp.status_code == 409
+        assert b"already here" in resp.content
 
     def test_review_upload_hidden_from_sibling_until_approved(
             self, client, app, authed_client):

@@ -1,8 +1,10 @@
 from __future__ import annotations
 """Profile service — child profile management."""
 
+import builtins
 import re
 import unicodedata
+from typing import Any
 
 from app.models import Profile
 from app.repositories import ProfileRepository
@@ -45,9 +47,9 @@ class ProfileService:
     def create(self, name: str, display_name: str = "", pin: str = "",
                avatar: str = "default", theme: str = "base",
                search_mode: str = "disabled",
-               allowed_channel_ids: list[int] | None = None,
+               allowed_channel_ids: builtins.list[int] | None = None,
                channels_restricted: bool | None = None,
-               **features: bool) -> int:
+               **features: Any) -> int:
         profile = Profile(
             name=name, display_name=display_name,
             pin=hash_pin(pin) if pin else "",

@@ -1,9 +1,24 @@
-from __future__ import annotations
 """Channel repository — internal (parent-defined) channels."""
+from __future__ import annotations
 
+import builtins
 import sqlite3
 from app.models import Channel
 from app.repositories.base import BaseRepository
+
+
+def kid_sees_channel(profile: str, channel: str) -> str:
+    """SQL condition: the kid in profiles row `profile` may see the
+    channels row `channel`: channels the kid owns, plus every
+    parent-created channel when unrestricted, or only the ones listed
+    in profile_channels (which may include a sibling's) when restricted."""
+    return (f"({channel}.owner_profile_id = {profile}.id"
+            f" OR ({profile}.channels_restricted = 0"
+            f" AND {channel}.owner_profile_id IS NULL)"
+            f" OR ({profile}.channels_restricted = 1 AND EXISTS ("
+            f"SELECT 1 FROM profile_channels pc"
+            f" WHERE pc.profile_id = {profile}.id"
+            f" AND pc.channel_id = {channel}.id)))")
 
 
 class ChannelRepository(BaseRepository):
@@ -44,12 +59,12 @@ class ChannelRepository(BaseRepository):
                 (name, description, owner_profile_id),
             )
             self.db.commit()
-            return cur.lastrowid
+            return self._new_id(cur)
         except sqlite3.IntegrityError:
             row = self.db.execute(
                 "SELECT id FROM channels WHERE name = ?", (name,)
             ).fetchone()
-            return row["id"]
+            return int(row["id"])
 
     _UPDATABLE_FIELDS = {
         "name", "description", "position", "owner_profile_id",
@@ -75,9 +90,9 @@ class ChannelRepository(BaseRepository):
             "SELECT COUNT(*) as cnt FROM videos WHERE channel_id = ? AND status = 'active'",
             (channel_id,),
         ).fetchone()
-        return row["cnt"]
+        return int(row["cnt"])
 
-    def list_with_counts(self) -> list[tuple[Channel, int]]:
+    def list_with_counts(self) -> builtins.list[tuple[Channel, int]]:
         """List all channels with their active video counts in a single query."""
         rows = self.db.execute(
             """SELECT c.*, COUNT(v.video_id) as video_count
@@ -123,7 +138,7 @@ class ChannelRepository(BaseRepository):
             color=d.get("color") or "#2a9d8f",
         )
 
-    def list_owned_by(self, profile_id: int) -> list[Channel]:
+    def list_owned_by(self, profile_id: int) -> builtins.list[Channel]:
         """Return channels owned by the given profile."""
         rows = self.db.execute(
             "SELECT * FROM channels WHERE owner_profile_id = ? "
@@ -139,38 +154,11 @@ class ChannelRepository(BaseRepository):
         ).fetchone()
         return int(row["cnt"])
 
-    def list_visible_to(self, profile_id: int,
-                        whitelist_ids: list[int] | None) -> list[int]:
-        """Return the set of channel IDs visible to a kid profile.
-
-        Rules:
-        - Channels the kid owns (owner_profile_id = profile_id) are
-          always visible to them.
-        - Parent-created channels (owner_profile_id IS NULL) are
-          visible subject to the whitelist:
-            - whitelist_ids=None: all parent-created channels.
-            - whitelist_ids=[...]: only those in the whitelist (note
-              whitelisted IDs can also reference owned-by-sibling rows
-              if the parent explicitly shared one, which is still
-              honored).
-        - Sibling-owned channels are NOT visible unless they appear
-          in this profile's whitelist.
-        """
-        if whitelist_ids is None:
-            rows = self.db.execute(
-                "SELECT id FROM channels "
-                "WHERE owner_profile_id IS NULL OR owner_profile_id = ?",
-                (profile_id,),
-            ).fetchall()
-            return [int(r["id"]) for r in rows]
-
-        ids: set[int] = set()
-        # Always include own owned channels
+    def list_visible_to(self, profile_id: int) -> builtins.list[int]:
+        """IDs of the channels the kid profile may see (see kid_sees_channel)."""
         rows = self.db.execute(
-            "SELECT id FROM channels WHERE owner_profile_id = ?",
+            "SELECT ch.id FROM channels ch JOIN profiles a ON a.id = ? "
+            f"WHERE {kid_sees_channel('a', 'ch')} ORDER BY ch.id",
             (profile_id,),
         ).fetchall()
-        ids.update(int(r["id"]) for r in rows)
-        # Plus whitelisted IDs
-        ids.update(int(x) for x in whitelist_ids)
-        return sorted(ids)
+        return [int(r["id"]) for r in rows]

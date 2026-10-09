@@ -81,11 +81,9 @@ def startup_jobs(config: Config, metrics=None) -> None:
 
     try:
         from app.services.storage import StorageService
-        from app.services.uploads import UploadService
-        storage = StorageService(config.data_dir, backend=None,
+        storage = StorageService(config.data_dir,
                                  min_free_bytes=config.storage.min_free_disk_bytes)
-        swept = UploadService(storage, probe=None, video_repo=None,
-                              channel_repo=None, thumbnails=None).sweep_abandoned(ttl_hours=24)
+        swept = storage.sweep_upload_tmp(ttl_hours=24)
         if swept:
             logger.info("Swept %d abandoned upload tmp files", swept)
     except Exception:
@@ -102,7 +100,7 @@ def _maintenance_pass(config: Config):
     try:
         report = None
         if config.storage.cache_days > 0:
-            storage = StorageService(config.data_dir, backend=None,
+            storage = StorageService(config.data_dir,
                                      min_free_bytes=config.storage.min_free_disk_bytes)
             report = storage.evict_expired(VideoRepository(conn), config.storage.cache_days)
         pruned = 0

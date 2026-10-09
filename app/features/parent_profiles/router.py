@@ -10,6 +10,7 @@ from app.services.content import ContentService
 from app.models import ViewerContext
 from app.constants import AVATAR_CHOICES, THEME_CHOICES, SEARCH_CHOICES
 from app.models.profile import FEATURE_SWITCHES
+from app.web import form_str
 
 router = APIRouter(prefix="/parent/profiles", tags=["parent-profiles"])
 
@@ -79,8 +80,8 @@ async def create_submit(request: Request,
                         profiles_svc: ProfileService = Depends(get_profile_service),
                         content: ContentService = Depends(get_content_service)):
     form = await request.form()
-    display_name = form.get("display_name", "").strip()
-    pin = form.get("pin", "").strip()
+    display_name = form_str(form, "display_name").strip()
+    pin = form_str(form, "pin").strip()
     error = "Name is required." if not display_name else _pin_error(pin)
     if error:
         return _render_form(request, content, error=error, status_code=400)
@@ -114,7 +115,7 @@ async def edit_submit(request: Request, profile_id: int,
     if not profile:
         return RedirectResponse(url="/parent/profiles", status_code=302)
     form = await request.form()
-    pin = form.get("pin", "").strip()
+    pin = form_str(form, "pin").strip()
     error = _pin_error(pin)
     if error:
         return _render_form(request, content, profile, error=error, status_code=400)
@@ -122,7 +123,7 @@ async def edit_submit(request: Request, profile_id: int,
     # The slug (profiles.name) stays stable across edits; only the
     # friendly display_name is editable from the form.
     fields = {
-        "display_name": form.get("display_name", "").strip() or profile.display_name,
+        "display_name": form_str(form, "display_name").strip() or profile.display_name,
         **_profile_fields(form),
     }
     if form.get("remove_pin") == "1":

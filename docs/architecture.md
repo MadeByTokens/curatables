@@ -198,9 +198,9 @@ and every list/search/get/rehydrate path, the media routes (`/media/video`,
 `/media/subs`, `/media/channel/*`), `/api/log`, `/api/react` and kid comments
 go through it. A video with no channel is visible to the parent only.
 Comments follow the same rule: a kid sees comments by family members who
-can see that video's channel. The SQL form of the rule lives in
-`ChannelRepository.list_visible_to` and in `comment_repo.py`
-(`_VISIBLE_TO_KID`); change them together.
+can see that video's channel. The rule is written once, as the SQL
+condition `kid_sees_channel()` in `app/repositories/channel_repo.py`;
+`list_visible_to` and the comment queries both use it.
 
 Two more states keep content hidden until a parent acts: `videos.status =
 'review'` (a kid upload into a shared channel, or a re-download that no

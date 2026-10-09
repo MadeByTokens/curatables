@@ -59,12 +59,15 @@ def _applied_versions(conn: sqlite3.Connection) -> set[int]:
 
 def _load_py_migration(path: Path) -> Callable[[sqlite3.Connection], None]:
     spec = importlib.util.spec_from_file_location(path.stem, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load migration {path.name}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     if not hasattr(module, "up"):
         raise RuntimeError(
             f"Migration {path.name} has no 'up(conn)' function")
-    return module.up
+    up: Callable[[sqlite3.Connection], None] = module.up
+    return up
 
 
 def _discover(migrations_dir: Path) -> list[tuple[int, str, Path]]:

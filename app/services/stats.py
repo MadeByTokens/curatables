@@ -60,6 +60,8 @@ class StatsService:
         today_iso = date.today().isoformat()
         per_kid = []
         for p in profiles:
+            if p.id is None:
+                continue
             last_watched_id = self.event_repo.last_watched_video_id(p.id)
             last_watched = (self.video_repo.get(last_watched_id)
                             if last_watched_id and self.video_repo else None)

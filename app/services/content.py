@@ -75,8 +75,7 @@ class ContentService:
         if viewer.is_parent:
             return None
         if viewer.is_child and viewer.profile_id:
-            return self.channel_repo.list_visible_to(
-                viewer.profile_id, viewer.allowed_channel_ids)
+            return self.channel_repo.list_visible_to(viewer.profile_id)
         return []
 
     def can_view(self, video: Video, viewer: ViewerContext) -> bool:
@@ -234,11 +233,7 @@ class ContentService:
                 if err:
                     raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
                 raise ContentError("Could not fetch channel videos")
-            for v in videos:
-                self.thumbnails.download(
-                    make_video_id(v.extractor, v.video_id),
-                    v.thumbnail_url,
-                )
+            self._download_thumbnails(videos)
             return title, videos
 
         elif parsed.url_type == "playlist":
@@ -248,14 +243,16 @@ class ContentService:
                 if err:
                     raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
                 raise ContentError("Could not fetch playlist")
-            for v in videos:
-                self.thumbnails.download(
-                    make_video_id(v.extractor, v.video_id),
-                    v.thumbnail_url,
-                )
+            self._download_thumbnails(videos)
             return title, videos
 
         raise ContentError(f"Unknown URL type: {parsed.url_type}")
+
+    def _download_thumbnails(self, videos: list[VideoMetadata]) -> None:
+        self.thumbnails.download_many([
+            (make_video_id(v.extractor, v.video_id), v.thumbnail_url)
+            for v in videos if v.thumbnail_url
+        ])
 
     def add_video(self, info: VideoMetadata, source_id: int | None = None,
                   channel_id: int | None = None,
@@ -321,7 +318,7 @@ class ContentService:
         except Exception:
             return False
         diff = abs(seconds - approved_seconds)
-        return diff > 10 and diff > 0.05 * approved_seconds
+        return bool(diff > 10 and diff > 0.05 * approved_seconds)
 
     def _run_download(self, video_id: str, original_url: str,
                       resolution: str, recheck: bool = False) -> None:
@@ -345,7 +342,7 @@ class ContentService:
                 video_id, original_url, resolution,
                 subtitle_langs=self.config.storage.subtitle_langs)
             if repo.get(video_id) is None:
-                storage.delete_video_files(Video(video_id=video_id, title=""))
+                storage.delete_video_files(Video(video_id=video_id, title="", original_title=""))
                 return
             if path:
                 fields = {
@@ -365,7 +362,7 @@ class ContentService:
                     self.thumbnails.extract_frame(video_id, source_path=path)
                 self.metrics.record_download("success")
             else:
-                backend_err = storage.backend.last_error
+                backend_err = storage.backend.last_error if storage.backend else None
                 if backend_err:
                     error_msg = f"[{backend_err.error_type.value}] {backend_err.message}"
                 else:

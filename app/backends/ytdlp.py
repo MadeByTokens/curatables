@@ -11,6 +11,7 @@ video came from.
 import logging
 import re
 import threading
+from typing import Any
 from pathlib import Path
 
 from app.backends.base import VideoBackend, VideoMetadata, BackendError, BackendErrorType
@@ -100,7 +101,7 @@ class YtdlpBackend(VideoBackend):
         2. Cookie file (for cases where impersonation isn't enough)
         3. Browser cookies (desktop only — reads from local browser)
         """
-        opts = {"quiet": True, "no_warnings": True}
+        opts: dict[str, Any] = {"quiet": True, "no_warnings": True}
         # Impersonation — makes yt-dlp's TLS look like a real browser
         if self.impersonate:
             try:

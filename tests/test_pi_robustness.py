@@ -230,6 +230,41 @@ class TestRedownloadRecheck:
         assert VideoRepository(conn).get("rv").status == "active"
 
 
+def test_video_deleted_during_download_has_its_files_removed(tmp_path):
+    from types import SimpleNamespace
+    from app.config import Config
+    from app.db.connection import create_connection, get_db_path
+    from app.db.schema import init_schema
+    from app.repositories import ChannelRepository, SourceRepository
+    from app.services.content import ContentService
+
+    conn = create_connection(get_db_path(tmp_path))
+    init_schema(conn)
+    repo = VideoRepository(conn)
+    repo.insert(Video(video_id="gone", title="t", original_title="t",
+                      download_status="pending"))
+    removed = []
+
+    class FakeStorage:
+        backend = SimpleNamespace(last_error=None)
+
+        def check_can_write(self, required_bytes=0):
+            return True, ""
+
+        def download(self, *a, **k):
+            repo.delete("gone")
+            return tmp_path / "video.mp4"
+
+        def delete_video_files(self, video):
+            removed.append(video.video_id)
+
+    config = Config()
+    config.storage.path = str(tmp_path)
+    svc = ContentService(repo, SourceRepository(conn), ChannelRepository(conn), None,
+                         SimpleNamespace(), FakeStorage(), config)
+    svc._run_download("gone", "https://example.com/v", "720p")
+    assert removed == ["gone"]
+
 def test_tus_append_cannot_exceed_declared_length(tmp_path):
     import pytest
     from app.services.uploads import UploadOffsetMismatch, UploadService
@@ -239,3 +274,24 @@ def test_tus_append_cannot_exceed_declared_length(tmp_path):
     assert uploads.append(session.token, 0, b"abcd") == 4
     with pytest.raises(UploadOffsetMismatch):
         uploads.append(session.token, 4, b"e")
+
+
+def test_preview_thumbnails_download_concurrently(tmp_path, monkeypatch):
+    import threading
+    import time
+    from app.services.thumbnails import ThumbnailService
+
+    svc = ThumbnailService(tmp_path)
+    active, peak, lock = [0], [0], threading.Lock()
+
+    def slow_download(video_id, url):
+        with lock:
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+        time.sleep(0.05)
+        with lock:
+            active[0] -= 1
+
+    monkeypatch.setattr(svc, "download", slow_download)
+    svc.download_many([(f"v{i}", f"https://t.invalid/{i}.jpg") for i in range(8)])
+    assert peak[0] > 1

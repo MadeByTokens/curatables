@@ -47,9 +47,9 @@ class CommentService:
             return [], 0
 
         replies = self.comment_repo.list_replies_for(
-            [c.id for c in top_level],
+            [c.id for c in top_level if c.id is not None],
             viewer_profile_id=None if viewer.is_parent else viewer.profile_id)
-        replies_map: dict[int, list[Comment]] = {}
+        replies_map: dict[int | None, list[Comment]] = {}
         for r in replies:
             replies_map.setdefault(r.parent_comment_id, []).append(r)
         for c in top_level:
@@ -66,6 +66,7 @@ class CommentService:
 
         # Rate-limit keyed on poster identity. Parents get a separate,
         # more generous limiter so moderation-style bursts don't trip it.
+        key: object
         if viewer.is_parent:
             key = "parent"
             limiter = _PARENT_RATE_LIMITER

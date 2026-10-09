@@ -46,6 +46,14 @@ class UploadOffsetMismatch(UploadError):
     pass
 
 
+class DuplicateUpload(UploadError):
+    """The file is already in the library, in a different channel."""
+
+    def __init__(self, video: Video):
+        super().__init__(f"Already in the library as {video.video_id}")
+        self.video = video
+
+
 @dataclass
 class UploadSession:
     token: str
@@ -167,6 +175,8 @@ class UploadService:
         existing = self.video_repo.get(video_id)
         if existing is not None:
             self.cancel(token)
+            if existing.channel_id != session.channel_id:
+                raise DuplicateUpload(existing)
             return existing
 
         # Move to the final location.
@@ -231,19 +241,7 @@ class UploadService:
 
     def sweep_abandoned(self, ttl_hours: int = 24) -> int:
         """Delete tmp upload files older than ttl_hours. Returns count deleted."""
-        tmp_dir = self.storage.upload_tmp_dir()
-        if not tmp_dir.exists():
-            return 0
-        cutoff = time.time() - ttl_hours * 3600
-        removed = 0
-        for entry in tmp_dir.iterdir():
-            try:
-                if entry.stat().st_mtime < cutoff:
-                    entry.unlink()
-                    removed += 1
-            except OSError:
-                continue
-        return removed
+        return self.storage.sweep_upload_tmp(ttl_hours)
 
     # ------------------------------------------------------------------
     # Helpers

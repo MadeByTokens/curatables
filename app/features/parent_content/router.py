@@ -1,6 +1,7 @@
 """Parent content management: add, edit, list, hide, delete, moderate."""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -20,6 +21,7 @@ from app.services.reactions import EMOJI_MAP
 from app.services.stats import StatsService
 from app.services.comments import CommentService
 from app.models import ViewerContext
+from app.web import form_str
 from urllib.parse import quote
 
 router = APIRouter(prefix="/parent", tags=["parent-content"])
@@ -124,24 +126,24 @@ async def add_confirm(request: Request,
     templates = request.app.state.templates
     form = await request.form()
 
-    url_type = form.get("url_type", "video")
-    source_url = form.get("source_url", "")
-    source_title = form.get("source_title", "Unknown")
+    url_type = form_str(form, "url_type", "video")
+    source_url = form_str(form, "source_url")
+    source_title = form_str(form, "source_title", "Unknown")
 
     try:
         channel_id = content.resolve_channel(
-            form.get("channel_id", ""),
-            form.get("new_channel_name", ""),
+            form_str(form, "channel_id"),
+            form_str(form, "new_channel_name"),
         )
     except ContentError as e:
         return templates.TemplateResponse(request, "parent/add.html", {
             "request": request, "error": str(e), "success": None,
         }, status_code=400)
-    resolution = form.get("resolution", "")
+    resolution = form_str(form, "resolution")
     if resolution not in RESOLUTION_MAP:
         resolution = content.config.storage.default_resolution
 
-    video_ids = form.getlist("video_ids")
+    video_ids = [v for v in form.getlist("video_ids") if isinstance(v, str)]
     import re
     from app.backends.base import VideoMetadata
 
@@ -167,17 +169,17 @@ async def add_confirm(request: Request,
         if not form.get(f"watched_{vid}"):
             unreviewed += 1
             continue
-        extractor = (form.get(f"extractor_{vid}", "") or "").lower()
-        original_url = form.get(f"original_url_{vid}", "")
+        extractor = form_str(form, f"extractor_{vid}").lower()
+        original_url = form_str(form, f"original_url_{vid}")
         info = VideoMetadata(
             video_id=vid,
-            title=form.get(f"original_title_{vid}", "Unknown"),
-            channel=form.get(f"channel_name_{vid}", ""),
-            duration=int(form.get(f"duration_{vid}", "0") or "0"),
-            view_count=int(form.get(f"view_count_{vid}", "0") or "0"),
-            upload_date=form.get(f"upload_date_{vid}", ""),
-            description=form.get(f"original_desc_{vid}", ""),
-            thumbnail_url=form.get(f"thumb_{vid}", ""),
+            title=form_str(form, f"original_title_{vid}", "Unknown"),
+            channel=form_str(form, f"channel_name_{vid}"),
+            duration=int(form_str(form, f"duration_{vid}", "0") or "0"),
+            view_count=int(form_str(form, f"view_count_{vid}", "0") or "0"),
+            upload_date=form_str(form, f"upload_date_{vid}"),
+            description=form_str(form, f"original_desc_{vid}"),
+            thumbnail_url=form_str(form, f"thumb_{vid}"),
             extractor=extractor,
             original_url=original_url,
         )
@@ -192,8 +194,8 @@ async def add_confirm(request: Request,
         result = content.add_video(
             info, source_id=source_id, channel_id=channel_id,
             resolution=resolution,
-            title_override=form.get(f"title_{vid}"),
-            description_override=form.get(f"desc_{vid}"),
+            title_override=form_str(form, f"title_{vid}"),
+            description_override=form_str(form, f"desc_{vid}"),
         )
         if result:
             added += 1
@@ -232,17 +234,17 @@ async def edit_save(request: Request, video_id: str,
                     content: ContentService = Depends(get_content_service),
                     thumbnails: ThumbnailService = Depends(get_thumbnail_service)):
     form = await request.form()
-    title = (form.get("title") or "").strip()
-    description = (form.get("description") or "").strip()
-    channel_id = (form.get("channel_id") or "").strip()
-    new_channel_name = (form.get("new_channel_name") or "").strip()
-    resolution = (form.get("resolution") or "").strip()
+    title = form_str(form, "title").strip()
+    description = form_str(form, "description").strip()
+    channel_id = form_str(form, "channel_id").strip()
+    new_channel_name = form_str(form, "new_channel_name").strip()
+    resolution = form_str(form, "resolution").strip()
 
     try:
         ch_id = content.resolve_channel(channel_id, new_channel_name)
     except ContentError:
         ch_id = None
-    fields = {"title": title, "description": description}
+    fields: dict[str, Any] = {"title": title, "description": description}
     if ch_id is not None:
         fields["channel_id"] = ch_id
     if resolution:
@@ -318,9 +320,9 @@ async def bulk_action(request: Request,
                       content: ContentService = Depends(get_content_service),
                       channels_svc: ChannelService = Depends(get_channel_service)):
     form = await request.form()
-    video_ids = form.getlist("video_ids")
-    action = (form.get("action") or "").strip()
-    page_str = (form.get("page") or "1").strip()
+    video_ids = [v for v in form.getlist("video_ids") if isinstance(v, str)]
+    action = form_str(form, "action").strip()
+    page_str = (form_str(form, "page") or "1").strip()
     try:
         page = max(1, int(page_str))
     except ValueError:
@@ -330,7 +332,7 @@ async def bulk_action(request: Request,
         return _redirect_with_flash(page, "Pick at least one video first.", "error")
 
     if action == "move":
-        target_raw = (form.get("target_channel_id") or "").strip()
+        target_raw = form_str(form, "target_channel_id").strip()
         if not target_raw.isdigit():
             return _redirect_with_flash(
                 page, "Pick a destination channel first.", "error")

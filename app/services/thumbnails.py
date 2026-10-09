@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from app.services.images import MAX_IMAGE_BYTES, image_extension
@@ -73,6 +74,13 @@ class ThumbnailService:
         except Exception as e:
             logger.warning("Error downloading thumbnail for %s: %s", video_id, e)
             return None
+
+    def download_many(self, items: list[tuple[str, str]], workers: int = 4) -> None:
+        """Download (video_id, thumbnail_url) pairs a few at a time."""
+        if not items:
+            return
+        with ThreadPoolExecutor(max_workers=min(workers, len(items))) as pool:
+            list(pool.map(lambda item: self.download(*item), items))
 
     def extract_frame(self, video_id: str, timestamp: str = "00:00:01",
                       source_path: Path | None = None) -> Path | None:

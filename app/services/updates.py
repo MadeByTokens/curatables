@@ -96,7 +96,8 @@ def pending_request(config: Config) -> Optional[dict]:
         return None
     try:
         with open(path) as f:
-            return json.load(f)
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -108,7 +109,8 @@ def last_result(config: Config) -> Optional[dict]:
         return None
     try:
         with open(path) as f:
-            return json.load(f)
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
     except (OSError, json.JSONDecodeError):
         return None
 

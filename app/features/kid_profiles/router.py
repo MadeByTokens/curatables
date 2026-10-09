@@ -23,8 +23,10 @@ def _viewer_for_profile(profile):
     )
 
 
-def _enter_kid_mode(request: Request, profile_id: int) -> None:
+def _enter_kid_mode(request: Request, profile_id: int | None) -> None:
     """Select a kid profile and drop any parent login on this device."""
+    if profile_id is None:
+        raise ValueError("profile has no id")
     request.session.pop("parent_authenticated", None)
     request.session["profile_id"] = profile_id
 

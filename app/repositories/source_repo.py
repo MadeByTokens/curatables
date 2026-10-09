@@ -52,13 +52,13 @@ class SourceRepository(BaseRepository):
                 ),
             )
             self.db.commit()
-            return cur.lastrowid
+            return self._new_id(cur)
         except sqlite3.IntegrityError:
             row = self.db.execute(
                 "SELECT id FROM sources WHERE extractor = ? AND external_id = ?",
                 (source.extractor, source.external_id),
             ).fetchone()
-            return row["id"]
+            return int(row["id"])
 
     def delete(self, source_id: int) -> None:
         self.db.execute("DELETE FROM sources WHERE id = ?", (source_id,))

@@ -25,7 +25,7 @@ from app.models import ViewerContext
 from app.repositories import ChannelRepository
 from app.services.storage import StorageService, InsufficientDiskSpace
 from app.services.uploads import (
-    UploadService, UploadNotFound, UploadOffsetMismatch, UploadError,
+    DuplicateUpload, UploadService, UploadNotFound, UploadOffsetMismatch, UploadError,
 )
 from app.services.media_probe import UnsupportedCodec, ProbeError
 
@@ -85,10 +85,10 @@ def _ensure_default_channel(channel_repo: ChannelRepository) -> int:
     channels = channel_repo.list()
     if not channels:
         return channel_repo.create(_DEFAULT_FAMILY_CHANNEL)
-    for c in channels:
-        if c.name == _DEFAULT_FAMILY_CHANNEL:
-            return c.id
-    return channels[0].id
+    ids = {c.name: c.id for c in channels if c.id is not None}
+    if _DEFAULT_FAMILY_CHANNEL in ids:
+        return ids[_DEFAULT_FAMILY_CHANNEL]
+    return next(iter(ids.values()))
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +294,18 @@ def upload_finalize(request: Request, token: str,
             "max_upload_bytes": config.storage.max_upload_bytes,
             "error": str(e),
         }, status_code=507)
+    except DuplicateUpload as e:
+        channel = (channel_repo.get(e.video.channel_id)
+                   if e.video.channel_id is not None else None)
+        where = f'the "{channel.name}" channel' if channel else "no channel"
+        return templates.TemplateResponse(request, "parent/upload.html", {
+            "request": request,
+            "channels": channel_repo.list(),
+            "default_channel_id": _ensure_default_channel(channel_repo),
+            "max_upload_bytes": config.storage.max_upload_bytes,
+            "error": (f'This file is already in the library as "{e.video.title}", '
+                      f"in {where}. Open it from Content to move it."),
+        }, status_code=409)
     except (UploadNotFound, UploadError) as e:
         return templates.TemplateResponse(request, "parent/upload.html", {
             "request": request,

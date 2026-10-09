@@ -51,7 +51,8 @@ def get_db(request: Request):
 
 
 def get_config(request: Request) -> Config:
-    return request.app.state.config
+    config: Config = request.app.state.config
+    return config
 
 
 def get_metrics(request: Request):

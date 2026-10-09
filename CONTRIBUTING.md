@@ -96,7 +96,7 @@ push and PR to `main`:
 |---|---|---|
 | `test` | `pytest -q --cov=app` on Python 3.10, 3.11, 3.12 and 3.13 (the Pi image runs 3.13) | yes |
 | `lint` | `ruff check .` and the `shellcheck` command above | yes |
-| `typecheck` | `mypy app` | no (advisory) |
+| `typecheck` | `mypy app` | yes |
 | `build` | `python -m build` (sdist + wheel), after `test` | yes |
 
 [`.github/workflows/build-image.yml`](.github/workflows/build-image.yml)
@@ -105,7 +105,7 @@ it runs only by hand (`workflow_dispatch`) or when a GitHub Release is
 published, which gets the `.img.xz` attached. See
 [`pi-gen/README.md`](pi-gen/README.md).
 
-Run the test and lint commands locally before pushing.
+Run the test, lint and `mypy app` commands locally before pushing.
 
 ### Demo library
 

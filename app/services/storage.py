@@ -8,6 +8,7 @@ paths, locking, subtitle listing, and cache management.
 import logging
 import shutil
 import threading
+import time
 import weakref
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,7 +49,8 @@ class EvictionReport:
 
 
 class StorageService:
-    def __init__(self, data_dir: Path, backend: VideoBackend, min_free_bytes: int = 0,
+    def __init__(self, data_dir: Path, backend: VideoBackend | None = None,
+                 min_free_bytes: int = 0,
                  normalizer: MediaNormalizer | None = None,
                  max_download_bytes: int | None = None):
         self.data_dir = data_dir
@@ -112,6 +114,20 @@ class StorageService:
         path = self.uploads_dir() / ".tmp"
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def sweep_upload_tmp(self, ttl_hours: int = 24) -> int:
+        """Delete tmp upload files older than ttl_hours. Returns count deleted."""
+        tmp_dir = self.upload_tmp_dir()
+        cutoff = time.time() - ttl_hours * 3600
+        removed = 0
+        for entry in tmp_dir.iterdir():
+            try:
+                if entry.stat().st_mtime < cutoff:
+                    entry.unlink()
+                    removed += 1
+            except OSError:
+                continue
+        return removed
 
     def upload_video_dir(self, video_id: str) -> Path:
         return self.uploads_dir() / video_id
@@ -200,6 +216,8 @@ class StorageService:
                 else:
                     sub_list = [s.strip() for s in subtitle_langs.split(",")]
 
+            if self.backend is None:
+                raise RuntimeError("StorageService has no download backend")
             path = self.backend.download_video(
                 url,
                 output_dir=self.video_dir(video_id),
