@@ -4,7 +4,7 @@ progress page for the system helper's background tasks."""
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 
 from app.config import Config
 from app.dependencies import get_auth_service, get_config, get_system_helper, require_parent
@@ -317,3 +317,66 @@ def backup_restore(request: Request, where: str = Form(...), name: str = Form(..
                    viewer: ViewerContext = Depends(require_parent),
                    helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
     return _drive_job(request, helper, config, "backup_restore", where=where, name=name)
+
+
+# --- diagnostics --------------------------------------------------------------
+
+def _app_checks(config: Config) -> list[dict]:
+    from app.services import updates
+    installed = updates.ytdlp_version()
+    latest = updates.latest_ytdlp_version()
+    if not installed:
+        status, detail, fix = "fail", "The downloader (yt-dlp) is not installed.", \
+            "Reinstall Curatables, or send the diagnostics report to whoever helps you."
+    elif latest and latest != installed:
+        status, detail, fix = "warn", f"Version {installed}; {latest} is out.", \
+            "YouTube changes often and old versions stop working. Press Update the downloader."
+    elif latest:
+        status, detail, fix = "ok", f"Version {installed}, the newest.", ""
+    else:
+        status, detail, fix = "ok", f"Version {installed} (could not check for a newer one).", ""
+    return [{"id": "ytdlp", "title": "Video downloader", "status": status, "detail": detail, "fix": fix}]
+
+
+@router.get("/diagnostics", response_class=HTMLResponse)
+def diagnostics_page(request: Request,
+                     viewer: ViewerContext = Depends(require_parent),
+                     helper: SystemHelper = Depends(get_system_helper),
+                     config: Config = Depends(get_config)):
+    from app.services import updates
+    if not helper.available:
+        return unavailable_page(request)
+    result, error = _try(helper, "diagnostics")
+    checks = (result or {}).get("checks", []) + _app_checks(config)
+    order = {"fail": 0, "warn": 1, "ok": 2}
+    return request.app.state.templates.TemplateResponse(request, "parent/system_diagnostics.html", {
+        "request": request, "checks": sorted(checks, key=lambda c: order.get(c["status"], 3)),
+        "errors": (result or {}).get("errors", []), "error": error,
+        "update_state": updates.update_state(config),
+    })
+
+
+@router.post("/diagnostics/update-downloader")
+def update_downloader(request: Request,
+                      viewer: ViewerContext = Depends(require_parent),
+                      config: Config = Depends(get_config)):
+    from app.services import updates
+    try:
+        updates.request_update(config, kind=updates.KIND_YTDLP)
+    except OSError as e:
+        return PlainTextResponse(f"Could not request the update: {e}", status_code=500)
+    return _waiting(request, "Updating the downloader",
+                    "This takes a minute or two, then Curatables restarts. The page comes back by itself.",
+                    "/parent/system/diagnostics", delay_ms=20000)
+
+
+@router.get("/diagnostics/report.txt")
+def diagnostics_report(viewer: ViewerContext = Depends(require_parent),
+                       helper: SystemHelper = Depends(get_system_helper)):
+    import time
+    result, error = _try(helper, "diagnostics_report")
+    if error:
+        return PlainTextResponse(f"The report could not be made: {error}", status_code=503)
+    name = time.strftime("curatables-diagnostics-%Y%m%d-%H%M.txt")
+    return PlainTextResponse(result["text"], headers={
+        "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})

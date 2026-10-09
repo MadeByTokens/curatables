@@ -1,0 +1,62 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Box</h1>
+{% include "parent/_system_nav.html" %}
+{% if error %}<div class="flash flash-error mw-500" role="alert">Some checks could not run: {{ error }}</div>{% endif %}
+
+<h2>Health checks</h2>
+<table class="mw-500">
+  <tbody>
+  {% for c in checks %}
+    <tr>
+      <td class="status-{{ 'ok' if c.status == 'ok' else ('busy' if c.status == 'warn' else 'failed') }}">
+        <span aria-hidden="true">{{ "&#10004;"|safe if c.status == "ok" else ("&#9888;"|safe if c.status == "warn" else "&#10006;"|safe) }}</span>
+        <span class="visually-hidden">{{ {"ok": "OK", "warn": "Warning", "fail": "Problem"}[c.status] }}</span>
+      </td>
+      <td><strong>{{ c.title }}</strong><br><span class="fs-14">{{ c.detail }}</span>
+        {% if c.fix and c.status != "ok" %}<br><span class="fs-14"><strong>What to do:</strong> {{ c.fix }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="mt-16"><a href="/parent/system/diagnostics" class="btn btn-secondary">Check again</a></p>
+
+{% if errors %}
+<h2 class="mt-32">Recent errors</h2>
+<details class="mw-500"><summary>{{ errors|length }} error message{{ "s" if errors|length != 1 }} since the box started</summary>
+<pre class="fs-13">{% for e in errors %}{{ e }}
+{% endfor %}</pre>
+</details>
+{% endif %}
+
+<h2 class="mt-32">Fixes to try</h2>
+<form method="POST" action="/parent/system/diagnostics/update-downloader" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
+</form>
+<form method="POST" action="/parent/system/restart" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Restart Curatables</button>
+</form>
+<form method="POST" action="/parent/system/network-restart" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Reconnect network</button>
+</form>
+<form method="POST" action="/parent/system/reboot" class="inline-form" data-confirm="Restart the whole box? It takes one to two minutes.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-danger">Restart the box</button>
+</form>
+{% if update_state.result and update_state.result.status != "ok" %}
+<p class="fs-14 flash-error mw-500">Last downloader update failed: {{ update_state.result.message or "see the report" }}</p>
+{% endif %}
+
+<h2 class="mt-32">Getting help</h2>
+<p class="mw-500">The diagnostics report is a text file describing the box: the checks above, network and
+drive details, and recent logs. Passwords, Wi-Fi passwords and keys are removed, but it does name your
+networks and local addresses, so share it only with someone you trust to help.</p>
+<p><a href="/parent/system/diagnostics/report.txt" class="btn">Download the diagnostics report</a></p>
+<p class="fs-14 mw-500 mt-16">If this page cannot be opened at all: turn the box off, put its SD card in any
+computer, and create an empty file named <code>curatables-diagnose.txt</code> on the card (the part the
+computer can open). Put the card back and turn the box on. A few minutes later, turn it off again: the
+card now holds <code>curatables-diagnostics-report.txt</code>.</p>
+{% endblock %}

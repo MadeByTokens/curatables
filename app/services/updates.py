@@ -122,3 +122,28 @@ def update_state(config: Config) -> dict:
         "pending": pending_request(config),
         "result": last_result(config),
     }
+
+
+_LATEST_URL = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+_latest_cache: dict = {}
+
+
+def latest_ytdlp_version(ttl: float = 3600) -> Optional[str]:
+    """The newest yt-dlp release tag, or None if it cannot be checked.
+    Cached for an hour so the diagnostics page stays quick."""
+    import time
+    from app.services.safe_fetch import fetch_public
+    now = time.monotonic()
+    if _latest_cache and now - _latest_cache["at"] < ttl:
+        cached: Optional[str] = _latest_cache["version"]
+        return cached
+    version = None
+    try:
+        body = fetch_public(_LATEST_URL, max_bytes=1024 * 1024, timeout=6,
+                            headers={"Accept": "application/vnd.github+json"})
+        tag = json.loads(body).get("tag_name")
+        version = str(tag) if tag else None
+    except Exception:
+        version = None
+    _latest_cache.update(at=now, version=version)
+    return version
