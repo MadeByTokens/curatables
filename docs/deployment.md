@@ -346,6 +346,16 @@ network. Pick any of these:
 
 If `curatables.local` doesn't resolve:
 
+- **Routers that don't pass multicast to Wi-Fi.** avahi answers by
+  multicast, and some home routers (several ISP hubs among them) never
+  deliver multicast to Wi-Fi clients: the question reaches the server,
+  the answer never comes back, and even `avahi-resolve` times out. The
+  Pi image runs `curatables-mdns-unicast.service`
+  (`scripts/mdns-unicast.py`), which also sends the server's address
+  straight to whoever asked, and that does get through. On a manual
+  install, copy `systemd/curatables-mdns-unicast.service` to
+  `/etc/systemd/system/` and `systemctl enable --now` it. If it still
+  fails, reserve the server's address in the router and use the IP.
 - **Linux** needs two pieces installed on the *client* machine (which
   is usually also the server for a home setup):
 

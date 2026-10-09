@@ -1,0 +1,33 @@
+[Unit]
+Description=Curatables — also answer <hostname>.local lookups directly to the asker
+Documentation=https://github.com/MadeByTokens/curatables
+# avahi answers .local lookups by multicast; some routers never deliver
+# multicast to Wi-Fi clients. This sends the same address record straight
+# to whoever asked. avahi keeps doing everything else.
+After=network.target avahi-daemon.service
+Wants=avahi-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I /opt/curatables/scripts/mdns-unicast.py
+Restart=on-failure
+RestartSec=5
+
+DynamicUser=true
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_NETLINK AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+MemoryMax=48M
+
+[Install]
+WantedBy=multi-user.target

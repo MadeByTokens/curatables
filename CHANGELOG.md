@@ -27,6 +27,8 @@ install, see [docs/deployment.md](docs/deployment.md)).
 - Pi image: with an Ethernet cable plugged in, the Pi uses only the cable
   and disconnects Wi-Fi; unplugging the cable brings Wi-Fi back. A Wi-Fi
   network that doesn't show up in a scan is tried once as hidden.
+- `curatables.local` works behind routers that drop multicast on Wi-Fi:
+  the Pi also answers the lookup directly to the device that asked.
 
 **Fixes that also help uploads and downloads**
 - Conversions had a one-hour limit a Pi 4 can hit on a movie; they now

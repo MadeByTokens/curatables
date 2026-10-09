@@ -33,13 +33,15 @@ python3 -m venv "${ROOT}/.venv"
 
 # --- systemd units -----------------------------------------------------
 for unit in curatables.service curatables-updater.service curatables-updater.path \
-            curatables-backup.service curatables-backup.timer; do
+            curatables-backup.service curatables-backup.timer \
+            curatables-mdns-unicast.service; do
 	install -m 0644 "${ROOT}/systemd/${unit}" /etc/systemd/system/
 done
 
 systemctl enable curatables.service
 systemctl enable curatables-updater.path
 systemctl enable curatables-backup.timer
+systemctl enable curatables-mdns-unicast.service
 
 # --- acceptance test ---------------------------------------------------
 # Non-fatal on deno/mDNS warnings; fails the build only if a REQUIRED dep
