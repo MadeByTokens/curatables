@@ -172,3 +172,70 @@ def test_sanitised_ids_do_not_collide():
     long1 = make_video_id("generic", "x" * 100 + "1")
     long2 = make_video_id("generic", "x" * 100 + "2")
     assert long1 != long2 and len(long1) <= 110
+
+
+class TestRedownloadRecheck:
+    def _service(self, db, tmp_path, new_seconds):
+        from types import SimpleNamespace
+        from app.config import Config
+        from app.repositories import ChannelRepository, SourceRepository
+        from app.services.content import ContentService
+
+        config = Config()
+        config.storage.path = str(tmp_path)
+        out = tmp_path / "videos" / "rv" / "video.mp4"
+        out.parent.mkdir(parents=True)
+        out.write_bytes(b"x")
+
+        class FakeStorage:
+            backend = SimpleNamespace(last_error=None)
+            normalizer = SimpleNamespace(probe=SimpleNamespace(
+                probe=lambda p: SimpleNamespace(duration_seconds=new_seconds)))
+
+            def check_can_write(self, required_bytes=0):
+                return True, ""
+
+            def download(self, *a, **k):
+                return out
+
+            def file_size(self, vid):
+                return 1
+
+        thumbs = SimpleNamespace(is_cached=lambda vid: True)
+        return ContentService(VideoRepository(db), SourceRepository(db),
+                              ChannelRepository(db), None, thumbs, FakeStorage(), config)
+
+    def test_changed_length_goes_back_to_review(self, tmp_path):
+        from app.db.connection import create_connection, get_db_path
+        from app.db.schema import init_schema
+        conn = create_connection(get_db_path(tmp_path))
+        init_schema(conn)
+        VideoRepository(conn).insert(Video(video_id="rv", title="t", original_title="t",
+                                           duration=120, download_status="pending"))
+        svc = self._service(conn, tmp_path, new_seconds=600)
+        svc._run_download("rv", "https://example.com/v", "720p", recheck=True)
+        row = VideoRepository(conn).get("rv")
+        assert row.download_status == "ready"
+        assert row.status == "review"
+
+    def test_same_length_stays_active(self, tmp_path):
+        from app.db.connection import create_connection, get_db_path
+        from app.db.schema import init_schema
+        conn = create_connection(get_db_path(tmp_path))
+        init_schema(conn)
+        VideoRepository(conn).insert(Video(video_id="rv", title="t", original_title="t",
+                                           duration=120, download_status="pending"))
+        svc = self._service(conn, tmp_path, new_seconds=121)
+        svc._run_download("rv", "https://example.com/v", "720p", recheck=True)
+        assert VideoRepository(conn).get("rv").status == "active"
+
+
+def test_tus_append_cannot_exceed_declared_length(tmp_path):
+    import pytest
+    from app.services.uploads import UploadOffsetMismatch, UploadService
+    storage = StorageService(tmp_path, backend=None)
+    uploads = UploadService(storage, None, None, None, None)
+    session = uploads.create("a.mp4", total_size=4, channel_id=1, title="")
+    assert uploads.append(session.token, 0, b"abcd") == 4
+    with pytest.raises(UploadOffsetMismatch):
+        uploads.append(session.token, 4, b"e")

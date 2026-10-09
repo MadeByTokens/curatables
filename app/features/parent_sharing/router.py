@@ -62,8 +62,7 @@ def export_channel(request: Request, channel_id: int,
         return RedirectResponse(url="/parent/channels/", status_code=302)
     # All videos in the channel regardless of status — the recipient
     # decides what to do. Hidden videos are still curated content.
-    videos = content.video_repo.list(
-        status=None, channel_id=channel_id, limit=10_000, offset=0)
+    videos = content.list_channel_videos(channel_id)
 
     stem = _safe_filename(channel.name)
     if fmt == "ytc":

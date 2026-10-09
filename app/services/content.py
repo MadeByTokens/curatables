@@ -301,14 +301,30 @@ class ContentService:
         return video
 
     def _start_download(self, video_id: str, original_url: str,
-                        resolution: str) -> None:
-        """Queue a background download on the shared DownloadQueue."""
+                        resolution: str, recheck: bool = False) -> None:
+        """Queue a background download on the shared DownloadQueue.
+        recheck=True (re-downloads after eviction) compares the new file
+        with what the parent approved."""
         queue = get_download_queue(self.config.storage.max_concurrent_downloads)
         queue.submit(video_id, lambda: self._run_download(
-            video_id, original_url, resolution))
+            video_id, original_url, resolution, recheck))
+
+    def _content_changed(self, approved_seconds: int, path) -> bool:
+        """True when a re-downloaded file's length differs from the length
+        the parent approved by more than 10 s and 5 %: the page behind the
+        URL now serves something else."""
+        normalizer = getattr(self.storage, "normalizer", None)
+        if not approved_seconds or normalizer is None:
+            return False
+        try:
+            seconds = normalizer.probe.probe(path).duration_seconds or 0
+        except Exception:
+            return False
+        diff = abs(seconds - approved_seconds)
+        return diff > 10 and diff > 0.05 * approved_seconds
 
     def _run_download(self, video_id: str, original_url: str,
-                      resolution: str) -> None:
+                      resolution: str, recheck: bool = False) -> None:
         """Download job body. Runs on a queue worker with its own SQLite
         connection; the request that queued it is long gone."""
         from app.db.connection import create_connection
@@ -316,7 +332,8 @@ class ContentService:
         repo = VideoRepository(conn)
         storage = self.storage
         try:
-            if repo.get(video_id) is None:
+            approved = repo.get(video_id)
+            if approved is None:
                 return
             repo.update(video_id, download_status="downloading")
             if not storage.check_can_write()[0]:
@@ -338,6 +355,12 @@ class ContentService:
                     cached_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                     file_size=storage.file_size(video_id),
                 )
+                if recheck and self._content_changed(approved.duration, path):
+                    logger.warning("Re-download of %s differs from the approved "
+                                   "video; holding it for review", video_id)
+                    repo.update(video_id, status="review",
+                                download_error="Changed since you approved it: "
+                                               "the length is different. Watch it again.")
                 if not self.thumbnails.is_cached(video_id):
                     self.thumbnails.extract_frame(video_id, source_path=path)
                 self.metrics.record_download("success")
@@ -416,7 +439,8 @@ class ContentService:
             return None
         if video.download_status == "evicted":
             if self.video_repo.claim_evicted(video_id):
-                self._start_download(video_id, video.original_url, video.resolution)
+                self._start_download(video_id, video.original_url, video.resolution,
+                                     recheck=True)
             video.download_status = "pending"
             return video
         if video.download_status in ("pending", "downloading"):
@@ -452,6 +476,11 @@ class ContentService:
         self.video_repo.delete(video_id)
 
     # --- Channels ---
+
+    def list_channel_videos(self, channel_id: int) -> list[Video]:
+        """Every video in a channel, any status (for exports)."""
+        return self.video_repo.list(status=None, channel_id=channel_id,
+                                    limit=10_000, offset=0)
 
     def list_channels(self):
         return self.channel_repo.list()

@@ -115,6 +115,10 @@ class UploadService:
                 f"Upload offset mismatch: client sent {expected_offset}, "
                 f"server has {current}"
             )
+        total = self.load_session(token).total_size
+        if current + len(chunk) > total:
+            raise UploadOffsetMismatch(
+                f"Chunk would exceed the declared upload length ({total} bytes)")
         with open(path, "ab") as f:
             f.write(chunk)
         return path.stat().st_size

@@ -11,6 +11,9 @@ def create_connection(db_path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    # Download workers, the maintenance loop and requests all write; wait
+    # for a lock instead of failing with "database is locked".
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 

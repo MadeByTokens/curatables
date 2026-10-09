@@ -15,7 +15,10 @@
 <h1 class="x-061">{{ video.title }}</h1>
 <div class="muted-2 fs-14">{{ video.channel_name or 'No channel' }}</div>
 {% if video.status == 'review' %}
-<div class="flash flash-info mt-8">A kid uploaded this into a shared channel. Watch it, then approve it so the other kids can see it.</div>
+<div class="flash flash-info mt-8">
+  {% if video.download_error %}{{ video.download_error }}{% else %}A kid uploaded this into a shared channel.{% endif %}
+  Watch it, then approve it so the kids can see it.
+</div>
 {% endif %}
 <div class="mt-8">
   <a href="/parent/content/{{ video.video_id }}/edit" class="btn btn-sm btn-secondary">Edit</a>

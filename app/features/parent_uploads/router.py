@@ -140,6 +140,7 @@ async def tus_create(request: Request,
                      viewer: ViewerContext = Depends(require_parent),
                      uploads: UploadService = Depends(get_upload_service),
                      storage: StorageService = Depends(get_storage_service),
+                     channel_repo: ChannelRepository = Depends(get_channel_repo),
                      config: Config = Depends(get_config)):
     headers = request.headers
     if headers.get("tus-resumable") != _TUS_RESUMABLE:
@@ -176,9 +177,9 @@ async def tus_create(request: Request,
         channel_id = int(metadata.get("channel_id", "0"))
     except ValueError:
         channel_id = 0
-    if channel_id <= 0:
+    if channel_id <= 0 or channel_repo.get(channel_id) is None:
         return Response(status_code=400, headers=_tus_headers(),
-                        content="channel_id metadata required",
+                        content="channel_id metadata must name an existing channel",
                         media_type="text/plain")
 
     session = uploads.create(
