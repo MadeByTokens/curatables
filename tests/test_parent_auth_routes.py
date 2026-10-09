@@ -158,3 +158,32 @@ class TestLogout:
         resp2 = authed_client.get("/parent/")
         assert resp2.status_code == 302
         assert "/parent/login" in resp2.headers["location"]
+
+
+class TestPasswordManagerMarkup:
+    """Every password form names its account and says which password
+    it wants, so password managers can save and suggest the right one."""
+
+    def _form(self, html, action):
+        start = html.index(f'action="{action}"')
+        return html[start:html.index("</form>", start)]
+
+    def _check(self, form, *autocompletes):
+        assert 'name="username" value="parent" autocomplete="username"' in form
+        for value in autocompletes:
+            assert f'autocomplete="{value}"' in form
+        assert "onpaste" not in form and "maxlength" not in form
+
+    def test_setup_form(self, client, app):
+        _clear_password(app)
+        html = client.get("/parent/setup").text
+        self._check(self._form(html, "/parent/setup"), "new-password")
+
+    def test_login_form(self, client):
+        html = client.get("/parent/login").text
+        self._check(self._form(html, "/parent/login"), "current-password")
+
+    def test_change_password_form(self, authed_client):
+        html = authed_client.get("/parent/settings").text
+        self._check(self._form(html, "/parent/settings/password"),
+                    "current-password", "new-password")

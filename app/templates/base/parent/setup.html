@@ -5,6 +5,7 @@
 {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 <form method="POST" action="/parent/setup">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="text" name="username" value="parent" autocomplete="username" hidden>
   <div class="form-group">
     <label for="password">Password</label>
     <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password" autofocus>
