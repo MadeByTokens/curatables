@@ -17,6 +17,10 @@
 #             for Wi-Fi to turn on.
 #  - ssid:    your Wi-Fi network name, exactly as it appears.
 #  - psk:     your Wi-Fi password (leave empty only for open networks).
+#
+#  Once the Pi has joined the network it empties ssid and psk here, so
+#  your password doesn't stay on the card. To change networks later,
+#  fill them in again and reboot.
 # ---------------------------------------------------------------------------
 
 country=US

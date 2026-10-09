@@ -51,8 +51,12 @@ single `ReadWritePaths`, `PrivateTmp`, and restricted address families.
 The image enables SSH but bakes no login password: the flasher sets the
 login user in Raspberry Pi Imager. Wi-Fi credentials are read from
 `curatables-wifi.txt` on the FAT boot partition by
-`curatables-firstboot.service` on every boot; the file stays there in
-plaintext.
+`curatables-firstboot.service` on every boot. Once the network is
+configured the service blanks `ssid` and `psk` in that file;
+NetworkManager keeps them in its root-only store on the ext4 partition.
+The password is removed rather than replaced by a `wpa_passphrase`
+hash, because that hash is the WPA key itself and joins the network
+just as well.
 
 ## Trust boundaries and roles
 

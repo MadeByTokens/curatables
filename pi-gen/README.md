@@ -32,8 +32,9 @@ terminal needed after flashing.
   `curatables-wifi.txt`. Open it on Windows/macOS/Linux, fill in
   `country`, `ssid`, and `psk`, save, and boot the Pi. A first-boot
   service (`curatables-firstboot.service` → `scripts/firstboot.sh`) reads
-  it and joins the network. Edit the file and reboot to switch networks
-  later. Windows line endings are handled.
+  it and joins the network, then empties `ssid` and `psk` in the file so
+  the password doesn't stay on the card. To switch networks later, fill
+  them in again and reboot. Windows line endings are handled.
 
 **No default passwords.** The OS login user *and* the parent dashboard
 password are both set by you, not baked in:

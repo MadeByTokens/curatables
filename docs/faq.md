@@ -23,6 +23,9 @@ Look in your router's list of connected devices for `curatables`, or run
 Put the SD card in a computer, open `curatables-wifi.txt` on the small
 boot drive, check `country` (two letters, e.g. `US`), `ssid` and `psk`,
 save, and boot the Pi again. A network cable always works as a fallback.
+Once the Pi has joined, it empties `ssid` and `psk` in that file so your
+password doesn't stay on the card; to move to another network, fill
+them in again and reboot.
 
 **How do I put it on the kid's tablet like an app?**
 iPad: open the kid address in Safari → **Share → Add to Home Screen**.

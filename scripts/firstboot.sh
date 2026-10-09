@@ -7,8 +7,11 @@
 # Ethernet needs nothing: Raspberry Pi OS brings eth0 up with DHCP
 # automatically, so a Pi plugged into the router just gets an IP.
 #
-# Runs on every boot (via curatables-firstboot.service): edit the file and
-# reboot to change networks. Applying the same settings twice is harmless.
+# Runs on every boot (via curatables-firstboot.service). Once the network is
+# configured, the ssid and psk values are blanked in the file (NetworkManager
+# keeps them in its root-only store), so the password does not stay on a
+# partition any computer can read. Fill them in again and reboot to change
+# networks.
 #
 # File format (curatables-wifi.txt), simple KEY=value lines:
 #   country=US        # 2-letter Wi-Fi regulatory country (required for Wi-Fi)
@@ -22,7 +25,7 @@ set -euo pipefail
 # Bookworm and later mount the FAT boot partition at /boot/firmware; older layouts
 # use /boot. Take the first that has our file.
 WIFI_FILE=""
-for cand in /boot/firmware/curatables-wifi.txt /boot/curatables-wifi.txt; do
+for cand in ${CURATABLES_WIFI_FILE:-} /boot/firmware/curatables-wifi.txt /boot/curatables-wifi.txt; do
 	if [ -f "$cand" ]; then
 		WIFI_FILE="$cand"
 		break
@@ -36,7 +39,7 @@ done
 getval() {
 	local key="$1"
 	sed -n "s/\r$//; s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//p" "$WIFI_FILE" \
-		| grep -v '^#' | head -n1
+		| { grep -v '^#' || true; } | head -n1
 }
 
 COUNTRY="$(getval country)"
@@ -57,9 +60,23 @@ if [ -n "$COUNTRY" ]; then
 		echo "firstboot: warning: could not set Wi-Fi country"
 fi
 
+forget_credentials() {
+	local tmp="${WIFI_FILE}.new"
+	{
+		echo "# Wi-Fi was set up on $(date -u +%Y-%m-%d). The Pi remembers the network,"
+		echo "# so its name and password were removed from this file. To switch"
+		echo "# networks, fill in ssid and psk again and reboot."
+		sed -e 's/\r$//' \
+			-e '/^# Wi-Fi was set up on /,+2d' \
+			-e 's/^\([[:space:]]*ssid[[:space:]]*=\).*/\1/' \
+			-e 's/^\([[:space:]]*psk[[:space:]]*=\).*/\1/' "$WIFI_FILE"
+	} > "$tmp" && mv "$tmp" "$WIFI_FILE" && sync
+}
+
 echo "firstboot: configuring Wi-Fi for SSID '${SSID}'"
 if raspi-config nonint do_wifi_ssid_passphrase "$SSID" "$PSK"; then
 	echo "firstboot: Wi-Fi configured"
+	forget_credentials || echo "firstboot: warning: could not clear the password from ${WIFI_FILE}" >&2
 else
 	echo "firstboot: warning: Wi-Fi configuration failed" >&2
 fi
