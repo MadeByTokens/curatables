@@ -24,6 +24,7 @@ from app.models import ViewerContext
 from app.repositories import ChannelRepository
 from app.repositories.import_job_repo import ACTIVE_STATES, FINISHED_STATES, ImportJob, \
     ImportJobRepository
+from app.features.parent_uploads.router import _ensure_default_channel
 from app.services.images import MAX_IMAGE_BYTES, image_extension
 from app.services.import_scan import ImportPathError
 from app.services.imports import ORIGINS, ImportFailed, ImportService
@@ -51,6 +52,20 @@ def _duration(seconds: float | None) -> str:
     if minutes < 60:
         return f"{minutes} min"
     return f"{minutes // 60} h {minutes % 60:02d} min"
+
+
+def size_label(size: int) -> str:
+    if size >= 1_073_741_824:
+        return f"{size / 1_073_741_824:.1f} GB"
+    return f"{max(1, round(size / 1_048_576))} MB"
+
+
+def length_label(seconds: float | None) -> str:
+    if not seconds:
+        return ""
+    total = int(round(seconds))
+    hours, rest = divmod(total, 3600)
+    return f"{hours}:{rest // 60:02d}:{rest % 60:02d}" if hours else f"{rest // 60}:{rest % 60:02d}"
 
 
 def job_status(job: ImportJob) -> dict:
@@ -195,7 +210,7 @@ def browse(request: Request, root: int = 0, path: str = "",
         f.imported = str(listing.root / f.rel) in imported
     return _templates(request).TemplateResponse(request, "parent/import_browse.html", {
         "request": request, "listing": listing, "roots": service.roots.roots(),
-        "crumbs": _crumbs(listing.rel),
+        "crumbs": _crumbs(listing.rel), "size_label": size_label,
     })
 
 
@@ -264,8 +279,8 @@ def _job_view(job: ImportJob, service: ImportService) -> dict:
                   f"{a.get('channels')} ch" if a.get("channels") else ""] if x)}
              for a in d.get("audio", [])]
     return {"job": job, "d": d, "probe": probe, "plan_line": plan_line,
-            "subtitles": subtitles, "audio": audio,
-            "size_gb": job.source_size / 1_073_741_824}
+            "subtitles": subtitles, "audio": audio, "size": size_label(job.source_size),
+            "length": length_label(probe.get("duration"))}
 
 
 @router.get("/batch/{batch}", response_class=HTMLResponse)
@@ -277,6 +292,7 @@ def batch_page(request: Request, batch: str,
     if not jobs:
         return RedirectResponse(url="/parent/import", status_code=303)
     ready = all(j.details.get("ready") for j in jobs)
+    _ensure_default_channel(channel_repo)
     return _templates(request).TemplateResponse(request, "parent/import_batch.html", {
         "request": request, "batch": batch, "ready": ready,
         "read_count": sum(1 for j in jobs if j.details.get("ready")),

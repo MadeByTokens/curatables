@@ -35,7 +35,7 @@
       <td><input type="checkbox" name="files" value="{{ f.rel }}" id="f{{ loop.index }}"
                  {% if not f.imported %}checked{% endif %}></td>
       <td><label for="f{{ loop.index }}">{{ f.name }}</label></td>
-      <td class="num">{{ "%.2f"|format(f.size / 1073741824) }} GB</td>
+      <td class="num">{{ size_label(f.size) }}</td>
       <td>{% if f.imported %}<span class="badge badge-ready">already imported</span>{% endif %}</td>
     </tr>
     {% endfor %}

@@ -52,8 +52,8 @@ updates by itself.</div>
       </div>
       <div class="import-fields">
         <p class="muted fs-13">
-          {{ "%.2f"|format(v.size_gb) }} GB
-          {% if v.probe.duration %}· {{ (v.probe.duration // 60)|int }} min{% endif %}
+          {{ v.size }}
+          {% if v.length %}· {{ v.length }}{% endif %}
           {% if v.probe.height %}· {{ v.probe.height }}p {{ v.probe.vcodec }}{% endif %}
           {% if v.plan_line %}· {{ v.plan_line }}{% endif %}
         </p>

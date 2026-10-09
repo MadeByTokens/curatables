@@ -275,9 +275,8 @@ class ImportService:
                        origin: str | None = None) -> None:
         for job in self.batch(batch):
             details = dict(job.details)
-            if channel_id is not None:
+            if channel_id is not None and not details.get("new_channel"):
                 details["channel_id"] = channel_id
-                details["new_channel"] = ""
             if origin in ORIGINS:
                 details["origin"] = origin
             self.repo.update_details(job.id, details)

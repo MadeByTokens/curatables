@@ -374,3 +374,15 @@ def test_dashboard_shows_running_imports(app, authed_client, drive):
     authed_client.post("/parent/import/cancel-all")
     assert ImportJobRepository(_conn(app)).get(jobs[0].id).state == "cancelled"
     assert "waiting or running" not in authed_client.get("/parent/").text
+
+
+def test_apply_to_all_keeps_a_show_grouping(app, authed_client, drive):
+    family = ChannelRepository(_conn(app)).create("Family")
+    batch, jobs = _select(authed_client, app, whole=True)
+    authed_client.post(f"/parent/import/batch/{batch}", data={"action": "show:Bluey"})
+    authed_client.post(f"/parent/import/batch/{batch}", data={
+        "action": "apply", "all_channel_id": str(family)})
+    by_name = {j.name: j.details for j in ImportJobRepository(_conn(app)).list_batch(batch)}
+    assert by_name["Bluey.S01E01.mp4"]["new_channel"] == "Bluey"
+    assert by_name["Bluey.S01E01.mp4"]["channel_id"] is None
+    assert by_name["Old.Cartoon.webm"]["channel_id"] == family
