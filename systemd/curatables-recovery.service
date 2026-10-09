@@ -1,0 +1,18 @@
+[Unit]
+Description=Curatables: reset the parent password from the SD card
+Documentation=https://github.com/MadeByTokens/curatables
+# Runs only when curatables-reset.txt is on the boot partition, before the
+# server starts. See syshelper/bootfs.py.
+After=local-fs.target
+Before=curatables.service
+ConditionPathExists=/boot/firmware/curatables-reset.txt
+
+[Service]
+Type=oneshot
+Environment=CURATABLES_ROOT=/opt/curatables
+Environment=CURATABLES_DATA=/home/curatables/curatables-data
+Environment=CURATABLES_USER=curatables
+ExecStart=/usr/bin/python3 -I /opt/curatables/scripts/curatables-helper.py --reset-from-boot
+
+[Install]
+WantedBy=multi-user.target

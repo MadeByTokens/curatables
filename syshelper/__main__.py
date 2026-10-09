@@ -1,4 +1,5 @@
-"""python3 -I /opt/curatables/scripts/curatables-helper.py [--report PATH]"""
+"""python3 -I /opt/curatables/scripts/curatables-helper.py
+    [--report [PATH] | --reset-from-boot | --report-from-boot]"""
 
 from __future__ import annotations
 
@@ -16,6 +17,12 @@ def main(argv: list[str]) -> int:
         else:
             sys.stdout.write(report)
         return 0
+    if argv[:1] == ["--reset-from-boot"]:
+        from syshelper import bootfs
+        return bootfs.reset_from_boot()
+    if argv[:1] == ["--report-from-boot"]:
+        from syshelper import bootfs
+        return bootfs.report_from_boot()
     from syshelper import server
     server.serve()
     return 0

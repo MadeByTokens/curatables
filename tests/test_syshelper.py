@@ -662,3 +662,66 @@ def test_restore_runs_as_the_service_user_with_curatables_stopped(fake, tmp_path
     assert argvs.index(["systemctl", "stop", "curatables.service"]) < restore
     assert argvs.index(["systemctl", "start", "curatables.service"]) > restore
     assert argvs[restore][-1] == str(sd / "curatables-2026-10-01-030000.db")
+
+
+# --- recovery files on the boot partition ------------------------------------
+
+@pytest.fixture
+def boot(fake, monkeypatch):
+    SETTINGS.boot_dir.mkdir()
+    monkeypatch.setattr("syshelper.bootfs.pwd.getpwnam", lambda name: type("P", (), {
+        "pw_uid": os.getuid(), "pw_gid": os.getgid()})())
+    return SETTINGS.boot_dir
+
+
+def test_reset_file_clears_the_parent_password_once(boot):
+    from syshelper import bootfs
+    (SETTINGS.data_dir / "config.json").write_text(json.dumps({
+        "parent": {"password_hash": "pbkdf2:x", "session_epoch": 3, "system_setup_done": True},
+        "storage": {"cache_days": 9}}))
+    (boot / "curatables-reset.txt").write_text("")
+    assert bootfs.reset_from_boot() == 0
+    cfg = json.loads((SETTINGS.data_dir / "config.json").read_text())
+    assert cfg["parent"] == {"password_hash": None, "session_epoch": 4, "system_setup_done": False}
+    assert cfg["storage"] == {"cache_days": 9}
+    assert not (boot / "curatables-reset.txt").exists()
+    done = (boot / "curatables-reset-done.txt").read_text()
+    assert "password was cleared" in done and "rename this file back" in done
+    assert "parent password was cleared" in (boot / "curatables-firstboot.log").read_text()
+
+
+def test_no_reset_file_changes_nothing(boot):
+    from syshelper import bootfs
+    (SETTINGS.data_dir / "config.json").write_text('{"parent": {"password_hash": "keep"}}')
+    assert bootfs.reset_from_boot() == 0
+    assert json.loads((SETTINGS.data_dir / "config.json").read_text())["parent"]["password_hash"] == "keep"
+
+
+def test_reset_refuses_a_config_that_is_a_symlink(boot, tmp_path):
+    from syshelper import bootfs
+    victim = tmp_path / "victim.json"
+    victim.write_text('{"parent": {"password_hash": "x"}}')
+    (SETTINGS.data_dir / "config.json").symlink_to(victim)
+    (boot / "curatables-reset.txt").write_text("")
+    bootfs.reset_from_boot()
+    assert victim.read_text() == '{"parent": {"password_hash": "x"}}'
+
+
+def test_diagnose_file_writes_a_report_next_to_it(boot, monkeypatch):
+    from syshelper import bootfs
+    monkeypatch.setattr(diagnostics, "_tcp", lambda host, port, timeout=5: "")
+    (boot / "curatables-diagnose.txt").write_text("")
+    assert bootfs.report_from_boot() == 0
+    report = (boot / "curatables-diagnostics-report.txt").read_bytes()
+    assert b"Curatables diagnostics report" in report and b"\r\n" in report
+    assert (boot / "curatables-diagnose-done.txt").exists()
+    assert not (boot / "curatables-diagnose.txt").exists()
+
+
+def test_recovery_units_only_run_when_their_file_is_there():
+    root = Path(__file__).resolve().parents[1] / "systemd"
+    reset = (root / "curatables-recovery.service").read_text()
+    assert "ConditionPathExists=/boot/firmware/curatables-reset.txt" in reset
+    assert "Before=curatables.service" in reset
+    diag = (root / "curatables-diagnose.service").read_text()
+    assert "ConditionPathExists=/boot/firmware/curatables-diagnose.txt" in diag
