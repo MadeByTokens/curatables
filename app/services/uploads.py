@@ -4,10 +4,10 @@ from __future__ import annotations
 Handles the lifecycle of a single uploaded video file:
   create → append (many) → finalize → Video row
 
-In-progress uploads live under `{data_dir}/uploads/.tmp/` as a pair
+In-progress uploads live under `{media_dir}/uploads/.tmp/` as a pair
 of files: the bytes file `{token}` and a JSON sidecar `{token}.json`.
 On finalize we hash the file, compute the upload video_id, move the
-bytes into `{data_dir}/uploads/up_<hash[:16]>/video.<ext>`, run
+bytes into `{media_dir}/uploads/up_<hash[:16]>/video.<ext>`, run
 ffprobe validation, extract a thumbnail, and insert the videos row.
 """
 

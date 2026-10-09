@@ -30,7 +30,7 @@ def prepare_data_dir(config: Config) -> None:
     conn = create_connection(get_db_path(config.data_dir))
     try:
         init_schema(conn)
-        recover_from_crash(conn, config.data_dir)
+        recover_from_crash(conn, config.media_dir)
     finally:
         conn.close()
 
@@ -52,14 +52,14 @@ def build_content_service(conn: sqlite3.Connection, config: Config, metrics=None
         cookies_file=config.storage.cookies_file,
     )
     storage = StorageService(
-        config.data_dir, backend,
+        config.media_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,
         normalizer=MediaNormalizer(MediaProbeService()),
         max_download_bytes=config.storage.max_download_bytes,
     )
     return ContentService(
         VideoRepository(conn), SourceRepository(conn), ChannelRepository(conn),
-        VideoSourceService(backend), ThumbnailService(config.data_dir),
+        VideoSourceService(backend), ThumbnailService(config.media_dir),
         storage, config, metrics=metrics,
     )
 
@@ -81,7 +81,7 @@ def startup_jobs(config: Config, metrics=None) -> None:
 
     try:
         from app.services.storage import StorageService
-        storage = StorageService(config.data_dir,
+        storage = StorageService(config.media_dir,
                                  min_free_bytes=config.storage.min_free_disk_bytes)
         swept = storage.sweep_upload_tmp(ttl_hours=24)
         if swept:
@@ -100,7 +100,7 @@ def _maintenance_pass(config: Config):
     try:
         report = None
         if config.storage.cache_days > 0:
-            storage = StorageService(config.data_dir,
+            storage = StorageService(config.media_dir,
                                      min_free_bytes=config.storage.min_free_disk_bytes)
             report = storage.evict_expired(VideoRepository(conn), config.storage.cache_days)
         pruned = 0

@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class ThumbnailService:
-    def __init__(self, data_dir: Path):
-        self.data_dir = data_dir
+    def __init__(self, media_dir: Path):
+        self.media_dir = media_dir
 
     def get_path(self, video_id: str) -> Path:
         """Canonical thumbnail location. It lives outside videos/<id>/ so
         cache eviction (which deletes that directory) keeps the picture
         the parent chose. Thumbnails left in the old videos/<id>/thumb.jpg
         location are moved over on first access."""
-        path = self.data_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
+        path = self.media_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
         if not path.exists():
             legacy = self._legacy_path(video_id)
             if legacy.exists():
@@ -33,7 +33,7 @@ class ThumbnailService:
         return path
 
     def _legacy_path(self, video_id: str) -> Path:
-        return self.data_dir / "videos" / video_id / "thumb.jpg"
+        return self.media_dir / "videos" / video_id / "thumb.jpg"
 
     def is_cached(self, video_id: str) -> bool:
         return self.get_path(video_id).exists()
@@ -83,12 +83,12 @@ class ThumbnailService:
         """Extract a frame from a video using ffmpeg.
 
         By default looks for the downloaded-video path
-        `{data_dir}/videos/{id}/video.mp4` (used for yt-dlp downloads).
+        `{media_dir}/videos/{id}/video.mp4` (used for yt-dlp downloads).
         Pass `source_path` to extract from an arbitrary file (used by
         the upload ingest path to read from `uploads/{id}/video.<ext>`).
         """
         if source_path is None:
-            source_path = self.data_dir / "videos" / video_id / "video.mp4"
+            source_path = self.media_dir / "videos" / video_id / "video.mp4"
         if not source_path.exists():
             return None
 
@@ -116,7 +116,7 @@ class ThumbnailService:
         """Remove the canonical thumbnail and every kid's custom thumbnail
         for this video. Silent on missing files."""
         targets = [self.get_path(video_id), self._legacy_path(video_id)]
-        profiles_dir = self.data_dir / "thumbnails" / "profiles"
+        profiles_dir = self.media_dir / "thumbnails" / "profiles"
         if profiles_dir.exists():
             targets.extend(profiles_dir.glob(f"*/{video_id}.*"))
         for target in targets:

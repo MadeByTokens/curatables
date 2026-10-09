@@ -114,7 +114,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     from app.services.storage_report import get_disk_status_brief
 
     app.state.templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
-        config.data_dir, config.storage.min_free_disk_bytes
+        config.media_dir, config.storage.min_free_disk_bytes
     )
 
     # Jinja global: iframe-safe embed URL for a given extractor +

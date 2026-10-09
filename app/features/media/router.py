@@ -175,11 +175,11 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
 
 def _serve_channel_asset(config, content: ContentService, viewer: ViewerContext,
                          channel_id: int, asset_prefix: str):
-    """Serve a channel banner or icon from {data_dir}/channels/{id}/{prefix}.*"""
+    """Serve a channel banner or icon from {media_dir}/channels/{id}/{prefix}.*"""
     visible = content.visible_channel_ids(viewer)
     if visible is not None and channel_id not in visible:
         return Response(status_code=404)
-    channel_dir = config.data_dir / "channels" / str(channel_id)
+    channel_dir = config.media_dir / "channels" / str(channel_id)
     if channel_dir.exists():
         for f in channel_dir.glob(f"{asset_prefix}.*"):
             return FileResponse(str(f), media_type=_sniff_image_mime(f))

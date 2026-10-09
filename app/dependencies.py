@@ -116,7 +116,7 @@ def get_video_source_service(backend=Depends(get_backend)) -> VideoSourceService
 
 
 def get_thumbnail_service(config=Depends(get_config)) -> ThumbnailService:
-    return ThumbnailService(config.data_dir)
+    return ThumbnailService(config.media_dir)
 
 
 def get_wishlist_repo(db=Depends(get_db)) -> WishlistRepository:
@@ -147,7 +147,7 @@ def get_storage_service(config=Depends(get_config),
                         backend=Depends(get_backend),
                         probe=Depends(get_probe_service)) -> StorageService:
     return StorageService(
-        config.data_dir, backend,
+        config.media_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,
         normalizer=MediaNormalizer(probe),
         max_download_bytes=config.storage.max_download_bytes,
@@ -159,7 +159,7 @@ def get_storage_report_service(
     video_repo=Depends(get_video_repo),
 ) -> StorageReportService:
     return StorageReportService(
-        data_dir=config.data_dir,
+        media_dir=config.media_dir,
         min_free_bytes=config.storage.min_free_disk_bytes,
         video_repo=video_repo,
     )
@@ -215,7 +215,7 @@ def get_channel_service(
     channel_repo=Depends(get_channel_repo),
     config=Depends(get_config),
 ) -> ChannelService:
-    return ChannelService(channel_repo, config.data_dir)
+    return ChannelService(channel_repo, config.media_dir)
 
 
 def get_reaction_repo(db=Depends(get_db)) -> ReactionRepository:
@@ -259,7 +259,7 @@ def get_kid_library_service(
     config=Depends(get_config),
 ) -> KidLibraryService:
     return KidLibraryService(override_repo, tag_repo, channel_video_repo,
-                             config.data_dir)
+                             config.media_dir)
 
 
 def get_stats_service(

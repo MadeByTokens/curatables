@@ -19,7 +19,7 @@ _GB = 1_073_741_824
 Status = Literal["ok", "warning", "blocked", "unknown"]
 
 
-def get_disk_status_brief(data_dir: Path, min_free_bytes: int) -> dict:
+def get_disk_status_brief(media_dir: Path, min_free_bytes: int) -> dict:
     """Small read-only helper for the topnav status chip.
 
     Returns {"free_gb": float, "status": str} without database access,
@@ -27,7 +27,7 @@ def get_disk_status_brief(data_dir: Path, min_free_bytes: int) -> dict:
     status is "unknown" rather than raising.
     """
     try:
-        free = shutil.disk_usage(data_dir).free
+        free = shutil.disk_usage(media_dir).free
     except OSError:
         return {"free_gb": 0.0, "status": "unknown"}
     if free < min_free_bytes:
@@ -58,14 +58,14 @@ class ChannelSize:
 
 
 class StorageReportService:
-    def __init__(self, data_dir: Path, min_free_bytes: int,
+    def __init__(self, media_dir: Path, min_free_bytes: int,
                  video_repo: VideoRepository):
-        self.data_dir = data_dir
+        self.media_dir = media_dir
         self.min_free_bytes = min_free_bytes
         self.video_repo = video_repo
 
     def get_report(self) -> DiskReport:
-        usage = shutil.disk_usage(self.data_dir)
+        usage = shutil.disk_usage(self.media_dir)
         used_by_curatables = self.video_repo.sum_file_size()
         status = self._status(usage.free)
         return DiskReport(

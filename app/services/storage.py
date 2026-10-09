@@ -49,11 +49,11 @@ class EvictionReport:
 
 
 class StorageService:
-    def __init__(self, data_dir: Path, backend: VideoBackend | None = None,
+    def __init__(self, media_dir: Path, backend: VideoBackend | None = None,
                  min_free_bytes: int = 0,
                  normalizer: MediaNormalizer | None = None,
                  max_download_bytes: int | None = None):
-        self.data_dir = data_dir
+        self.media_dir = media_dir
         self.backend = backend
         self.min_free_bytes = min_free_bytes
         self.max_download_bytes = max_download_bytes
@@ -64,7 +64,7 @@ class StorageService:
         self.normalizer = normalizer
 
     def get_free_space(self) -> int:
-        return shutil.disk_usage(self.data_dir).free
+        return shutil.disk_usage(self.media_dir).free
 
     def check_can_write(self, required_bytes: int = 0) -> tuple[bool, str]:
         """Return (allowed, reason). On refuse, reason names the numbers in GB."""
@@ -86,7 +86,7 @@ class StorageService:
         return False, reason
 
     def video_dir(self, video_id: str) -> Path:
-        return self.data_dir / "videos" / video_id
+        return self.media_dir / "videos" / video_id
 
     def video_path(self, video_id: str) -> Path:
         return self.video_dir(video_id) / "video.mp4"
@@ -106,7 +106,7 @@ class StorageService:
         return None
 
     def uploads_dir(self) -> Path:
-        path = self.data_dir / "uploads"
+        path = self.media_dir / "uploads"
         path.mkdir(parents=True, exist_ok=True)
         return path
 

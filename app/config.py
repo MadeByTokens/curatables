@@ -44,6 +44,13 @@ class StorageConfig:
     # Usage events (plays, views, searches) older than this are deleted
     # by the same background sweep. 0 keeps them forever.
     events_retention_days: int = 365
+    # Where videos, uploads, thumbnails and channel pictures live. Empty
+    # means inside `path`. Set by setup-external-drive.sh --media-only so
+    # the media can sit on an exFAT/NTFS drive while the database stays
+    # on the SD card.
+    media_path: str = ""
+    # Folders the import page may list video files from.
+    import_roots: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.path:
@@ -87,6 +94,10 @@ class Config:
     @property
     def data_dir(self) -> Path:
         return Path(self.storage.path)
+
+    @property
+    def media_dir(self) -> Path:
+        return Path(self.storage.media_path) if self.storage.media_path else self.data_dir
 
     @property
     def is_first_run(self) -> bool:
@@ -152,9 +163,23 @@ def _relocation_target(data: dict, config_path: Path) -> Path | None:
     return target
 
 
+MEDIA_SUBDIRS = ("videos", "thumbnails", "uploads", "uploads/.tmp")
+
+
 def ensure_directories(config: Config) -> None:
-    """Create all required data directories."""
+    """Create all required data directories.
+
+    A separate media folder is never created here: if it is missing the
+    drive is not mounted, and starting would scatter new files over the
+    SD card.
+    """
     base = config.data_dir
-    for subdir in ["db", "videos", "thumbnails", "logs",
-                   "uploads", "uploads/.tmp"]:
+    for subdir in ("db", "logs"):
         (base / subdir).mkdir(parents=True, exist_ok=True)
+    media = config.media_dir
+    if config.storage.media_path and not media.is_dir():
+        raise RuntimeError(
+            f"The media folder {media} is missing (is the drive plugged in and "
+            "mounted?). Refusing to start.")
+    for subdir in MEDIA_SUBDIRS:
+        (media / subdir).mkdir(parents=True, exist_ok=True)

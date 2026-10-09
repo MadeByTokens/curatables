@@ -46,6 +46,13 @@ class RelocationService:
                 "moved from here. To put the library on an external drive, "
                 "run scripts/setup-external-drive.sh (see docs/deployment.md)."
             )
+        if self.config.storage.media_path:
+            raise RelocationError(
+                "The videos live on a separate media drive "
+                f"({self.config.storage.media_path}), so the library cannot be "
+                "moved from here. Use scripts/setup-external-drive.sh instead "
+                "(see docs/deployment.md)."
+            )
         old_path = Path(self.config.storage.path)
         target_raw = (new_data_dir or "").strip()
         if not target_raw:

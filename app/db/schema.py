@@ -26,7 +26,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         logger.info("Applied %d migration(s).", count)
 
 
-def recover_from_crash(conn: sqlite3.Connection, data_dir: Path) -> None:
+def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
     """Fix state left inconsistent by an unclean shutdown.
 
     Called on every startup. Must be idempotent and safe to run when
@@ -47,7 +47,7 @@ def recover_from_crash(conn: sqlite3.Connection, data_dir: Path) -> None:
         logger.info("Recovery: reset %d interrupted download(s) to pending", len(stuck))
 
     # 2. Clean up partial video files (.part files left by yt-dlp)
-    videos_dir = data_dir / "videos"
+    videos_dir = media_dir / "videos"
     if videos_dir.exists():
         for vdir in videos_dir.iterdir():
             if not vdir.is_dir():
@@ -61,7 +61,7 @@ def recover_from_crash(conn: sqlite3.Connection, data_dir: Path) -> None:
     #    videos at uploads/<id>/video.<ext>. A missing download goes back
     #    to "pending" for re-download; a missing upload has no source, so
     #    it is marked "error" for the parent to deal with.
-    uploads_dir = data_dir / "uploads"
+    uploads_dir = media_dir / "uploads"
     ready = conn.execute(
         "SELECT video_id, storage_mode FROM videos WHERE download_status = 'ready'"
     ).fetchall()
@@ -80,7 +80,7 @@ def recover_from_crash(conn: sqlite3.Connection, data_dir: Path) -> None:
             "Recovery: %d of %d ready videos have no file in %s. That looks "
             "like a missing or unmounted drive, so nothing was reset. "
             "Mount the drive and restart curatables.",
-            missing, len(ready), data_dir)
+            missing, len(ready), media_dir)
         return
 
     for vid in missing_downloads:

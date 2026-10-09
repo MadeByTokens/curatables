@@ -97,7 +97,7 @@ class TestStorageReportService:
             (None, "Unassigned", 1, 500),
         ]
         service = StorageReportService(
-            data_dir=Path("/tmp"),
+            media_dir=Path("/tmp"),
             min_free_bytes=min_free,
             video_repo=video_repo,
         )

@@ -20,14 +20,14 @@ def valid_color(value: str | None) -> bool:
 
 class ChannelService:
     def __init__(self, channel_repo: ChannelRepository,
-                 data_dir: Path | None = None):
+                 media_dir: Path | None = None):
         self.channel_repo = channel_repo
-        self.data_dir = data_dir
+        self.media_dir = media_dir
 
     def asset_dir(self, channel_id: int) -> Path:
-        if self.data_dir is None:
-            raise RuntimeError("ChannelService has no data_dir")
-        return self.data_dir / "channels" / str(channel_id)
+        if self.media_dir is None:
+            raise RuntimeError("ChannelService has no media_dir")
+        return self.media_dir / "channels" / str(channel_id)
 
     def save_asset(self, channel_id: int, kind: str, data: bytes) -> str:
         """Store a banner/icon image and return its filename.
@@ -92,7 +92,7 @@ class ChannelService:
 
     def delete(self, channel_id: int, reassign_to: int | None = None) -> None:
         self.channel_repo.delete(channel_id, reassign_to=reassign_to)
-        if self.data_dir is not None:
+        if self.media_dir is not None:
             shutil.rmtree(self.asset_dir(channel_id), ignore_errors=True)
 
     def count_videos(self, channel_id: int) -> int:

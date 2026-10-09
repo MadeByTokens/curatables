@@ -16,11 +16,11 @@ class KidLibraryService:
     def __init__(self, override_repo: ProfileVideoOverrideRepository,
                  tag_repo: TagRepository,
                  channel_video_repo: ProfileChannelVideoRepository,
-                 data_dir: Path):
+                 media_dir: Path):
         self.override_repo = override_repo
         self.tag_repo = tag_repo
         self.channel_video_repo = channel_video_repo
-        self.data_dir = data_dir
+        self.media_dir = media_dir
 
     # --- Video title/thumbnail overrides ---
 
@@ -51,7 +51,7 @@ class KidLibraryService:
     def upload_thumbnail(self, profile_id: int, video_id: str,
                          file_data: bytes, filename: str) -> None:
         ext = validate_image(file_data)
-        thumb_dir = self.data_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
         thumb_dir.mkdir(parents=True, exist_ok=True)
         for old in thumb_dir.glob(f"{video_id}.*"):
             old.unlink(missing_ok=True)
@@ -59,7 +59,7 @@ class KidLibraryService:
         self.override_repo.upsert(profile_id, video_id, has_custom_thumb=1)
 
     def clear_thumbnail(self, profile_id: int, video_id: str) -> None:
-        thumb_dir = self.data_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
         for old in thumb_dir.glob(f"{video_id}.*"):
             old.unlink(missing_ok=True)
         self.override_repo.upsert(profile_id, video_id, has_custom_thumb=0)
@@ -94,7 +94,7 @@ class KidLibraryService:
 
     def get_custom_thumb_path(self, profile_id: int,
                               video_id: str) -> Path | None:
-        thumb_dir = self.data_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
         matches = list(thumb_dir.glob(f"{video_id}.*"))
         return matches[0] if matches else None
 
