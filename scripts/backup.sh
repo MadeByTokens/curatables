@@ -59,11 +59,37 @@ echo "Backed up to: $OUT_FILE ($(du -h "$OUT_FILE" | cut -f1))"
 
 # Retention: keep the most recent $RETAIN snapshots (and their config
 # copies), delete older ones. Filenames are timestamp-only, so ls is safe.
-if [ "$RETAIN" -gt 0 ]; then
+prune() {
+    [ "$RETAIN" -gt 0 ] || return 0
     # shellcheck disable=SC2012
-    ls -1t "$OUT_DIR"/curatables-*.db 2>/dev/null \
+    ls -1t "$1"/curatables-*.db 2>/dev/null \
         | tail -n "+$((RETAIN + 1))" \
         | while read -r old; do
             rm -f -- "$old" "${old%.db}.config.json"
         done
+}
+prune "$OUT_DIR"
+
+# "Also keep backups on the videos drive" (Box, Drives): a second copy
+# in <media folder>/backups, so the library survives the SD card dying.
+DRIVE_DIR="$("$PYTHON" - "$CONFIG_PATH" <<'PYEOF' 2>/dev/null || true
+import json, os, sys
+try:
+    storage = json.load(open(sys.argv[1])).get("storage", {})
+except (OSError, ValueError):
+    sys.exit(0)
+media = storage.get("media_path") or ""
+if storage.get("drive_backups") and media and os.path.isdir(media):
+    print(os.path.join(media, "backups"))
+PYEOF
+)"
+if [ -n "$DRIVE_DIR" ]; then
+    if mkdir -p "$DRIVE_DIR" && cp "$OUT_FILE" "$DRIVE_DIR/" && {
+            [ ! -f "$OUT_DIR/curatables-$TIMESTAMP.config.json" ] ||
+            cp "$OUT_DIR/curatables-$TIMESTAMP.config.json" "$DRIVE_DIR/"; }; then
+        echo "Copied to the videos drive: $DRIVE_DIR"
+        prune "$DRIVE_DIR"
+    else
+        echo "WARNING: could not copy the backup to the videos drive ($DRIVE_DIR)" >&2
+    fi
 fi

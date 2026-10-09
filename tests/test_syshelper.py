@@ -615,3 +615,50 @@ def test_config_edits_refuse_a_config_that_is_a_symlink(fake, tmp_path):
     with pytest.raises(HelperError, match="damaged"):
         drives._write_config(lambda cfg: cfg.update(storage={}))
     assert victim.read_text() == '{"parent": {"password_hash": "x"}}'
+
+
+# --- backups ------------------------------------------------------------------
+
+def test_backups_are_listed_from_both_places(fake, tmp_path, monkeypatch):
+    from syshelper import backups
+    sd = tmp_path / "backups"
+    sd.mkdir()
+    monkeypatch.setattr(SETTINGS, "backup_dir", sd)
+    (sd / "curatables-2026-10-01-030000.db").write_text("x")
+    (sd / "curatables-2026-10-01-030000.config.json").write_text("{}")
+    (sd / "notes.txt").write_text("x")
+    (sd / "curatables-2026-10-02-030000.db").symlink_to(tmp_path / "elsewhere")
+    drive = SETTINGS.media_mount / "curatables-library" / "backups"
+    drive.mkdir(parents=True)
+    (drive / "curatables-2026-10-03-030000.db").write_text("y")
+    found = backups.backups_list({})["backups"]
+    assert [(b["where"], b["when"]) for b in found] == [("drive", "2026-10-03 03:00"), ("sd", "2026-10-01 03:00")]
+
+
+@pytest.mark.parametrize("params", [
+    {"where": "sd", "name": "../../etc/shadow"},
+    {"where": "usb", "name": "curatables-2026-10-01-030000.db"},
+    {"where": "sd", "name": "curatables-2026-10-09-030000.db"},
+])
+def test_restore_only_accepts_listed_backups(fake, tmp_path, monkeypatch, params):
+    from syshelper import backups
+    sd = tmp_path / "backups"
+    sd.mkdir()
+    monkeypatch.setattr(SETTINGS, "backup_dir", sd)
+    (sd / "curatables-2026-10-01-030000.db").write_text("x")
+    with pytest.raises(HelperError):
+        backups.backup_restore(params)
+
+
+def test_restore_runs_as_the_service_user_with_curatables_stopped(fake, tmp_path, monkeypatch):
+    from syshelper import backups
+    sd = tmp_path / "backups"
+    sd.mkdir()
+    monkeypatch.setattr(SETTINGS, "backup_dir", sd)
+    (sd / "curatables-2026-10-01-030000.db").write_text("x")
+    backups.backup_restore({"where": "sd", "name": "curatables-2026-10-01-030000.db"})(FakeJob())
+    argvs = fake.argvs()
+    restore = next(i for i, a in enumerate(argvs) if a[:4] == ["runuser", "-u", "curatables", "--"])
+    assert argvs.index(["systemctl", "stop", "curatables.service"]) < restore
+    assert argvs.index(["systemctl", "start", "curatables.service"]) > restore
+    assert argvs[restore][-1] == str(sd / "curatables-2026-10-01-030000.db")

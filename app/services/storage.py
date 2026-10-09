@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.backends.base import VideoBackend
+from app.services.media_fs import DRIVE_MISSING, TOO_BIG_FOR_FAT, file_size_limit
 from app.services.normalize import MediaNormalizer
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class EvictionReport:
     video_ids: list[str] = field(default_factory=list)
 
 
+
 class StorageService:
     def __init__(self, media_dir: Path, backend: VideoBackend | None = None,
                  min_free_bytes: int = 0,
@@ -68,6 +70,11 @@ class StorageService:
 
     def check_can_write(self, required_bytes: int = 0) -> tuple[bool, str]:
         """Return (allowed, reason). On refuse, reason names the numbers in GB."""
+        if not self.media_dir.is_dir():
+            return False, DRIVE_MISSING
+        cap = file_size_limit(self.media_dir)
+        if cap and required_bytes > cap:
+            return False, TOO_BIG_FOR_FAT.format(size=required_bytes / _GB)
         free = self.get_free_space()
         projected_free = free - required_bytes
         if projected_free >= self.min_free_bytes:
@@ -298,8 +305,13 @@ class StorageService:
 
     def evict_for_space(self, video_repo, required_bytes: int = 0) -> EvictionReport:
         """Evict least-recently-watched cached videos until a write of
-        `required_bytes` fits above the free-space floor."""
+        `required_bytes` fits above the free-space floor. Nothing is
+        evicted when space is not the problem (drive missing, or a file
+        too big for FAT32)."""
         report = EvictionReport()
+        cap = file_size_limit(self.media_dir) if self.media_dir.is_dir() else None
+        if not self.media_dir.is_dir() or (cap and required_bytes > cap):
+            return report
         if self.check_can_write(required_bytes)[0]:
             return report
         for video in video_repo.list_evictable_lru():

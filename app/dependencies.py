@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import Depends, Request
 
+from app.services.media_fs import capped
 from app.config import Config
 from app.db.connection import create_connection, get_db_path
 from app.models import ViewerContext
@@ -157,7 +158,7 @@ def get_storage_service(config=Depends(get_config),
         config.media_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,
         normalizer=MediaNormalizer(probe),
-        max_download_bytes=config.storage.max_download_bytes,
+        max_download_bytes=capped(config.media_dir, config.storage.max_download_bytes),
     )
 
 

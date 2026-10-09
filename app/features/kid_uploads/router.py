@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
+from app.services.media_fs import capped
 from app.config import Config
 from app.dependencies import (
     get_channel_service, get_config, get_event_service,
@@ -42,7 +43,7 @@ _CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB copy buffer
 
 def _effective_max(config: Config) -> int:
     """The smaller of the parent ceiling and the kid-specific ceiling."""
-    return min(config.storage.max_upload_bytes, config.storage.max_kid_upload_bytes)
+    return capped(config.media_dir, min(config.storage.max_upload_bytes, config.storage.max_kid_upload_bytes))
 
 
 def _render_upload_page(request: Request, viewer: ViewerContext,

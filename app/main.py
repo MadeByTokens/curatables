@@ -21,6 +21,7 @@ from app.middleware import (
 from app.services.auth import AuthService
 from app.services.csrf import CSRFService
 from app.services.metrics import MetricsService
+from app.services.media_fs import capped, media_missing
 from app.services.system_helper import SystemHelper
 
 
@@ -119,6 +120,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # Reads free space fresh on every render so the chip is always current.
     from app.services.storage_report import get_disk_status_brief
 
+    app.state.templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
     app.state.templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
         config.media_dir, config.storage.min_free_disk_bytes
     )
@@ -222,6 +224,21 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             return await call_next(request)
         return RedirectResponse(url="/profiles", status_code=302)
 
+    # Videos drive missing: kids get a calm "videos are resting" screen
+    # instead of broken tiles; the parent dashboard keeps working so the
+    # drive can be reconnected from Box, Drives.
+    _KID_OPEN = ("/parent", "/static", "/healthz", "/metrics", "/api", "/media")
+
+    @app.middleware("http")
+    async def media_missing_screen(request: Request, call_next):
+        path = request.url.path
+        if not path.startswith(_KID_OPEN) and media_missing(config.storage.media_path):
+            if request.method != "GET":
+                return PlainTextResponse("The videos drive is not connected.", status_code=503)
+            return app.state.templates.TemplateResponse(
+                request, "kid/resting.html", {"request": request}, status_code=503)
+        return await call_next(request)
+
     # SessionMiddleware must wrap the @middleware decorators above so
     # request.session is populated before they run. See the comment
     # near RequestLoggingMiddleware above for the Starlette ordering
@@ -250,9 +267,9 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # (CSRF parses form bodies) can read them into memory.
     app.add_middleware(
         BodySizeLimitMiddleware,
-        upload_limit=lambda: config.storage.max_upload_bytes,
-        kid_upload_limit=lambda: min(config.storage.max_upload_bytes,
-                                     config.storage.max_kid_upload_bytes),
+        upload_limit=lambda: capped(config.media_dir, config.storage.max_upload_bytes),
+        kid_upload_limit=lambda: capped(config.media_dir, min(config.storage.max_upload_bytes,
+                                                              config.storage.max_kid_upload_bytes)),
     )
 
     # --- Exception handlers ---

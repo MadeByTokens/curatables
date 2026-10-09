@@ -107,14 +107,21 @@ class ImportRoots:
     def __init__(self, config: Config):
         self.config = config
 
+    def _opened_drives(self) -> list[str]:
+        base = Path(self.config.storage.drive_mounts_dir) if self.config.storage.drive_mounts_dir else None
+        try:
+            return sorted(str(d) for d in base.iterdir() if d.is_dir() and os.path.ismount(d)) if base else []
+        except OSError:
+            return []
+
     def roots(self) -> list[Path]:
         media = self.config.media_dir.resolve()
-        out = []
-        for raw in self.config.storage.import_roots:
+        out: list[Path] = []
+        for raw in [*self.config.storage.import_roots, *self._opened_drives()]:
             root = Path(raw).expanduser()
             if root.is_dir():
                 root = root.resolve()
-                if root != media and not root.is_relative_to(media):
+                if root != media and not root.is_relative_to(media) and root not in out:
                     out.append(root)
         return out
 

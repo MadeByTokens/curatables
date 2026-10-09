@@ -1,6 +1,7 @@
 """Configuration management for curatables server."""
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -55,6 +56,11 @@ class StorageConfig:
     media_path: str = ""
     # Folders the import page may list video files from.
     import_roots: list[str] = field(default_factory=list)
+    # USB drives opened for importing from Box, Drives are mounted in
+    # folders here; each mounted one is an import folder too.
+    drive_mounts_dir: str = "/mnt/curatables-drives"
+    # Also keep each nightly backup in <media_path>/backups.
+    drive_backups: bool = False
 
     def __post_init__(self):
         if not self.path:
@@ -188,16 +194,19 @@ def ensure_directories(config: Config) -> None:
     """Create all required data directories.
 
     A separate media folder is never created here: if it is missing the
-    drive is not mounted, and starting would scatter new files over the
-    SD card.
+    drive is not mounted, and creating it would scatter new files over the
+    SD card. The server still starts, so the parent can reconnect the
+    drive from the dashboard.
     """
     base = config.data_dir
     for subdir in ("db", "logs"):
         (base / subdir).mkdir(parents=True, exist_ok=True)
     media = config.media_dir
     if config.storage.media_path and not media.is_dir():
-        raise RuntimeError(
-            f"The media folder {media} is missing (is the drive plugged in and "
-            "mounted?). Refusing to start.")
+        logging.getLogger(__name__).warning(
+            "The media folder %s is missing (is the drive plugged in and mounted?). "
+            "Starting without it: kids see a 'videos are resting' screen and nothing is stored.",
+            media)
+        return
     for subdir in MEDIA_SUBDIRS:
         (media / subdir).mkdir(parents=True, exist_ok=True)

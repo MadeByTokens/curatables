@@ -46,6 +46,11 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
         conn.commit()
         logger.info("Recovery: reset %d interrupted download(s) to pending", len(stuck))
 
+    if not media_dir.is_dir():
+        logger.warning("Recovery: the media folder %s is missing (drive unplugged?); "
+                       "video files were not checked.", media_dir)
+        return
+
     # 2. Clean up partial video files (.part files left by yt-dlp)
     videos_dir = media_dir / "videos"
     if videos_dir.exists():

@@ -16,8 +16,10 @@ StateDirectory=curatables-backups
 StateDirectoryMode=0700
 ExecStart=/opt/curatables/scripts/backup.sh /var/lib/curatables-backups
 
-# Hardening — same posture as the main service.
+# Hardening — same posture as the main service. The videos drive is
+# writable only for the optional second copy of each backup.
 NoNewPrivileges=true
 ProtectSystem=strict
+ReadWritePaths=-/mnt/curatables-media
 ProtectHome=read-only
 PrivateTmp=true

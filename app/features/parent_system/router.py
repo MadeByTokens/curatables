@@ -6,7 +6,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.dependencies import get_auth_service, get_system_helper, require_parent
+from app.config import Config
+from app.dependencies import get_auth_service, get_config, get_system_helper, require_parent
 from app.models import ViewerContext
 from app.services.auth import MIN_PASSWORD_LENGTH, AuthService
 from app.services.system_helper import (
@@ -15,7 +16,7 @@ from app.services.system_helper import (
 
 router = APIRouter(prefix="/parent/system", tags=["parent-system"])
 
-SAFE_BACK = ("/parent/system",)
+SAFE_BACK = ("/parent/system", "/parent/import")
 
 
 def _try(helper: SystemHelper, action: str, **params):
@@ -187,3 +188,132 @@ def job_page(request: Request, job_id: str, back: str = "/parent/system",
     return request.app.state.templates.TemplateResponse(request, "parent/system_job.html", {
         "request": request, "job": job, "error": error, "job_id": job_id, "back": _safe_back(back),
     })
+
+
+# --- drives -------------------------------------------------------------------
+
+DRIVES = "/parent/system/drives"
+
+
+def _drives_page(request: Request, helper: SystemHelper, config: Config, *,
+                 error: str | None = None, success: str | None = None, status_code: int = 200) -> Response:
+    if not helper.available:
+        return unavailable_page(request)
+    state, load_error = _try(helper, "drives_list")
+    backups, _backup_error = _try(helper, "backups_list")
+    page: Response = request.app.state.templates.TemplateResponse(request, "parent/system_drives.html", {
+        "request": request, "state": state, "backups": (backups or {}).get("backups", []),
+        "error": error or load_error, "success": success, "config": config,
+        "sd_free": _sd_free(config),
+    }, status_code=status_code)
+    return page
+
+
+def _sd_free(config: Config) -> int:
+    import shutil
+    try:
+        return shutil.disk_usage(config.data_dir).free
+    except OSError:
+        return 0
+
+
+@router.get("/drives", response_class=HTMLResponse)
+def drives_page(request: Request,
+                viewer: ViewerContext = Depends(require_parent),
+                helper: SystemHelper = Depends(get_system_helper),
+                config: Config = Depends(get_config)):
+    return _drives_page(request, helper, config)
+
+
+def _drive_job(request: Request, helper: SystemHelper, config: Config, action: str,
+               back: str = DRIVES, **params) -> Response:
+    job, error = _try(helper, action, **params)
+    if error:
+        return _drives_page(request, helper, config, error=error, status_code=400)
+    return job_redirect(job, back)
+
+
+@router.post("/drives/use")
+def drive_use(request: Request, device: str = Form(...),
+              viewer: ViewerContext = Depends(require_parent),
+              helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_use_for_videos", device=device)
+
+
+@router.post("/drives/eject")
+def drive_eject(request: Request, device: str = Form(...),
+                viewer: ViewerContext = Depends(require_parent),
+                helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_eject", device=device)
+
+
+@router.post("/drives/reconnect")
+def drive_reconnect(request: Request,
+                    viewer: ViewerContext = Depends(require_parent),
+                    helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_reconnect")
+
+
+@router.post("/drives/repair")
+def drive_repair(request: Request, device: str = Form(...),
+                 viewer: ViewerContext = Depends(require_parent),
+                 helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_repair", device=device)
+
+
+@router.post("/drives/format")
+def drive_format(request: Request, disk: str = Form(...), fstype: str = Form("exfat"),
+                 label: str = Form("CURATABLES"), confirm: str = Form(""),
+                 viewer: ViewerContext = Depends(require_parent),
+                 helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_format", disk=disk, fstype=fstype,
+                      label=label.strip(), confirm=confirm.strip())
+
+
+@router.post("/drives/open")
+def drive_open(request: Request, device: str = Form(...),
+               viewer: ViewerContext = Depends(require_parent),
+               helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_open_for_import", back="/parent/import", device=device)
+
+
+@router.post("/drives/back-to-sd")
+def drive_back_to_sd(request: Request,
+                     viewer: ViewerContext = Depends(require_parent),
+                     helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_back_to_sd")
+
+
+@router.post("/drives/delete-sd-copy")
+def drive_delete_sd_copy(request: Request,
+                         viewer: ViewerContext = Depends(require_parent),
+                         helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "drive_delete_sd_copy")
+
+
+@router.post("/drives/backups")
+def drive_backups_setting(request: Request, drive_backups: str = Form(""),
+                          viewer: ViewerContext = Depends(require_parent),
+                          helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    config.storage.drive_backups = drive_backups == "1"
+    config.save()
+    return _drives_page(request, helper, config, success=(
+        "Each nightly backup is now also kept on the videos drive." if config.storage.drive_backups
+        else "Backups are kept on the SD card only."))
+
+
+@router.post("/backups/now")
+def backup_now(request: Request,
+               viewer: ViewerContext = Depends(require_parent),
+               helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    _result, error = _try(helper, "backup_now")
+    if error:
+        return _drives_page(request, helper, config, error=error, status_code=400)
+    return _drives_page(request, helper, config, success="Backup made.")
+
+
+@router.post("/backups/restore")
+def backup_restore(request: Request, where: str = Form(...), name: str = Form(...),
+                   viewer: ViewerContext = Depends(require_parent),
+                   helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _drive_job(request, helper, config, "backup_restore", where=where, name=name)

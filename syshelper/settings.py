@@ -22,6 +22,7 @@ class Settings:
     fstab_path: Path
     dropin_dir: Path
     wifi_test_flag: Path
+    backup_dir: Path
     admin_user: str
 
 
@@ -40,6 +41,7 @@ def from_env() -> Settings:
         fstab_path=Path(env("CURATABLES_FSTAB", "/etc/fstab")),
         dropin_dir=Path(env("CURATABLES_DROPIN_DIR", "/etc/systemd/system/curatables.service.d")),
         wifi_test_flag=Path(env("CURATABLES_WIFI_TEST_FLAG", "/run/curatables-wifi-test")),
+        backup_dir=Path(env("CURATABLES_BACKUP_DIR", "/var/lib/curatables-backups")),
         admin_user=env("CURATABLES_ADMIN_USER", ""),
     )
 

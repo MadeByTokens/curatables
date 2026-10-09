@@ -24,9 +24,11 @@ case "$FSTYPE" in
         MOUNT_FS=ntfs3; PASS=0
         MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime" ;;
     vfat)
-        die "$DEV is FAT32, which cannot hold files over 4 GB (most movies). Use an exFAT, NTFS or ext4 drive." ;;
+        MOUNT_FS=vfat; PASS=0
+        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime,utf8"
+        say "warning: $DEV is FAT32, which cannot hold files over 4 GB. Curatables skips anything bigger." ;;
     *)
-        die "$DEV is '$FSTYPE'. The media drive must be exFAT, NTFS or ext4." ;;
+        die "$DEV is '$FSTYPE'. The media drive must be exFAT, NTFS, ext4 or FAT32." ;;
 esac
 MOUNT_OPTS="$MOUNT_OPTS,nofail,x-systemd.device-timeout=30s"
 
@@ -105,7 +107,8 @@ done
 
 say "Pointing curatables at $LIB"
 install -d -o "$SVC_USER" -g "$SVC_USER" -m 0750 "$DATA"
-python3 - "$CONFIG" "$DATA" "$LIB" "$MNT" <<'PY'
+# As the service user: config.json lives in a folder that user controls.
+runuser -u "$SVC_USER" -- python3 - "$CONFIG" "$DATA" "$LIB" "$MNT" <<'PY'
 import json
 import os
 import sys
@@ -131,16 +134,15 @@ with os.fdopen(fd, "w") as f:
     os.fsync(f.fileno())
 os.replace(tmp, path)
 PY
-chown "$SVC_USER:$SVC_USER" "$CONFIG"
 
 say "Installing $MEDIA_DROPIN"
 install -d "$DROPIN_DIR"
-printf '[Unit]\nRequiresMountsFor=%s\n\n[Service]\nReadWritePaths=%s\n' "$MNT" "$MNT" > "$MEDIA_DROPIN"
+printf '[Service]\nReadWritePaths=-%s\n' "$MNT" > "$MEDIA_DROPIN"
 systemctl daemon-reload 2>/dev/null || true
 
 say "Starting curatables"
 systemctl start curatables.service
 say "Done. Videos now live on $DEV ($FSTYPE, UUID $UUID) in $LIB."
 say "Other files on the drive are untouched; the parent Import page can add them."
-[ "$FSTYPE" = exfat ] && say "exFAT has no journal: after an unplug or power cut, run: sudo fsck.exfat $DEV"
+case "$FSTYPE" in exfat|vfat) say "This drive has no journal: after an unplug or power cut, use Repair on the Drives page." ;; esac
 true

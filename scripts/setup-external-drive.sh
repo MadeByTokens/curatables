@@ -26,24 +26,25 @@
 #
 # MEDIA ONLY (--media-only): the database, settings and logs stay on the
 # SD card; videos, uploads, thumbnails and channel pictures go to a
-# curatables-library/ folder on the drive. The drive may be ext4, exFAT
-# or NTFS and may already hold other files (e.g. a movie collection to
-# import), which are left alone. FAT32 is refused: it cannot hold files
-# over 4 GB.
+# curatables-library/ folder on the drive. The drive may be ext4, exFAT,
+# NTFS or FAT32 and may already hold other files (e.g. a movie collection
+# to import), which are left alone. On FAT32, curatables skips any file
+# over 4 GB, the most that format can hold.
 #
 #   1. stops curatables
 #   2. makes the empty mount point immutable, so nothing can be written
 #      to the SD card through it while the drive is unplugged
 #   3. adds an /etc/fstab entry by UUID with nofail and mounts the drive
-#      at /mnt/curatables-media (exFAT/NTFS get uid/gid/umask options,
+#      at /mnt/curatables-media (exFAT/NTFS/FAT32 get uid/gid/umask options,
 #      since they have no Linux owners)
 #   4. copies the existing videos/uploads/thumbnails/channels onto the
 #      drive (skipped if the drive already holds a curatables-library),
 #      checks the copy, and keeps the SD-card originals under
 #      <data dir>/media.before-external-<date>
 #   5. sets storage.media_path and storage.import_roots in config.json
-#   6. installs a systemd drop-in with RequiresMountsFor= and
-#      ReadWritePaths= for the mount
+#   6. installs a systemd drop-in with ReadWritePaths= for the mount.
+#      curatables still starts without the drive, shows the parent a
+#      "videos drive not found" notice and stores nothing meanwhile
 #   7. starts curatables again
 #
 # This script never formats anything.

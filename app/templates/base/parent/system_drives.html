@@ -1,0 +1,179 @@
+{% extends "parent/base.html" %}
+{% macro gb(n) %}{{ "%.1f"|format((n or 0) / 1073741824) }} GB{% endmacro %}
+{% block content %}
+<h1>Box</h1>
+{% include "parent/_system_nav.html" %}
+
+{% if success %}<div class="flash mw-500" role="status">{{ success }}</div>{% endif %}
+{% if error %}<div class="flash flash-error mw-500" role="alert">{{ error }}</div>{% endif %}
+
+{% if state %}
+{% set media = state.media %}
+{% set power = state.power %}
+{% if power.under_voltage_now or power.under_voltage_seen %}
+<div class="flash flash-error mw-500" role="alert"><strong>The box is not getting enough power</strong>{% if not power.under_voltage_now %} (it happened since it started){% endif %}.
+  Drives may disconnect and files can get damaged. Use the official Raspberry Pi power supply;
+  a USB hard drive may need a powered USB hub or its own power adapter.</div>
+{% endif %}
+
+<h2 id="videos-drive">Where the videos are</h2>
+{% if not media.configured %}
+<p class="mw-500">The videos are on the <strong>SD card</strong> ({{ gb(sd_free) }} free). For more room,
+plug in a USB drive below and choose <em>Use for videos</em>.</p>
+{% elif media.mounted %}
+<p class="mw-500">The videos are on the USB drive <strong>{{ media.drive_name or "drive" }}</strong>
+({{ {"exfat": "exFAT", "ntfs": "NTFS", "vfat": "FAT32", "ext4": "ext4", "ntfs3": "NTFS"}.get(media.fstype, media.fstype) }}),
+{{ gb(media.free) }} free of {{ gb(media.size) }}.</p>
+{% if media.fstype == "vfat" %}<p class="fs-14 mw-500 warn-bg warn-box">This drive is FAT32, so videos of 4 GB or more are skipped.
+Formatting it as exFAT removes that limit (copy the videos off first: move them back to the SD card or to another drive).</p>{% endif %}
+<form method="POST" action="/parent/system/drives/eject" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="device" value="{{ media.device }}">
+  <button type="submit" class="btn btn-secondary">Eject safely</button>
+</form>
+<form method="POST" action="/parent/system/drives/repair" class="inline-form" data-confirm="Check the drive for problems? Kids cannot watch while it runs.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="device" value="{{ media.device }}">
+  <button type="submit" class="btn btn-secondary">Check &amp; repair</button>
+</form>
+<form method="POST" action="/parent/system/drives/back-to-sd" class="inline-form" data-confirm="Copy all videos back to the SD card and stop using this drive?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Move videos back to the SD card</button>
+</form>
+{% if media.sd_copy_bytes %}
+<p class="fs-14 mw-500 mt-16">An old copy of the videos ({{ gb(media.sd_copy_bytes) }}) is still on the SD card from
+when they moved to this drive.</p>
+<form method="POST" action="/parent/system/drives/delete-sd-copy" data-confirm="Delete the old copy on the SD card? The videos on the drive are kept.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-danger">Delete the old copy</button>
+</form>
+{% endif %}
+{% else %}
+<div class="flash flash-error mw-500" role="alert">
+  {% if media.present %}The videos drive is plugged in but not opened.{% else %}The videos drive is not plugged in.{% endif %}
+  Kids see a "videos are resting" screen until it is back.</div>
+<ol class="fs-14 mw-500">
+  <li>Plug the drive in (and switch it on, if it has a power switch).</li>
+  <li>Wait ten seconds, then press <strong>Reconnect</strong>.</li>
+  <li>If that fails, press <strong>Check &amp; repair</strong> next to the drive below.</li>
+</ol>
+<form method="POST" action="/parent/system/drives/reconnect">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn">Reconnect</button>
+</form>
+{% endif %}
+
+<h2 class="mt-40" id="usb-drives">USB drives</h2>
+{% if not state.disks %}
+<p class="muted">No USB drives are plugged in. Plug one in and <a href="/parent/system/drives">reload this page</a>.</p>
+{% endif %}
+{% for disk in state.disks %}
+<div class="card mw-500">
+  <div class="info">
+    <div class="title-line"><strong>{{ disk.name }}</strong> <span class="muted">{{ gb(disk.size) }}</span></div>
+    {% for part in disk.partitions %}
+    <div class="meta mt-6">
+      {{ part.label or "No name" }} &middot; {{ part.fs_name }}{% if part.size %} &middot; {{ gb(part.size) }}{% endif %}{% if part.free %}, {{ gb(part.free) }} free{% endif %}
+      {% if part.role == "videos" %}<strong>&middot; holds the videos</strong>{% elif part.role == "import" %}&middot; open for importing{% elif part.role == "system" or part.role == "library" %}&middot; used by the system{% endif %}
+    </div>
+    {% if part.warning %}<div class="fs-13 warn-text">{{ part.warning }}</div>{% endif %}
+    {% if part.role not in ("system", "library") %}
+    <div class="actions">
+      {% if part.usable and part.role != "videos" %}
+      <form method="POST" action="/parent/system/drives/use" data-confirm="Copy the videos to this drive and use it from now on? Other files on it are left alone.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="device" value="{{ part.path }}">
+        <button type="submit" class="btn">Use for videos</button>
+      </form>
+      {% endif %}
+      {% if part.role == "import" %}
+      <a href="/parent/import" class="btn btn-secondary">Import from it</a>
+      {% elif part.usable and part.role != "videos" %}
+      <form method="POST" action="/parent/system/drives/open">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="device" value="{{ part.path }}">
+        <button type="submit" class="btn btn-secondary">Import videos from it</button>
+      </form>
+      {% endif %}
+      {% if part.role != "videos" %}
+      <form method="POST" action="/parent/system/drives/eject">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="device" value="{{ part.path }}">
+        <button type="submit" class="btn btn-secondary">Eject</button>
+      </form>
+      {% if part.fstype in ("exfat", "vfat", "ntfs", "ext4") %}
+      <form method="POST" action="/parent/system/drives/repair">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="device" value="{{ part.path }}">
+        <button type="submit" class="btn btn-secondary">Check &amp; repair</button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% if not disk.partitions|selectattr("role", "in", ["videos", "system", "library"])|list %}
+    <details class="mt-16">
+      <summary>Format this drive (erases everything on it)</summary>
+      <form method="POST" action="/parent/system/drives/format" class="mt-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="disk" value="{{ disk.path }}">
+        <div class="form-group">
+          <label for="fs-{{ loop.index }}">Format</label>
+          <select id="fs-{{ loop.index }}" name="fstype">
+            <option value="exfat" selected>exFAT (recommended: Windows and Mac can read it too)</option>
+            <option value="ext4">ext4 (Linux only)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="label-{{ loop.index }}">Name for the drive</label>
+          <input type="text" id="label-{{ loop.index }}" name="label" value="CURATABLES" maxlength="11" required>
+        </div>
+        <div class="form-group">
+          <label for="confirm-{{ loop.index }}">Type <strong>ERASE</strong> to delete everything on <strong>{{ disk.name }}</strong></label>
+          <input type="text" id="confirm-{{ loop.index }}" name="confirm" required autocomplete="off" autocapitalize="characters">
+        </div>
+        <button type="submit" class="btn btn-danger">Format</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2 class="mt-40" id="backups">Backups</h2>
+<p class="fs-14 mw-500">Every night the box saves its settings and the list of videos (not the video files).
+Restoring one puts the settings, kids' profiles and video list back as they were then.</p>
+{% if config.storage.media_path %}
+<form method="POST" action="/parent/system/drives/backups" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="drive_backups" value="{{ '' if config.storage.drive_backups else '1' }}">
+  <p class="fs-14">Copies on the videos drive: <strong>{{ "on" if config.storage.drive_backups else "off" }}</strong>.
+  With them on, the library can be rebuilt even if the SD card dies.</p>
+  <button type="submit" class="btn btn-secondary">{{ "Stop copying backups to the drive" if config.storage.drive_backups else "Also keep backups on the videos drive" }}</button>
+</form>
+{% endif %}
+<form method="POST" action="/parent/system/backups/now" class="mt-16">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Back up now</button>
+</form>
+{% if backups %}
+<table class="mw-500 mt-16">
+  <thead><tr><th>When</th><th>Where</th><th></th></tr></thead>
+  <tbody>
+  {% for b in backups[:20] %}
+    <tr><td>{{ b.when }}</td><td>{{ "SD card" if b.where == "sd" else "Videos drive" }}</td>
+      <td><form method="POST" action="/parent/system/backups/restore" data-confirm="Restore the backup from {{ b.when }}? Changes made since then are lost.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="where" value="{{ b.where }}">
+        <input type="hidden" name="name" value="{{ b.name }}">
+        <button type="submit" class="btn btn-secondary">Restore</button>
+      </form></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No backups yet.</p>
+{% endif %}
+{% endblock %}

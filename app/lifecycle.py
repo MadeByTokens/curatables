@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.services.media_fs import capped, media_missing
 from app.config import Config
 from app.db.connection import create_connection, get_db_path
 from app.db.schema import init_schema, recover_from_crash
@@ -55,7 +56,7 @@ def build_content_service(conn: sqlite3.Connection, config: Config, metrics=None
         config.media_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,
         normalizer=MediaNormalizer(MediaProbeService()),
-        max_download_bytes=config.storage.max_download_bytes,
+        max_download_bytes=capped(config.media_dir, config.storage.max_download_bytes),
     )
     return ContentService(
         VideoRepository(conn), SourceRepository(conn), ChannelRepository(conn),
@@ -66,7 +67,10 @@ def build_content_service(conn: sqlite3.Connection, config: Config, metrics=None
 
 def startup_jobs(config: Config, metrics=None) -> None:
     """Re-queue downloads left pending by a restart and sweep abandoned
-    upload temp files. Failures are logged, never fatal."""
+    upload temp files. Failures are logged, never fatal. Skipped while
+    the videos drive is missing."""
+    if media_missing(config.storage.media_path):
+        return
     try:
         conn = create_connection(get_db_path(config.data_dir))
         try:
@@ -99,7 +103,7 @@ def _maintenance_pass(config: Config):
     conn = create_connection(get_db_path(config.data_dir))
     try:
         report = None
-        if config.storage.cache_days > 0:
+        if config.storage.cache_days > 0 and not media_missing(config.storage.media_path):
             storage = StorageService(config.media_dir,
                                      min_free_bytes=config.storage.min_free_disk_bytes)
             report = storage.evict_expired(VideoRepository(conn), config.storage.cache_days)

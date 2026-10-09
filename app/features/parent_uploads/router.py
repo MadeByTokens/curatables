@@ -16,6 +16,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
+from app.services.media_fs import capped
 from app.dependencies import (
     get_channel_repo, get_config, get_storage_service,
     get_upload_service, require_parent,
@@ -32,6 +33,10 @@ from app.services.media_probe import UnsupportedCodec, ProbeError
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/parent", tags=["parent-uploads"])
+
+
+def _max_upload(config) -> int:
+    return capped(config.media_dir, config.storage.max_upload_bytes)
 
 
 _TUS_RESUMABLE = "1.0.0"
@@ -106,7 +111,7 @@ def upload_page(request: Request,
         "request": request,
         "channels": channels,
         "default_channel_id": default_channel_id,
-        "max_upload_bytes": config.storage.max_upload_bytes,
+        "max_upload_bytes": _max_upload(config),
         "error": None,
     })
 
@@ -121,7 +126,7 @@ def tus_options(request: Request,
     return Response(status_code=204, headers=_tus_headers({
         "Tus-Version": _TUS_VERSION,
         "Tus-Extension": _TUS_EXTENSION,
-        "Tus-Max-Size": str(config.storage.max_upload_bytes),
+        "Tus-Max-Size": str(_max_upload(config)),
     }))
 
 
@@ -131,7 +136,7 @@ def tus_options_token(token: str,
     return Response(status_code=204, headers=_tus_headers({
         "Tus-Version": _TUS_VERSION,
         "Tus-Extension": _TUS_EXTENSION,
-        "Tus-Max-Size": str(config.storage.max_upload_bytes),
+        "Tus-Max-Size": str(_max_upload(config)),
     }))
 
 
@@ -159,10 +164,10 @@ async def tus_create(request: Request,
                         content="Upload-Length required and positive",
                         media_type="text/plain")
 
-    if upload_length > config.storage.max_upload_bytes:
+    if upload_length > _max_upload(config):
         return Response(status_code=413, headers=_tus_headers(),
                         content=(f"Upload exceeds configured max of "
-                                 f"{config.storage.max_upload_bytes} bytes"),
+                                 f"{_max_upload(config)} bytes"),
                         media_type="text/plain")
 
     allowed, reason = storage.check_can_write(required_bytes=upload_length)
@@ -274,7 +279,7 @@ def upload_finalize(request: Request, token: str,
             "request": request,
             "channels": channel_repo.list(),
             "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": config.storage.max_upload_bytes,
+            "max_upload_bytes": _max_upload(config),
             "error": e.conversion_hint,
         }, status_code=415)
     except ProbeError as e:
@@ -283,7 +288,7 @@ def upload_finalize(request: Request, token: str,
             "request": request,
             "channels": channel_repo.list(),
             "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": config.storage.max_upload_bytes,
+            "max_upload_bytes": _max_upload(config),
             "error": f"Could not read the uploaded file: {e}",
         }, status_code=400)
     except InsufficientDiskSpace as e:
@@ -291,7 +296,7 @@ def upload_finalize(request: Request, token: str,
             "request": request,
             "channels": channel_repo.list(),
             "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": config.storage.max_upload_bytes,
+            "max_upload_bytes": _max_upload(config),
             "error": str(e),
         }, status_code=507)
     except DuplicateUpload as e:
@@ -302,7 +307,7 @@ def upload_finalize(request: Request, token: str,
             "request": request,
             "channels": channel_repo.list(),
             "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": config.storage.max_upload_bytes,
+            "max_upload_bytes": _max_upload(config),
             "error": (f'This file is already in the library as "{e.video.title}", '
                       f"in {where}. Open it from Content to move it."),
         }, status_code=409)
@@ -311,7 +316,7 @@ def upload_finalize(request: Request, token: str,
             "request": request,
             "channels": channel_repo.list(),
             "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": config.storage.max_upload_bytes,
+            "max_upload_bytes": _max_upload(config),
             "error": str(e),
         }, status_code=400)
 

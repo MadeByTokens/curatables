@@ -33,11 +33,10 @@ def test_media_subdirs_go_to_the_media_drive(tmp_path):
         assert (media / sub).is_dir()
 
 
-def test_missing_media_drive_refuses_to_start(tmp_path):
+def test_missing_media_drive_starts_without_creating_it(tmp_path):
     data, media = tmp_path / "sd", tmp_path / "unplugged" / "curatables-library"
     _write_config(data, media)
-    with pytest.raises(RuntimeError, match="is the drive plugged in"):
-        create_app(data_dir=str(data))
+    create_app(data_dir=str(data))
     assert not media.exists()
 
 
