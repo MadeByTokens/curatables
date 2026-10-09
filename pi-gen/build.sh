@@ -10,7 +10,7 @@
 #       (install with: sudo apt install qemu-user-static binfmt-support,
 #        or: docker run --privileged --rm tonistiigi/binfmt --install arm64)
 #
-# Output: pi-gen/.pi-gen/deploy/curatables-<date>-arm64.img.xz
+# Output: pi-gen/.pi-gen/deploy/image_<date>-curatables.img.xz
 #
 # Env overrides:
 #   PIGEN_DIR   where to clone pi-gen      (default: pi-gen/.pi-gen)

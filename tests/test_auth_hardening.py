@@ -78,3 +78,23 @@ def test_migration_hashes_plaintext_pins(db):
     stored = db.execute("SELECT pin FROM profiles WHERE name='old'").fetchone()["pin"]
     assert stored.startswith("pbkdf2$")
     assert verify_pin(stored, "9876")
+
+
+def test_config_json_is_owner_only(app):
+    import stat
+    app.state.config.save()
+    mode = stat.S_IMODE(app.state.config.config_path().stat().st_mode)
+    assert mode == 0o600
+
+
+def test_pointer_to_missing_library_refuses_to_start(tmp_path, monkeypatch):
+    import json
+    import pytest
+    from app.config import load_config
+    home = tmp_path / "home"
+    (home / "curatables-data").mkdir(parents=True)
+    (home / "curatables-data" / "config.json").write_text(
+        json.dumps({"storage": {"path": str(tmp_path / "unplugged")}}))
+    monkeypatch.setattr("app.config.Path.home", lambda: home)
+    with pytest.raises(RuntimeError, match="not there"):
+        load_config()

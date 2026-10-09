@@ -348,19 +348,19 @@ class ContentService:
                 storage.delete_video_files(Video(video_id=video_id, title=""))
                 return
             if path:
-                repo.update(
-                    video_id,
-                    download_status="ready",
-                    download_error="",
-                    cached_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-                    file_size=storage.file_size(video_id),
-                )
+                fields = {
+                    "download_status": "ready",
+                    "download_error": "",
+                    "cached_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    "file_size": storage.file_size(video_id),
+                }
                 if recheck and self._content_changed(approved.duration, path):
                     logger.warning("Re-download of %s differs from the approved "
                                    "video; holding it for review", video_id)
-                    repo.update(video_id, status="review",
-                                download_error="Changed since you approved it: "
-                                               "the length is different. Watch it again.")
+                    fields["status"] = "review"
+                    fields["download_error"] = ("Changed since you approved it: "
+                                                "the length is different. Watch it again.")
+                repo.update(video_id, **fields)
                 if not self.thumbnails.is_cached(video_id):
                     self.thumbnails.extract_frame(video_id, source_path=path)
                 self.metrics.record_download("success")

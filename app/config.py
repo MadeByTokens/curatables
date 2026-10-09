@@ -1,6 +1,7 @@
 """Configuration management for curatables server."""
 
 import json
+import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
@@ -77,10 +78,11 @@ class Config:
         path = self.config_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_suffix(".json.tmp")
-        with open(tmp_path, "w") as f:
+        # Holds the password hash and session secret: owner-only.
+        fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             json.dump(asdict(self), f, indent=2)
             f.flush()
-            import os
             os.fsync(f.fileno())
         tmp_path.replace(path)  # atomic on POSIX
 
@@ -97,6 +99,12 @@ def load_config(data_dir: str | None = None) -> Config:
             data = json.load(f)
         moved_to = _relocation_target(data, config_path)
         if moved_to is not None and not data_dir:
+            if not moved_to.exists():
+                # Starting with only the pointer would mean no password
+                # and first-run setup open to the network.
+                raise RuntimeError(
+                    f"The library was moved to {moved_to.parent}, but it is not "
+                    "there (is the drive mounted?). Refusing to start.")
             with open(moved_to) as f:
                 data = json.load(f)
         config.server = ServerConfig(**data.get("server", {}))
@@ -115,7 +123,7 @@ def _relocation_target(data: dict, config_path: Path) -> Path | None:
     if set(data) != {"storage"}:
         return None
     target = Path(data["storage"].get("path", "")) / "config.json"
-    if target == config_path or not target.exists():
+    if target == config_path:
         return None
     return target
 

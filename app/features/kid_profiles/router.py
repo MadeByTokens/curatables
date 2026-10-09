@@ -76,7 +76,10 @@ def profile_pin(request: Request,
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
     viewer = _viewer_for_profile(profile)
-    if not PIN_LIMITER.check(profile.id):
+    # Keyed by device as well, so one sibling's wrong guesses don't lock
+    # the profile on everyone else's tablet.
+    limiter_key = (profile.id, request.client.host if request.client else "")
+    if not PIN_LIMITER.check(limiter_key):
         return render_kid_template(request, viewer, "kid/pin.html", {
             "profile": profile,
             "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
@@ -84,7 +87,7 @@ def profile_pin(request: Request,
             "locked": True,
         })
     if profiles_svc.check_pin(profile, pin):
-        PIN_LIMITER.reset(profile.id)
+        PIN_LIMITER.reset(limiter_key)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url="/", status_code=302)
     return render_kid_template(request, viewer, "kid/pin.html", {

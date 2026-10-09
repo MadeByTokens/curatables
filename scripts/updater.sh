@@ -32,6 +32,9 @@ REQ="$DATA/update-request.json"
 RES="$DATA/update-result.json"
 PIP="$ROOT/.venv/bin/pip"
 PY="$ROOT/.venv/bin/python"
+# Root only ever runs the system interpreter; the venv's Python (which
+# imports packages just fetched from PyPI) runs as the service user.
+SYS_PY=/usr/bin/python3
 
 # Nothing to do if the flag vanished between the path trigger and now.
 [[ -f "$REQ" ]] || exit 0
@@ -39,7 +42,7 @@ PY="$ROOT/.venv/bin/python"
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 ytdlp_ver() {
-    "$PY" -c 'import yt_dlp; print(yt_dlp.version.__version__)' 2>/dev/null || echo ""
+    as_svc "$PY" -c 'import yt_dlp; print(yt_dlp.version.__version__)' 2>/dev/null || echo ""
 }
 
 # The data dir is owned by the service user, so anything root does there
@@ -57,7 +60,7 @@ as_venv_owner() {
 # Write the result file atomically (temp + mv) as the service user.
 write_result() {
     local status="$1" message="$2" from_v="$3" to_v="$4" json
-    json="$("$PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF'
+    json="$("$SYS_PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF'
 import json, sys
 status, message, from_v, to_v, finished_at = sys.argv[1:6]
 print(json.dumps({

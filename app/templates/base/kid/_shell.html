@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ viewer.kid_header_name if viewer else 'curatables' }}{% endblock %}</title>
 <link rel="stylesheet" href="/static/kid/style.css?v={{ asset_v }}">
-{% if viewer and viewer.theme in ('calm', 'playful', 'clear') %}
+{% if viewer and viewer.theme in kid_themes %}
 <link rel="stylesheet" href="/static/kid/theme-{{ viewer.theme }}.css?v={{ asset_v }}">
 {% endif %}
 {% block head_extra %}{% endblock %}

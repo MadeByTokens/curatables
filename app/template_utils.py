@@ -8,6 +8,7 @@ from datetime import date, datetime
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
+from app.constants import THEME_CHOICES
 from app.models import ViewerContext
 
 _TEMPLATES_ROOT = os.path.join(os.path.dirname(__file__), "templates", "base")
@@ -76,6 +77,7 @@ def register_filters(templates: Jinja2Templates) -> None:
     templates.env.filters["friendly_date"] = friendly_date
     templates.env.filters["friendly_download_error"] = friendly_download_error
     templates.env.globals["asset_v"] = _asset_version()
+    templates.env.globals["kid_themes"] = [key for key, _label in THEME_CHOICES if key != "base"]
 
 
 def _get_templates() -> Jinja2Templates:
