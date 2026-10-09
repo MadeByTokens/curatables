@@ -70,12 +70,12 @@ class TestLibraryToggle:
         v = VideoRepository(conn).get("yt_unpin")
         assert v.keep_forever is False
 
-    def test_content_list_shows_library_badge(self, app, authed_client):
+    def test_content_list_shows_keep_forever_badge(self, app, authed_client):
         _insert_video(app, "yt_pin1", keep_forever=True)
         _insert_video(app, "yt_plain")
         resp = authed_client.get("/parent/content")
         assert resp.status_code == 200
-        assert "library" in resp.text  # badge label
+        assert "keep forever" in resp.text  # badge label
 
     def test_content_list_shows_evicted_state(self, app, authed_client):
         _insert_video(app, "yt_evicted", download_status="evicted")
