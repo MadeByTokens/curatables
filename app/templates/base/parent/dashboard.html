@@ -2,6 +2,30 @@
 {% block content %}
 <h1>Dashboard</h1>
 
+{% if not (setup.has_channel and setup.has_profile and setup.has_video) %}
+<div class="setup-card">
+  <h2>Getting started</h2>
+  <ol class="setup-steps">
+    <li class="{{ 'done' if setup.has_channel }}">
+      {% if setup.has_channel %}&#10003;{% endif %}
+      <a href="/parent/channels/">Make a channel</a> — a shelf for videos, like "Animals" or "Bedtime".
+    </li>
+    <li class="{{ 'done' if setup.has_profile }}">
+      {% if setup.has_profile %}&#10003;{% endif %}
+      <a href="/parent/profiles/create">Add a kid</a> — choose what they're allowed to do; start simple.
+    </li>
+    <li class="{{ 'done' if setup.has_video }}">
+      {% if setup.has_video %}&#10003;{% endif %}
+      <a href="/parent/add">Add a video</a> — paste a link, watch it all, then approve it.
+    </li>
+    <li>
+      On the kid's tablet, open <strong class="kid-url">{{ kid_url }}</strong>
+      and add it to the home screen (Share &rarr; Add to Home Screen on iPad).
+    </li>
+  </ol>
+</div>
+{% endif %}
+
 {% set ds = disk_status() %}
 
 {# ============ 1. NEEDS ATTENTION ============ #}
@@ -54,7 +78,7 @@
       <strong>{{ attention.stuck_pending|length }}
         video{% if attention.stuck_pending|length != 1 %}s{% endif %} stuck pending</strong>
       (pending for over 1 hour — possible yt-dlp bot block).
-      <a href="/parent/content?page=1">Review →</a>
+      <a href="/parent/content?status=pending">Review →</a>
     </li>
     {% endif %}
   </ul>
@@ -172,12 +196,12 @@
         <div class="recent-item ai-fs">
           <div class="meta">
             <div class="title-line x-038">
-              <strong>{{ c.author_name }}{% if c.is_parent_user %} (Parent){% endif %}:</strong>
+              <strong>{% if c.is_parent_user %}You{% else %}{{ c.author_name }}{% endif %}:</strong>
               "{{ c.body[:80] }}{% if c.body|length > 80 %}…{% endif %}"
             </div>
             <div class="sub">
-              on <a href="/parent/content/{{ c.video_id }}#comments" class="muted">{{ c.video_id }}</a>
-              · {{ c.created_at }}
+              on <a href="/parent/content/{{ c.video_id }}#comments" class="muted">{{ c.video_title or c.video_id }}</a>
+              · {{ c.created_at|friendly_date }}
             </div>
           </div>
         </div>

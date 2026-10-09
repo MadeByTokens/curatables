@@ -172,12 +172,30 @@ class ContentService:
             videos.extend(vs)
         return videos, failed
 
-    def list_all(self, page: int = 1, per_page: int = 30) -> tuple[list[Video], int]:
-        """List all videos (for parent dashboard), any status."""
+    def list_all(self, page: int = 1, per_page: int = 30,
+                 filter_name: str = "") -> tuple[list[Video], int]:
+        """List videos for the parent content page, any status, optionally
+        narrowed to one of VideoRepository.LIST_FILTERS."""
         offset = (page - 1) * per_page
+        if filter_name in self.video_repo.LIST_FILTERS:
+            return (self.video_repo.list_filtered(filter_name, per_page, offset),
+                    self.video_repo.count_filtered(filter_name))
         videos = self.video_repo.list(status=None, limit=per_page, offset=offset)
         total = self.video_repo.count(status=None)
         return videos, total
+
+    def download_statuses(self, video_ids: list[str]) -> dict[str, str]:
+        return self.video_repo.download_statuses(video_ids)
+
+    def retry_download(self, video_id: str) -> bool:
+        """Queue a failed download again. Returns False if the video is
+        not in the error state."""
+        video = self.video_repo.get(video_id)
+        if video is None or video.download_status != "error" or video.storage_mode == "uploaded":
+            return False
+        self.video_repo.update(video_id, download_status="pending", download_error="")
+        self._start_download(video_id, video.original_url, video.resolution)
+        return True
 
     # --- Writing ---
 

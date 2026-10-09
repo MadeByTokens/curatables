@@ -227,6 +227,40 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
+    LIST_FILTERS = {
+        "review": "status = 'review'",
+        "hidden": "status = 'hidden'",
+        "pending": "download_status IN ('pending', 'downloading')",
+        "error": "download_status = 'error'",
+    }
+
+    def list_filtered(self, filter_name: str, limit: int = 30,
+                      offset: int = 0) -> list[Video]:
+        where = self.LIST_FILTERS[filter_name]
+        rows = self.db.execute(
+            f"SELECT * FROM videos WHERE {where} "
+            "ORDER BY added_at DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        ).fetchall()
+        return [self._to_model(r) for r in rows]
+
+    def count_filtered(self, filter_name: str) -> int:
+        where = self.LIST_FILTERS[filter_name]
+        row = self.db.execute(
+            f"SELECT COUNT(*) AS cnt FROM videos WHERE {where}").fetchone()
+        return int(row["cnt"])
+
+    def download_statuses(self, video_ids: list[str]) -> dict[str, str]:
+        if not video_ids:
+            return {}
+        placeholders = ",".join("?" for _ in video_ids)
+        rows = self.db.execute(
+            f"SELECT video_id, download_status FROM videos "
+            f"WHERE video_id IN ({placeholders})",
+            list(video_ids),
+        ).fetchall()
+        return {r["video_id"]: r["download_status"] for r in rows}
+
     def list_awaiting_review(self, limit: int = 20) -> list[Video]:
         rows = self.db.execute(
             "SELECT * FROM videos WHERE status = 'review' "

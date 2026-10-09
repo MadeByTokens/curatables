@@ -47,8 +47,34 @@ def _asset_version() -> str:
     return digest.hexdigest()[:10]
 
 
+_DOWNLOAD_ERROR_ADVICE = {
+    "bot_blocked": "The site blocked the download. Press Retry after updating "
+                   "yt-dlp (Settings → Updates), or turn on Browser Impersonation "
+                   "(Settings → Advanced → Anti-Bot).",
+    "unavailable": "The video is private, removed, or not available where you live.",
+    "age_restricted": "The site wants a logged-in account for this video "
+                      "(Settings → Advanced → Anti-Bot → cookies).",
+    "network": "Couldn't reach the site. Check the internet connection, then press Retry.",
+    "format": "No downloadable copy was found, or it is bigger than the download "
+              "size limit (Settings → Advanced).",
+    "disk_full": "The disk is full. Free some space (Storage), then press Retry.",
+}
+
+
+def friendly_download_error(raw: str | None) -> str:
+    """Plain advice for a stored '[type] message' download error."""
+    if not raw:
+        return ""
+    if raw.startswith("[") and "]" in raw:
+        kind = raw[1:raw.index("]")]
+        if kind in _DOWNLOAD_ERROR_ADVICE:
+            return _DOWNLOAD_ERROR_ADVICE[kind]
+    return "The download failed. Press Retry; if it keeps failing, update yt-dlp in Settings."
+
+
 def register_filters(templates: Jinja2Templates) -> None:
     templates.env.filters["friendly_date"] = friendly_date
+    templates.env.filters["friendly_download_error"] = friendly_download_error
     templates.env.globals["asset_v"] = _asset_version()
 
 

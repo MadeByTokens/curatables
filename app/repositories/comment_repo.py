@@ -29,7 +29,7 @@ class CommentRepository(BaseRepository):
     def get_by_id(self, comment_id: int) -> Comment | None:
         row = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -42,7 +42,7 @@ class CommentRepository(BaseRepository):
         """Get all comments for a video with author info. Returns flat list."""
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -59,7 +59,7 @@ class CommentRepository(BaseRepository):
         from profiles that share at least one channel with them."""
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -94,7 +94,7 @@ class CommentRepository(BaseRepository):
                                  offset: int = 0) -> list[Comment]:
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -110,7 +110,7 @@ class CommentRepository(BaseRepository):
                                   offset: int = 0) -> list[Comment]:
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -136,7 +136,7 @@ class CommentRepository(BaseRepository):
         placeholders = ",".join("?" for _ in top_level_ids)
         rows = self.db.execute(
             f"SELECT c.*, "
-            f"COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            f"COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             f"COALESCE(p.avatar, 'default') as author_avatar "
             f"FROM comments c "
             f"LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -177,10 +177,12 @@ class CommentRepository(BaseRepository):
         """Get recent comments across all videos (for parent moderation)."""
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
+            "COALESCE(p.avatar, 'default') as author_avatar, "
+            "COALESCE(v.title, c.video_id) as video_title "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
+            "LEFT JOIN videos v ON v.video_id = c.video_id "
             "ORDER BY c.created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
@@ -207,7 +209,7 @@ class CommentRepository(BaseRepository):
                                limit: int = 20) -> list[Comment]:
         rows = self.db.execute(
             "SELECT c.*, "
-            "COALESCE(p.display_name, p.name, 'Parent') as author_name, "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
             "COALESCE(p.avatar, 'default') as author_avatar "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -229,4 +231,5 @@ class CommentRepository(BaseRepository):
             created_at=d.get("created_at", ""),
             author_name=d.get("author_name", ""),
             author_avatar=d.get("author_avatar", "default"),
+            video_title=d.get("video_title") or "",
         )

@@ -16,7 +16,7 @@
 <div class="flash flash-error mw-600">{{ error }}</div>
 {% endif %}
 
-<div id="resume-banner" class="flash mw-600 d-none warn-bg warn-text">
+<div id="resume-banner" class="flash mw-600 warn-bg warn-text" hidden>
   You have an unfinished upload: <strong id="resume-name"></strong>.
   Pick the file again from the same folder to resume from
   <span id="resume-pct">0</span>%.
@@ -45,9 +45,9 @@
   </div>
 
   <button type="button" id="start-btn" class="btn">Start upload</button>
-  <button type="button" id="cancel-btn" class="btn btn-secondary d-none">Cancel</button>
+  <button type="button" id="cancel-btn" class="btn btn-secondary" hidden>Cancel</button>
 
-  <div id="progress-wrap" class="mt-24 d-none">
+  <div id="progress-wrap" class="mt-24" hidden>
     <progress id="bar" value="0" max="100" class="w-100 x-058"></progress>
     <div id="status" class="mt-8 muted-2 fs-14"></div>
   </div>
@@ -81,8 +81,8 @@
   function reset() {
     currentUpload = null;
     retryCount = 0;
-    startBtn.style.display = "";
-    cancelBtn.style.display = "none";
+    startBtn.hidden = false;
+    cancelBtn.hidden = true;
   }
 
   function humanSize(n) {
@@ -170,11 +170,11 @@
     // user re-picks the file and the upload reports progress, the
     // onProgress callback takes over.
     resumePctEl.textContent = "0";
-    resumeBanner.style.display = "";
+    resumeBanner.hidden = false;
   }
 
   function hideResumeBanner() {
-    resumeBanner.style.display = "none";
+    resumeBanner.hidden = true;
     pendingResume = null;
   }
 
@@ -202,7 +202,7 @@
   fileInput.addEventListener("change", function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
-    progressWrap.style.display = "";
+    progressWrap.hidden = false;
     bar.value = 0;
     setStatus("Preparing " + file.name + " (" + humanSize(file.size) + ")…");
   });
@@ -215,18 +215,18 @@
     var file = fileInput.files && fileInput.files[0];
     if (!file) {
       setStatus("Pick a file first.");
-      progressWrap.style.display = "";
+      progressWrap.hidden = false;
       return;
     }
     if (file.size > MAX_BYTES) {
       setStatus("File is larger than the configured maximum. Lower the file size or raise the limit in Settings.");
-      progressWrap.style.display = "";
+      progressWrap.hidden = false;
       return;
     }
 
-    progressWrap.style.display = "";
-    startBtn.style.display = "none";
-    cancelBtn.style.display = "";
+    progressWrap.hidden = false;
+    startBtn.hidden = true;
+    cancelBtn.hidden = false;
     bar.value = 0;
     retryCount = 0;
 

@@ -14,4 +14,5 @@ class Comment:
     # Joined fields (not always present)
     author_name: str = ""
     author_avatar: str = "default"
+    video_title: str = ""
     replies: list = field(default_factory=list)

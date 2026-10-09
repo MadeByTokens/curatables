@@ -1,29 +1,16 @@
 {% extends "parent/base.html" %}
 {% block content %}
-{% set has_pending = videos | selectattr("download_status", "in", ["pending", "downloading"]) | list | length > 0 %}
-{% if has_pending %}
-<meta http-equiv="refresh" content="5">
-{% endif %}
-<style>
-.card .thumb { width: 160px; }
-.card .thumb img { width: 100%; height: auto; }
-.card .bulk-check { float: left; margin-right: 8px; transform: scale(1.3); }
-.bulk-bar {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
-}
-.bulk-bar select, .bulk-bar .btn { margin-right: 6px; }
-.bulk-bar label { font-size: 14px; }
-@media (max-width: 600px) {
-  .card .thumb { width: 100%; }
-}
-</style>
 
-<h1>Approved Content</h1>
-<p>{{ total }} video(s) total — page {{ page }} of {{ total_pages }}</p>
+<h1>Content</h1>
+<nav class="filter-tabs" aria-label="Filter">
+  {% for key, label in content_filters %}
+  <a href="/parent/content{% if key %}?status={{ key }}{% endif %}" class="filter-tab{% if status_filter == key %} active{% endif %}"{% if status_filter == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+<p>{{ total }} video(s) — page {{ page }} of {{ total_pages }}</p>
+<div id="refresh-notice" class="flash flash-info" hidden>
+  Downloads have finished. <a href="">Refresh the list</a>
+</div>
 
 {% if flash %}
 <div class="flash {% if flash_type == 'error' %}flash-error{% endif %}">{{ flash }}</div>
@@ -71,10 +58,10 @@ function confirmBulk() {
 
 {% if videos %}
   {% for v in videos %}
-  <div class="card">
-    <input type="checkbox" class="bulk-check" form="bulk-form" name="video_ids" value="{{ v.video_id }}">
+  <div class="card" data-video-id="{{ v.video_id }}" data-download-status="{{ v.download_status }}">
+    <input type="checkbox" class="bulk-check" form="bulk-form" name="video_ids" value="{{ v.video_id }}" aria-label="Select {{ v.title }}">
     <div class="thumb">
-      <img src="/media/thumb/{{ v.video_id }}" alt="{{ v.title }}">
+      <img src="/media/thumb/{{ v.video_id }}" alt="">
     </div>
     <div class="info">
       <div class="title-line">
@@ -108,9 +95,10 @@ function confirmBulk() {
         {% elif v.download_status == 'downloading' %}
           <span class="x-044">&#8635; downloading...</span>
         {% elif v.download_status == 'error' %}
-          <span class="x-045">&#10007; error</span>
+          <span class="x-045">&#10007; failed</span>
+          <br><small class="danger-text">{{ v.download_error|friendly_download_error }}</small>
           {% if v.download_error %}
-          <br><small class="danger-text">{{ v.download_error }}</small>
+          <details class="fs-12 muted-3"><summary>Details</summary>{{ v.download_error }}</details>
           {% endif %}
         {% elif v.download_status == 'evicted' %}
           <span title="Cache expired; re-downloads on next play" class="muted">&#128465; evicted</span>
@@ -122,7 +110,13 @@ function confirmBulk() {
         {% endif %}
       </div>
       <div class="actions">
-        <a href="/parent/content/{{ v.video_id }}/edit" class="btn btn-sm x-047">Edit</a>
+        <a href="/parent/content/{{ v.video_id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
+        {% if v.download_status == 'error' and v.storage_mode != 'uploaded' %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/retry">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm">Retry</button>
+        </form>
+        {% endif %}
         {% if v.status == 'active' %}
         <form method="POST" action="/parent/content/{{ v.video_id }}/hide">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -135,7 +129,7 @@ function confirmBulk() {
         </form>
         {% endif %}
         <form method="POST" action="/parent/content/{{ v.video_id }}/delete"
-              data-confirm="Delete this video?">
+              data-confirm="Delete this video?" class="action-danger">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
@@ -151,12 +145,47 @@ function confirmBulk() {
 {% if total_pages > 1 %}
 <div class="mt-20 ta-c">
   {% if page > 1 %}
-  <a href="/parent/content?page={{ page - 1 }}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+  <a href="/parent/content?page={{ page - 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
   {% endif %}
   <span class="x-048">Page {{ page }} of {{ total_pages }}</span>
   {% if page < total_pages %}
-  <a href="/parent/content?page={{ page + 1 }}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+  <a href="/parent/content?page={{ page + 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
   {% endif %}
 </div>
 {% endif %}
+<script>
+/* While downloads run, poll their status instead of reloading the page
+   (a reload would wipe ticked boxes and scroll position). */
+(function () {
+  var cards = document.querySelectorAll('.card[data-download-status="pending"], .card[data-download-status="downloading"]');
+  if (!cards.length) { return; }
+  var ids = [];
+  for (var i = 0; i < cards.length; i++) { ids.push(cards[i].getAttribute('data-video-id')); }
+  function busy() {
+    return document.querySelector('input[name="video_ids"]:checked') ||
+           (document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName));
+  }
+  function poll() {
+    fetch('/parent/content/status?ids=' + encodeURIComponent(ids.join(',')), {credentials: 'same-origin'})
+      .then(function (r) { return r.json(); })
+      .then(function (statuses) {
+        var changed = false;
+        for (var i = 0; i < cards.length; i++) {
+          var id = cards[i].getAttribute('data-video-id');
+          if (statuses[id] && statuses[id] !== cards[i].getAttribute('data-download-status')) {
+            changed = true;
+          }
+        }
+        if (!changed) { setTimeout(poll, 5000); return; }
+        if (busy()) {
+          document.getElementById('refresh-notice').hidden = false;
+        } else {
+          window.location.reload();
+        }
+      })
+      .catch(function () { setTimeout(poll, 15000); });
+  }
+  setTimeout(poll, 5000);
+})();
+</script>
 {% endblock %}

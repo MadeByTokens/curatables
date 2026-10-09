@@ -1,27 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>curatables - Parent Login</title>
-<style>
-body { font-family: sans-serif; max-width: 400px; margin: 80px auto; padding: 0 20px; color: #333; }
-h1 { color: #2a9d8f; }
-label { display: block; margin-top: 16px; font-weight: bold; }
-input[type=password] { width: 100%; padding: 10px; margin-top: 4px; box-sizing: border-box; font-size: 16px; }
-button { margin-top: 24px; padding: 12px 32px; background: #2a9d8f; color: #fff; border: none; font-size: 16px; cursor: pointer; }
-button:hover { background: #238577; }
-.error { color: #d33; font-weight: bold; }
-</style>
-</head>
-<body>
-<h1>curatables</h1>
-<p>Parent Dashboard Login</p>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% extends "parent/_auth.html" %}
+{% block title %}Parent sign in · curatables{% endblock %}
+{% block content %}
+<p>Parent dashboard</p>
+{% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 <form method="POST" action="/parent/login">
-  <label for="password">Password</label>
-  <input type="password" id="password" name="password" required autofocus>
-  <button type="submit">Log In</button>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autofocus autocomplete="current-password">
+    <label class="fw-normal fs-14 mt-6"><input type="checkbox" data-show-password="password"> Show password</label>
+  </div>
+  <button type="submit" class="btn">Sign in</button>
 </form>
-</body>
-</html>
+<p class="muted-2 fs-13 mt-24">
+  Forgot the password? It can be reset from the computer running
+  curatables: see "I forgot the parent password" in the getting-started guide.
+</p>
+<p class="fs-14 mt-16"><a href="/profiles">&larr; Back to the kids' screen</a></p>
+{% endblock %}

@@ -7,7 +7,7 @@
 {% endif %}
 
 <div class="mb-20">
-  <img id="thumb-preview" src="/media/thumb/{{ video.video_id }}" class="r-4 x-039">
+  <img id="thumb-preview" src="/media/thumb/{{ video.video_id }}" alt="Current thumbnail" class="r-4 x-039">
   <div class="mt-6">
     <a href="/media/thumb/{{ video.video_id }}" download="thumb-{{ video.video_id }}.jpg"
        class="btn btn-sm btn-secondary">Download current</a>
@@ -17,7 +17,7 @@
 <form method="POST" action="/parent/content/{{ video.video_id }}/edit" enctype="multipart/form-data" class="mw-600">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="form-group">
-    <label for="thumbnail">Replace Thumbnail (optional)</label>
+    <label for="thumb-input">Replace Thumbnail (optional)</label>
     <input type="file" id="thumb-input" name="thumbnail" accept="image/*" class="fs-14">
     <small class="muted">PNG, JPG, WebP. The preview above updates as you pick.</small>
   </div>

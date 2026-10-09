@@ -7,12 +7,9 @@
 <div class="flash flash-error">{{ error }}</div>
 {% endif %}
 {% if success %}
-<div id="success-overlay" onclick="if(event.target===this)this.remove()" class="w-100 d-flex ai-c jc-c x-054">
-  <div class="r-8 p-32 ta-c x-055">
-    <div class="fs-48 mb-12">&#10003;</div>
-    <p class="fs-16 mb-24 x-056">{{ success }}</p>
-    <button onclick="document.getElementById('success-overlay').remove()" class="btn x-057">OK</button>
-  </div>
+<div class="flash" role="status">
+  &#10003; {{ success }}
+  <a href="/parent/content?status=pending">See progress &rarr;</a>
 </div>
 {% endif %}
 
@@ -32,5 +29,8 @@
   <button type="submit" class="btn">Add Content</button>
 </form>
 
-<p class="mt-24"><a href="/parent/content">View all content &rarr;</a></p>
+<p class="mt-24">
+  Have a video file instead? <a href="/parent/upload">Upload it</a>.
+  &middot; Sharing a list from another family? <a href="/parent/channels/import">Import it</a>.
+</p>
 {% endblock %}

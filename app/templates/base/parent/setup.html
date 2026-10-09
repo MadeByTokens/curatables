@@ -1,33 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>curatables - First-Time Setup</title>
-<style>
-body { font-family: sans-serif; max-width: 500px; margin: 60px auto; padding: 0 20px; color: #333; }
-h1 { color: #2a9d8f; }
-label { display: block; margin-top: 16px; font-weight: bold; }
-input[type=password], input[type=text] { width: 100%; padding: 10px; margin-top: 4px; box-sizing: border-box; font-size: 16px; }
-button { margin-top: 24px; padding: 12px 32px; background: #2a9d8f; color: #fff; border: none; font-size: 16px; cursor: pointer; }
-button:hover { background: #238577; }
-.note { color: #666; font-size: 14px; margin-top: 4px; }
-.error { color: #d33; font-weight: bold; }
-</style>
-</head>
-<body>
-<h1>curatables Setup</h1>
-<p>Welcome! Set a password for the parent dashboard.</p>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% extends "parent/_auth.html" %}
+{% block title %}Set up · curatables{% endblock %}
+{% block content %}
+<p>Welcome! Choose a password for the parent dashboard.</p>
+{% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 <form method="POST" action="/parent/setup">
-  <label for="password">Password</label>
-  <input type="password" id="password" name="password" required minlength="8">
-  <p class="note">At least 8 characters. This password is the only lock on the parent area.</p>
-
-  <label for="password2">Confirm Password</label>
-  <input type="password" id="password2" name="password2" required>
-
-  <button type="submit">Set Password &amp; Start</button>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password" autofocus>
+    <small class="muted d-block">At least 8 characters. This password is the only lock on the parent area, so don't use the kids' PIN or something they could guess.</small>
+  </div>
+  <div class="form-group">
+    <label for="password2">Type it again</label>
+    <input type="password" id="password2" name="password2" required autocomplete="new-password">
+    <label class="fw-normal fs-14 mt-6"><input type="checkbox" data-show-password="password password2"> Show password</label>
+  </div>
+  <button type="submit" class="btn">Set password &amp; start</button>
 </form>
-</body>
-</html>
+{% endblock %}

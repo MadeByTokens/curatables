@@ -3,7 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, Form, Query, Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +11,7 @@ from app.dependencies import (
     require_parent, get_content_service, get_channel_service,
     get_stats_service, get_comment_service, get_thumbnail_service,
 )
+from app.services.images import validate_image
 from app.services.storage import RESOLUTION_MAP
 from app.services.content import ContentService, ContentError
 from app.services.channels import ChannelService
@@ -26,15 +27,28 @@ router = APIRouter(prefix="/parent", tags=["parent-content"])
 ITEMS_PER_PAGE = 30
 
 
+CONTENT_FILTERS = [
+    ("", "All"),
+    ("review", "Waiting for your OK"),
+    ("pending", "Downloading"),
+    ("error", "Failed"),
+    ("hidden", "Hidden"),
+]
+
+
 @router.get("/content", response_class=HTMLResponse)
 def content_list(request: Request,
                  page: int = Query(1, ge=1),
+                 status: str = Query(""),
                  flash: str = Query(""),
                  flash_type: str = Query(""),
                  viewer: ViewerContext = Depends(require_parent),
                  content: ContentService = Depends(get_content_service),
                  channels_svc: ChannelService = Depends(get_channel_service)):
-    videos, total = content.list_all(page=page, per_page=ITEMS_PER_PAGE)
+    if status not in dict(CONTENT_FILTERS):
+        status = ""
+    videos, total = content.list_all(page=page, per_page=ITEMS_PER_PAGE,
+                                     filter_name=status)
     total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
     channels = channels_svc.list()
     return request.app.state.templates.TemplateResponse(request, "parent/content.html", {
@@ -44,9 +58,21 @@ def content_list(request: Request,
         "total_pages": total_pages,
         "total": total,
         "channels": channels,
+        "status_filter": status,
+        "content_filters": CONTENT_FILTERS,
         "flash": flash or None,
         "flash_type": flash_type or "success",
     })
+
+
+@router.get("/content/status")
+def content_status(ids: str = Query(""),
+                   viewer: ViewerContext = Depends(require_parent),
+                   content: ContentService = Depends(get_content_service)):
+    """Download status for the given comma-separated video ids. Polled by
+    the content page while downloads are in progress."""
+    video_ids = [v for v in ids.split(",") if v][:100]
+    return JSONResponse(content.download_statuses(video_ids))
 
 
 @router.get("/add", response_class=HTMLResponse)
@@ -226,8 +252,12 @@ async def edit_save(request: Request, video_id: str,
     if thumbnail and hasattr(thumbnail, "read"):
         data = await thumbnail.read()
         if data:
-            thumbnails.save_uploaded(video_id, data)
-            success_msg = "Saved. New thumbnail will appear on next refresh."
+            try:
+                validate_image(data)
+                thumbnails.save_uploaded(video_id, data)
+                success_msg = "Saved. New thumbnail will appear on next refresh."
+            except ValueError as e:
+                success_msg = f"Saved, but the thumbnail was not changed: {e}"
 
     channels = content.list_channels()
     return request.app.state.templates.TemplateResponse(request,
@@ -251,6 +281,14 @@ def activate(request: Request, video_id: str,
              content: ContentService = Depends(get_content_service)):
     content.activate_video(video_id)
     return RedirectResponse(url="/parent/content", status_code=302)
+
+
+@router.post("/content/{video_id}/retry")
+def retry(request: Request, video_id: str,
+          viewer: ViewerContext = Depends(require_parent),
+          content: ContentService = Depends(get_content_service)):
+    content.retry_download(video_id)
+    return RedirectResponse(url="/parent/content?status=pending", status_code=302)
 
 
 @router.post("/content/{video_id}/delete")
