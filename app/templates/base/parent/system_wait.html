@@ -1,0 +1,9 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="flash flash-info mw-500" role="status">{{ message }}</div>
+<div data-wait-healthy="/healthz" data-wait-back="{{ back }}" data-wait-delay="{{ delay_ms }}"></div>
+<p class="fs-14 mw-500">If nothing happens after a few minutes, open
+<a href="{{ back }}">the Box page</a> again. On Wi-Fi the box may have a new address; try
+<a href="http://curatables.local/">curatables.local</a>.</p>
+{% endblock %}

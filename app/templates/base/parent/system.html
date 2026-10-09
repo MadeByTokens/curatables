@@ -1,0 +1,131 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Box</h1>
+{% include "parent/_system_nav.html" %}
+
+{% if success %}<div class="flash mw-500" role="status">{{ success }}</div>{% endif %}
+{% if error %}<div class="flash flash-error mw-500" role="alert">{{ error }}</div>{% endif %}
+{% if load_error %}<div class="flash flash-error mw-500" role="alert">{{ load_error }}</div>{% endif %}
+
+<h2 id="network">Network</h2>
+{% if wifi %}
+<ul class="mw-500">
+  {% if wifi.wired %}
+  <li>Connected by <strong>Ethernet cable</strong>{% if wifi.wired_addresses %} at {{ wifi.wired_addresses|join(", ") }}{% endif %}.
+    While the cable is in, Wi-Fi stays on standby.</li>
+  {% endif %}
+  {% if wifi.wifi_connected %}
+  <li>Connected to Wi-Fi <strong>{{ wifi.ssid }}</strong>, signal {{ wifi.signal }}%{% if wifi.wifi_addresses %}, at {{ wifi.wifi_addresses|join(", ") }}{% endif %}.</li>
+  {% elif wifi.saved_ssid %}
+  <li>Saved Wi-Fi network: <strong>{{ wifi.saved_ssid }}</strong>{% if not wifi.wired %} (not connected){% endif %}.</li>
+  {% elif not wifi.wired %}
+  <li>Not connected to any network.</li>
+  {% endif %}
+  {% if not wifi.wifi_device %}<li>This box has no Wi-Fi.</li>{% endif %}
+</ul>
+
+{% if wifi.wifi_device %}
+<h3>Change Wi-Fi</h3>
+<p class="fs-14 mw-500">The box tries the new network first. If it cannot connect within about
+a minute and a half, it goes back to the network it was using, so you cannot lock yourself out.
+If you are on Wi-Fi yourself, this page may disconnect for a moment.</p>
+<p><a href="/parent/system/wifi/scan#change-wifi" class="btn btn-secondary">Look for networks</a></p>
+{% if networks is not none %}
+  {% if networks %}
+  <table class="mw-500">
+    <thead><tr><th>Network</th><th>Signal</th><th></th></tr></thead>
+    <tbody>
+    {% for n in networks %}
+      <tr><td>{{ n.ssid }}{% if not n.secured %} <small class="muted">(open)</small>{% endif %}</td>
+          <td>{{ n.signal }}%</td>
+          <td><a href="/parent/system/wifi/scan?ssid={{ n.ssid|urlencode }}#change-wifi">Use this</a></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No networks found. Hidden networks do not show up; type the name below.</p>
+  {% endif %}
+{% endif %}
+<form method="POST" action="/parent/system/wifi" class="mw-500" id="change-wifi">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="wifi_ssid">Network name</label>
+    <input type="text" id="wifi_ssid" name="ssid" required maxlength="32" value="{{ form.ssid or '' }}"
+           autocomplete="off" autocapitalize="none" spellcheck="false">
+    <small class="muted d-block">Capital letters matter.</small>
+  </div>
+  <div class="form-group">
+    <label for="wifi_password">Wi-Fi password</label>
+    <input type="password" id="wifi_password" name="password" autocomplete="off">
+    <label class="fw-normal fs-14 mt-6"><input type="checkbox" data-show-password="wifi_password"> Show password</label>
+    <small class="muted d-block">Leave empty for an open network.</small>
+  </div>
+  <div class="form-group">
+    <label class="fw-normal"><input type="checkbox" name="hidden" value="1"{% if form.hidden %} checked{% endif %}> This is a hidden network</label>
+  </div>
+  <div class="form-group">
+    <label for="wifi_country">Country (two letters)</label>
+    <input type="text" id="wifi_country" name="country" maxlength="2" size="3"
+           value="{{ form.country or wifi.country }}" autocomplete="off" autocapitalize="characters">
+    <small class="muted d-block">Wi-Fi channels differ by country, for example US, GB, CA, DE, BR.</small>
+  </div>
+  <button type="submit" class="btn">Switch Wi-Fi</button>
+</form>
+{% endif %}
+{% endif %}
+
+{% if account %}
+<h2 class="mt-40" id="login">The box's Linux login</h2>
+<p class="fs-14 mw-500">The <strong>{{ account.user }}</strong> account can change anything on the box.
+{% if not account.has_password %}<strong>It has no password yet, so nobody can log in with it.</strong>{% endif %}
+Its password must be different from the parent dashboard password.</p>
+<form method="POST" action="/parent/system/linux-password" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
+  <div class="form-group">
+    <label for="lp_parent">Your parent dashboard password</label>
+    <input type="password" id="lp_parent" name="parent_password" required autocomplete="off">
+  </div>
+  <div class="form-group">
+    <label for="lp_new">New password for {{ account.user }}</label>
+    <input type="password" id="lp_new" name="password" required minlength="8" autocomplete="new-password">
+  </div>
+  <div class="form-group">
+    <label for="lp_new2">Type it again</label>
+    <input type="password" id="lp_new2" name="password2" required autocomplete="new-password">
+    <label class="fw-normal fs-14 mt-6"><input type="checkbox" data-show-password="lp_new lp_new2"> Show password</label>
+  </div>
+  <button type="submit" class="btn">Change Linux password</button>
+</form>
+
+<h3 class="mt-32" id="ssh">SSH logins</h3>
+<p class="fs-14 mw-500">SSH lets someone with the Linux password use the box's command line from
+another computer. It is <strong>{{ "on" if account.ssh_enabled else "off" }}</strong>.
+Leave it off unless you use it.</p>
+<form method="POST" action="/parent/system/ssh" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="enabled" value="{{ '' if account.ssh_enabled else '1' }}">
+  <div class="form-group">
+    <label for="ssh_parent">Your parent dashboard password</label>
+    <input type="password" id="ssh_parent" name="parent_password" required autocomplete="off">
+  </div>
+  <button type="submit" class="btn btn-secondary">{{ "Turn SSH off" if account.ssh_enabled else "Turn SSH on" }}</button>
+</form>
+{% endif %}
+
+<h2 class="mt-40" id="restart">Restart</h2>
+<p class="fs-14 mw-500">If something seems stuck, restarting usually fixes it. Kids watching a
+video will see it stop for a moment.</p>
+<form method="POST" action="/parent/system/restart" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Restart Curatables</button>
+</form>
+<form method="POST" action="/parent/system/network-restart" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Reconnect network</button>
+</form>
+<form method="POST" action="/parent/system/reboot" class="inline-form" data-confirm="Restart the whole box? It takes one to two minutes.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-danger">Restart the box</button>
+</form>
+{% endblock %}

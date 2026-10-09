@@ -1,0 +1,29 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>{{ job.title if job else "Task" }}</h1>
+{% if error %}
+<div class="flash flash-error mw-500" role="alert">{{ error }}</div>
+<p class="fs-14 mw-500">If the box was restarting Curatables, this page comes back by itself in a moment.</p>
+<div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="unknown"></div>
+{% else %}
+  {% if job.state == "running" %}
+  <div class="flash flash-info mw-500" role="status">Working&hellip; leave this page open, it updates by itself.
+    The box keeps going even if you close it.</div>
+  {% elif job.state == "done" %}
+  <div class="flash mw-500" role="status">Done.</div>
+  {% else %}
+  <div class="flash flash-error mw-500" role="alert">{{ job.error }}</div>
+  {% endif %}
+  {% if job.messages %}
+  <ol class="fs-14 mw-500">
+    {% for m in job.messages %}<li>{{ m }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+  {% if job.state == "running" %}
+  <div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="running"
+       data-job-count="{{ job.messages|length }}"></div>
+  <noscript><p><a href="">Refresh</a> to see progress.</p></noscript>
+  {% endif %}
+{% endif %}
+<p class="mt-24"><a href="{{ back }}">&larr; Back</a></p>
+{% endblock %}

@@ -324,6 +324,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     from app.features.parent_settings.router import router as settings_router
     from app.features.parent_stats.router import router as stats_router
     from app.features.parent_storage.router import router as parent_storage_router
+    from app.features.parent_system.router import router as parent_system_router
     from app.features.parent_uploads.router import router as parent_uploads_router
     from app.features.kid_uploads.router import router as kid_uploads_router
     from app.features.parent_channels.router import router as parent_channels_router
@@ -348,6 +349,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app.include_router(settings_router)
     app.include_router(stats_router)
     app.include_router(parent_storage_router)
+    app.include_router(parent_system_router)
     app.include_router(parent_uploads_router)
     # parent_sharing must be included BEFORE parent_channels because
     # both routers mount under /parent/channels/; the sharing router
