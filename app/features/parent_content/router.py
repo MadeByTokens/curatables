@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 
 from app.dependencies import (
     require_parent, get_content_service, get_channel_service,
-    get_stats_service, get_comment_service, get_thumbnail_service,
+    get_stats_service, get_comment_service, get_thumbnail_service, get_wishlist_repo,
 )
+from app.repositories.wishlist_repo import WishlistRepository
+from app.services.ids import make_video_id
 from app.services.images import validate_image
 from app.services.storage import RESOLUTION_MAP
 from app.services.content import ContentService, ContentError
@@ -122,7 +124,8 @@ def add_fetch(request: Request,
 @router.post("/add/confirm")
 async def add_confirm(request: Request,
                       viewer: ViewerContext = Depends(require_parent),
-                      content: ContentService = Depends(get_content_service)):
+                      content: ContentService = Depends(get_content_service),
+                      wishlist: WishlistRepository = Depends(get_wishlist_repo)):
     templates = request.app.state.templates
     form = await request.form()
 
@@ -201,6 +204,7 @@ async def add_confirm(request: Request,
             added += 1
         else:
             skipped += 1
+        wishlist.approve_video(make_video_id(extractor, vid))
 
     msg = f"Added {added} video(s). Downloading in the background — check the Content tab for progress."
     if skipped:

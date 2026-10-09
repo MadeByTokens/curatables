@@ -309,10 +309,12 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     from app.features.parent_channels.router import router as parent_channels_router
     from app.features.parent_sharing.router import router as parent_sharing_router
     from app.features.parent_profiles.router import router as parent_profiles_router
+    from app.features.parent_requests.router import router as parent_requests_router
     from app.features.kid_profiles.router import router as kid_profiles_router
     from app.features.kid_browse.router import router as browse_router
     from app.features.kid_watch.router import router as watch_router
     from app.features.kid_search.router import router as kid_search_router
+    from app.features.kid_wishlist.router import router as kid_wishlist_router
     from app.features.kid_comments.router import router as kid_comments_router
     from app.features.media.router import router as media_router
     from app.features.api.router import router as api_router
@@ -334,10 +336,12 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app.include_router(parent_sharing_router)
     app.include_router(parent_channels_router)
     app.include_router(parent_profiles_router)
+    app.include_router(parent_requests_router)
     app.include_router(kid_profiles_router)
     app.include_router(browse_router)
     app.include_router(watch_router)
     app.include_router(kid_search_router)
+    app.include_router(kid_wishlist_router)
     app.include_router(kid_comments_router)
     app.include_router(kid_uploads_router)
     app.include_router(media_router)

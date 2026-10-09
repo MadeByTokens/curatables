@@ -35,7 +35,7 @@
 {% set ds = disk_status() %}
 
 {# ============ 1. NEEDS ATTENTION ============ #}
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or ds.status != 'ok' %}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or ds.status != 'ok' %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
@@ -53,6 +53,12 @@
     </li>
     {% endif %}
 
+    {% if wishlist_pending %}
+    <li>
+      <strong>{{ wishlist_pending }} video request{% if wishlist_pending != 1 %}s{% endif %} from your kids</strong> —
+      <a href="/parent/requests">review them</a>
+    </li>
+    {% endif %}
     {% if attention.awaiting_review %}
     <li>
       <strong>{{ attention.awaiting_review|length }}

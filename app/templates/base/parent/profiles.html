@@ -1,7 +1,8 @@
 {% extends "parent/base.html" %}
 {% block content %}
 <h1>Child Profiles</h1>
-<p><a href="/parent/profiles/create" class="btn">Create Profile</a></p>
+<p><a href="/parent/profiles/create" class="btn">Create Profile</a>
+  <a href="/parent/requests" class="ml-12">Video requests</a></p>
 
 {% if profiles %}
   {% for p in profiles %}

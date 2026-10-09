@@ -90,6 +90,35 @@ def settings_save(request: Request,
     })
 
 
+def _lines(text: str, commas: bool = False) -> list[str]:
+    seen: list[str] = []
+    for part in (text.replace(",", "\n") if commas else text).splitlines():
+        part = " ".join(part.split())
+        if part and part.lower() not in (s.lower() for s in seen):
+            seen.append(part)
+    return seen
+
+
+@router.post("/settings/wishlist")
+def settings_save_wishlist(request: Request,
+                           blocked_words: str = Form(""),
+                           allowed_channels: str = Form(""),
+                           max_duration_minutes: int = Form(30),
+                           max_results: int = Form(12),
+                           viewer: ViewerContext = Depends(require_parent),
+                           config: Config = Depends(get_config)):
+    config.wishlist.blocked_words = _lines(blocked_words, commas=True)
+    config.wishlist.allowed_channels = _lines(allowed_channels)
+    config.wishlist.max_duration_minutes = max(0, min(max_duration_minutes, 600))
+    config.wishlist.max_results = max(1, min(max_results, 30))
+    config.save()
+    return request.app.state.templates.TemplateResponse(request, "parent/settings.html", {
+        "request": request, "config": config, "advanced_open": False,
+        "success": "Video request rules saved.", "error": None,
+        "update_state": updates.update_state(config),
+    })
+
+
 @router.post("/settings/advanced")
 def settings_save_advanced(request: Request,
                            port: int = Form(...),

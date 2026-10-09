@@ -69,6 +69,9 @@ _A demo library (generated test clips, no real data)._
   iOS 9.
 - **Kid uploads** — kids can add their own videos; ones sent to a shared
   channel wait for your approval.
+- **Ask for new videos** (off by default) — a kid searches YouTube through
+  the server, sees only results that pass your rules, and taps **Ask**;
+  you review and add it, or say "not this one", from a requests inbox.
 - **Parent dashboard** — "needs your attention" (failed downloads, kid
   uploads to approve, low disk), per-kid activity, stats, comments.
 - **Looks after itself** — videos nobody watched for a while are removed
@@ -105,10 +108,9 @@ the server itself runs on Linux.
 
 ## Roadmap
 
-- **Next: kid "wishlist" search.** A kid searches YouTube through the
-  server, sees filtered results, and taps "ask a grown-up"; you approve or
-  reject from a requests inbox before anything is downloaded. Design:
-  [docs/design/filtered-search-and-proxy.md](docs/design/filtered-search-and-proxy.md).
+- **Smarter wishlist filtering.** Kids can already ask for YouTube
+  videos (see below); next is a local classifier for the search results,
+  per [docs/design/filtered-search-and-proxy.md](docs/design/filtered-search-and-proxy.md).
 - **AI safety helper (v0.6).** A local model that pre-screens videos
   against per-child criteria and flags or suggests, never decides
   silently. Design: [docs/design/v0.6-safety-agent.md](docs/design/v0.6-safety-agent.md).

@@ -37,6 +37,7 @@ class VideoMetadata:
     thumbnail_url: str
     extractor: str = ""       # from info["extractor_key"], lowercased
     original_url: str = ""    # from info["webpage_url"]
+    is_live: bool = False     # live now or not started yet
 
 
 class BackendErrorType(Enum):
@@ -88,6 +89,10 @@ class VideoBackend(ABC):
         """Fetch videos from a playlist URL.
         Returns (playlist_title, list_of_videos)."""
         ...
+
+    def search(self, query: str, max_results: int = 12) -> list[VideoMetadata]:
+        """YouTube search results for `query` (metadata only)."""
+        raise NotImplementedError
 
     @abstractmethod
     def download_video(self, url: str, output_dir: Path,

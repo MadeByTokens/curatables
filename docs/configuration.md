@@ -60,6 +60,18 @@ Unknown keys make startup fail, so check spelling.
 | `session_epoch` | `0` | Bumped on every password change; sessions from an older epoch are signed out. |
 | `setup_window_minutes` | `30` | While no password is set, the setup page only works for this many minutes after the server starts; restart it to reopen. `0` keeps it open. |
 
+### `wishlist`
+
+Rules for the YouTube results a kid sees on **Find new** (Settings →
+Video requests).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `blocked_words` | a starter list (horror, scary, gun, …) | Results whose title or channel contains one of these whole words are hidden; a search containing one shows nothing. |
+| `allowed_channels` | `[]` | If not empty, only results from these channel names are shown. |
+| `max_duration_minutes` | `30` | Longer results are hidden; `0` = any length. |
+| `max_results` | `12` | Results shown per search. |
+
 ## Per-child options (Kids → Edit)
 
 Stored in the database, not `config.json`.
@@ -71,7 +83,7 @@ Stored in the database, not `config.json`.
 | Language | English, Português (Brasil) or Español for this kid's screens. Video and channel names are not translated. |
 | Theme | Default, Playful, Calm, or Big & clear (large text, high contrast). |
 | Search | Off, or search within the approved library. |
-| What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles. New profiles start with reactions only. |
+| What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles, and asking for new videos from YouTube (the wishlist). New profiles start with reactions only. |
 | Visible channels | Untick everything = every channel; tick some = only those; tick "Only show the channels ticked below" alone = only the kid's own channels. |
 
 ## Environment variables

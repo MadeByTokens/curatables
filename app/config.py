@@ -59,11 +59,30 @@ class ParentConfig:
     setup_window_minutes: int = 30
 
 
+DEFAULT_WISHLIST_BLOCKED_WORDS = [
+    "horror", "scary", "creepy", "gore", "blood", "kill", "murder", "dead",
+    "gun", "guns", "weapon", "fight", "violent", "prank", "sexy", "nsfw",
+    "porn", "xxx", "drugs", "drunk", "beer", "18+",
+]
+
+
+@dataclass
+class WishlistConfig:
+    """Rules for the YouTube results a kid sees on the wishlist page."""
+    blocked_words: list[str] = field(
+        default_factory=lambda: list(DEFAULT_WISHLIST_BLOCKED_WORDS))
+    # Non-empty: only results from these channel names are shown.
+    allowed_channels: list[str] = field(default_factory=list)
+    max_results: int = 12
+    max_duration_minutes: int = 30
+
+
 @dataclass
 class Config:
     server: ServerConfig = field(default_factory=ServerConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     parent: ParentConfig = field(default_factory=ParentConfig)
+    wishlist: WishlistConfig = field(default_factory=WishlistConfig)
 
     @property
     def data_dir(self) -> Path:
@@ -114,6 +133,7 @@ def load_config(data_dir: str | None = None) -> Config:
         config.server = ServerConfig(**data.get("server", {}))
         config.storage = StorageConfig(**data.get("storage", {}))
         config.parent = ParentConfig(**data.get("parent", {}))
+        config.wishlist = WishlistConfig(**data.get("wishlist", {}))
         if data_dir:
             config.storage.path = data_dir
 

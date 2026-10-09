@@ -22,6 +22,7 @@ class Profile:
     allow_customize: bool = True
     allow_upload: bool = True
     auto_subtitles: bool = True
+    allow_wishlist: bool = False
 
 
 FEATURE_SWITCHES = (
@@ -31,5 +32,6 @@ FEATURE_SWITCHES = (
     ("allow_customize", "Customize videos and own channels (titles, pictures)", False),
     ("allow_upload", "Upload videos from this device", False),
     ("auto_subtitles", "Turn subtitles on automatically", False),
+    ("allow_wishlist", "Ask for new videos from YouTube (a grown-up approves each one first)", False),
 )
 """(field, label, on-by-default-for-a-new-profile) for the parent form."""

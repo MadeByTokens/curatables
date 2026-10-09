@@ -19,6 +19,7 @@ class ViewerContext:
     allow_customize: bool = True
     allow_upload: bool = True
     auto_subtitles: bool = True
+    allow_wishlist: bool = False
 
     @property
     def kid_header_name(self) -> str:

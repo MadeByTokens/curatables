@@ -202,6 +202,20 @@ class YtdlpBackend(VideoBackend):
         return title, _entries_to_metadata(info.get("entries", []),
                                            parent_extractor=extractor)
 
+    def search(self, query: str, max_results: int = 12) -> list[VideoMetadata]:
+        import yt_dlp
+
+        self.last_error = None
+        opts = {**self._base_opts(), "extract_flat": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            try:
+                info = ydl.extract_info(f"ytsearch{int(max_results)}:{query}", download=False)
+            except Exception as e:
+                self.last_error = self.classify_error(e)
+                logger.warning("[%s] %s", self.last_error.error_type.value, self.last_error.message)
+                return []
+        return _entries_to_metadata((info or {}).get("entries", []), parent_extractor="youtube")
+
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
                        subtitle_langs: list[str] | None = None,
@@ -302,7 +316,19 @@ def _info_to_metadata(info: dict) -> VideoMetadata:
         thumbnail_url=info.get("thumbnail") or "",
         extractor=extractor,
         original_url=info.get("webpage_url") or info.get("url") or "",
+        is_live=_is_live(info),
     )
+
+
+def _is_live(info: dict) -> bool:
+    return bool(info.get("is_live")) or info.get("live_status") in ("is_live", "is_upcoming")
+
+
+def _thumbnail(info: dict) -> str:
+    if info.get("thumbnail"):
+        return str(info["thumbnail"])
+    thumbs = [t for t in info.get("thumbnails") or [] if isinstance(t, dict) and t.get("url")]
+    return str(thumbs[-1]["url"]) if thumbs else ""
 
 
 def _entries_to_metadata(entries: list,
@@ -334,8 +360,9 @@ def _entries_to_metadata(entries: list,
             view_count=e.get("view_count") or 0,
             upload_date=e.get("upload_date") or "",
             description=e.get("description") or "",
-            thumbnail_url=e.get("thumbnail") or "",
+            thumbnail_url=_thumbnail(e),
             extractor=extractor,
             original_url=e.get("webpage_url") or e.get("url") or "",
+            is_live=_is_live(e),
         ))
     return results

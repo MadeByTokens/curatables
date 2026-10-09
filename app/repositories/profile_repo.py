@@ -124,4 +124,4 @@ class ProfileRepository(BaseRepository):
 
     @staticmethod
     def _features(d: dict) -> dict[str, Any]:
-        return {f: bool(d.get(f, 1)) for f in FEATURE_FIELDS}
+        return {f: bool(d.get(f, f != "allow_wishlist")) for f in FEATURE_FIELDS}

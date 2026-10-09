@@ -1,7 +1,7 @@
 # Filtered Search and Real-Time YouTube Proxy — Design Notes
 
 **Date:** 2026-04-10
-**Status:** Exploratory design. No code yet. Intended as the conceptual companion to `search-research-playlists-at.md`, which covers the URL-grammar side of the same feature.
+**Status:** Mode A (wishlist) is built without the LLM layers: per-kid switch, server-side `ytsearch`, layers 1–3 (blocked words, channel allowlist, duration and live checks), parent inbox at `/parent/requests`; see `app/services/wishlist.py`. Mode B and layers 4–6 are not built. Intended as the conceptual companion to `search-research-playlists-at.md`, which covers the URL-grammar side of the same feature.
 **Scope:** Two related features that share one filter pipeline — (1) a kid-facing wishlist search, (2) a longer-term real-time filtered YouTube proxy.
 
 ---

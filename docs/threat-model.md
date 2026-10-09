@@ -373,7 +373,10 @@ audit extractors. For YouTube, yt-dlp hands the site's player
 JavaScript to Deno. `ffmpeg` parses every downloaded and uploaded file.
 All of these parse untrusted remote media and metadata.
 
-Mitigations: only the parent can submit URLs (`/parent/*`); downloads
+Mitigations: only the parent can submit URLs (`/parent/*`); a kid with
+the wishlist switch on can only send a search phrase (`ytsearch` of up
+to 100 characters, rate-limited) and an 11-character YouTube video id,
+from which the server builds the watch URL itself; downloads
 use `noplaylist` and `storage.max_download_bytes` (default 4 GB); the
 service unit confines a compromise to the service user (data dir,
 network egress, update requests). There is no further sandbox.
@@ -385,6 +388,26 @@ following at most 3 redirects, each checked the same way. They are capped
 at 5 MB and kept only if the bytes are an image. The address is checked
 before connecting, so a DNS name that changes its answer between the
 check and the connection (DNS rebinding) is not covered.
+
+### Kid wishlist (YouTube search)
+
+Off per profile (`allow_wishlist`, migration 0011) until the parent
+switches it on. `/wishlist` runs `ytsearchN:` on the server and filters
+results by `config.wishlist`: blocked words (query, title, channel;
+a query with one is refused before any request to YouTube), an
+optional channel allowlist, a maximum duration, no live or upcoming
+streams, YouTube ids only. Thumbnails are fetched by the server
+(`safe_fetch`) and served from `/wishlist/thumb/<id>` only for ids this
+profile was just shown or asked for (kept in the session under the
+profile id). `POST /wishlist/ask` takes only a video id, re-fetches its
+metadata and re-applies the rules before storing a pending
+`wishlist_requests` row. Nothing is downloaded or playable until the
+parent adds it through the normal preview, which marks the request
+approved; a rejected video never reappears in that kid's results.
+
+Residual: titles and thumbnails from an unfiltered search reach the
+kid before any human sees them; the word list and allowlist are the
+only filter (no SafeSearch, no classifier yet).
 
 ## Defense-in-depth: what's in place
 
@@ -420,6 +443,7 @@ check and the connection (DNS rebinding) is not covered.
 | Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
 | Re-download check compares length only | Low | Documented; use keep forever for favourites |
 | CSP allows inline style attributes and any https frame | Low | Accepted |
+| Wishlist: kids see titles and thumbnails of unfiltered YouTube search results (word list and channel allowlist only) | Medium | Documented; off by default per kid |
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
 | Wi-Fi PSK on the boot partition between flashing and the first boot | Low (physical access) | Mitigated; blanked once applied |

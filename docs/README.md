@@ -36,7 +36,7 @@ The dashboard also has a built-in help page (**Help** in the parent menu).
 
 | Doc | Status |
 |-----|--------|
-| [design/filtered-search-and-proxy.md](design/filtered-search-and-proxy.md) | Kid "wishlist" search with parent approval, and a filtered real-time proxy. Planned. |
+| [design/filtered-search-and-proxy.md](design/filtered-search-and-proxy.md) | Kid "wishlist" search with parent approval (Mode A, built with the word list, allowlist and length rules; no classifier yet), and a filtered real-time proxy (not built). |
 | [design/v0.6-safety-agent.md](design/v0.6-safety-agent.md) | AI content-safety agent RFC. Not implemented. |
 | [design/offline-web-pages.md](design/offline-web-pages.md) | Idea: offline web pages in the library. Not a commitment. |
 

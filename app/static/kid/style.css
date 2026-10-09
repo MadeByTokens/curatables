@@ -1154,3 +1154,66 @@ noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
 .pin-dots-pictures { font-size: 40px; min-height: 56px; }
 .pin-pad-pictures .pin-key-picture { font-size: 44px; }
 .pin-pad-pictures .pin-key-back { margin-left: 33.5%; }
+
+/* Wishlist: find new videos and ask a grown-up */
+.wishlist-title { margin: 0 0 4px; }
+.wishlist-intro { margin: 0 0 12px; color: #444; }
+.wishlist-sent, .wishlist-error {
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 18px;
+}
+.wishlist-sent { background: #e6f6ee; color: #145c36; border: 1px solid #9fd8b8; }
+.wishlist-error { background: #fee; color: #900; border: 1px solid #f99; }
+.wishlist-meta {
+    display: block;
+    padding: 0 10px 8px;
+    font-size: 13px;
+    color: #555;
+}
+.wishlist-ask-form { margin: 0; padding: 0 10px 10px; }
+.wishlist-ask-btn {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    font-size: 20px;
+    font-family: inherit;
+    font-weight: bold;
+    color: #fff;
+    background: #1f7a70;
+    background: var(--accent, #1f7a70);
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.wishlist-badge {
+    display: inline-block;
+    margin: 0 10px 10px;
+    padding: 6px 12px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #444;
+    background: #eee;
+    border-radius: 10px;
+    text-decoration: none;
+}
+.wishlist-badge-yes { color: #145c36; background: #e6f6ee; }
+.wishlist-badge-no { color: #777; }
+.wishlist-mine { list-style: none; margin: 0; padding: 0; }
+.wishlist-mine-item {
+    overflow: hidden;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+}
+.wishlist-mine-thumb {
+    float: left;
+    width: 96px;
+    height: 54px;
+    margin-right: 12px;
+    background: #000;
+    border-radius: 6px;
+    object-fit: cover;
+}
+.wishlist-mine-title { display: block; font-weight: bold; margin-bottom: 4px; }
+.wishlist-mine-item .wishlist-badge { margin: 0; }

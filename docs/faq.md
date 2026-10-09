@@ -77,6 +77,16 @@ In the kid's own channel: only that kid (and anyone you shared that
 channel with). In a shared channel: nobody until you approve it under
 **Needs your attention**.
 
+**Can my kid ask for new videos?**
+Yes, if you switch on **Ask for new videos** for them (Kids → Edit).
+They get a **Find new** page that searches YouTube through Curatables
+and shows only results that pass your rules (Settings → Video
+requests). Tapping **Ask** sends it to **Video requests** (linked from
+the dashboard and the Kids page); you watch it and add it to a channel
+they can see, or press **Not this one**. Nothing downloads before you
+add it. See [safety-model.md](safety-model.md) for what the child sees
+in the meantime.
+
 **A kid forgot their PIN.**
 **Kids → Edit**, type a new PIN or tick "Remove the PIN". A child who
 doesn't read numbers yet can have a picture PIN instead (Kids → Edit →

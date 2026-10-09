@@ -11,7 +11,9 @@ from starlette.responses import HTMLResponse, Response
 
 from app.dependencies import (
     require_parent, get_channel_service, get_content_service, get_stats_service,
+    get_wishlist_repo,
 )
+from app.repositories.wishlist_repo import WishlistRepository
 from app.services.channels import ChannelService
 from app.services.content import ContentService
 from app.services.stats import StatsService
@@ -27,7 +29,8 @@ def dashboard(request: Request,
               viewer: ViewerContext = Depends(require_parent),
               content: ContentService = Depends(get_content_service),
               stats: StatsService = Depends(get_stats_service),
-              channels_svc: ChannelService = Depends(get_channel_service)):
+              channels_svc: ChannelService = Depends(get_channel_service),
+              wishlist: WishlistRepository = Depends(get_wishlist_repo)):
     _, total = content.list_all(page=1, per_page=1)
     overview = stats.dashboard_overview()
     setup = {
@@ -41,6 +44,7 @@ def dashboard(request: Request,
             "video_count": total,
             "setup": setup,
             "kid_url": kid_address(request),
+            "wishlist_pending": wishlist.count_pending(),
             **overview,
         })
 

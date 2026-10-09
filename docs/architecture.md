@@ -548,8 +548,10 @@ The architecture can take these without restructuring; none exist today.
 - **WebSocket push.** A new feature directory.
 - **Content-safety agent / LLM features.** Designed in
   [`design/v0.6-safety-agent.md`](design/v0.6-safety-agent.md).
-- **Filtered search / proxy, offline web pages.** See
-  [`design/`](design/).
+- **Filtered real-time proxy, LLM filter layers, offline web pages.**
+  See [`design/`](design/). The wishlist (Mode A) exists:
+  `app/features/kid_wishlist/`, `app/features/parent_requests/`,
+  `app/services/wishlist.py`.
 - **Source subscriptions** (auto-sync of channels/playlists).
 
 ---

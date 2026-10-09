@@ -21,6 +21,19 @@ is [threat-model.md](threat-model.md).
   under **Needs your attention** on the dashboard and stay hidden from
   the other kids until you approve them. Uploads into a kid's own
   channel are visible to that kid straight away.
+- **Asking for new videos is off unless you turn it on.** With **Ask
+  for new videos** switched on (Kids → Edit), a child gets a **Find
+  new** page: they type what they want, the server searches YouTube and
+  shows the results that pass your rules (Settings → Video requests:
+  words to hide, channels to allow, a maximum length; live streams are
+  never shown). The tablet still never talks to YouTube, and nothing
+  plays or downloads: tapping **Ask** puts the video in your
+  **Video requests** inbox, where you watch it like any other video
+  before adding it. **Not this one** hides it from that child's
+  searches for good. Be aware that the child sees the titles and
+  pictures of the results before you do, and YouTube's own SafeSearch
+  is not applied, so for a younger child keep the word list strict or
+  allow only channels you trust.
 - **Re-downloaded videos are checked.** To save disk space, a video
   nobody watched for a while is removed and downloaded again the next
   time someone taps it. If the length of the new copy is clearly
@@ -31,8 +44,8 @@ is [threat-model.md](threat-model.md).
 ## Keeping it simple for your child
 
 On **Kids → Edit** you choose what each child can do. A new profile
-starts with only emoji reactions; comments, tags, customizing, uploads
-and search are off until you turn them on. Fewer buttons means fewer
+starts with only emoji reactions; comments, tags, customizing, uploads,
+search and asking for new videos are off until you turn them on. Fewer buttons means fewer
 ways to get lost. The **Big & clear** theme uses large text and high
 contrast; **Calm** removes colour and shadows.
 

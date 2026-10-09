@@ -1,0 +1,76 @@
+{% extends "kid/base.html" %}
+{% macro duration(seconds) -%}
+{% if seconds %}{{ seconds // 60 }}:{{ '%02d'|format(seconds % 60) }}{% endif %}
+{%- endmacro %}
+{% block content %}
+<div class="p-16 mw-600 mx-auto">
+  <h2 class="wishlist-title"><span aria-hidden="true">&#128301;</span> {{ _("Find new videos") }}</h2>
+  <p class="wishlist-intro">{{ _("Tap Ask on a video you like. A grown-up looks at it first.") }}</p>
+  <form method="GET" action="/wishlist" role="search" class="search-form">
+    <label for="wq" class="sr-only">{{ _("What do you want to watch?") }}</label>
+    <input type="search" id="wq" name="q" value="{{ query }}" autocomplete="off"
+           maxlength="100" placeholder="{{ _('What do you want to watch?') }}" class="search-input">
+    <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> {{ _("Search") }}</button>
+  </form>
+  {% if asked %}
+  <div class="wishlist-sent" role="status"><span aria-hidden="true">&#128236;</span> {{ _("Asked! A grown-up will look at it.") }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="wishlist-error" role="alert">{{ error }}</div>
+  {% endif %}
+</div>
+
+{% if query and not error %}
+<div class="video-grid wishlist-grid">
+{% if results %}
+  {% for r in results %}
+  <div class="video-card wishlist-card">
+    <span class="thumb"><img src="/wishlist/thumb/{{ r.video_id }}" alt=""></span>
+    <span class="video-title">{{ r.meta.title }}</span>
+    <span class="wishlist-meta">{{ r.meta.channel }}{% if r.meta.duration %} &middot; {{ duration(r.meta.duration) }}{% endif %}</span>
+    {% if r.status == "new" %}
+    <form method="POST" action="/wishlist/ask" class="wishlist-ask-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="raw_id" value="{{ r.meta.video_id }}">
+      <button type="submit" class="wishlist-ask-btn"><span aria-hidden="true">&#128075;</span> {{ _("Ask") }}</button>
+    </form>
+    {% elif r.status == "pending" %}
+    <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Asked") }}</span>
+    {% elif r.status == "approved" %}
+    <span class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes!") }}</span>
+    {% else %}
+    <span class="wishlist-badge"><span aria-hidden="true">&#127968;</span> {{ _("Already here") }}</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div class="clear"></div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon" aria-hidden="true">&#129300;</div>
+    <p>{{ _("Nothing found. Try another word!") }}</p>
+  </div>
+{% endif %}
+</div>
+{% endif %}
+
+{% if my_requests %}
+<div class="p-16 mw-600 mx-auto">
+  <h3>{{ _("What I asked for") }}</h3>
+  <ul class="wishlist-mine">
+    {% for w in my_requests %}
+    <li class="wishlist-mine-item">
+      <img src="/wishlist/thumb/{{ w.video_id }}" alt="" class="wishlist-mine-thumb">
+      <span class="wishlist-mine-title">{{ w.title }}</span>
+      {% if w.status == "pending" %}
+      <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Waiting") }}</span>
+      {% elif w.status == "approved" %}
+      <a href="/watch/{{ w.video_id }}" class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes! Watch") }}</a>
+      {% else %}
+      <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#10006;</span> {{ _("Not this time") }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

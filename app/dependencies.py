@@ -16,6 +16,7 @@ from app.repositories import (
 from app.backends.base import VideoBackend
 from app.backends.ytdlp import YtdlpBackend
 from app.services.auth import AuthService, LoginThrottle
+from app.services.wishlist import WishlistService
 from app.services.content import ContentService
 from app.services.video_source import VideoSourceService
 from app.services.storage import StorageService
@@ -38,6 +39,7 @@ from app.repositories.override_repo import ProfileVideoOverrideRepository
 from app.repositories.tag_repo import TagRepository
 from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
 from app.repositories.login_failure_repo import LoginFailureRepository
+from app.repositories.wishlist_repo import WishlistRepository
 
 
 # --- Infrastructure ---
@@ -115,6 +117,18 @@ def get_video_source_service(backend=Depends(get_backend)) -> VideoSourceService
 
 def get_thumbnail_service(config=Depends(get_config)) -> ThumbnailService:
     return ThumbnailService(config.data_dir)
+
+
+def get_wishlist_repo(db=Depends(get_db)) -> WishlistRepository:
+    return WishlistRepository(db)
+
+
+def get_wishlist_service(backend=Depends(get_backend),
+                         repo=Depends(get_wishlist_repo),
+                         video_repo=Depends(get_video_repo),
+                         thumbnails=Depends(get_thumbnail_service),
+                         config=Depends(get_config)) -> WishlistService:
+    return WishlistService(backend, repo, video_repo, thumbnails, config)
 
 
 # MediaProbeService is a process-wide singleton so the ffmpeg decoder
@@ -299,6 +313,7 @@ def get_viewer(
                 allow_customize=profile.allow_customize,
                 allow_upload=profile.allow_upload,
                 auto_subtitles=profile.auto_subtitles,
+                allow_wishlist=profile.allow_wishlist,
             )
 
     if auth.is_parent_session(session):
