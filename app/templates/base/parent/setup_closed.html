@@ -1,0 +1,13 @@
+{% extends "parent/_auth.html" %}
+{% block title %}Set up · curatables{% endblock %}
+{% block content %}
+<p><strong>Setup has timed out.</strong></p>
+<p>For safety, a new Curatables box only lets someone choose the parent
+password during the first {{ minutes }} minutes after it starts, so a
+stranger on your network can't do it later.</p>
+<p>Restart the box and open this page again within {{ minutes }} minutes:</p>
+<ul>
+  <li><strong>Raspberry Pi:</strong> unplug the power, wait ten seconds, plug it back in.</li>
+  <li><strong>Computer:</strong> run <code>sudo systemctl restart curatables</code>, or stop and start <code>run.py</code>.</li>
+</ul>
+{% endblock %}

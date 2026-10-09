@@ -124,8 +124,17 @@ watched this video" (checked server-side on approval) and only while
 - Set on first run via `/parent/setup`. While no password exists, every
   route except `/parent/setup`, `/static` and `/healthz` redirects to
   setup — **whoever reaches it first on the LAN becomes the parent.**
-- `/parent/login` allows **10 attempts per client IP per 5 minutes**
-  (429 after that). The limiter is in memory and resets on restart.
+  Setup only accepts a password during the first
+  `parent.setup_window_minutes` (default 30) after the server starts;
+  after that it shows "Setup has timed out" until the server is
+  restarted, so a box left unconfigured is not open indefinitely.
+- `/parent/login` allows **10 failed attempts per client IP, and 50 from
+  all clients together, per 5 minutes** (429 after that). Failures are
+  stored in the database (`login_failures`), so a restart does not reset
+  them; a successful login clears that client's count. The total cap
+  means many addresses on one LAN host don't add up to more tries, at
+  the cost that someone flooding wrong passwords can lock the parent
+  out for a few minutes.
 - Changing the password requires the current one and is not
   rate-limited (it already needs a parent session).
 - Forgotten password: shell access to the box (edit `config.json`) is
@@ -137,7 +146,8 @@ watched this video" (checked server-side on approval) and only while
   in `config.json`, `SameSite=Strict`, `HttpOnly`, no `Secure` flag
   (plain HTTP). Lifetime `parent.session_timeout_hours` (default 24),
   for kid and parent sessions alike.
-- `/parent/logout` is a GET that clears the session.
+- Logout is a POST with a CSRF token, so another page cannot sign the
+  parent out; a GET of `/parent/logout` just goes to the dashboard.
 
 ### Kid PIN
 

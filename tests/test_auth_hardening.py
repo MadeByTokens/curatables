@@ -98,3 +98,32 @@ def test_pointer_to_missing_library_refuses_to_start(tmp_path, monkeypatch):
     monkeypatch.setattr("app.config.Path.home", lambda: home)
     with pytest.raises(RuntimeError, match="not there"):
         load_config()
+
+
+def test_login_throttle_survives_restart_and_caps_all_clients(db):
+    from app.repositories import LoginFailureRepository
+    from app.services.auth import (
+        LOGIN_FAILURES_PER_CLIENT, LOGIN_FAILURES_TOTAL, LOGIN_WINDOW_SECONDS, LoginThrottle,
+    )
+    throttle = LoginThrottle(LoginFailureRepository(db))
+    for _ in range(LOGIN_FAILURES_PER_CLIENT):
+        throttle.failed("10.0.0.2")
+    restarted = LoginThrottle(LoginFailureRepository(db))
+    assert restarted.blocked("10.0.0.2")
+    assert not restarted.blocked("10.0.0.3")
+
+    for i in range(LOGIN_FAILURES_TOTAL):
+        restarted.failed(f"10.0.1.{i}")
+    assert restarted.blocked("10.0.0.3")
+
+    import time
+    assert not restarted.blocked("10.0.0.2", now=time.time() + LOGIN_WINDOW_SECONDS + 1)
+
+
+def test_successful_login_clears_that_clients_failures(client):
+    for _ in range(9):
+        client.post("/parent/login", data={"password": "wrong"})
+    assert client.post("/parent/login", data={"password": "testpass"}).status_code == 302
+    for _ in range(9):
+        client.post("/parent/login", data={"password": "wrong"})
+    assert client.post("/parent/login", data={"password": "testpass"}).status_code == 302

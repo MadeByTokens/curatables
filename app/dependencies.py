@@ -15,7 +15,7 @@ from app.repositories import (
 )
 from app.backends.base import VideoBackend
 from app.backends.ytdlp import YtdlpBackend
-from app.services.auth import AuthService
+from app.services.auth import AuthService, LoginThrottle
 from app.services.content import ContentService
 from app.services.video_source import VideoSourceService
 from app.services.storage import StorageService
@@ -37,6 +37,7 @@ from app.repositories.comment_repo import CommentRepository
 from app.repositories.override_repo import ProfileVideoOverrideRepository
 from app.repositories.tag_repo import TagRepository
 from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
+from app.repositories.login_failure_repo import LoginFailureRepository
 
 
 # --- Infrastructure ---
@@ -102,6 +103,10 @@ def get_backend(config=Depends(get_config)) -> VideoBackend:
 
 def get_auth_service(config=Depends(get_config)) -> AuthService:
     return AuthService(config)
+
+
+def get_login_throttle(db=Depends(get_db)) -> LoginThrottle:
+    return LoginThrottle(LoginFailureRepository(db))
 
 
 def get_video_source_service(backend=Depends(get_backend)) -> VideoSourceService:

@@ -157,6 +157,11 @@ CREATE TABLE IF NOT EXISTS profile_channel_videos (
     PRIMARY KEY (profile_id, channel_id, video_id)
 );
 
+CREATE TABLE IF NOT EXISTS login_failures (
+    client TEXT NOT NULL,
+    at     REAL NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
 CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel_id);
 CREATE INDEX IF NOT EXISTS idx_videos_source ON videos(source_id);
@@ -171,3 +176,4 @@ CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_comment_id);
 CREATE INDEX IF NOT EXISTS idx_pvt_profile ON profile_video_tags(profile_id);
 CREATE INDEX IF NOT EXISTS idx_pvt_tag ON profile_video_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_pcv_channel ON profile_channel_videos(profile_id, channel_id);
+CREATE INDEX IF NOT EXISTS idx_login_failures_at ON login_failures(at);

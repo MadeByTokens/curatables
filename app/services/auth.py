@@ -1,19 +1,43 @@
-from __future__ import annotations
 """Authentication service — password hashing and verification."""
+from __future__ import annotations
 
 import hashlib
 import hmac
 import os
+import time
 
 from app.config import Config
+from app.repositories.login_failure_repo import LoginFailureRepository
 from app.services.rate_limit import RateLimiter
 
 MIN_PASSWORD_LENGTH = 8
 _PIN_ITERATIONS = 100_000
 _PIN_PREFIX = "pbkdf2$"
 
-LOGIN_LIMITER = RateLimiter(max_events=10, window_seconds=300)
 PIN_LIMITER = RateLimiter(max_events=5, window_seconds=300)
+
+LOGIN_WINDOW_SECONDS = 300
+LOGIN_FAILURES_PER_CLIENT = 10
+LOGIN_FAILURES_TOTAL = 50
+
+
+class LoginThrottle:
+    """Failed parent logins per client address and in total, over the
+    last LOGIN_WINDOW_SECONDS, kept in the database."""
+
+    def __init__(self, repo: LoginFailureRepository):
+        self.repo = repo
+
+    def blocked(self, client: str, now: float | None = None) -> bool:
+        since = (now if now is not None else time.time()) - LOGIN_WINDOW_SECONDS
+        return (self.repo.count_since(since, client) >= LOGIN_FAILURES_PER_CLIENT
+                or self.repo.count_since(since) >= LOGIN_FAILURES_TOTAL)
+
+    def failed(self, client: str) -> None:
+        self.repo.record(client, time.time())
+
+    def succeeded(self, client: str) -> None:
+        self.repo.clear(client)
 
 
 def hash_pin(pin: str) -> str:

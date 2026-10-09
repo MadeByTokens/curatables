@@ -43,8 +43,19 @@ a { color: var(--accent); }
   font-size: 15px;
   white-space: nowrap;
 }
+.topnav .nav-form { display: inline; margin: 0; }
+.topnav .nav-button {
+  background: none;
+  border: 0;
+  color: #ddd;
+  cursor: pointer;
+  font: inherit;
+  padding: 14px 16px;
+  font-size: 15px;
+}
 .topnav a:hover,
-.topnav a.active {
+.topnav a.active,
+.topnav .nav-button:hover {
   background: #444;
   color: #fff;
 }

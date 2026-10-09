@@ -3,6 +3,7 @@ from app.repositories.channel_repo import ChannelRepository
 from app.repositories.source_repo import SourceRepository
 from app.repositories.profile_repo import ProfileRepository
 from app.repositories.event_repo import EventRepository
+from app.repositories.login_failure_repo import LoginFailureRepository
 
 __all__ = [
     "VideoRepository",
@@ -10,4 +11,5 @@ __all__ = [
     "SourceRepository",
     "ProfileRepository",
     "EventRepository",
+    "LoginFailureRepository",
 ]

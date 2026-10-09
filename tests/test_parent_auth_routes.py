@@ -28,6 +28,34 @@ class TestSetupPage:
         assert "/parent/login" in resp.headers["location"]
 
 
+class TestSetupWindow:
+    def _expire(self, app):
+        import time
+        window = app.state.config.parent.setup_window_minutes
+        app.state.start_time = time.monotonic() - window * 60 - 1
+
+    def test_setup_closes_after_the_window(self, client, app):
+        _clear_password(app)
+        self._expire(app)
+        resp = client.get("/parent/setup")
+        assert resp.status_code == 403
+        assert b"Setup has timed out" in resp.content
+        resp = client.post("/parent/setup", data={
+            "password": "long-enough-pw", "password2": "long-enough-pw"})
+        assert resp.status_code == 403
+        assert app.state.config.is_first_run
+
+    def test_window_zero_keeps_setup_open(self, client, app):
+        _clear_password(app)
+        app.state.config.parent.setup_window_minutes = 0
+        self._expire(app)
+        assert client.get("/parent/setup").status_code == 200
+
+    def test_closed_window_does_not_affect_an_installed_server(self, client, app):
+        self._expire(app)
+        assert client.get("/parent/setup").status_code == 302
+
+
 class TestSetupSubmit:
     def test_redirects_to_login_when_password_already_set(self, client, app):
         resp = client.post(
@@ -111,8 +139,17 @@ class TestLoginPage:
 
 
 class TestLogout:
-    def test_clears_session_and_redirects_to_login(self, authed_client):
+    def test_get_does_not_log_out(self, authed_client):
         resp = authed_client.get("/parent/logout")
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/parent/"
+        assert authed_client.get("/parent/").status_code == 200
+
+    def test_clears_session_and_redirects_to_login(self, authed_client):
+        page = authed_client.get("/parent/settings").text
+        import re
+        token = re.search(r'name="csrf_token" value="([^"]+)"', page).group(1)
+        resp = authed_client.post("/parent/logout", data={"csrf_token": token})
         assert resp.status_code == 302
         assert resp.headers["location"] == "/parent/login"
 

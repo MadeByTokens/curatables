@@ -118,6 +118,13 @@ class TestCSRFMiddleware:
         # 200 (re-rendered login with error) or 302 — either way NOT 403
         assert resp.status_code != 403
 
+    def test_logout_needs_a_token(self, csrf_client):
+        assert csrf_client.post("/parent/login",
+                                data={"password": "testpass"}).status_code == 302
+        resp = csrf_client.post("/parent/logout")
+        assert resp.status_code == 403
+        assert csrf_client.get("/parent/").status_code == 200
+
     def test_get_requests_never_blocked(self, csrf_client):
         """Non-mutating methods bypass the CSRF check entirely."""
         resp = csrf_client.get("/parent/login")

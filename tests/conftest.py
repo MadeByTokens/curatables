@@ -14,8 +14,7 @@ from app.services.auth import AuthService
 
 @pytest.fixture(autouse=True)
 def _reset_auth_limiters():
-    from app.services.auth import LOGIN_LIMITER, PIN_LIMITER
-    LOGIN_LIMITER.reset()
+    from app.services.auth import PIN_LIMITER
     PIN_LIMITER.reset()
     yield
 

@@ -188,7 +188,10 @@ http://curatables.local:8080/parent/
 
 - **First time:** you'll be asked to **create a parent password**. Pick a
   good one and save it in your password manager. This protects the parent
-  dashboard.
+  dashboard. Do this within 30 minutes of starting Curatables; if the
+  page says **Setup has timed out**, restart it
+  (`sudo systemctl restart curatables`, or unplug and replug a Pi) and
+  try again.
 - After that, you land on the **parent dashboard**.
 
 Your kids will use the other address — the same thing without `/parent/`:

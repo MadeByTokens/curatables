@@ -28,7 +28,10 @@
   <span class="right">
     {% set ds = disk_status() %}
     <a href="/parent/storage" class="disk-chip {{ ds.status }}" title="Storage report">Free: {{ "%.1f"|format(ds.free_gb) }} GB{% if ds.status == "blocked" %} (blocked){% elif ds.status == "warning" %} (low){% endif %}</a>
-    <a href="/parent/logout">Logout</a>
+    <form method="post" action="/parent/logout" class="nav-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="nav-button">Logout</button>
+    </form>
   </span>
 </header>
 <div class="container">

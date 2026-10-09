@@ -44,7 +44,9 @@ password are both set by you, not baked in:
   image ships with no login password on purpose.
 - **Parent dashboard:** the app ships with no password; the first visit
   to `curatables.local` redirects to a one-time setup page where you
-  choose it.
+  choose it. Do it within 30 minutes of powering on; after that the page
+  says setup has timed out, and unplugging and replugging the Pi
+  reopens it.
 
 ## After flashing
 

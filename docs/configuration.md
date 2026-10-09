@@ -57,6 +57,7 @@ Unknown keys make startup fail, so check spelling.
 | `session_secret` | generated | Signs session cookies. Changing it signs everyone out. |
 | `session_timeout_hours` | `24` | How long a parent (or kid) sign-in lasts. |
 | `session_epoch` | `0` | Bumped on every password change; sessions from an older epoch are signed out. |
+| `setup_window_minutes` | `30` | While no password is set, the setup page only works for this many minutes after the server starts; restart it to reopen. `0` keeps it open. |
 
 ## Per-child options (Kids → Edit)
 
