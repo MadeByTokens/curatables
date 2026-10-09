@@ -103,6 +103,12 @@
 }
 .review-fallback .btn-linkout:hover { background: #05a; }
 .review-fallback .ext { color: #888; font-size: 12px; margin-top: 8px; }
+.review-progress {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center;
+  gap: 12px; padding: 8px 12px; margin-bottom: 16px; background: #fff;
+  border: 1px solid #ddd; border-radius: 6px; font-weight: bold;
+}
+.review-progress[hidden] { display: none; }
 </style>
 
 <h1>Review &amp; Add</h1>
@@ -115,6 +121,10 @@
   <div class="placeholder">Pick a video below and press <strong>Watch &#9654;</strong></div>
 </div>
 <div class="review-current" id="review-current">No video loaded</div>
+<div class="review-progress" id="review-progress" data-total="{{ videos|length }}" hidden>
+  <span id="review-count">0 of {{ videos|length }} watched</span>
+  <button type="button" class="btn btn-sm btn-secondary" id="next-unwatched">Next not watched &#9654;</button>
+</div>
 {% endif %}
 
 <form method="POST" action="/parent/add/confirm" id="review-form">
@@ -241,7 +251,7 @@
     </button>
     <a href="/parent/add" class="ml-12">Cancel</a>
     <div id="add-btn-hint" class="d-ib ml-12 muted fs-13">
-      Tick every &ldquo;I have already fully watched this video&rdquo; to enable.
+      Tick &ldquo;I have already fully watched this video&rdquo; for each video you want to add.
     </div>
   </div>
 </form>

@@ -4,19 +4,50 @@
   var hint = document.getElementById('add-btn-hint');
   var boxes = form.querySelectorAll('.watched-cb');
 
+  var progress = document.getElementById('review-progress');
+  var count = document.getElementById('review-count');
+  var nextBtn = document.getElementById('next-unwatched');
+
   function refreshGate() {
-    var allChecked = true;
+    var watched = 0;
     for (var i = 0; i < boxes.length; i++) {
       var card = document.getElementById('card-' + extractVid(boxes[i]));
       if (boxes[i].checked) {
+        watched++;
         if (card) card.classList.add('is-watched');
       } else {
         if (card) card.classList.remove('is-watched');
-        allChecked = false;
       }
     }
-    addBtn.disabled = !allChecked;
-    if (hint) hint.style.display = allChecked ? 'none' : 'inline-block';
+    var left = boxes.length - watched;
+    addBtn.disabled = watched === 0;
+    addBtn.textContent = watched === 0 || left === 0
+      ? 'Add ' + boxes.length + ' video(s)'
+      : 'Add ' + watched + ' watched video(s)';
+    if (hint) {
+      hint.style.display = left === 0 ? 'none' : 'inline-block';
+      if (watched > 0) {
+        hint.textContent = left + ' not watched yet will be left out.';
+      }
+    }
+    if (progress) {
+      progress.hidden = false;
+      count.textContent = watched + ' of ' + boxes.length + ' watched';
+      nextBtn.hidden = left === 0;
+    }
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', function () {
+      for (var i = 0; i < boxes.length; i++) {
+        if (!boxes[i].checked) {
+          var card = document.getElementById('card-' + extractVid(boxes[i]));
+          var watch = card && card.querySelector('.watch-btn');
+          if (watch) { watch.click(); } else if (card) { card.scrollIntoView(); }
+          return;
+        }
+      }
+    });
   }
 
   function extractVid(cb) {
