@@ -45,3 +45,4 @@ Thumbs.db
 pi-gen/.pi-gen/
 pi-gen/.binshim/
 pi-gen/stage-curatables/01-install/files/
+pi-gen/stage-curatables/00-install-packages/00-packages

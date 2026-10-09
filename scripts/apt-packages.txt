@@ -1,0 +1,13 @@
+# Debian packages Curatables needs on the server. Read by
+# scripts/install.sh and copied into the Pi image by pi-gen/build.sh.
+python3
+python3-venv
+python3-pip
+ffmpeg
+ca-certificates
+curl
+unzip
+rsync
+git
+avahi-daemon
+libnss-mdns

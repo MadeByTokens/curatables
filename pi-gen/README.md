@@ -108,8 +108,8 @@ gets the `.img.xz` attached).
 - `build.sh` — clones pi-gen, stages the source, runs the Docker build.
 - `stage-curatables/` — the custom pi-gen stage:
   - `prerun.sh` — starts the stage's rootfs from the previous stage.
-  - `00-install-packages/00-packages` — apt deps mirroring
-    `scripts/install.sh` (plus `git`).
+  - `00-install-packages/00-packages` — written by `build.sh` from
+    `scripts/apt-packages.txt`, the list `scripts/install.sh` uses.
   - `01-install/00-run.sh` — copies the source into the rootfs.
   - `01-install/01-run-chroot.sh` — service user, venv, deno, systemd
     units (server, updater, backup timer), `run.py --check`, then

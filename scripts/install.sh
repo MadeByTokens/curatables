@@ -47,11 +47,7 @@ INSTALL_ROOT=/opt/curatables
 SVC_USER=curatables
 SVC_DATA=/home/curatables/curatables-data
 
-APT_PACKAGES=(
-    python3 python3-venv python3-pip
-    ffmpeg ca-certificates curl unzip rsync
-    avahi-daemon libnss-mdns
-)
+mapfile -t APT_PACKAGES < <(grep -Ev '^[[:space:]]*(#|$)' scripts/apt-packages.txt)
 
 DENO_INSTALL_URL="https://deno.land/install.sh"
 

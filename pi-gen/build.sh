@@ -85,6 +85,8 @@ say "Installing config + stage-curatables into pi-gen"
 cp "${HERE}/config" "${PIGEN_DIR}/config"
 rm -rf "${PIGEN_DIR}/stage-curatables"
 cp -a "${HERE}/stage-curatables" "${PIGEN_DIR}/stage-curatables"
+grep -Ev '^[[:space:]]*(#|$)' "${REPO_ROOT}/scripts/apt-packages.txt" \
+	> "${PIGEN_DIR}/stage-curatables/00-install-packages/00-packages"
 # Don't also export the intermediate Lite image.
 touch "${PIGEN_DIR}/stage2/SKIP_IMAGES"
 

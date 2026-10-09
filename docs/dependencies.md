@@ -101,7 +101,7 @@ requirements.txt` so it also pulls production deps):
 | `pytest-asyncio>=0.21` | Runs `@pytest.mark.asyncio` tests, including the ZeroconfAdvertiser async suite. Pinned explicitly in `requirements-dev.txt` — without it, every async test collects as an error. |
 | `pytest-cov>=4.0` | Coverage reporting for CI (`pytest --cov=app`). |
 | `httpx>=0.24` | Required by `fastapi.testclient.TestClient`. |
-| `mypy>=1.0` | Type checker, configured in `pyproject.toml` (advisory in CI). |
+| `mypy>=1.0` | Type checker, configured in `pyproject.toml` (blocking in CI). |
 | `ruff>=0.5` | Linter, rule set in `pyproject.toml` (`ruff check .`, blocking in CI). |
 
 `shellcheck` (lints `scripts/*.sh` and the pi-gen stage scripts) comes
@@ -386,23 +386,16 @@ mentioning in any podman-specific deployment doc.
 
 `scripts/install.sh` is the one-shot installer for Debian/Ubuntu and
 runs `run.py --check` as its acceptance test (which mirrors §3 + the
-`ffmpeg`/`deno` rows from §2). Its apt list:
+`ffmpeg`/`deno` rows from §2). The apt packages are listed once, in
+[`scripts/apt-packages.txt`](../scripts/apt-packages.txt): python3,
+python3-venv, python3-pip, ffmpeg, ca-certificates, curl, unzip, rsync,
+git, avahi-daemon and libnss-mdns.
 
-```bash
-APT_PACKAGES=(
-    python3 python3-venv python3-pip
-    ffmpeg ca-certificates curl unzip rsync
-    avahi-daemon libnss-mdns
-)
-```
+`pi-gen/build.sh` copies the same list into the image's
+`00-install-packages/00-packages`, and the chroot runs `run.py --check`.
 
-The Pi image installs the same set from
-`pi-gen/stage-curatables/00-install-packages/00-packages`, minus
-`rsync` and plus `git`, and runs `run.py --check` in the chroot.
-
-If you add or remove a runtime dep, update `run.py:check_dependencies`,
-`scripts/install.sh`'s `APT_PACKAGES` and the pi-gen package list in the
-same commit.
+If you add or remove a runtime dep, update `run.py:check_dependencies`
+and `scripts/apt-packages.txt` in the same commit.
 
 `scripts/install.sh --dry-run` is how to test installer changes from a
 workstation without root: it resolves apt package names via
@@ -432,5 +425,4 @@ entries are worse than missing ones. Rules:
 5. When you change the runtime user, update
    [§8 Non-root user](#8-non-root-user) and the systemd units in
    lockstep.
-6. When you add an apt package, add it to `scripts/install.sh` and
-   `pi-gen/stage-curatables/00-install-packages/00-packages`.
+6. When you add an apt package, add it to `scripts/apt-packages.txt`.
