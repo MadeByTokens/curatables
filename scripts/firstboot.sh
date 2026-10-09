@@ -7,11 +7,14 @@
 # Ethernet needs nothing: Raspberry Pi OS brings eth0 up with DHCP
 # automatically, so a Pi plugged into the router just gets an IP.
 #
-# Runs on every boot (via curatables-firstboot.service). Once the network is
-# configured, the ssid and psk values are blanked in the file (NetworkManager
-# keeps them in its root-only store), so the password does not stay on a
-# partition any computer can read. Fill them in again and reboot to change
-# networks.
+# Runs on every boot (via curatables-firstboot.service). The network is saved
+# as a NetworkManager profile that reconnects on its own. Once the Pi has
+# actually connected, the ssid and psk values are blanked in the file
+# (NetworkManager keeps them in its root-only store), so the password does
+# not stay on a partition any computer can read. Fill them in again and
+# reboot to change networks. Progress and errors go to
+# curatables-firstboot.log next to the file, because Raspberry Pi OS keeps
+# the journal in RAM only.
 #
 # File format (curatables-wifi.txt), simple KEY=value lines:
 #   country=US        # 2-letter Wi-Fi regulatory country (required for Wi-Fi)
@@ -34,6 +37,17 @@ done
 
 [ -n "$WIFI_FILE" ] || { echo "firstboot: no curatables-wifi.txt found, skipping Wi-Fi setup"; exit 0; }
 
+LOG_FILE="$(dirname "$WIFI_FILE")/curatables-firstboot.log"
+
+say() {
+	echo "firstboot: $*"
+	{ echo "$(date -u '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"; } 2>/dev/null || true
+}
+
+if [ -f "$LOG_FILE" ] && [ "$(wc -l < "$LOG_FILE")" -gt 300 ]; then
+	tail -n 200 "$LOG_FILE" > "${LOG_FILE}.new" && mv "${LOG_FILE}.new" "$LOG_FILE"
+fi
+
 # Pull a KEY's value, stripping a trailing CR (Windows) and surrounding
 # whitespace. Ignores comment (#) lines.
 getval() {
@@ -51,13 +65,11 @@ if [ -z "$SSID" ]; then
 	exit 0
 fi
 
-# raspi-config nonint abstracts over the NetworkManager (bookworm and later) vs
-# wpa_supplicant (older) difference and also unblocks rfkill + sets the
-# regulatory domain, which Wi-Fi needs before it will associate.
+# raspi-config sets the regulatory domain and unblocks rfkill, which Wi-Fi
+# needs before it will associate.
 if [ -n "$COUNTRY" ]; then
-	echo "firstboot: setting Wi-Fi country ${COUNTRY}"
-	raspi-config nonint do_wifi_country "$COUNTRY" || \
-		echo "firstboot: warning: could not set Wi-Fi country"
+	say "setting Wi-Fi country ${COUNTRY}"
+	raspi-config nonint do_wifi_country "$COUNTRY" || say "warning: could not set Wi-Fi country"
 fi
 
 forget_credentials() {
@@ -73,10 +85,69 @@ forget_credentials() {
 	} > "$tmp" && mv "$tmp" "$WIFI_FILE" && sync
 }
 
-echo "firstboot: configuring Wi-Fi for SSID '${SSID}'"
-if raspi-config nonint do_wifi_ssid_passphrase "$SSID" "$PSK"; then
-	echo "firstboot: Wi-Fi configured"
-	forget_credentials || echo "firstboot: warning: could not clear the password from ${WIFI_FILE}" >&2
+CON_NAME="curatables-wifi"
+WAIT_SECONDS="${CURATABLES_WIFI_WAIT:-120}"
+STEP_SECONDS="${CURATABLES_WIFI_STEP:-5}"
+
+wifi_iface() {
+	nmcli -t -f DEVICE,TYPE device 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }'
+}
+
+ssid_visible() {
+	nmcli -t -e no -f SSID device wifi list ifname "$1" 2>/dev/null | grep -Fxq -- "$SSID"
+}
+
+say "configuring Wi-Fi for SSID '${SSID}'"
+
+IFACE=""
+waited=0
+while :; do
+	IFACE="$(wifi_iface)"
+	[ -n "$IFACE" ] && break
+	if [ "$waited" -ge "$WAIT_SECONDS" ]; then
+		say "error: no Wi-Fi device appeared after ${WAIT_SECONDS}s (is NetworkManager running?)"
+		exit 0
+	fi
+	sleep "$STEP_SECONDS"
+	waited=$((waited + STEP_SECONDS))
+done
+nmcli radio wifi on >/dev/null 2>&1 || true
+
+nmcli connection delete "$CON_NAME" >/dev/null 2>&1 || true
+add_args=(connection add type wifi con-name "$CON_NAME" ifname "$IFACE" ssid "$SSID"
+	connection.autoconnect yes)
+if [ -n "$PSK" ]; then
+	add_args+=(wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PSK")
+fi
+if ! out="$(nmcli "${add_args[@]}" 2>&1)"; then
+	say "error: could not save the network: ${out//"$PSK"/***}"
+	exit 0
+fi
+say "saved the network as '${CON_NAME}'; it reconnects on its own from now on"
+
+seen=0
+connected=0
+waited=0
+while [ "$waited" -lt "$WAIT_SECONDS" ]; do
+	nmcli device wifi rescan ifname "$IFACE" >/dev/null 2>&1 || true
+	sleep "$STEP_SECONDS"
+	waited=$((waited + STEP_SECONDS))
+	if ssid_visible "$IFACE"; then
+		seen=1
+		if out="$(nmcli --wait 30 connection up "$CON_NAME" ifname "$IFACE" 2>&1)"; then
+			connected=1
+			break
+		fi
+		say "connect attempt failed: ${out//"$PSK"/***}"
+		waited=$((waited + 30))
+	fi
+done
+
+if [ "$connected" = 1 ]; then
+	say "connected to '${SSID}'"
+	forget_credentials || say "warning: could not clear the password from ${WIFI_FILE}"
+elif [ "$seen" = 0 ]; then
+	say "error: '${SSID}' was not found in ${WAIT_SECONDS}s. Check the name (it is case-sensitive) and that the Pi is in range. The password stays in the file for the next boot."
 else
-	echo "firstboot: warning: Wi-Fi configuration failed" >&2
+	say "error: '${SSID}' is in range but the connection failed. Check the password. It stays in the file for the next boot."
 fi

@@ -21,6 +21,10 @@
 #  Once the Pi has joined the network it empties ssid and psk here, so
 #  your password doesn't stay on the card. To change networks later,
 #  fill them in again and reboot.
+#
+#  WI-FI NOT WORKING?  Put the card back in your computer and open
+#  curatables-firstboot.log next to this file: it says whether the Pi
+#  found the network and whether the password was accepted.
 # ---------------------------------------------------------------------------
 
 country=US

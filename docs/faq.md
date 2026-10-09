@@ -20,9 +20,11 @@ Look in your router's list of connected devices for `curatables`, or run
 (add `:8080` on a try-out install).
 
 **The Pi didn't join my Wi-Fi.**
-Put the SD card in a computer, open `curatables-wifi.txt` on the small
-boot drive, check `country` (two letters, e.g. `US`), `ssid` and `psk`,
-save, and boot the Pi again. A network cable always works as a fallback.
+Put the SD card in a computer and open `curatables-firstboot.log` on the
+small boot drive: it says whether the Pi found the network and whether
+the password was accepted. Then open `curatables-wifi.txt` next to it,
+check `country` (two letters, e.g. `US`), `ssid` (case-sensitive) and
+`psk`, save, and boot the Pi again. A network cable always works as a fallback.
 Once the Pi has joined, it empties `ssid` and `psk` in that file so your
 password doesn't stay on the card; to move to another network, fill
 them in again and reboot.

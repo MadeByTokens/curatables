@@ -34,7 +34,11 @@ terminal needed after flashing.
   service (`curatables-firstboot.service` → `scripts/firstboot.sh`) reads
   it and joins the network, then empties `ssid` and `psk` in the file so
   the password doesn't stay on the card. To switch networks later, fill
-  them in again and reboot. Windows line endings are handled.
+  them in again and reboot. Windows line endings are handled. The script
+  saves the network as a NetworkManager profile, waits up to two minutes
+  for it to show up in a scan, and writes what happened to
+  `curatables-firstboot.log` on the same partition (Raspberry Pi OS keeps
+  the system journal in RAM only, so it is gone after a power cycle).
 
 **No default passwords.** The OS login user *and* the parent dashboard
 password are both set by you, not baked in:

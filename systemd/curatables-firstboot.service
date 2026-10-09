@@ -1,21 +1,19 @@
 [Unit]
 Description=Curatables first-boot Wi-Fi setup from boot-partition file
 Documentation=https://github.com/MadeByTokens/curatables
-# Apply Wi-Fi from curatables-wifi.txt on the FAT boot partition. raspi-config's
-# Wi-Fi setup drives the running network manager (NetworkManager on bookworm and later,
-# via nmcli: `nmcli radio wifi on`, `nmcli device wifi connect`), so this MUST
-# run AFTER NetworkManager is active — running it earlier fails with "No
-# supported network connection manager found". local-fs.target guarantees the
-# /boot/firmware partition (where the file lives) is mounted first. Wired
-# Ethernet is independent (DHCP, automatic) and needs none of this. Re-runs
-# every boot so editing the file + rebooting switches networks (nmcli connect
-# reactivates the saved profile, so re-applying is harmless).
+# Apply Wi-Fi from curatables-wifi.txt on the FAT boot partition. The script
+# drives NetworkManager through nmcli, waits for the Wi-Fi device and for the
+# network to show up in a scan, and logs to curatables-firstboot.log on the
+# boot partition. local-fs.target guarantees /boot/firmware is mounted first.
+# Wired Ethernet is independent (DHCP, automatic) and needs none of this.
+# Re-runs every boot so editing the file + rebooting switches networks.
 After=local-fs.target NetworkManager.service
 Wants=NetworkManager.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+TimeoutStartSec=6min
 ExecStart=/opt/curatables/scripts/firstboot.sh
 
 [Install]
