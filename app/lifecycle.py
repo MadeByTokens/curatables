@@ -148,6 +148,19 @@ def make_lifespan(config: Config):
             await advertiser.start()
         app.state.mdns = advertiser
 
+        from app.services.download_queue import get_download_queue
+        from app.services.imports import build_worker
+
+        importer = build_worker(
+            config, app.state.db_connect,
+            submit=lambda key, job: get_download_queue(
+                config.storage.max_concurrent_downloads).submit(key, job))
+        try:
+            importer.start()
+            app.state.import_worker = importer
+        except Exception:
+            logger.warning("Import worker did not start (continuing)", exc_info=True)
+
         cleanup_task = None
         if config.storage.cache_cleanup_interval_minutes > 0:
             cleanup_task = asyncio.create_task(maintenance_loop(app, config))
@@ -158,6 +171,9 @@ def make_lifespan(config: Config):
         try:
             yield
         finally:
+            if app.state.import_worker is not None:
+                app.state.import_worker.stop()
+                app.state.import_worker = None
             if cleanup_task is not None:
                 cleanup_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):

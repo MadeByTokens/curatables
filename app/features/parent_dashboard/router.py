@@ -10,9 +10,10 @@ from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, Response
 
 from app.dependencies import (
-    require_parent, get_channel_service, get_content_service, get_stats_service,
-    get_wishlist_repo,
+    require_parent, get_channel_service, get_content_service, get_import_job_repo,
+    get_stats_service, get_wishlist_repo,
 )
+from app.repositories.import_job_repo import ImportJobRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.channels import ChannelService
 from app.services.content import ContentService
@@ -30,7 +31,8 @@ def dashboard(request: Request,
               content: ContentService = Depends(get_content_service),
               stats: StatsService = Depends(get_stats_service),
               channels_svc: ChannelService = Depends(get_channel_service),
-              wishlist: WishlistRepository = Depends(get_wishlist_repo)):
+              wishlist: WishlistRepository = Depends(get_wishlist_repo),
+              imports: ImportJobRepository = Depends(get_import_job_repo)):
     _, total = content.list_all(page=1, per_page=1)
     overview = stats.dashboard_overview()
     setup = {
@@ -45,6 +47,7 @@ def dashboard(request: Request,
             "setup": setup,
             "kid_url": kid_address(request),
             "wishlist_pending": wishlist.count_pending(),
+            "imports_active": imports.count_active(),
             **overview,
         })
 

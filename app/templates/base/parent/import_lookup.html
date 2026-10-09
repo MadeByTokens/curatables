@@ -1,0 +1,106 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Picture and description</h1>
+<p class="fs-14"><a href="/parent/import/batch/{{ job.batch }}#job-{{ job.id }}">&larr; Back to the details</a>
+  · <span class="muted">{{ job.name }}</span></p>
+
+{% if error %}<div class="flash flash-error mw-700">{{ error }}</div>{% endif %}
+
+<form method="GET" action="/parent/import/jobs/{{ job.id }}/lookup" class="import-search mw-700">
+  <div class="form-row">
+    <label for="q">Search for</label>
+    <input type="text" id="q" name="q" value="{{ query }}">
+  </div>
+  <div class="form-row import-numbers">
+    <label for="origin">Where is it from?</label>
+    <select id="origin" name="origin">
+      {% for key, label in origins.items() %}
+      <option value="{{ key }}" {% if origin == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="year">Year</label>
+    <input type="text" inputmode="numeric" id="year" name="year" value="{{ year }}" size="5">
+  </div>
+  <div class="form-row">
+    <label for="link">Link <small class="muted">(a YouTube video or a web page about it)</small></label>
+    <input type="url" id="link" name="link" value="{{ link }}">
+  </div>
+  <button type="submit" class="btn btn-sm">Search</button>
+  <p class="muted fs-13">Only the title, year or link above is sent:
+    {% if origin == "movie" %}to Wikipedia and Wikidata (and TMDB, if a key is set in Settings){% elif origin == "youtube" %}to YouTube{% elif origin == "web" %}to that web page{% else %}nowhere: pick a frame or upload a picture{% endif %}.
+    Never the file, never anything about your kids.</p>
+</form>
+
+{% if not lookups_enabled %}
+<p class="muted">Online lookups are off (<a href="/parent/settings#settings-import">Settings → Import from a drive</a>). Pick a frame or upload a picture.</p>
+{% elif searched and not candidates %}
+<p class="muted">Nothing found. Try another title, add the year, or paste a link.</p>
+{% endif %}
+
+{% for item in candidates %}{% set c = item.c %}
+<form method="POST" action="/parent/import/jobs/{{ job.id }}/pick" class="card import-candidate">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="kind" value="candidate">
+  <input type="hidden" name="image" value="{{ item.image }}">
+  <input type="hidden" name="ref" value="{{ c.ref }}">
+  <input type="hidden" name="url" value="{{ c.url }}">
+  <input type="hidden" name="title" value="{{ c.title }}">
+  <input type="hidden" name="year" value="{{ c.year or '' }}">
+  <div class="thumb">{% if item.image %}<img src="/parent/import/jobs/{{ job.id }}/preview/{{ item.image }}" alt="">{% endif %}</div>
+  <div class="info">
+    <div class="title-line">{{ c.title }}{% if c.year %} ({{ c.year }}){% endif %}
+      {% if c.rating %}<span class="badge badge-pending">Rated {{ c.rating }}</span>{% endif %}</div>
+    <div class="meta">{{ c.kind }}{% if c.url %} · <a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">source &#8599;</a>{% endif %}</div>
+    <label class="fs-13" for="desc-{{ item.n }}">Description (edit before using it; it may give away the story)</label>
+    <textarea id="desc-{{ item.n }}" name="description" rows="4">{{ c.description }}</textarea>
+    <div class="actions">
+      <input type="checkbox" id="use-title-{{ item.n }}" name="use_title" value="1">
+      <label for="use-title-{{ item.n }}" class="fs-13">Also use this title{% if c.year %} and year{% endif %}</label>
+      <button type="submit" class="btn btn-sm">Use this</button>
+    </div>
+  </div>
+</form>
+{% endfor %}
+
+{% if sidecars %}
+<h2 class="mt-32">Pictures next to the file</h2>
+<div class="import-frames">
+  {% for n, path in sidecars %}
+  <form method="POST" action="/parent/import/jobs/{{ job.id }}/pick">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="kind" value="sidecar">
+    <input type="hidden" name="n" value="{{ n }}">
+    <button type="submit" class="import-frame-btn">{{ path.rsplit("/", 1)[-1] }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if frames %}
+<h2 class="mt-32">Or a frame from the video</h2>
+<div class="import-frames">
+  {% for name, at in frames %}
+  <form method="POST" action="/parent/import/jobs/{{ job.id }}/pick">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="kind" value="frame">
+    <input type="hidden" name="at" value="{{ at }}">
+    <button type="submit" class="import-frame-btn"><img src="/parent/import/jobs/{{ job.id }}/preview/{{ name }}" alt="Frame at {{ at|int }} seconds"></button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2 class="mt-32">Or upload a picture</h2>
+<form method="POST" action="/parent/import/jobs/{{ job.id }}/picture" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="file" name="picture" accept="image/jpeg,image/png,image/webp">
+  <button type="submit" class="btn btn-sm">Upload</button>
+</form>
+
+<h2 class="mt-32">Description only</h2>
+<form method="POST" action="/parent/import/jobs/{{ job.id }}/description" class="mw-700">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <textarea name="description" rows="3" aria-label="Description">{{ d.description }}</textarea>
+  <button type="submit" class="btn btn-sm">Save description</button>
+</form>
+{% endblock %}

@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from app.config import load_config, ensure_directories
+from app.db.connection import create_connection, get_db_path
 from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
 from app.lifecycle import make_lifespan, prepare_data_dir, startup_jobs
 from app.logging_config import setup_logging
@@ -67,6 +68,9 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
 
     app.state.config = config
     app.state.data_dir_pinned = data_dir is not None
+    # Background threads (imports) open their own connections through this.
+    app.state.db_connect = lambda: create_connection(get_db_path(config.data_dir))
+    app.state.import_worker = None
 
     # Process start time used by /healthz to report uptime. monotonic()
     # is immune to wall-clock jumps, which matters for an appliance that
@@ -310,6 +314,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     from app.features.parent_sharing.router import router as parent_sharing_router
     from app.features.parent_profiles.router import router as parent_profiles_router
     from app.features.parent_requests.router import router as parent_requests_router
+    from app.features.parent_import.router import router as parent_import_router
     from app.features.kid_profiles.router import router as kid_profiles_router
     from app.features.kid_browse.router import router as browse_router
     from app.features.kid_watch.router import router as watch_router
@@ -337,6 +342,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app.include_router(parent_channels_router)
     app.include_router(parent_profiles_router)
     app.include_router(parent_requests_router)
+    app.include_router(parent_import_router)
     app.include_router(kid_profiles_router)
     app.include_router(browse_router)
     app.include_router(watch_router)

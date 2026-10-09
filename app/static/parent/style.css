@@ -630,3 +630,59 @@ label {
   border-bottom: 1px solid #ddd;
 }
 .settings-nav a { font-weight: 600; }
+
+/* Import from a drive */
+.mw-700 { max-width: 700px; }
+.inline-form { display: inline; }
+.form-row { margin-bottom: 10px; }
+.form-row > label, .form-row > .label { display: block; font-weight: 600; margin-bottom: 4px; }
+.form-row input[type=text], .form-row input[type=url], .form-row textarea { width: 100%; box-sizing: border-box; }
+.form-row input[type=radio] + label, .form-row input[type=checkbox] + label { display: inline; font-weight: normal; }
+.form-row textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+.import-numbers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.import-numbers > label { display: inline; margin: 0; }
+.import-numbers input[type=text] { width: auto; }
+.import-roots { list-style: none; padding: 0; }
+.import-roots li { margin: 6px 0; }
+.import-crumbs { margin: 8px 0 16px; word-break: break-all; }
+.import-folders { list-style: none; padding: 0; columns: 2 240px; }
+.import-folders li { margin: 4px 0; }
+.import-files { border-collapse: collapse; width: 100%; max-width: 900px; }
+.import-files th, .import-files td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; }
+.import-files .num { text-align: right; white-space: nowrap; }
+.import-files td label { font-weight: normal; word-break: break-all; }
+.import-job { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; margin: 8px 0; background: #fff; max-width: 900px; }
+.import-job-head { overflow-wrap: anywhere; }
+.import-job-line { margin: 4px 0; }
+.import-bar { width: 100%; height: 14px; }
+.import-cancel { margin-top: 6px; }
+.import-failed { border-color: #f5c2c0; background: #fff6f5; }
+.import-done { border-color: #c3e6cb; }
+.import-cancelled { opacity: .75; }
+.import-stalled { border-color: #f0c36d; background: #fffaf0; }
+.import-card { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin: 16px 0; max-width: 900px; background: #fff; }
+.import-card legend { font-weight: 600; padding: 0 6px; overflow-wrap: anywhere; }
+.import-card-body { display: flex; flex-wrap: wrap; gap: 16px; }
+.import-pic { flex: 0 0 200px; }
+.import-pic img { width: 200px; max-height: 300px; object-fit: contain; display: block; margin-bottom: 8px; background: #f2f2f2; }
+.import-fields { flex: 1 1 320px; min-width: 0; }
+.import-subs { list-style: none; padding: 0; margin: 0; }
+.import-subs li { margin: 4px 0; }
+.import-apply { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.import-apply label { margin: 0; }
+.import-final .btn { margin-top: 8px; }
+.import-candidate .thumb img { max-height: 240px; object-fit: contain; }
+.import-candidate textarea { width: 100%; box-sizing: border-box; margin: 4px 0; font: inherit; }
+.import-frames { display: flex; flex-wrap: wrap; gap: 10px; }
+.import-frame-btn { border: 2px solid #ddd; border-radius: 6px; padding: 0; background: #fff; cursor: pointer; }
+.import-frame-btn:hover, .import-frame-btn:focus { border-color: #1f7a70; }
+.import-frame-btn img { display: block; width: 200px; height: auto; }
+@media (max-width: 600px) {
+  .import-pic { flex-basis: 100%; }
+  .import-pic img { width: 100%; }
+}
+.import-apply select, .import-numbers select { width: auto; }
+.import-subs label, .import-files label, .import-candidate .actions label,
+.import-final label, .form-row input + label { display: inline; margin: 0; font-weight: normal; }
+.import-numbers > label { font-weight: 600; }
+.inline-label { display: inline; margin: 0 0 0 4px; }

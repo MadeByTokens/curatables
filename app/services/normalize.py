@@ -114,67 +114,82 @@ class MediaNormalizer:
 
         Raises Cancelled when ``cancel`` fires; the partial output is
         removed first and the input is left as it was.
+        """
+        target = path.with_name("video.mp4")
+        result = self.convert(path, path.with_name("video.norm.mp4"), on_progress=on_progress,
+                              cancel=cancel, audio_index=audio_index,
+                              burn_subtitle_index=burn_subtitle_index)
+        if result.action not in ("remux", "transcode"):
+            return result
+        # Success: drop the original if it was a different container
+        # (e.g. video.webm) so only the baseline remains.
+        result.path.replace(target)
+        if path != target:
+            path.unlink(missing_ok=True)
+        result.path = target
+        return result
+
+    def convert(self, src: Path, out: Path, *, on_progress: ProgressCallback | None = None,
+                cancel: CancelToken | None = None, audio_index: int | None = None,
+                burn_subtitle_index: int | None = None) -> NormalizeResult:
+        """Write a baseline copy of ``src`` to ``out``; ``src`` is never
+        modified. With action ``none`` nothing is written and the result
+        path is ``src``; with ``skipped`` nothing is left at ``out``.
 
         ``audio_index`` and ``burn_subtitle_index`` are absolute stream
         indexes from the probe: the audio track to keep (default: the
         first one) and a picture subtitle track to draw into the video.
         """
-        target = path.with_name("video.mp4")
         try:
-            info = self.probe.probe(path)
+            info = self.probe.probe(src)
         except ProbeError as e:
-            logger.debug("normalize: cannot probe %s (%s) — leaving as-is", path, e)
-            return NormalizeResult(path=path, action="skipped", reason=f"probe failed: {e}")
+            logger.debug("normalize: cannot probe %s (%s) — leaving as-is", src, e)
+            return NormalizeResult(path=src, action="skipped", reason=f"probe failed: {e}")
 
-        is_mp4 = path.suffix.lower() == ".mp4"
-        faststart = is_mp4 and self.probe.is_faststart(path)
+        is_mp4 = src.suffix.lower() == ".mp4"
+        faststart = is_mp4 and self.probe.is_faststart(src)
         plan = plan_for(info, is_mp4=is_mp4, faststart=faststart, audio_index=audio_index,
                         burn_subtitle_index=burn_subtitle_index)
         if plan.action == "none":
-            return NormalizeResult(path=path, action="none", reason="already baseline",
+            return NormalizeResult(path=src, action="none", reason="already baseline",
                                    kind="none")
 
-        args = self._ffmpeg_args(path, info, plan, audio_index, burn_subtitle_index)
-        tmp = path.with_name("video.norm.mp4")
-        log_path = path.with_name("ffmpeg.log")
-        args.append(str(tmp))
+        args = self._ffmpeg_args(src, info, plan, audio_index, burn_subtitle_index)
+        log_path = out.with_name(out.name + ".log")
+        args.append(str(out))
         started = time.monotonic()
         try:
             code = run_ffmpeg(args, duration=info.duration_seconds, log_path=log_path,
                               on_progress=on_progress, cancel=cancel)
         except Cancelled:
-            tmp.unlink(missing_ok=True)
+            out.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
             raise
         except Stalled as e:
-            logger.warning("normalize: ffmpeg %s stalled for %s: %s", plan.action, path, e)
-            tmp.unlink(missing_ok=True)
+            logger.warning("normalize: ffmpeg %s stalled for %s: %s", plan.action, src, e)
+            out.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
-            return NormalizeResult(path=path, action="skipped", reason=f"ffmpeg {e}",
+            return NormalizeResult(path=src, action="skipped", reason=f"ffmpeg {e}",
                                    kind=plan.kind)
         except OSError as e:
-            logger.warning("normalize: ffmpeg failed to launch for %s: %s", path, e)
-            tmp.unlink(missing_ok=True)
+            logger.warning("normalize: ffmpeg failed to launch for %s: %s", src, e)
+            out.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
-            return NormalizeResult(path=path, action="skipped", reason=f"ffmpeg launch: {e}")
+            return NormalizeResult(path=src, action="skipped", reason=f"ffmpeg launch: {e}")
         wall = time.monotonic() - started
 
-        if code != 0 or not tmp.exists():
+        if code != 0 or not out.exists():
+            detail = tail_log(log_path, 300)
             logger.warning("normalize: ffmpeg %s failed for %s (exit %s): %s",
-                           plan.action, path, code, tail_log(log_path, 300))
-            tmp.unlink(missing_ok=True)
+                           plan.action, src, code, detail)
+            out.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
-            return NormalizeResult(path=path, action="skipped",
-                                   reason=f"ffmpeg exit {code}", kind=plan.kind)
+            return NormalizeResult(path=src, action="skipped",
+                                   reason=f"ffmpeg exit {code}: {detail}".strip(": "),
+                                   kind=plan.kind)
         log_path.unlink(missing_ok=True)
-
-        # Success: tmp -> video.mp4, and drop the original if it was a
-        # different container (e.g. video.webm) so only the baseline remains.
-        tmp.replace(target)
-        if path != target:
-            path.unlink(missing_ok=True)
-        logger.info("normalize: %s %s -> %s", plan.action, path.name, target.name)
-        return NormalizeResult(path=target, action=plan.action, kind=plan.kind,
+        logger.info("normalize: %s %s -> %s", plan.action, src.name, out.name)
+        return NormalizeResult(path=out, action=plan.action, kind=plan.kind,
                                media_seconds=info.duration_seconds, wall_seconds=wall)
 
     @staticmethod

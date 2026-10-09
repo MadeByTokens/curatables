@@ -65,13 +65,16 @@ class VideoRepository(BaseRepository):
         """List videos that are active AND downloaded (visible to kids)."""
         clauses = ["status = 'active'", "download_status = 'ready'"]
         params: list = []
+        order = "added_at DESC"
         if channel_id is not None:
             clauses.append("channel_id = ?")
             params.append(channel_id)
+            # A show's episodes play in order; everything else newest first.
+            order = "episode_key IS NULL, episode_key, added_at DESC"
         where = "WHERE " + " AND ".join(clauses)
         params.extend([limit, offset])
         rows = self.db.execute(
-            f"SELECT * FROM videos {where} ORDER BY added_at DESC LIMIT ? OFFSET ?",
+            f"SELECT * FROM videos {where} ORDER BY {order} LIMIT ? OFFSET ?",
             params,
         ).fetchall()
         return [self._to_model(r) for r in rows]
@@ -102,6 +105,14 @@ class VideoRepository(BaseRepository):
             params,
         ).fetchall()
         return [self._to_model(r) for r in rows]
+
+    def next_episode(self, channel_id: int, episode_key: int) -> Video | None:
+        """The ready episode after this one in the same channel."""
+        row = self.db.execute(
+            "SELECT * FROM videos WHERE channel_id = ? AND status = 'active' "
+            "AND download_status = 'ready' AND episode_key > ? "
+            "ORDER BY episode_key LIMIT 1", (channel_id, episode_key)).fetchone()
+        return self._to_model(row) if row else None
 
     def count_ready_by_channels(self, channel_ids: builtins.list[int]) -> int:
         if not channel_ids:
@@ -169,6 +180,7 @@ class VideoRepository(BaseRepository):
         "download_status", "download_error", "storage_mode", "resolution",
         "thumbnail_url", "thumbnail_type", "cached_at", "cache_expires_at",
         "file_size", "extractor", "original_url", "keep_forever",
+        "origin", "origin_ref", "source_path", "episode_key",
     }
 
     def update(self, video_id: str, **fields) -> None:
@@ -402,4 +414,8 @@ class VideoRepository(BaseRepository):
             file_size=d.get("file_size", 0),
             keep_forever=bool(d.get("keep_forever", 0)),
             last_played_at=d.get("last_played_at"),
+            origin=d.get("origin") or "",
+            origin_ref=d.get("origin_ref") or "",
+            source_path=d.get("source_path") or "",
+            episode_key=d.get("episode_key"),
         )

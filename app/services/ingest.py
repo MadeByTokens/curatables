@@ -101,7 +101,7 @@ class IngestService:
         into uploads/<id>/, set the picture and insert the row."""
         target_dir = self.storage.upload_video_dir(video_id)
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / video_path.name
+        target_path = target_dir / f"video{video_path.suffix.lower()}"
         video_path.replace(target_path)
         for sub in work.glob("video.*.vtt"):
             sub.replace(target_dir / sub.name)

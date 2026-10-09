@@ -1,0 +1,60 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Import from a drive</h1>
+<p class="fs-14"><a href="/parent/import">&larr; Imports</a></p>
+
+<nav class="import-crumbs" aria-label="Folder">
+  <a href="/parent/import/browse?root={{ listing.root_index }}"><code>{{ listing.root }}</code></a>
+  {% for name, rel in crumbs %}
+  / <a href="/parent/import/browse?root={{ listing.root_index }}&amp;path={{ rel|urlencode }}">{{ name }}</a>
+  {% endfor %}
+</nav>
+
+{% if listing.folders %}
+<ul class="import-folders">
+  {% if listing.parent_rel is not none %}
+  <li><a href="/parent/import/browse?root={{ listing.root_index }}&amp;path={{ listing.parent_rel|urlencode }}">&#8593; Up</a></li>
+  {% endif %}
+  {% for name in listing.folders %}
+  <li>&#128193; <a href="/parent/import/browse?root={{ listing.root_index }}&amp;path={{ (listing.rel ~ '/' ~ name if listing.rel else name)|urlencode }}">{{ name }}</a></li>
+  {% endfor %}
+</ul>
+{% elif listing.parent_rel is not none %}
+<p><a href="/parent/import/browse?root={{ listing.root_index }}&amp;path={{ listing.parent_rel|urlencode }}">&#8593; Up</a></p>
+{% endif %}
+
+{% if listing.files %}
+<form method="POST" action="/parent/import/select" class="mt-16">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="root" value="{{ listing.root_index }}">
+  <table class="import-files">
+    <thead><tr><th></th><th>File</th><th class="num">Size</th><th></th></tr></thead>
+    <tbody>
+    {% for f in listing.files %}
+    <tr>
+      <td><input type="checkbox" name="files" value="{{ f.rel }}" id="f{{ loop.index }}"
+                 {% if not f.imported %}checked{% endif %}></td>
+      <td><label for="f{{ loop.index }}">{{ f.name }}</label></td>
+      <td class="num">{{ "%.2f"|format(f.size / 1073741824) }} GB</td>
+      <td>{% if f.imported %}<span class="badge badge-ready">already imported</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="mt-16"><button type="submit" class="btn">Next: check the details</button></p>
+</form>
+{% else %}
+<p class="muted mt-16">No video files in this folder{% if listing.folders %}; open a folder above{% endif %}.</p>
+{% endif %}
+
+{% if listing.folders or listing.files %}
+<form method="POST" action="/parent/import/select" class="mt-16">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="root" value="{{ listing.root_index }}">
+  <input type="hidden" name="folder" value="{{ listing.rel }}">
+  <input type="hidden" name="whole_folder" value="1">
+  <button type="submit" class="btn btn-secondary btn-sm">Pick every video in this folder and its subfolders</button>
+  <small class="muted">Up to 200 at a time; a TV show's seasons can go together.</small>
+</form>
+{% endif %}
+{% endblock %}

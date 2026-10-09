@@ -1,5 +1,7 @@
 """Parent settings: config, password change."""
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse
 
@@ -115,6 +117,32 @@ def settings_save_wishlist(request: Request,
     return request.app.state.templates.TemplateResponse(request, "parent/settings.html", {
         "request": request, "config": config, "advanced_open": False,
         "success": "Video request rules saved.", "error": None,
+        "update_state": updates.update_state(config),
+    })
+
+
+@router.post("/settings/imports")
+def settings_save_imports(request: Request,
+                          import_roots: str = Form(""),
+                          lookups_enabled: str = Form(""),
+                          tmdb_api_key: str = Form(""),
+                          viewer: ViewerContext = Depends(require_parent),
+                          config: Config = Depends(get_config)):
+    roots, error = [], None
+    for line in _lines(import_roots):
+        path = Path(line).expanduser()
+        if not path.is_absolute():
+            error = f"{line} is not a full path (it must start with /)."
+            break
+        roots.append(str(path))
+    if error is None:
+        config.storage.import_roots = roots
+        config.imports.lookups_enabled = lookups_enabled == "1"
+        config.imports.tmdb_api_key = tmdb_api_key.strip()[:400]
+        config.save()
+    return request.app.state.templates.TemplateResponse(request, "parent/settings.html", {
+        "request": request, "config": config, "advanced_open": False,
+        "success": None if error else "Import settings saved.", "error": error,
         "update_state": updates.update_state(config),
     })
 

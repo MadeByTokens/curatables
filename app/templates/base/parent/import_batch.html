@@ -1,0 +1,166 @@
+{% extends "parent/base.html" %}
+{% block head %}{% if not ready %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
+{% block content %}
+<h1>Check the details</h1>
+<p class="fs-14"><a href="/parent/import">&larr; Imports</a></p>
+
+{% if error %}<div class="flash flash-error mw-700">{{ error }}</div>{% endif %}
+
+{% if not ready %}
+<div class="flash mw-700">Reading the files: {{ read_count }} of {{ jobs|length }}. This page
+updates by itself.</div>
+{% endif %}
+
+<form method="POST" action="/parent/import/batch/{{ batch }}" class="import-batch">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  {% for show in shows %}
+  <div class="flash mw-700 import-show">
+    {% if show.accepted %}
+    &#128250; The {{ show.count }} episodes of <strong>{{ show.show }}</strong> go into a channel
+    called <strong>{{ show.show }}</strong>, in episode order.
+    <button type="submit" name="action" value="noshow:{{ show.show }}" class="btn btn-sm btn-secondary ml-8">Keep them separate</button>
+    {% else %}
+    &#128250; These {{ show.count }} files look like episodes of <strong>{{ show.show }}</strong>.
+    Put them in a channel called <strong>{{ show.show }}</strong>, in episode order?
+    <button type="submit" name="action" value="show:{{ show.show }}" class="btn btn-sm ml-8">Yes, one channel for the show</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="import-apply mw-700">
+    <label for="all_channel_id">For every file:</label>
+    <select id="all_channel_id" name="all_channel_id">
+      <option value="">channel…</option>
+      {% for c in channels %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+    </select>
+    <select name="all_origin" aria-label="Where they are from">
+      <option value="">where it's from…</option>
+      {% for key, label in origins.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" name="action" value="apply" class="btn btn-sm btn-secondary">Apply</button>
+  </div>
+
+  {% for v in jobs %}
+  {% set j = v.job %}{% set d = v.d %}{% set p = "j" ~ j.id ~ "_" %}
+  <fieldset class="import-card" id="job-{{ j.id }}">
+    <legend>{{ j.name }}</legend>
+    <div class="import-card-body">
+      <div class="import-pic">
+        <img src="/parent/import/jobs/{{ j.id }}/picture?t={{ j.updated_at|urlencode }}" alt="">
+        <button type="submit" name="action" value="lookup:{{ j.id }}" class="btn btn-sm">Find picture &amp; description</button>
+      </div>
+      <div class="import-fields">
+        <p class="muted fs-13">
+          {{ "%.2f"|format(v.size_gb) }} GB
+          {% if v.probe.duration %}· {{ (v.probe.duration // 60)|int }} min{% endif %}
+          {% if v.probe.height %}· {{ v.probe.height }}p {{ v.probe.vcodec }}{% endif %}
+          {% if v.plan_line %}· {{ v.plan_line }}{% endif %}
+        </p>
+        {% if v.probe and not v.probe.ok %}
+        <div class="flash flash-error">{{ v.probe.error }} Remove it to import the others.</div>
+        {% endif %}
+
+        <div class="form-row">
+          <label for="{{ p }}title">Title</label>
+          <input type="text" id="{{ p }}title" name="{{ p }}title" value="{{ d.title }}" maxlength="200">
+        </div>
+        <div class="form-row">
+          <label for="{{ p }}origin">Where is it from?</label>
+          <select id="{{ p }}origin" name="{{ p }}origin">
+            {% for key, label in origins.items() %}
+            <option value="{{ key }}" {% if d.origin == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row import-numbers">
+          <label for="{{ p }}year">Year</label>
+          <input type="text" inputmode="numeric" id="{{ p }}year" name="{{ p }}year" value="{{ d.year or '' }}" size="5">
+          <label for="{{ p }}season">Season</label>
+          <input type="text" inputmode="numeric" id="{{ p }}season" name="{{ p }}season" value="{{ d.season or '' }}" size="3">
+          <label for="{{ p }}episode">Episode</label>
+          <input type="text" inputmode="numeric" id="{{ p }}episode" name="{{ p }}episode" value="{{ d.episode or '' }}" size="3">
+        </div>
+        <div class="form-row">
+          <label for="{{ p }}link">Link <small class="muted">(YouTube or web page, if you have it)</small></label>
+          <input type="url" id="{{ p }}link" name="{{ p }}link" value="{{ d.link }}">
+        </div>
+        <div class="form-row">
+          <label for="{{ p }}channel_id">Channel</label>
+          {% if d.new_channel %}
+          <span>New channel <strong>{{ d.new_channel }}</strong>, episode {{ d.episode }}{% if d.season %} of season {{ d.season }}{% endif %}</span>
+          <input type="hidden" name="{{ p }}channel_id" value="">
+          {% else %}
+          <select id="{{ p }}channel_id" name="{{ p }}channel_id">
+            <option value="">— choose —</option>
+            {% for c in channels %}
+            <option value="{{ c.id }}" {% if d.channel_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+        </div>
+        {% if v.audio|length > 1 %}
+        <div class="form-row">
+          <label for="{{ p }}audio_index">Sound</label>
+          <select id="{{ p }}audio_index" name="{{ p }}audio_index">
+            {% for a in v.audio %}
+            <option value="{{ a.index }}" {% if d.audio_index == a.index %}selected{% endif %}>{{ a.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% if v.subtitles %}
+        <div class="form-row">
+          <span class="label">Subtitles</span>
+          <ul class="import-subs">
+            {% for s in v.subtitles %}
+            <li>
+              <input type="checkbox" id="{{ p }}sub{{ s.n }}" name="{{ p }}subtitles" value="{{ s.n }}" {% if s.on %}checked{% endif %}>
+              <label for="{{ p }}sub{{ s.n }}">{{ s.label }}
+                <span class="muted fs-13">{{ s.where }}{% if s.title %} · {{ s.title }}{% endif %}
+                {% if not s.text %} · a picture track: ticking it draws it into the video (slow, can't be turned off later){% endif %}</span></label>
+              {% if not s.lang and s.text %}
+              <input type="text" name="{{ p }}sub_lang_{{ s.n }}" value="" size="5" placeholder="en" aria-label="Language code">
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <div class="form-row">
+          <label for="{{ p }}description">Description</label>
+          <textarea id="{{ p }}description" name="{{ p }}description" rows="3" maxlength="2000">{{ d.description }}</textarea>
+        </div>
+        <button type="submit" name="action" value="remove:{{ j.id }}" class="btn btn-sm btn-secondary">Leave this one out</button>
+      </div>
+    </div>
+  </fieldset>
+  {% endfor %}
+
+  <fieldset class="import-card import-final">
+    <legend>Import</legend>
+    <div class="form-row">
+      <input type="radio" id="mode-copy" name="mode" value="copy" checked>
+      <label for="mode-copy"><strong>Copy</strong>: leave the files on the drive as they are.</label>
+    </div>
+    <div class="form-row">
+      <input type="radio" id="mode-move" name="mode" value="move">
+      <label for="mode-move"><strong>Move</strong>: take them off the drive once they are in the
+        library. On the same drive this is instant and needs no extra space.
+        {% if any_move_blocked %}<span class="muted fs-13">Files the server may not change are copied instead.</span>{% endif %}</label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="keep_original" name="keep_original" value="1" checked>
+      <label for="keep_original">When moving a file that has to be converted, keep the original too.</label>
+    </div>
+    <button type="submit" name="action" value="save" class="btn btn-secondary">Save</button>
+    <button type="submit" name="action" value="import" class="btn" {% if not ready %}disabled{% endif %}>Import {{ jobs|length }} video{{ "s" if jobs|length != 1 }}</button>
+  </fieldset>
+</form>
+
+<form method="POST" action="/parent/import/batch/{{ batch }}/discard" class="mt-16"
+      data-confirm="Forget this batch? Nothing on the drive is touched.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-sm btn-secondary">Start over</button>
+</form>
+{% endblock %}

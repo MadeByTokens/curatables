@@ -14,6 +14,9 @@
       <source src="/media/video/{{ video.video_id }}" type="video/mp4">
     </video>
     <div class="end-card d-none" id="end-card">
+      {% if next_episode %}
+      <a href="/watch/{{ next_episode.video_id }}" class="end-btn"><span aria-hidden="true">&#9654;</span> {{ _("Next episode") }}</a>
+      {% endif %}
       <button type="button" class="end-btn" id="play-again"><span aria-hidden="true">&#128257;</span> {{ _("Again") }}</button>
       <a href="/" class="end-btn"><span aria-hidden="true">&#127968;</span> {{ _("Home") }}</a>
     </div>

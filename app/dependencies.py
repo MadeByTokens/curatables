@@ -40,6 +40,7 @@ from app.repositories.tag_repo import TagRepository
 from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
 from app.repositories.login_failure_repo import LoginFailureRepository
 from app.repositories.wishlist_repo import WishlistRepository
+from app.repositories.import_job_repo import ImportJobRepository
 
 
 # --- Infrastructure ---
@@ -367,3 +368,34 @@ def require_child(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext:
     if not viewer.is_child:
         raise NotAChild()
     return viewer
+
+
+# --- Imports from a drive ---
+
+_probe_cache = None
+
+
+def get_import_job_repo(db=Depends(get_db)) -> ImportJobRepository:
+    return ImportJobRepository(db)
+
+
+def get_import_service(config=Depends(get_config),
+                       db=Depends(get_db),
+                       storage=Depends(get_storage_service),
+                       probe=Depends(get_probe_service),
+                       thumbnails=Depends(get_thumbnail_service)):
+    from app.services.import_scan import ProbeCache
+    from app.services.imports import ImportService
+    from app.services.ingest import IngestService
+    global _probe_cache
+    if _probe_cache is None:
+        _probe_cache = ProbeCache(probe)
+    video_repo = VideoRepository(db)
+    return ImportService(config, ImportJobRepository(db), video_repo, ChannelRepository(db),
+                         IngestService(storage, probe, video_repo, thumbnails), _probe_cache)
+
+
+def get_lookup_service(config=Depends(get_config), backend=Depends(get_backend)):
+    from app.services.lookup import LookupService
+    return LookupService(config, backend)
+

@@ -13,6 +13,7 @@
   <a href="#settings-storage">Storage</a>
   {% if update_state %}<a href="#settings-updates">Updates</a>{% endif %}
   <a href="#settings-wishlist">Video requests</a>
+  <a href="#settings-import">Import</a>
   <a href="#settings-password">Password</a>
   <a href="#settings-advanced">Advanced</a>
 </nav>
@@ -152,6 +153,33 @@
     <input type="number" id="max_results" name="max_results" min="1" max="30" value="{{ config.wishlist.max_results }}">
   </div>
   <button type="submit" class="btn">Save rules</button>
+</form>
+
+<h2 class="mt-40" id="settings-import">Import from a drive</h2>
+<form method="POST" action="/parent/settings/imports" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p class="fs-13 muted-2">
+    Folders the <a href="/parent/import">Import</a> page may show video files from. On a
+    Raspberry Pi, <code>setup-external-drive.sh --media-only</code> adds the drive here for you.
+    The library's own folder is never listed.
+  </p>
+  <div class="form-group">
+    <label for="import_roots">Import folders (one per line)</label>
+    <textarea id="import_roots" name="import_roots" rows="3" class="w-100" placeholder="/mnt/curatables-media">{{ config.storage.import_roots|join("\n") }}</textarea>
+  </div>
+  <div class="form-group">
+    <input type="checkbox" id="lookups_enabled" name="lookups_enabled" value="1" {% if config.imports.lookups_enabled %}checked{% endif %}>
+    <label for="lookups_enabled" class="inline-label">Look up pictures and descriptions online</label>
+    <small class="muted d-block">Only the title, year or link you type is sent (to Wikipedia,
+      Wikidata, YouTube, or the page you link). Off: pick a frame or upload a picture.</small>
+  </div>
+  <div class="form-group">
+    <label for="tmdb_api_key">TMDB API key (optional)</label>
+    <input type="text" id="tmdb_api_key" name="tmdb_api_key" value="{{ config.imports.tmdb_api_key }}" autocomplete="off" spellcheck="false">
+    <small class="muted">A free key from themoviedb.org adds film and TV posters and short
+      overviews. Leave empty to use Wikipedia only.</small>
+  </div>
+  <button type="submit" class="btn">Save import settings</button>
 </form>
 
 <h2 class="mt-40" id="settings-password">Change Password</h2>

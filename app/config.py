@@ -85,11 +85,21 @@ class WishlistConfig:
 
 
 @dataclass
+class ImportConfig:
+    """The import page's online lookups for pictures and descriptions."""
+    lookups_enabled: bool = True
+    # Optional: a TMDB API key (v3) or read access token (v4) adds
+    # posters and overviews from The Movie Database.
+    tmdb_api_key: str = ""
+
+
+@dataclass
 class Config:
     server: ServerConfig = field(default_factory=ServerConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     parent: ParentConfig = field(default_factory=ParentConfig)
     wishlist: WishlistConfig = field(default_factory=WishlistConfig)
+    imports: ImportConfig = field(default_factory=ImportConfig)
 
     @property
     def data_dir(self) -> Path:
@@ -145,6 +155,7 @@ def load_config(data_dir: str | None = None) -> Config:
         config.storage = StorageConfig(**data.get("storage", {}))
         config.parent = ParentConfig(**data.get("parent", {}))
         config.wishlist = WishlistConfig(**data.get("wishlist", {}))
+        config.imports = ImportConfig(**data.get("imports", {}))
         if data_dir:
             config.storage.path = data_dir
 

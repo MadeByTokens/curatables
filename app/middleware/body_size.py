@@ -11,8 +11,8 @@ Each route class gets its own ceiling:
 - parent video uploads (tus, under /parent/upload): `upload_limit`;
 - the kid's single multipart upload (POST /upload): `kid_upload_limit`
   plus a little multipart overhead;
-- picture uploads (kid/parent edit forms) and curation-list imports:
-  `image_limit`;
+- picture uploads (kid/parent edit forms, the import page) and
+  curation-list imports, and the import page's details form: `image_limit`;
 - everything else: 1 MB.
 Limits are callables so a change in Settings applies without a restart.
 
@@ -56,6 +56,9 @@ class BodySizeLimitMiddleware:
         if path.endswith("/edit") and path.startswith(("/video/", "/channel/", "/parent/content/")):
             return _value(self.image_limit)
         if path.startswith("/parent/channels/import"):
+            return _value(self.image_limit)
+        if path.startswith("/parent/import/") and (
+                path.endswith("/picture") or path.startswith("/parent/import/batch/")):
             return _value(self.image_limit)
         return self.default_limit
 

@@ -70,7 +70,13 @@ CREATE TABLE IF NOT EXISTS videos (
     -- keep_forever=1 exempts the video from cache auto-eviction.
     keep_forever    INTEGER NOT NULL DEFAULT 0,
     -- last_played_at drives least-recently-watched cache eviction.
-    last_played_at  TEXT
+    last_played_at  TEXT,
+    -- Imported from a drive: where it came from, and the file it was.
+    origin          TEXT NOT NULL DEFAULT '',   -- movie | youtube | web | home
+    origin_ref      TEXT NOT NULL DEFAULT '',   -- Wikidata / TMDB / YouTube id
+    source_path     TEXT NOT NULL DEFAULT '',
+    -- season * 1000 + episode: orders a show's episodes in its channel.
+    episode_key     INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
@@ -177,6 +183,36 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     UNIQUE (profile_id, video_id)
 );
 
+-- One row per file imported from a drive: the wizard's draft, then the
+-- background job's progress, then its outcome.
+CREATE TABLE IF NOT EXISTS import_jobs (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch         TEXT NOT NULL,
+    source_path   TEXT NOT NULL,
+    source_size   INTEGER NOT NULL DEFAULT 0,
+    source_mtime  REAL NOT NULL DEFAULT 0,
+    details       TEXT NOT NULL DEFAULT '{}',   -- JSON: what the parent chose
+    picture       BLOB,                         -- the chosen cover picture
+    mode          TEXT NOT NULL DEFAULT 'copy', -- copy | move
+    keep_original INTEGER NOT NULL DEFAULT 1,
+    -- draft | queued | working | cancelling | cancelled | done | failed
+    state         TEXT NOT NULL DEFAULT 'draft',
+    phase         TEXT NOT NULL DEFAULT '',     -- copy | hash | convert | subtitles | finish
+    done          REAL NOT NULL DEFAULT 0,
+    total         REAL NOT NULL DEFAULT 0,
+    speed         REAL,
+    eta_seconds   REAL,
+    stalled_for   REAL NOT NULL DEFAULT 0,
+    error         TEXT NOT NULL DEFAULT '',
+    video_id      TEXT NOT NULL DEFAULT '',
+    kind          TEXT NOT NULL DEFAULT '',     -- conversion kind, for later estimates
+    media_seconds REAL NOT NULL DEFAULT 0,
+    wall_seconds  REAL NOT NULL DEFAULT 0,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at   TEXT
+);
+
 CREATE TABLE IF NOT EXISTS login_failures (
     client TEXT NOT NULL,
     at     REAL NOT NULL
@@ -198,3 +234,6 @@ CREATE INDEX IF NOT EXISTS idx_pvt_tag ON profile_video_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_pcv_channel ON profile_channel_videos(profile_id, channel_id);
 CREATE INDEX IF NOT EXISTS idx_login_failures_at ON login_failures(at);
 CREATE INDEX IF NOT EXISTS idx_wishlist_status ON wishlist_requests(status);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_state ON import_jobs(state);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_batch ON import_jobs(batch);
+CREATE INDEX IF NOT EXISTS idx_videos_source_path ON videos(source_path);

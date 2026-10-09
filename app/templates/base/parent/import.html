@@ -1,0 +1,75 @@
+{% extends "parent/base.html" %}
+{% block content %}
+<h1>Import from a drive</h1>
+<p class="muted-2 mw-700">Add video files that are already on a drive: movies, saved YouTube videos,
+home videos. You pick the files, check a few details (and, if you like, find a picture and a
+description online), and they are converted for the player in the background. Kids see nothing
+until a video is imported into a channel they can watch.</p>
+
+{% if error %}<div class="flash flash-error mw-700">{{ error }}</div>{% endif %}
+
+<h2>Folders</h2>
+{% if roots %}
+<ul class="import-roots">
+  {% for root in roots %}
+  <li><a href="/parent/import/browse?root={{ loop.index0 }}" class="btn btn-sm">Browse</a>
+    <code>{{ root }}</code></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% for path, reason in problems %}
+<div class="flash mw-700 warn-bg warn-text"><code>{{ path }}</code> {{ reason }}</div>
+{% endfor %}
+{% if not roots and not problems %}
+<div class="flash mw-700 warn-bg warn-text">
+  No import folders yet. On a Raspberry Pi, plug the drive in and run
+  <code>sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1</code>
+  (it never formats the drive, and your files stay where they are). Or add a folder under
+  <a href="/parent/settings#settings-import">Settings → Import from a drive</a>.
+</div>
+{% endif %}
+
+<h2 class="mt-32">Imports</h2>
+<div id="import-jobs" class="import-jobs" data-status-url="/parent/import/status.json"
+     data-csrf="{{ csrf_token }}">
+  {% if not active and not finished %}
+  <p class="muted import-empty">Nothing imported yet.</p>
+  {% endif %}
+  {% for j in active + finished %}
+  <div class="import-job import-{{ j.state }}" data-id="{{ j.id }}">
+    <div class="import-job-head">
+      <strong class="import-job-title">{{ j.title }}</strong>
+      <span class="muted fs-13 import-job-name">{{ j.name }}</span>
+    </div>
+    <div class="import-job-line">
+      <span class="import-job-text">{{ j.line }}</span>
+      <span class="muted import-job-details">{{ j.details }}</span>
+    </div>
+    {% if j.active %}
+    <progress class="import-bar" max="100" {% if j.percent is not none %}value="{{ j.percent }}"{% endif %}></progress>
+    <form method="POST" action="/parent/import/jobs/{{ j.id }}/cancel" class="import-cancel"
+          data-confirm="Cancel this import? The file on the drive is not touched.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-secondary">Cancel</button>
+    </form>
+    {% elif j.state == "done" and j.video_id %}
+    <a href="/parent/content?highlight={{ j.video_id }}" class="fs-13">Open in Content</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="import-bulk mt-16">
+  <form method="POST" action="/parent/import/cancel-all" class="inline-form"
+        data-confirm="Cancel every import that is waiting or running? Files on the drive are not touched.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-sm btn-danger" {% if not active %}hidden{% endif %} id="import-cancel-all">Cancel all</button>
+  </form>
+  <form method="POST" action="/parent/import/clear" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-sm btn-secondary" {% if not finished %}hidden{% endif %} id="import-clear">Clear finished</button>
+  </form>
+</div>
+
+<script src="/static/parent/import.js?v={{ asset_v }}"></script>
+{% endblock %}

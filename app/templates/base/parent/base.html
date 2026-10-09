@@ -6,6 +6,7 @@
 <title>curatables - Parent Dashboard</title>
 <link rel="stylesheet" href="/static/parent/style.css?v={{ asset_v }}">
 <script src="/static/parent/app.js?v={{ asset_v }}" defer></script>
+{% block head %}{% endblock %}
 </head>
 <body>
 {% set path = request.url.path %}
@@ -18,7 +19,7 @@
   <nav class="topnav-links" aria-label="Parent">
     {{ nav("/parent/", "Dashboard", none) }}
     {{ nav("/parent/content", "Content", ("/parent/content",)) }}
-    {{ nav("/parent/add", "+ Add", ("/parent/add", "/parent/upload")) }}
+    {{ nav("/parent/add", "+ Add", ("/parent/add", "/parent/upload", "/parent/import")) }}
     {{ nav("/parent/channels/", "Channels", ("/parent/channels",)) }}
     {{ nav("/parent/profiles", "Kids", ("/parent/profiles",)) }}
     {{ nav("/parent/stats", "Stats", ("/parent/stats",)) }}

@@ -49,6 +49,15 @@ def watch(request: Request, video_id: str,
         my_reaction = reactions.get_for_video(viewer.profile_id, video_id)
     reaction_counts = reactions.get_counts(video_id)
 
+    next_episode = None
+    if video.episode_key is not None and video.channel_id is not None:
+        candidate = content.video_repo.next_episode(video.channel_id, video.episode_key)
+        if candidate is not None:
+            try:
+                next_episode = content.get_video_for_viewer(candidate.video_id, viewer)
+            except VideoNotFound:
+                next_episode = None
+
     video_comments, comments_total = comments_svc.list_for_video(
         video_id, viewer, page=comments_page, per_page=COMMENTS_PER_PAGE)
     comments_total_pages = max(
@@ -64,4 +73,5 @@ def watch(request: Request, video_id: str,
         "comments_total": comments_total,
         "comments_total_pages": comments_total_pages,
         "tags": tags,
+        "next_episode": next_episode,
     })

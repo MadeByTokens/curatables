@@ -150,7 +150,7 @@ def test_picks_the_chosen_audio_and_drops_subtitle_streams(tmp_path):
     out = probe.probe(res.path)
     assert [a.language for a in out.audio_streams] == ["por"]
     assert out.subtitle_streams == []
-    assert not (tmp_path / "ffmpeg.log").exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["in.srt", "video.mp4"]
     assert seen
 
 
