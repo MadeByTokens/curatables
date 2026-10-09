@@ -16,6 +16,7 @@ from app.repositories import (
 from app.backends.base import VideoBackend
 from app.backends.ytdlp import YtdlpBackend
 from app.services.auth import AuthService, LoginThrottle
+from app.services.system_helper import SystemHelper
 from app.services.wishlist import WishlistService
 from app.services.content import ContentService
 from app.services.video_source import VideoSourceService
@@ -57,6 +58,11 @@ def get_db(request: Request):
 def get_config(request: Request) -> Config:
     config: Config = request.app.state.config
     return config
+
+
+def get_system_helper(request: Request) -> SystemHelper:
+    helper: SystemHelper = request.app.state.system_helper
+    return helper
 
 
 def get_metrics(request: Request):

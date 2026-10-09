@@ -21,6 +21,7 @@ from app.middleware import (
 from app.services.auth import AuthService
 from app.services.csrf import CSRFService
 from app.services.metrics import MetricsService
+from app.services.system_helper import SystemHelper
 
 
 CONTENT_SECURITY_POLICY = (
@@ -94,6 +95,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         max_age_seconds=config.parent.session_timeout_hours * 3600,
     )
     app.state.csrf = csrf_service
+    app.state.system_helper = SystemHelper(config.server.helper_socket)
 
     # Templates — base directory, themes can overlay later
     templates_dir = os.path.join(os.path.dirname(__file__), "templates", "base")
@@ -179,6 +181,20 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                 # process is alive on a fresh install.
                 and not path.startswith("/healthz")):
             return RedirectResponse(url="/parent/setup", status_code=302)
+        return await call_next(request)
+
+    # First-run step 2: on the Pi image the Linux login password must be
+    # chosen before the rest of the dashboard opens.
+    _STEP2_OPEN = ("/parent/setup", "/parent/login", "/parent/logout")
+
+    @app.middleware("http")
+    async def system_setup_redirect(request: Request, call_next):
+        path = request.url.path
+        if (path.startswith("/parent") and not path.startswith(_STEP2_OPEN)
+                and not config.is_first_run
+                and not config.parent.system_setup_done
+                and app.state.system_helper.available):
+            return RedirectResponse(url="/parent/setup/system", status_code=302)
         return await call_next(request)
 
     # Anonymous-kid redirect: when a logged-out visitor lands on any

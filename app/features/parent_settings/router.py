@@ -7,7 +7,7 @@ from starlette.responses import HTMLResponse
 
 from app.i18n import LANGUAGE_CODES
 from app.dependencies import (
-    require_parent, get_auth_service, get_config, get_relocation_service,
+    require_parent, get_auth_service, get_config, get_relocation_service, get_system_helper,
 )
 from app.services.auth import AuthService, MIN_PASSWORD_LENGTH
 from app.services.relocation import RelocationService, RelocationError
@@ -15,6 +15,7 @@ from app.config import Config
 from app.services.storage import RESOLUTION_MAP
 from app.models import ViewerContext
 from app.services import updates
+from app.services.system_helper import SAME_AS_LINUX, SystemHelper
 
 router = APIRouter(prefix="/parent", tags=["parent-settings"])
 
@@ -221,7 +222,8 @@ def change_password(request: Request,
                     new_password2: str = Form(...),
                     viewer: ViewerContext = Depends(require_parent),
                     auth: AuthService = Depends(get_auth_service),
-                    config: Config = Depends(get_config)):
+                    config: Config = Depends(get_config),
+                    helper: SystemHelper = Depends(get_system_helper)):
     templates = request.app.state.templates
     ctx = {"request": request, "config": config, "success": None, "advanced_open": False}
 
@@ -235,6 +237,9 @@ def change_password(request: Request,
     if new_password != new_password2:
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "error": "New passwords do not match."})
+    if helper.linux_password_matches(new_password):
+        return templates.TemplateResponse(request, "parent/settings.html", {
+            **ctx, "error": SAME_AS_LINUX})
 
     auth.set_password(new_password)
     auth.start_parent_session(request.session)

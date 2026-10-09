@@ -1,0 +1,14 @@
+{% extends "parent/_auth.html" %}
+{% block title %}Set up the box · curatables{% endblock %}
+{% block content %}
+<p><strong>Step 2 of 2: the box's own login.</strong></p>
+<div class="flash flash-error" role="alert">{{ error }}</div>
+<p class="fs-14">The box's system helper did not answer, so the Linux password cannot be set right
+now. Restart the box (unplug it for ten seconds) and open this page again. You can also skip this
+for now and do it later in Settings &rarr; Box.</p>
+<form method="POST" action="/parent/setup/system">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="mode" value="later">
+  <button type="submit" class="btn btn-secondary">Skip for now</button>
+</form>
+{% endblock %}

@@ -21,6 +21,10 @@ class ServerConfig:
     # Language of the kid screens before a kid is picked (profile picker);
     # each profile has its own.
     kid_language: str = "en"
+    # Unix socket of the root system helper (curatables-helper.service).
+    # Only the Raspberry Pi image has one; without it the system pages
+    # (Linux password, Wi-Fi, drives, diagnostics) explain that.
+    helper_socket: str = "/run/curatables-helper/helper.sock"
 
 
 @dataclass
@@ -64,6 +68,9 @@ class ParentConfig:
     session_timeout_hours: int = 24
     session_epoch: int = 0
     setup_window_minutes: int = 30
+    # First-run step 2 (the Linux login password) is done. Only asked
+    # for when the system helper is present.
+    system_setup_done: bool = False
 
 
 DEFAULT_WISHLIST_BLOCKED_WORDS = [

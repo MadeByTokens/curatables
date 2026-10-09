@@ -33,12 +33,13 @@ DEPLOY_COMPRESSION=xz
 COMPRESSION_LEVEL=6
 DEPLOY_ZIP=0
 
-# Enable SSH, but DO NOT bake a login password. With FIRST_USER_PASS
-# unset and the first-boot rename enabled, the flasher MUST set the
-# login user (and Wi-Fi) in Raspberry Pi Imager's advanced options
-# before first boot. This is deliberate: a public image with a known SSH
-# password would be the same hole as a shared dashboard password.
-ENABLE_SSH=1
+# SSH off and NO login password baked in: a public image with a known
+# password would be the same hole as a shared dashboard password. The
+# 'admin' account stays locked until the parent picks its password on
+# the dashboard's first-run setup (which can also turn SSH on). Raspberry
+# Pi Imager's settings, a userconf.txt, or an empty file named 'ssh' on
+# the boot partition still work for people who prefer them.
+ENABLE_SSH=0
 FIRST_USER_NAME=admin
 # FIRST_USER_PASS=            # intentionally unset — set it at flash time
 DISABLE_FIRST_BOOT_USER_RENAME=0

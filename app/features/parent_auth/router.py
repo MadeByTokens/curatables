@@ -5,8 +5,13 @@ import time
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
-from app.dependencies import get_auth_service, get_config, get_login_throttle, get_viewer
+from app.dependencies import (
+    get_auth_service, get_config, get_login_throttle, get_system_helper, get_viewer, require_parent,
+)
 from app.services.auth import AuthService, LoginThrottle, MIN_PASSWORD_LENGTH
+from app.services.system_helper import (
+    SAME_AS_LINUX, SAME_AS_PARENT, HelperFailed, HelperUnavailable, SystemHelper,
+)
 from app.config import Config
 from app.models import ViewerContext
 
@@ -42,7 +47,8 @@ def setup_submit(request: Request,
                  password: str = Form(...),
                  password2: str = Form(...),
                  auth: AuthService = Depends(get_auth_service),
-                 config: Config = Depends(get_config)):
+                 config: Config = Depends(get_config),
+                 helper: SystemHelper = Depends(get_system_helper)):
     if not config.is_first_run:
         return RedirectResponse(url="/parent/login", status_code=302)
     closed = _setup_closed(request, config)
@@ -60,9 +66,85 @@ def setup_submit(request: Request,
             "request": request, "error": "Passwords do not match.",
         })
 
+    if helper.linux_password_matches(password):
+        return templates.TemplateResponse(request, "parent/setup.html", {
+            "request": request, "error": SAME_AS_LINUX,
+        })
+
     auth.set_password(password)
     auth.start_parent_session(request.session)
     request.app.state.metrics.record_parent_login("setup")
+    if helper.available and not config.parent.system_setup_done:
+        return RedirectResponse(url="/parent/setup/system", status_code=302)
+    return RedirectResponse(url="/parent/", status_code=302)
+
+
+def _system_page(request: Request, helper: SystemHelper, error: str | None = None):
+    templates = request.app.state.templates
+    try:
+        account = helper.call("account_status")
+    except (HelperUnavailable, HelperFailed) as e:
+        return templates.TemplateResponse(request, "parent/setup_system_unavailable.html", {
+            "request": request, "error": str(e)}, status_code=503)
+    return templates.TemplateResponse(request, "parent/setup_system.html", {
+        "request": request, "account": account, "error": error,
+    }, status_code=400 if error else 200)
+
+
+@router.get("/setup/system", response_class=HTMLResponse)
+def setup_system_page(request: Request,
+                      viewer: ViewerContext = Depends(require_parent),
+                      config: Config = Depends(get_config),
+                      helper: SystemHelper = Depends(get_system_helper)):
+    if config.parent.system_setup_done or not helper.available:
+        return RedirectResponse(url="/parent/", status_code=302)
+    return _system_page(request, helper)
+
+
+@router.post("/setup/system")
+def setup_system_submit(request: Request,
+                        mode: str = Form("new"),
+                        password: str = Form(""),
+                        password2: str = Form(""),
+                        ssh: str = Form(""),
+                        viewer: ViewerContext = Depends(require_parent),
+                        auth: AuthService = Depends(get_auth_service),
+                        config: Config = Depends(get_config),
+                        helper: SystemHelper = Depends(get_system_helper)):
+    if config.parent.system_setup_done or not helper.available:
+        return RedirectResponse(url="/parent/", status_code=302)
+    try:
+        account = helper.call("account_status")
+    except (HelperUnavailable, HelperFailed) as e:
+        if mode == "later":
+            config.parent.system_setup_done = True
+            config.save()
+            return RedirectResponse(url="/parent/", status_code=302)
+        return _system_page(request, helper, str(e))
+
+    if auth.verify_password(password):
+        return _system_page(request, helper, SAME_AS_PARENT)
+    try:
+        if mode == "keep":
+            if not account.get("has_password"):
+                return _system_page(request, helper, "No password was set before. Choose one above.")
+            if not helper.linux_password_matches(password):
+                return _system_page(request, helper, "That is not the current password.")
+        else:
+            if len(password) < MIN_PASSWORD_LENGTH:
+                return _system_page(request, helper,
+                                    f"The password must be at least {MIN_PASSWORD_LENGTH} characters.")
+            if password != password2:
+                return _system_page(request, helper, "The passwords do not match.")
+            helper.call("account_set_password", password=password)
+        want_ssh = ssh == "1"
+        if want_ssh != bool(account.get("ssh_enabled")):
+            helper.call("ssh_set", enabled=want_ssh)
+    except (HelperUnavailable, HelperFailed) as e:
+        return _system_page(request, helper, str(e))
+
+    config.parent.system_setup_done = True
+    config.save()
     return RedirectResponse(url="/parent/", status_code=302)
 
 
