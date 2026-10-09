@@ -102,6 +102,21 @@ The form is pre-filled from the file name: `Finding.Nemo.2003.1080p.mkv` becomes
 
 Answers can be applied to a whole folder at once, for a season of a show or a set of videos from one channel.
 
+5. **Audio and subtitles**, only when the file has more than one audio track or has subtitles (Step 1 already read the streams):
+   - The audio language is pre-selected from the kid's language, and commentary tracks are named so they can be avoided.
+   - Subtitle tracks are listed with their language and kind (see "Subtitles" below).
+
+### TV shows
+
+When a folder looks like a show, the page **suggests** grouping it and the parent confirms or declines. A folder looks like a show when its files carry episode markers (`S01E03`, `1x03`, `Episode 3`), or when Wikidata says the looked-up title is a TV series.
+
+- **One channel per show**, created on the fly: "Bluey".
+  - The poster becomes the channel icon.
+  - Episodes go in order, season then episode number, so "next" on the watch page plays the next episode.
+- The episode title comes from the lookup when Wikidata or TMDB has the episode list. Otherwise it is "Season 1, Episode 3".
+- "No, keep them as separate videos" is always one click away, and a show channel can be merged into an existing channel.
+- Seasons are not their own channels. A kid browsing one big channel per show is simpler than nested folders, and the episode order already carries the season.
+
 ### Step 3: look it up
 
 The server, never the parent's or kid's browser, searches according to the answer to "where is it from". It shows up to six candidates, each with an image, a title and a short description. The parent picks one, edits the description, or chooses a fallback.
@@ -136,10 +151,73 @@ The server, never the parent's or kid's browser, searches according to the answe
 
 ### Background jobs
 
-- New table `import_jobs`: id, source path, size and mtime, the chosen metadata as JSON, mode (move or copy), state (`queued`, `working`, `done`, `failed`), error, video id.
+- New table `import_jobs`: id, source path, size and mtime, the chosen metadata as JSON, mode (move or copy), state (`queued`, `working`, `cancelling`, `cancelled`, `done`, `failed`), phase, progress, ETA, error, video id.
 - A single worker, sharing the "Downloads at once" limit, because transcoding is what a Pi 4 is slowest at.
-- After a restart, `working` jobs go back to `queued`. A move only deletes the source after the new row is committed, so a crash leaves a duplicate at worst, never a loss.
-- The import page shows progress. The dashboard shows "3 imports running" while any job is active.
+- After a restart, `working` and `cancelling` jobs are cleaned up (below). `working` ones go back to `queued`, and `cancelling` ones become `cancelled`.
+- A move only deletes the source after the new row is committed, so a crash leaves a duplicate at worst, never a loss.
+- The dashboard shows "3 imports running" while any job is active.
+
+### Following a conversion live
+
+There is no up-front promise of how long a conversion takes. The estimate is measured as the job runs and keeps improving.
+
+- **Every phase reports progress:** copy, hash, convert, subtitles, thumbnail.
+  - **Copy and hash** are byte counts read in 8 MB chunks.
+  - **Convert** runs ffmpeg with `-progress pipe:1 -nostats`. The worker reads `out_time_us` and `speed` line by line and compares them with the duration ffprobe gave.
+- **The page shows the measured state**, for example "Converting: 34%, 1.6× real time, about 41 min left". The ETA is the remaining media time divided by a moving average of `speed` over the last minute, so it settles after the first minute instead of jumping around.
+  - The page polls a small JSON endpoint every 2 s. The same numbers go on the dashboard.
+- **A stall is visible.** If `out_time_us` stops advancing for 2 minutes, the job is shown as "stuck" with a Cancel button, instead of a spinner that never ends.
+- **No fixed timeout.** Today's `subprocess.run(..., timeout=3600)` in `NormalizeService` would kill a full movie on a Pi 4 after an hour. A real progress signal plus stall detection replaces the fixed limit.
+- **Afterwards,** the worker records the achieved speed per kind of conversion (remux, 480p, 720p from 1080p…) in `import_jobs`. The *next* file's estimate starts from that measured figure instead of a guess.
+
+### Cancelling cleanly
+
+Cancel is available at every phase, from the job list and from the dashboard. The parent can also cancel everything at once.
+
+- **Everything temporary lives in one folder per job:** `uploads/.tmp/import-<job id>/`. That holds the partial copy, the ffmpeg output, the extracted subtitles, the thumbnail and ffmpeg's stderr log. Nothing is written elsewhere until the final commit step.
+- **The final commit is a short step that cannot be interrupted:** rename the job folder's files into `uploads/up_<hash>/`, insert the row, and only then (for a move) delete the source. Cancelling before this step touches nothing outside the job folder.
+- **ffmpeg** starts in its own process group (`start_new_session=True`).
+  - Cancel sends `SIGTERM` to the group, waits 5 s, then sends `SIGKILL`, and reaps the process so no zombie is left.
+  - ffmpeg's stderr goes to a file in the job folder, not a pipe, so a chatty ffmpeg cannot fill a pipe buffer or grow memory.
+  - Progress lines are parsed one at a time and dropped. Only the latest numbers are kept.
+- **The copy and hash loops** check the cancel flag between chunks, so a cancel takes effect within one 8 MB chunk.
+- **After a cancel** the job folder is deleted and the job becomes `cancelled`. The source file is untouched, even for a "move".
+- **Startup sweep:** any `uploads/.tmp/import-*` folder without a `working` job is deleted. This covers a crash or a power cut in the middle of a job.
+- **Space is reserved up front.** A job starts only if free space on the media drive is at least the source size, plus the existing `min_free_disk_bytes` margin. A conversion cannot fill the drive halfway through.
+- **Tests use a fake `ffmpeg`** that prints progress lines and sleeps. They cancel it at each phase and assert:
+  - no job folder is left.
+  - no `videos` row is created.
+  - the source file is unchanged.
+  - no child process is still alive.
+  - a restart after a simulated crash cleans up.
+- The same runner replaces the blocking call in `NormalizeService`, so uploads and channel downloads get the progress and the clean cancel too.
+
+### Subtitles
+
+How it works today (`app/features/media/router.py`, `StorageService.list_subtitles`, `static/kid/watch.js`):
+
+- Subtitles are files named `video.<lang>.vtt` (or `.srt`) next to the video. The kid player fetches `/media/subs/<id>` and adds one `<track>` per file. The first one is switched on when the profile has "Turn subtitles on automatically".
+- Only yt-dlp writes them (`subtitlesformat: vtt`). VTT files have their cue positions stripped on the way out, so captions are centred.
+
+**Gaps found:**
+
+1. **Lookups only search `videos/<id>/`.** Both the listing and the serving route call `storage.video_dir()`, so an uploaded video, which lives in `uploads/<id>/`, can never have subtitles. Fix: one `subtitle_dir(video)` that follows `storage_mode`, the same way `video_file_path` already does.
+2. **`.srt` is served but browsers do not play it.** HTML `<track>` only accepts WebVTT, so an `.srt` file shows nothing. Fix: convert to VTT at import time, and serve only VTT. The conversion:
+   - adds the `WEBVTT` header.
+   - changes `00:01:02,500` to `00:01:02.500`.
+   - strips the BOM and `{\an8}`-style tags.
+   - keeps `<i>` and `<b>`.
+   - decodes UTF-8 first, then Windows-1252, because many DVD-rip `.srt` files are not UTF-8.
+3. **The track label is the raw code.** Kids see "en" or "pt-BR". Fix: label tracks with the language name from `app/i18n` ("English", "Português").
+4. **Conversion can trip over subtitle streams.** `NormalizeService` passes no `-map` and no `-sn`, so ffmpeg picks streams on its own. Usually that is harmless, but an MKV with picture subtitles going to `.mp4` would likely make the whole conversion fail. ffmpeg's default may also pick a commentary track as the audio. Fix: map exactly one video stream and the chosen audio stream, plus `-sn`. Subtitles are handled separately (below).
+
+**What import does with each kind:**
+
+| Source | Example | What happens |
+|---|---|---|
+| Sidecar text file | `Movie.en.srt`, `Movie.pt-BR.vtt`, `Movie.srt` | Converted to `video.<lang>.vtt`. The language comes from the file name, or the parent picks it in Step 2 when the name has none. |
+| Text stream inside the file | MKV with SubRip or ASS subtitles | Extracted with `ffmpeg -map 0:s:N -c:s webvtt`. The language comes from the stream's tag. |
+| Picture stream inside the file | DVD VobSub (`dvd_subtitle`), Blu-ray PGS | These can't become text without OCR. The parent can choose "burn into the picture", which forces a full transcode and can't be switched off later, or skip them. Step 1 marks these tracks so it is clear before importing. |
 
 ### Data model
 
@@ -163,8 +241,13 @@ Migration `0012_imports`:
 
 Nothing changes in how kids browse. The description shows on the watch page where downloaded videos already show theirs, and the poster becomes the card picture.
 
+## 3b. Fixes that help today, before the import page
+
+Gaps 1, 2 and 4 from "Subtitles" above, and the 1-hour ffmpeg limit, are bugs in the existing upload and download paths. They are worth fixing first and on their own.
+
 ## 4. Build order
 
+0. **Fixes from 3b:** subtitle directory, SRT to VTT, explicit stream mapping, and the progress-reporting, cancellable ffmpeg runner.
 1. **Media dir split** and `setup-external-drive.sh --media-only`, with tests for the path refactor and a docker-chroot run of the script against an exFAT image.
 2. **Shared upload/import tail** pulled out of `UploadService.finalize`, behaviour unchanged (the existing upload tests must pass untouched).
 3. **Import page, Steps 1, 2 and 4,** with frames and sidecars as the only pictures, plus `import_jobs`. This is already useful offline.
@@ -173,6 +256,5 @@ Nothing changes in how kids browse. The description shows on the watch page wher
 
 ## 5. Open questions
 
-- **Pi 4 conversion time** for a full movie has to be measured on real hardware before the page promises an estimate. The Pi 4's hardware H.264 encoder (`h264_v4l2m2m`) could cut it a lot if the quality is acceptable.
-- **TV series:** one channel per show with episodes in order, or a plain folder? This depends on how the kid UI should present a season.
-- **Subtitles:** importing `<name>.srt` alongside the video needs to be checked against how `media/subs` serves downloaded subtitles.
+- **Hardware encoder.** The Pi 4's hardware H.264 encoder (`h264_v4l2m2m`) could make conversions several times faster than `libx264`. It needs a quality check on real files before becoming the default on a Pi. The live estimate works either way.
+- **Episode order across shows.** Episode order needs a per-channel sort key. Check whether the existing channel ordering can carry it, or whether a `sort_index` column is needed.
