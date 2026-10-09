@@ -173,15 +173,21 @@ class StorageService:
         path = self.downloaded_file(video_id)
         return path.stat().st_size if path else 0
 
-    def list_subtitles(self, video_id: str) -> list[dict]:
-        """List available subtitle files for a video."""
-        vdir = self.video_dir(video_id)
+    def subtitle_dir(self, video) -> Path:
+        """Where a video's subtitle files live: next to its video file."""
+        if getattr(video, "storage_mode", "") == "uploaded":
+            return self.upload_video_dir(video.video_id)
+        return self.video_dir(video.video_id)
+
+    def list_subtitles(self, video) -> list[dict]:
+        """Subtitle files for a video, named ``video.<lang>.vtt`` (or .srt)."""
+        vdir = self.subtitle_dir(video)
         subs = []
         if vdir.exists():
-            for f in vdir.iterdir():
-                if f.suffix in (".vtt", ".srt"):
+            for f in sorted(vdir.iterdir()):
+                if f.suffix in (".vtt", ".srt") and f.is_file():
                     parts = f.stem.split(".", 1)
-                    lang = parts[1] if len(parts) > 1 else "unknown"
+                    lang = parts[1] if len(parts) > 1 else ""
                     subs.append({"lang": lang, "path": str(f), "filename": f.name})
         return subs
 

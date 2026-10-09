@@ -213,7 +213,7 @@ class TestSubtitleNormalization:
     """
 
     def test_normalize_vtt_strips_cue_settings(self):
-        from app.features.media.router import _normalize_vtt
+        from app.services.subtitles import normalize_vtt as _normalize_vtt
         raw = (
             "WEBVTT\n"
             "Kind: captions\n"
@@ -238,7 +238,7 @@ class TestSubtitleNormalization:
 
     def test_normalize_vtt_preserves_clean_cues(self):
         """A VTT without cue settings should round-trip unchanged."""
-        from app.features.media.router import _normalize_vtt
+        from app.services.subtitles import normalize_vtt as _normalize_vtt
         raw = (
             "WEBVTT\n"
             "\n"

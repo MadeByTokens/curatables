@@ -1,7 +1,6 @@
 """Media streaming: video and thumbnail serving."""
 
 import logging
-import re
 
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import FileResponse, Response
@@ -11,6 +10,7 @@ logger = logging.getLogger(__name__)
 from app.dependencies import get_viewer, get_content_service, get_storage_service, get_thumbnail_service, get_kid_library_service, get_config
 from app.services.content import ContentService, VideoNotFound
 from app.services.storage import StorageService
+from app.services.subtitles import language_code, language_label, to_vtt
 from app.services.thumbnails import ThumbnailService
 from app.services.kid_library import KidLibraryService
 from app.config import Config
@@ -137,34 +137,12 @@ def list_subtitles(request: Request, video_id: str,
                    storage: StorageService = Depends(get_storage_service)):
     """Return available subtitle tracks as JSON."""
     try:
-        content.get_video_for_viewer(video_id, viewer)
+        video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404)
-    subs = storage.list_subtitles(video_id)
-    return [{"lang": s["lang"], "url": f"/media/subs/{video_id}/{s['filename']}"} for s in subs]
-
-
-_VTT_CUE_TIMING_RE = re.compile(
-    r"^(\d{2}:\d{2}:\d{2}\.\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}\.\d{3})"
-)
-
-
-def _normalize_vtt(raw: str) -> str:
-    """Strip cue settings (position / align / line / size) from a VTT.
-
-    YouTube auto-captions ship with `align:start position:0%` on every
-    cue, which anchors the text at the left edge of the video and
-    causes native HTML5 captions to render off-center. Removing the
-    settings lets the browser fall back to the centered default.
-    """
-    out = []
-    for line in raw.splitlines():
-        m = _VTT_CUE_TIMING_RE.match(line)
-        if m:
-            out.append(f"{m.group(1)} --> {m.group(2)}")
-        else:
-            out.append(line)
-    return "\n".join(out)
+    return [{"lang": language_code(s["lang"]), "label": language_label(s["lang"]),
+             "url": f"/media/subs/{video_id}/{s['filename']}"}
+            for s in storage.list_subtitles(video)]
 
 
 @router.get("/subs/{video_id}/{filename}")
@@ -172,32 +150,27 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
                    viewer: ViewerContext = Depends(get_viewer),
                    content: ContentService = Depends(get_content_service),
                    storage: StorageService = Depends(get_storage_service)):
-    """Serve a subtitle file.
+    """Serve a subtitle file as WebVTT, the only format <track> plays.
 
-    For VTT files, cue settings are stripped on the fly so captions
-    display centered regardless of whatever alignment metadata
-    yt-dlp downloaded from the source.
+    SubRip files are converted and VTT cue settings are stripped on the
+    fly, so captions display centered regardless of whatever alignment
+    metadata came with the source.
     """
     from pathlib import Path
     try:
-        content.get_video_for_viewer(video_id, viewer)
+        video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404)
     # Sanitize filename to prevent path traversal
-    safe_name = Path(filename).name
-    sub_path = storage.video_dir(video_id) / safe_name
-    if not sub_path.exists() or sub_path.suffix not in (".vtt", ".srt"):
+    sub_path = storage.subtitle_dir(video) / Path(filename).name
+    if not sub_path.is_file() or sub_path.suffix not in (".vtt", ".srt"):
         return Response(status_code=404)
-
-    if sub_path.suffix == ".vtt":
-        try:
-            raw = sub_path.read_text(encoding="utf-8")
-        except OSError:
-            return Response(status_code=500, content="Failed to read subtitle")
-        normalized = _normalize_vtt(raw)
-        return Response(content=normalized, media_type="text/vtt; charset=utf-8")
-
-    return FileResponse(str(sub_path), media_type="application/x-subrip")
+    try:
+        raw = sub_path.read_bytes()
+    except OSError:
+        return Response(status_code=500, content="Failed to read subtitle")
+    return Response(content=to_vtt(raw, sub_path.suffix),
+                    media_type="text/vtt; charset=utf-8")
 
 
 def _serve_channel_asset(config, content: ContentService, viewer: ViewerContext,

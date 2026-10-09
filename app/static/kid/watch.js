@@ -231,8 +231,8 @@
     for (var i = 0; i < subs.length; i++) {
       var track = document.createElement('track');
       track.kind = 'subtitles';
-      track.label = subs[i].lang;
-      track.srclang = subs[i].lang;
+      track.label = subs[i].label || subs[i].lang;
+      if (subs[i].lang) { track.srclang = subs[i].lang; }
       track.src = subs[i].url;
       if (i === 0 && autoSubs) { track['default'] = true; }
       video.appendChild(track);
