@@ -16,6 +16,12 @@ class ChannelRepository(BaseRepository):
             return None
         return self._to_model(row)
 
+    def get_by_name(self, name: str) -> Channel | None:
+        row = self.db.execute(
+            "SELECT * FROM channels WHERE name = ?", (name,)
+        ).fetchone()
+        return self._to_model(row) if row else None
+
     def list(self) -> list[Channel]:
         rows = self.db.execute(
             "SELECT * FROM channels ORDER BY position, name"

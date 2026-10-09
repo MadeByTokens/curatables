@@ -79,10 +79,15 @@ def edit_submit(request: Request, channel_id: int,
     owner_raw = (owner_profile_id or "").strip()
     if owner_raw and owner_raw.isdigit():
         owner_id = int(owner_raw)
-    channels_svc.update(channel_id, name=name,
-                        description=description.strip(),
-                        position=max(0, position),
-                        owner_profile_id=owner_id)
+    try:
+        channels_svc.update(channel_id, name=name,
+                            description=description.strip(),
+                            position=max(0, position),
+                            owner_profile_id=owner_id)
+    except ValueError:
+        channels_svc.update(channel_id, description=description.strip(),
+                            position=max(0, position),
+                            owner_profile_id=owner_id)
     return RedirectResponse(url="/parent/channels/", status_code=302)
 
 

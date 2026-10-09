@@ -2,7 +2,6 @@
 
 import logging
 import os
-import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -12,9 +11,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from app.config import load_config, ensure_directories
-from app.db.connection import create_connection, get_db_path
-from app.db.schema import init_schema, recover_from_crash
 from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
+from app.lifecycle import make_lifespan, prepare_data_dir, startup_jobs
 from app.logging_config import setup_logging
 from app.middleware import (
     RequestLoggingMiddleware, BodySizeLimitMiddleware, RequestIDMiddleware,
@@ -34,177 +32,12 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     log_dir = config.data_dir / "logs"
     setup_logging(effective_log_level, log_dir)
 
-    if not config.parent.session_secret:
-        config.parent.session_secret = secrets.token_hex(32)
-        config.save()
+    prepare_data_dir(config)
+    metrics = MetricsService(enabled=config.server.prometheus_enabled)
+    startup_jobs(config, metrics)
 
-    # Run schema init and crash recovery with a temporary connection
-    db_path = get_db_path(config.data_dir)
-    conn = create_connection(db_path)
-    init_schema(conn)
-    recover_from_crash(conn, config.data_dir)
-    conn.close()
-
-    # Resume any videos left in 'pending' after the crash-recovery pass.
-    # recover_from_crash moves interrupted 'downloading' rows back to
-    # 'pending', but nothing re-kicks them unless we do so here. Each
-    # download runs in its own daemon thread with its own connection,
-    # so this call returns immediately after queuing.
-    try:
-        from app.backends.ytdlp import YtdlpBackend
-        from app.services.video_source import VideoSourceService
-        from app.services.thumbnails import ThumbnailService
-        from app.services.storage import StorageService
-        from app.services.normalize import MediaNormalizer
-        from app.services.media_probe import MediaProbeService
-        from app.services.content import ContentService
-        from app.repositories import (
-            VideoRepository, SourceRepository, ChannelRepository,
-        )
-
-        _resume_conn = create_connection(db_path)
-        _resume_backend = YtdlpBackend(
-            impersonate=config.storage.impersonate,
-            cookies_from_browser=config.storage.cookies_from_browser,
-            cookies_file=config.storage.cookies_file,
-        )
-        _resume_content = ContentService(
-            VideoRepository(_resume_conn),
-            SourceRepository(_resume_conn),
-            ChannelRepository(_resume_conn),
-            VideoSourceService(_resume_backend),
-            ThumbnailService(config.data_dir),
-            StorageService(config.data_dir, _resume_backend,
-                           min_free_bytes=config.storage.min_free_disk_bytes,
-                           normalizer=MediaNormalizer(MediaProbeService()),
-                           max_download_bytes=config.storage.max_download_bytes),
-            config,
-        )
-        _resumed = _resume_content.resume_pending_downloads()
-        _resume_conn.close()
-        if _resumed:
-            import logging
-            logging.getLogger("curatables").info(
-                "Resumed %d pending download(s) after restart", _resumed)
-    except Exception:
-        import logging
-        logging.getLogger("curatables").warning(
-            "Pending download resume at startup failed (continuing)",
-            exc_info=True)
-
-    # Sweep abandoned upload tmp files from previous runs.
-    from app.services.storage import StorageService
-    from app.services.uploads import UploadService
-    try:
-        _sweep_storage = StorageService(config.data_dir, backend=None,
-                                        min_free_bytes=config.storage.min_free_disk_bytes)
-        _sweep_uploads = UploadService(_sweep_storage, probe=None, video_repo=None,
-                                       channel_repo=None, thumbnails=None)
-        _swept = _sweep_uploads.sweep_abandoned(ttl_hours=24)
-        if _swept:
-            import logging
-            logging.getLogger("curatables").info(
-                "Swept %d abandoned upload tmp files", _swept)
-    except Exception:
-        import logging
-        logging.getLogger("curatables").warning(
-            "Upload sweep at startup failed (continuing)")
-
-    # mDNS advertiser lives for the lifetime of the app. Stored on
-    # app.state so tests can observe/replace it without reaching into
-    # the lifespan closure. start()/stop() are async because they drive
-    # zeroconf.asyncio.AsyncZeroconf — the sync Zeroconf class refuses
-    # to run from inside an active event loop (EventLoopBlocked).
-    from app.services.mdns import ZeroconfAdvertiser
-
-    async def _cache_cleanup_loop():
-        """Periodic cache eviction sweep. Runs for the life of the app.
-
-        Reads the current config on every tick so changing
-        cache_days / interval in /parent/settings takes effect without
-        a restart. Each iteration runs the synchronous sweep on a
-        thread (SQLite + filesystem) so the event loop stays responsive.
-        Cancellation in the lifespan finally-block is the clean
-        shutdown signal.
-        """
-        import asyncio
-        import contextlib
-        from app.backends.ytdlp import YtdlpBackend
-        from app.db.connection import create_connection, get_db_path
-        from app.repositories import VideoRepository
-        from app.services.storage import StorageService
-
-        log = logging.getLogger("curatables")
-        log.info("cache cleanup loop started")
-        try:
-            while True:
-                interval_min = max(1, config.storage.cache_cleanup_interval_minutes)
-                await asyncio.sleep(interval_min * 60)
-                if (config.storage.cache_cleanup_interval_minutes <= 0
-                        or config.storage.cache_days <= 0):
-                    continue  # disabled at runtime, keep the task alive in case it's re-enabled
-                try:
-                    def _run_sweep():
-                        conn = create_connection(get_db_path(config.data_dir))
-                        try:
-                            # No backend needed for eviction — we only
-                            # delete files and update DB rows.
-                            storage = StorageService(
-                                config.data_dir, backend=None,
-                                min_free_bytes=config.storage.min_free_disk_bytes)
-                            return storage.evict_expired(
-                                VideoRepository(conn),
-                                config.storage.cache_days)
-                        finally:
-                            conn.close()
-
-                    report = await asyncio.to_thread(_run_sweep)
-                    if report.evicted_count:
-                        log.info("cache sweep: evicted %d videos, freed %d bytes",
-                                 report.evicted_count, report.freed_bytes)
-                        app.state.metrics.record_eviction(report.evicted_count)
-                except Exception:
-                    log.exception("cache cleanup sweep failed")
-        except asyncio.CancelledError:
-            log.info("cache cleanup loop stopped")
-            raise
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        import asyncio
-        import contextlib
-        import logging as _logging
-        advertiser = None
-        if config.server.mdns_enabled:
-            advertiser = ZeroconfAdvertiser(
-                name=config.server.mdns_name,
-                port=config.server.port,
-            )
-            await advertiser.start()
-            app.state.mdns = advertiser
-        else:
-            app.state.mdns = None
-
-        cleanup_task = None
-        if config.storage.cache_cleanup_interval_minutes > 0:
-            cleanup_task = asyncio.create_task(_cache_cleanup_loop())
-            app.state.cache_cleanup_task = cleanup_task
-        else:
-            app.state.cache_cleanup_task = None
-            _logging.getLogger("curatables").info(
-                "cache cleanup disabled (cache_cleanup_interval_minutes=0)")
-
-        try:
-            yield
-        finally:
-            if cleanup_task is not None:
-                cleanup_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await cleanup_task
-            if advertiser is not None:
-                await advertiser.stop()
-
-    app = FastAPI(title="curatables", docs_url=None, redoc_url=None, lifespan=lifespan)
+    app = FastAPI(title="curatables", docs_url=None, redoc_url=None,
+                  lifespan=make_lifespan(config))
 
     app.add_middleware(RequestLoggingMiddleware)
     # RequestIDMiddleware stamps each request with a correlation ID in a
@@ -234,12 +67,15 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # Prometheus metrics service. Always instantiated; the recorders
     # no-op when prometheus_enabled=False so call sites don't branch.
     # /metrics returns 404 when disabled.
-    app.state.metrics = MetricsService(enabled=config.server.prometheus_enabled)
+    app.state.metrics = metrics
 
     # CSRF service — shared between CSRFMiddleware (validates) and the
     # Jinja csrf_token context processor (mints). Created here, ahead
     # of the Jinja2Templates constructor that closes over it.
-    csrf_service = CSRFService(secret_key=config.parent.session_secret)
+    csrf_service = CSRFService(
+        secret_key=config.parent.session_secret,
+        max_age_seconds=config.parent.session_timeout_hours * 3600,
+    )
     app.state.csrf = csrf_service
 
     # Templates — base directory, themes can overlay later
@@ -373,7 +209,6 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     )
 
     # --- Exception handlers ---
-    import logging
     _error_logger = logging.getLogger("curatables.errors")
 
     @app.exception_handler(NotAuthenticated)

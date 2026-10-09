@@ -88,11 +88,3 @@ class ProfileVideoOverrideRepository(BaseRepository):
 
     def clear_title(self, profile_id: int, video_id: str) -> None:
         self.clear_field(profile_id, video_id, "title")
-
-    def delete(self, profile_id: int, video_id: str) -> None:
-        self.db.execute(
-            "DELETE FROM profile_video_overrides "
-            "WHERE profile_id = ? AND video_id = ?",
-            (profile_id, video_id),
-        )
-        self.db.commit()

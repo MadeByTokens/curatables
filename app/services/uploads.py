@@ -18,7 +18,7 @@ import secrets
 import shutil
 import time
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.models import Video
@@ -196,7 +196,7 @@ class UploadService:
         title = session.title.strip() or self._title_from_filename(session.filename)
 
         # Build and insert the videos row.
-        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         video = Video(
             video_id=video_id,
             title=title,

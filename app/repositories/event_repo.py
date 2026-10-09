@@ -27,23 +27,6 @@ class EventRepository(BaseRepository):
         )
         self.db.commit()
 
-    def get_watch_time_today(self, profile_id: int | None = None) -> int:
-        """Total watch seconds for today, optionally filtered by profile."""
-        if profile_id is not None:
-            row = self.db.execute(
-                "SELECT COALESCE(SUM(json_extract(data_json, '$.watch_seconds')), 0) as total "
-                "FROM events WHERE event_type = 'video_complete' "
-                "AND date(timestamp) = date('now') AND profile_id = ?",
-                (profile_id,),
-            ).fetchone()
-        else:
-            row = self.db.execute(
-                "SELECT COALESCE(SUM(json_extract(data_json, '$.watch_seconds')), 0) as total "
-                "FROM events WHERE event_type = 'video_complete' "
-                "AND date(timestamp) = date('now')"
-            ).fetchone()
-        return int(row["total"])
-
     def list_recent(self, limit: int = 50,
                     profile_id: int | None = None) -> list[Event]:
         if profile_id is not None:
@@ -174,3 +157,12 @@ class EventRepository(BaseRepository):
             data_json=d.get("data_json", "{}"),
             video_title=d.get("video_title"),
         )
+
+    def delete_older_than(self, days: float) -> int:
+        cur = self.db.execute(
+            "DELETE FROM events WHERE timestamp < datetime('now', ?)",
+            (f"-{float(days)} days",),
+        )
+        self.db.commit()
+        return cur.rowcount
+

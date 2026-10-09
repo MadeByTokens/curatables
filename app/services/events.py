@@ -29,10 +29,6 @@ class EventService:
         if event_type == "video_play":
             self.metrics.record_kid_play()
 
-    def get_watch_time_today(self, profile_id: int | None = None) -> int:
-        """Returns total watch seconds for today."""
-        return self.event_repo.get_watch_time_today(profile_id)
-
     def list_recent(self, limit: int = 50,
                     profile_id: int | None = None) -> list[Event]:
         return self.event_repo.list_recent(limit, profile_id)

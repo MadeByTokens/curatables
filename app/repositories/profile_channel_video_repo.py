@@ -50,15 +50,6 @@ class ProfileChannelVideoRepository(BaseRepository):
         ).fetchone()
         return int(row["n"])
 
-    def is_bookmarked(self, profile_id: int, channel_id: int,
-                      video_id: str) -> bool:
-        row = self.db.execute(
-            "SELECT 1 FROM profile_channel_videos "
-            "WHERE profile_id = ? AND channel_id = ? AND video_id = ?",
-            (profile_id, channel_id, video_id),
-        ).fetchone()
-        return row is not None
-
     def channels_for_video(self, profile_id: int,
                            video_id: str) -> list[int]:
         rows = self.db.execute(

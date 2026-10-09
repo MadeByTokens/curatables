@@ -18,6 +18,7 @@ reused for both the extractor part and the raw-id part.
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 _SAFE = re.compile(r"[^a-zA-Z0-9_-]")
@@ -45,4 +46,10 @@ def make_video_id(extractor: str, raw_id: str) -> str:
     if ex == "x":
         ex = "unknown"
     rid = sanitize_id_component(raw_id)
+    if raw_id and rid != raw_id:
+        # Sanitising changed the ID, so two different raw IDs (a.b / a-b,
+        # or long ones sharing a 96-char prefix) could map to one key.
+        # A short hash of the original keeps them apart.
+        digest = hashlib.sha1(raw_id.encode("utf-8")).hexdigest()[:8]
+        rid = f"{rid[:87]}-{digest}"
     return f"{ex}_{rid}"

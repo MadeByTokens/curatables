@@ -21,6 +21,7 @@ from app.dependencies import (
     get_channel_service, get_config, get_event_service,
     get_storage_service, get_upload_service, require_kid_feature,
 )
+from app.web import is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 from app.services.channels import ChannelService
@@ -113,7 +114,7 @@ async def kid_upload(request: Request,
                      config: Config = Depends(get_config)):
     # The upload page posts with XHR (for the progress bar) and gets
     # JSON back; a plain form post (no JS) gets the page / a redirect.
-    xhr = request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
+    xhr = is_xhr(request)
 
     def fail(message: str, status_code: int):
         if xhr:

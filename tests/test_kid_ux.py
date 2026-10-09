@@ -118,3 +118,12 @@ def test_kid_upload_xhr_gets_json(app):
                     files={"file": ("b.mp4", b"b" * 100, "video/mp4")},
                     headers={"X-Requested-With": "XMLHttpRequest"})
     assert resp.status_code in (413,)
+
+
+def test_bookmarked_videos_show_in_kids_own_channel(app):
+    conn, kid, pid = _setup(app)
+    mine = ChannelRepository(conn).create("Sam's faves", owner_profile_id=pid)
+    from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
+    ProfileChannelVideoRepository(conn).add(pid, mine, "yt_train")
+    page = kid.get(f"/channel/{mine}").text
+    assert "Steam train" in page

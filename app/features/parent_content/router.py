@@ -128,10 +128,15 @@ async def add_confirm(request: Request,
     source_url = form.get("source_url", "")
     source_title = form.get("source_title", "Unknown")
 
-    channel_id = content.resolve_channel(
-        form.get("channel_id", ""),
-        form.get("new_channel_name", ""),
-    )
+    try:
+        channel_id = content.resolve_channel(
+            form.get("channel_id", ""),
+            form.get("new_channel_name", ""),
+        )
+    except ContentError as e:
+        return templates.TemplateResponse(request, "parent/add.html", {
+            "request": request, "error": str(e), "success": None,
+        }, status_code=400)
     resolution = form.get("resolution", "")
     if resolution not in RESOLUTION_MAP:
         resolution = content.config.storage.default_resolution
@@ -233,7 +238,10 @@ async def edit_save(request: Request, video_id: str,
     new_channel_name = (form.get("new_channel_name") or "").strip()
     resolution = (form.get("resolution") or "").strip()
 
-    ch_id = content.resolve_channel(channel_id, new_channel_name)
+    try:
+        ch_id = content.resolve_channel(channel_id, new_channel_name)
+    except ContentError:
+        ch_id = None
     fields = {"title": title, "description": description}
     if ch_id is not None:
         fields["channel_id"] = ch_id

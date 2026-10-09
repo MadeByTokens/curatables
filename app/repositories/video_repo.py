@@ -39,21 +39,6 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_by_channels(self, channel_ids: list[int],
-                         limit: int = 30, offset: int = 0) -> list[Video]:
-        if not channel_ids:
-            return []
-        placeholders = ",".join("?" for _ in channel_ids)
-        params: list = list(channel_ids)
-        params.extend([limit, offset])
-        rows = self.db.execute(
-            f"SELECT * FROM videos WHERE status = 'active' "
-            f"AND channel_id IN ({placeholders}) "
-            f"ORDER BY added_at DESC LIMIT ? OFFSET ?",
-            params,
-        ).fetchall()
-        return [self._to_model(r) for r in rows]
-
     def count(self, status: str | None = "active",
               channel_id: int | None = None) -> int:
         clauses = []

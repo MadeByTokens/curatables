@@ -61,7 +61,7 @@ side-project, not a funded vendor):
 
 - The Curatables server code under `app/`.
 - Shipped scripts (`scripts/install.sh`, `scripts/backup.sh`,
-  `scripts/restore.sh`, `run.py`, `curatables-cli.py`).
+  `scripts/restore.sh`, `run.py`, `tools/curatables-cli.py`).
 - The shipped systemd unit (`systemd/curatables.service`).
 - Vendored client-side code (`app/static/`, including
   `tus-js-client`).

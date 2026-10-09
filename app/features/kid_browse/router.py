@@ -12,11 +12,12 @@ from app.dependencies import (
     get_reaction_service, get_kid_library_service, get_channel_service,
     require_kid_feature,
 )
-from app.services.content import ContentService
+from app.services.content import ContentService, VideoNotFound
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
+from app.web import is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 
@@ -74,6 +75,24 @@ def help_page(request: Request,
     return render_kid_template(request, viewer, "kid/help.html", {})
 
 
+def _with_bookmarks(videos, channel_id, viewer, content, kid_lib):
+    """Videos the kid saved into their own channel (from Customize), shown
+    ahead of the videos that live in it. Ones the kid can no longer see
+    are skipped."""
+    ids, _total = kid_lib.channel_video_ids(viewer.profile_id, channel_id,
+                                            per_page=ITEMS_PER_PAGE)
+    present = {v.video_id for v in videos}
+    saved = []
+    for vid in ids:
+        if vid in present:
+            continue
+        try:
+            saved.append(content.get_video_for_viewer(vid, viewer))
+        except VideoNotFound:
+            continue
+    return saved + videos
+
+
 @router.get("/channel/{channel_id}", response_class=HTMLResponse)
 def channel_view(request: Request, channel_id: int,
                  page: int = Query(1, ge=1),
@@ -88,6 +107,8 @@ def channel_view(request: Request, channel_id: int,
         return RedirectResponse(url="/", status_code=302)
     videos, total = content.list_for_viewer(
         viewer, page=page, per_page=ITEMS_PER_PAGE, channel_id=channel_id)
+    if viewer.is_child and channel.owner_profile_id == viewer.profile_id and page == 1:
+        videos = _with_bookmarks(videos, channel_id, viewer, content, kid_lib)
     if viewer.is_child and viewer.profile_id:
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total,
@@ -182,14 +203,6 @@ def video_reset_field(request: Request, video_id: str,
         url=f"/video/{video_id}/edit", status_code=302)
 
 
-def _is_xhr(request: Request) -> bool:
-    """The watch page's inline tag editor calls these endpoints via XHR
-    (X-Requested-With) so it can update the chips in place — a full
-    redirect/reload would re-create the <video> element and restart
-    playback. A plain <form> submit (JS off / old browser) has no such
-    header and still gets the PRG redirect below."""
-    return request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
-
 
 @router.post("/video/{video_id}/tags/add")
 def video_tag_add(request: Request, video_id: str,
@@ -200,7 +213,7 @@ def video_tag_add(request: Request, video_id: str,
     content.get_video_for_viewer(video_id, viewer)
     tag = tag.strip()
     tag_id = kid_lib.add_tag(viewer.profile_id, video_id, tag) if tag else None
-    if _is_xhr(request):
+    if is_xhr(request):
         if tag_id is None:
             return Response(status_code=204)
         return render_kid_template(request, viewer, "kid/_tag_chip_response.html", {
@@ -216,7 +229,7 @@ def video_tag_remove(request: Request, video_id: str,
                      kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     content.get_video_for_viewer(video_id, viewer)
     kid_lib.remove_tag(viewer.profile_id, video_id, tag_id)
-    if _is_xhr(request):
+    if is_xhr(request):
         return Response(status_code=204)
     return RedirectResponse(url=f"/watch/{video_id}#tags", status_code=302)
 
@@ -245,6 +258,8 @@ async def channel_edit_save(request: Request, channel_id: int,
 
     form = await request.form()
     name = (form.get("name") or "").strip()[:64] or channel.name
+    if channels_svc.name_taken(name, channel_id):
+        name = channel.name
     description = (form.get("description") or "").strip()[:1000]
     color = (form.get("color") or "").strip()
     if not valid_color(color):

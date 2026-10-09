@@ -58,6 +58,8 @@ class ChannelService:
             raise ValueError("Channel name is required.")
         if len(cleaned) > 64:
             raise ValueError("Channel name must be 64 characters or fewer.")
+        if self.channel_repo.get_by_name(cleaned) is not None:
+            raise ValueError("That name is already used. Try another one.")
         channel_id = self.channel_repo.create(
             cleaned, description="", owner_profile_id=owner_profile_id,
         )
@@ -78,7 +80,14 @@ class ChannelService:
         channels.sort(key=lambda c: (c.position, c.name.lower()))
         return channels
 
+    def name_taken(self, name: str, except_id: int | None = None) -> bool:
+        other = self.channel_repo.get_by_name(name)
+        return other is not None and other.id != except_id
+
     def update(self, channel_id: int, **fields) -> None:
+        """Raises ValueError if a new name is already used by another channel."""
+        if "name" in fields and self.name_taken(fields["name"], channel_id):
+            raise ValueError(f'There is already a channel called "{fields["name"]}".')
         self.channel_repo.update(channel_id, **fields)
 
     def delete(self, channel_id: int, reassign_to: int | None = None) -> None:

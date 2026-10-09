@@ -46,7 +46,9 @@ class CommentService:
         else:
             return [], 0
 
-        replies = self.comment_repo.list_replies_for([c.id for c in top_level])
+        replies = self.comment_repo.list_replies_for(
+            [c.id for c in top_level],
+            viewer_profile_id=None if viewer.is_parent else viewer.profile_id)
         replies_map: dict[int, list[Comment]] = {}
         for r in replies:
             replies_map.setdefault(r.parent_comment_id, []).append(r)
@@ -118,21 +120,3 @@ class CommentService:
     def list_recent(self, limit: int = 50) -> list[Comment]:
         """Get recent comments for parent moderation."""
         return self.comment_repo.list_recent(limit)
-
-    def _thread(self, flat: list[Comment]) -> list[Comment]:
-        """Organize flat comment list into threaded structure (1 level)."""
-        top_level = []
-        replies_map: dict[int, list[Comment]] = {}
-
-        for c in flat:
-            if c.parent_comment_id:
-                if c.parent_comment_id not in replies_map:
-                    replies_map[c.parent_comment_id] = []
-                replies_map[c.parent_comment_id].append(c)
-            else:
-                top_level.append(c)
-
-        for c in top_level:
-            c.replies = replies_map.get(c.id, [])
-
-        return top_level

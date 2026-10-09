@@ -138,3 +138,41 @@ class TestCommentPagination:
         comments, total = svc.list_for_video("v1", alice_viewer)
         assert total == 3
         assert all(c.body.startswith("alice-") for c in comments)
+
+
+class TestSiblingCommentVisibility:
+    def _setup(self, db):
+        from app.repositories import ChannelRepository
+        ch = ChannelRepository(db).create("Shared")
+        alice = ProfileRepository(db).create(Profile(name="alice2", display_name="Alice"))
+        bob = ProfileRepository(db).create(Profile(name="bob2", display_name="Bob"))
+        _mk_video(db, "vshared")
+        db.execute("UPDATE videos SET channel_id = ? WHERE video_id = 'vshared'", (ch,))
+        db.commit()
+        return ch, alice, bob
+
+    def _kid(self, pid):
+        return ViewerContext(viewer_type="child", profile_id=pid, profile_name="k")
+
+    def test_unrestricted_siblings_see_each_other(self, db):
+        _ch, alice, bob = self._setup(db)
+        _seed_comment(db, "vshared", "hi from bob", profile_id=bob, is_parent_user=0)
+        comments, total = _mk_svc(db).list_for_video("vshared", self._kid(alice))
+        assert total == 1 and comments[0].body == "hi from bob"
+
+    def test_sibling_who_cannot_see_channel_is_hidden(self, db):
+        _ch, alice, bob = self._setup(db)
+        ProfileRepository(db).update(bob, channels_restricted=True)
+        _seed_comment(db, "vshared", "old comment", profile_id=bob, is_parent_user=0)
+        _comments, total = _mk_svc(db).list_for_video("vshared", self._kid(alice))
+        assert total == 0
+
+    def test_replies_follow_the_same_rule(self, db):
+        _ch, alice, bob = self._setup(db)
+        top = _seed_comment(db, "vshared", "mine", profile_id=alice, is_parent_user=0)
+        ProfileRepository(db).update(bob, channels_restricted=True)
+        db.execute("INSERT INTO comments (video_id, body, profile_id, parent_comment_id) "
+                   "VALUES ('vshared', 'hidden reply', ?, ?)", (bob, top))
+        db.commit()
+        comments, _ = _mk_svc(db).list_for_video("vshared", self._kid(alice))
+        assert comments[0].replies == []

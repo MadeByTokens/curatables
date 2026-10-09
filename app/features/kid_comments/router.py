@@ -16,14 +16,12 @@ from app.dependencies import (
 from app.services.content import ContentService, VideoNotFound
 from app.services.comments import CommentService
 from app.services.rate_limit import RateLimitExceeded
+from app.web import is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 
 router = APIRouter(tags=["kid-comments"])
 
-
-def _is_xhr(request: Request) -> bool:
-    return request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
 
 
 @router.post("/watch/{video_id}/comment")
@@ -33,7 +31,7 @@ def post_comment(request: Request, video_id: str,
                  viewer: ViewerContext = Depends(require_kid_feature("allow_comments", allow_parent=True)),
                  content: ContentService = Depends(get_content_service),
                  comments: CommentService = Depends(get_comment_service)):
-    xhr = _is_xhr(request)
+    xhr = is_xhr(request)
     try:
         content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:

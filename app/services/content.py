@@ -459,8 +459,13 @@ class ContentService:
     def resolve_channel(self, channel_id_str: str,
                         new_channel_name: str) -> int | None:
         """Resolve a channel selection: create new or use existing."""
-        if new_channel_name.strip():
-            return self.channel_repo.create(new_channel_name.strip())
+        name = new_channel_name.strip()
+        if name:
+            existing = self.channel_repo.get_by_name(name)
+            if existing is not None and existing.owner_profile_id is not None:
+                raise ContentError(
+                    f'"{name}" is a kid\'s own channel. Pick another name.')
+            return self.channel_repo.create(name)
         if channel_id_str and channel_id_str.isdigit():
             return int(channel_id_str)
         return None

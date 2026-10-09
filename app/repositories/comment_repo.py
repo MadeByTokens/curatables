@@ -5,6 +5,25 @@ from app.models.comment import Comment
 from app.repositories.base import BaseRepository
 
 
+# A comment on a video is visible to a kid (bound as the single ?) when
+# it is the parent's, the kid's own, or written by a profile that can see
+# the video's channel: a parent-created channel the author isn't
+# restricted from, a channel the author owns, or one whitelisted for them.
+_VISIBLE_TO_KID = """(
+  c.is_parent_user = 1
+  OR c.profile_id = ?
+  OR c.profile_id IN (
+    SELECT a.id FROM profiles a
+    JOIN videos v ON v.video_id = c.video_id
+    JOIN channels ch ON ch.id = v.channel_id
+    WHERE (ch.owner_profile_id IS NULL AND a.channels_restricted = 0)
+       OR ch.owner_profile_id = a.id
+       OR EXISTS (SELECT 1 FROM profile_channels pc
+                  WHERE pc.profile_id = a.id AND pc.channel_id = ch.id)
+  )
+)"""
+
+
 class CommentRepository(BaseRepository):
 
     def create(self, video_id: str, body: str, profile_id: int | None,
@@ -37,47 +56,6 @@ class CommentRepository(BaseRepository):
             (comment_id,),
         ).fetchone()
         return self._to_model(row) if row else None
-
-    def list_for_video(self, video_id: str) -> list[Comment]:
-        """Get all comments for a video with author info. Returns flat list."""
-        rows = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.video_id = ? "
-            "ORDER BY c.created_at ASC",
-            (video_id,),
-        ).fetchall()
-        return [self._to_model(r) for r in rows]
-
-    def list_for_video_visible_to(self, video_id: str,
-                                  viewer_profile_id: int) -> list[Comment]:
-        """Get comments visible to a specific child profile.
-        A child sees: their own comments, parent comments, and comments
-        from profiles that share at least one channel with them."""
-        rows = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.video_id = ? "
-            "AND ("
-            "  c.is_parent_user = 1 "
-            "  OR c.profile_id = ? "
-            "  OR c.profile_id IN ("
-            "    SELECT DISTINCT pc2.profile_id "
-            "    FROM profile_channels pc1 "
-            "    JOIN profile_channels pc2 ON pc1.channel_id = pc2.channel_id "
-            "    WHERE pc1.profile_id = ? AND pc2.profile_id != pc1.profile_id"
-            "  )"
-            ") "
-            "ORDER BY c.created_at ASC",
-            (video_id, viewer_profile_id, viewer_profile_id),
-        ).fetchall()
-        return [self._to_model(r) for r in rows]
 
     def count_for_video(self, video_id: str) -> int:
         row = self.db.execute(
@@ -115,25 +93,24 @@ class CommentRepository(BaseRepository):
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
             "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
-            "AND ("
-            "  c.is_parent_user = 1 "
-            "  OR c.profile_id = ? "
-            "  OR c.profile_id IN ("
-            "    SELECT DISTINCT pc2.profile_id "
-            "    FROM profile_channels pc1 "
-            "    JOIN profile_channels pc2 ON pc1.channel_id = pc2.channel_id "
-            "    WHERE pc1.profile_id = ? AND pc2.profile_id != pc1.profile_id"
-            "  )"
-            ") "
+            f"AND {_VISIBLE_TO_KID} "
             "ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?",
-            (video_id, viewer_profile_id, viewer_profile_id, limit, offset),
+            (video_id, viewer_profile_id, limit, offset),
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_replies_for(self, top_level_ids: list[int]) -> list[Comment]:
+    def list_replies_for(self, top_level_ids: list[int],
+                         viewer_profile_id: int | None = None) -> list[Comment]:
+        """Replies to the given comments; with viewer_profile_id, only the
+        ones that kid may see (same rule as top-level comments)."""
         if not top_level_ids:
             return []
         placeholders = ",".join("?" for _ in top_level_ids)
+        params: list = list(top_level_ids)
+        visible = ""
+        if viewer_profile_id is not None:
+            visible = f"AND {_VISIBLE_TO_KID} "
+            params.append(viewer_profile_id)
         rows = self.db.execute(
             f"SELECT c.*, "
             f"COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
@@ -141,8 +118,9 @@ class CommentRepository(BaseRepository):
             f"FROM comments c "
             f"LEFT JOIN profiles p ON c.profile_id = p.id "
             f"WHERE c.parent_comment_id IN ({placeholders}) "
+            f"{visible}"
             f"ORDER BY c.created_at ASC",
-            list(top_level_ids),
+            params,
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
@@ -159,17 +137,8 @@ class CommentRepository(BaseRepository):
         row = self.db.execute(
             "SELECT COUNT(*) as cnt FROM comments c "
             "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
-            "AND ("
-            "  c.is_parent_user = 1 "
-            "  OR c.profile_id = ? "
-            "  OR c.profile_id IN ("
-            "    SELECT DISTINCT pc2.profile_id "
-            "    FROM profile_channels pc1 "
-            "    JOIN profile_channels pc2 ON pc1.channel_id = pc2.channel_id "
-            "    WHERE pc1.profile_id = ? AND pc2.profile_id != pc1.profile_id"
-            "  )"
-            ")",
-            (video_id, viewer_profile_id, viewer_profile_id),
+            f"AND {_VISIBLE_TO_KID}",
+            (video_id, viewer_profile_id),
         ).fetchone()
         return int(row["cnt"])
 

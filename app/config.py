@@ -38,6 +38,9 @@ class StorageConfig:
     # StorageService.evict_expired every N minutes. Set to 0 to disable
     # the sweep entirely; cache_days<=0 also short-circuits (keep forever).
     cache_cleanup_interval_minutes: int = 60
+    # Usage events (plays, views, searches) older than this are deleted
+    # by the same background sweep. 0 keeps them forever.
+    events_retention_days: int = 365
 
     def __post_init__(self):
         if not self.path:
@@ -121,6 +124,6 @@ def _relocation_target(data: dict, config_path: Path) -> Path | None:
 def ensure_directories(config: Config) -> None:
     """Create all required data directories."""
     base = config.data_dir
-    for subdir in ["db", "videos", "thumbnails/custom", "logs",
+    for subdir in ["db", "videos", "thumbnails", "logs",
                    "uploads", "uploads/.tmp"]:
         (base / subdir).mkdir(parents=True, exist_ok=True)

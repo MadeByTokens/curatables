@@ -37,7 +37,7 @@ def config(tmp_path):
     """Config pointing at a temporary data directory."""
     c = Config()
     c.storage.path = str(tmp_path)
-    for subdir in ["db", "videos", "thumbnails/custom", "logs"]:
+    for subdir in ["db", "videos", "thumbnails", "logs"]:
         (tmp_path / subdir).mkdir(parents=True, exist_ok=True)
     return c
 

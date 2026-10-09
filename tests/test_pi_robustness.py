@@ -161,3 +161,14 @@ class TestRedownload:
         repo = VideoRepository(db)
         assert repo.claim_evicted("c1") is True
         assert repo.claim_evicted("c1") is False
+
+
+def test_sanitised_ids_do_not_collide():
+    from app.services.ids import make_video_id
+    a = make_video_id("generic", "a.b")
+    b = make_video_id("generic", "a-b")
+    assert a != b
+    assert make_video_id("youtube", "dQw4w9WgXcQ") == "youtube_dQw4w9WgXcQ"
+    long1 = make_video_id("generic", "x" * 100 + "1")
+    long2 = make_video_id("generic", "x" * 100 + "2")
+    assert long1 != long2 and len(long1) <= 110
