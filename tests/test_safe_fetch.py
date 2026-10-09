@@ -52,25 +52,91 @@ class _Redirector(BaseHTTPRequestHandler):
         pass
 
 
-def test_redirect_to_lan_is_blocked(monkeypatch):
-    server = HTTPServer(("127.0.0.1", 0), _Redirector)
+class _Picture(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Length", "3")
+        self.end_headers()
+        self.wfile.write(b"jpg")
+
+    def log_message(self, *a):
+        pass
+
+
+def _serve(handler):
+    server = HTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    port = server.server_address[1]
-    real_check = safe_fetch.check_url
-    calls = []
+    return server, server.server_address[1]
 
-    def first_hop_allowed(url):
-        calls.append(url)
-        if len(calls) > 1:
-            real_check(url)
 
-    monkeypatch.setattr(safe_fetch, "check_url", first_hop_allowed)
+def _allow_loopback_port(monkeypatch, port, extra=()):
+    """Let the test server's port through as if it were public."""
+    real = safe_fetch.resolve_public
+
+    def fake(host, p):
+        if p == port:
+            return [*extra, (socket.AF_INET, ("127.0.0.1", port))]
+        return real(host, p)
+
+    monkeypatch.setattr(safe_fetch, "resolve_public", fake)
+
+
+def test_redirect_to_lan_is_blocked(monkeypatch):
+    server, port = _serve(_Redirector)
+    _allow_loopback_port(monkeypatch, port)
     try:
         with pytest.raises(BlockedURL):
             fetch_public(f"http://127.0.0.1:{port}/thumb.jpg", 1024, timeout=5)
     finally:
         server.shutdown()
-    assert calls[-1] == "http://127.0.0.1:1/secret"
+
+
+def test_connects_to_the_checked_address_ipv4_first(monkeypatch):
+    server, port = _serve(_Picture)
+    resolved = []
+    real_connect = safe_fetch._connect
+
+    def spy(host, p, timeout):
+        sock = real_connect(host, p, timeout)
+        resolved.append(sock.getpeername()[0])
+        return sock
+
+    _allow_loopback_port(monkeypatch, port)
+    monkeypatch.setattr(safe_fetch, "_connect", spy)
+    try:
+        assert fetch_public(f"http://thumbs.example.test:{port}/a.jpg", 1024, timeout=5) == b"jpg"
+    finally:
+        server.shutdown()
+    assert resolved == ["127.0.0.1"]
+
+
+def test_unreachable_ipv6_falls_back_quickly(monkeypatch):
+    import time
+    server, port = _serve(_Picture)
+    real = safe_fetch.resolve_public
+
+    def fake(host, p):
+        if p == port:
+            return [(socket.AF_INET6, ("100::1", port, 0, 0)),
+                    (socket.AF_INET, ("127.0.0.1", port))]
+        return real(host, p)
+
+    monkeypatch.setattr(safe_fetch, "resolve_public", fake)
+    started = time.monotonic()
+    try:
+        assert safe_fetch._connect("x.test", port, 15).getpeername()[0] == "127.0.0.1"
+    finally:
+        server.shutdown()
+    assert time.monotonic() - started < safe_fetch.CONNECT_TIMEOUT + 2
+
+
+def test_resolver_orders_ipv4_first(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [
+        (socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("2606:4700:4700::1111", 443, 0, 0)),
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+    ])
+    assert [a[0] for a in safe_fetch.resolve_public("x.test", 443)] == [
+        socket.AF_INET, socket.AF_INET6]
 
 
 def test_thumbnail_service_refuses_lan_url(tmp_path):
