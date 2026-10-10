@@ -195,10 +195,43 @@ def test_flat_search_entries_keep_thumbnail_and_live_state():
     from app.backends.ytdlp import _entries_to_metadata
     metas = _entries_to_metadata([
         {"id": "aaaaaaaaaaa", "title": "A", "channel": "C", "duration": 61.0,
-         "thumbnails": [{"url": "https://i.ytimg.com/small.jpg"},
-                        {"url": "https://i.ytimg.com/big.jpg"}]},
+         "thumbnails": [{"url": "https://i.ytimg.com/vi/aaaaaaaaaaa/hq720.jpg?sqp=x&rs=y"}]},
         {"id": "bbbbbbbbbbb", "title": "B", "live_status": "is_upcoming"},
+        {"id": "c1", "title": "Elsewhere",
+         "thumbnails": [{"url": "https://cdn.example/small.jpg"},
+                        {"url": "https://cdn.example/big.jpg"}]},
     ], parent_extractor="youtube")
-    assert metas[0].thumbnail_url == "https://i.ytimg.com/big.jpg"
+    # Signed YouTube links answer with AVIF/WebP; the plain JPEG always works.
+    assert metas[0].thumbnail_url == "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg"
+    assert metas[1].thumbnail_url == "https://i.ytimg.com/vi/bbbbbbbbbbb/hqdefault.jpg"
+    assert metas[2].thumbnail_url == "https://cdn.example/big.jpg"
     assert metas[0].duration == 61 and metas[0].extractor == "youtube"
     assert not metas[0].is_live and metas[1].is_live
+
+
+def test_full_youtube_info_keeps_a_plain_jpeg_and_replaces_webp():
+    from app.backends.ytdlp import _info_to_metadata
+    jpg = _info_to_metadata({"id": "aaaaaaaaaaa", "extractor_key": "Youtube",
+                             "thumbnail": "https://i.ytimg.com/vi/aaaaaaaaaaa/maxresdefault.jpg"})
+    webp = _info_to_metadata({"id": "aaaaaaaaaaa", "extractor_key": "Youtube",
+                              "thumbnail": "https://i.ytimg.com/vi_webp/aaaaaaaaaaa/maxresdefault.webp"})
+    other = _info_to_metadata({"id": "x1", "extractor_key": "Vimeo",
+                               "thumbnail": "https://i.vimeocdn.com/x.webp"})
+    assert jpg.thumbnail_url == "https://i.ytimg.com/vi/aaaaaaaaaaa/maxresdefault.jpg"
+    assert webp.thumbnail_url == "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg"
+    assert other.thumbnail_url == "https://i.vimeocdn.com/x.webp"
+
+
+def test_more_videos_shows_the_next_page(app, client, backend):
+    app.state.config.wishlist.max_results = 1
+    try:
+        _kid(app, client)
+        first = client.get("/wishlist", params={"q": "songs"}).text
+        assert "Counting to ten" in first and "Shapes song" not in first
+        assert "page=2" in first and "page=0" not in first
+        second = client.get("/wishlist", params={"q": "songs", "page": 2}).text
+        assert "Shapes song" in second and "Counting to ten" not in second
+        assert "page=1" in second and "page=3" not in second
+        assert client.get("/wishlist/thumb/youtube_eeeeeeeeeee").status_code == 200
+    finally:
+        app.state.config.wishlist.max_results = 12

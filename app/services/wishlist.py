@@ -19,6 +19,7 @@ from app.services.rate_limit import RateLimiter
 from app.services.thumbnails import ThumbnailService
 
 SEARCH_LIMITER = RateLimiter(max_events=10, window_seconds=300)
+MAX_PAGES = 5
 _YOUTUBE_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
@@ -32,6 +33,13 @@ class WishlistResult:
     video_id: str
     status: str
     """'new', 'pending', 'approved' or 'in_library'."""
+
+
+@dataclass
+class WishlistPage:
+    results: list[WishlistResult]
+    page: int
+    has_more: bool
 
 
 def _contains_word(text: str, word: str) -> bool:
@@ -71,15 +79,20 @@ class WishlistService:
             return False
         return True
 
-    def search(self, profile_id: int, query: str) -> list[WishlistResult]:
+    def search(self, profile_id: int, query: str, page: int = 1) -> WishlistPage:
+        """One page of results that pass the rules. YouTube search has no
+        page token, so page N asks for enough results to fill N pages and
+        skips the ones before it."""
         query = " ".join(query.split())[:100]
+        page = min(max(page, 1), MAX_PAGES)
         if not query:
-            return []
+            return WishlistPage([], page, False)
         if self.blocked_word_in(query):
             raise WishlistError("Let's look for something else.")
         if not SEARCH_LIMITER.check(profile_id):
             raise WishlistError("Too many searches. Wait a little, then try again.")
-        found = self.backend.search(query, max_results=self.rules.max_results * 2)
+        per_page = self.rules.max_results
+        found = self.backend.search(query, max_results=per_page * page * 2)
         asked = self.repo.statuses_for(profile_id)
         results: list[WishlistResult] = []
         for meta in found:
@@ -92,14 +105,16 @@ class WishlistService:
             if status == "new" and self.video_repo.get(video_id) is not None:
                 status = "in_library"
             results.append(WishlistResult(meta, video_id, status))
-            if len(results) >= self.rules.max_results:
+            if len(results) > per_page * page:
                 break
+        has_more = len(results) > per_page * page and page < MAX_PAGES
+        results = results[per_page * (page - 1):per_page * page]
         self.thumbnails.download_many([
             (r.video_id, r.meta.thumbnail_url or
              f"https://i.ytimg.com/vi/{r.meta.video_id}/hqdefault.jpg")
             for r in results
         ])
-        return results
+        return WishlistPage(results, page, has_more)
 
     def ask(self, profile_id: int, raw_id: str) -> str:
         """Record the kid's request after re-checking the video against the

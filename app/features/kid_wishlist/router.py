@@ -43,6 +43,7 @@ def _remember_seen(request: Request, profile_id: int, video_ids: list[str]) -> N
 @router.get("/wishlist", response_class=HTMLResponse)
 async def wishlist_page(request: Request,
                         q: str = Query(""),
+                        page: int = Query(1, ge=1, le=99),
                         asked: str = Query(""),
                         viewer: ViewerContext = Depends(_wishlist),
                         service: WishlistService = Depends(get_wishlist_service),
@@ -51,18 +52,22 @@ async def wishlist_page(request: Request,
     query = " ".join(q.split())[:100]
     results = []
     error = None
+    found = None
     if query:
         try:
-            results = await run_in_threadpool(service.search, viewer.kid_id, query)
+            found = await run_in_threadpool(service.search, viewer.kid_id, query, page)
+            results = found.results
         except WishlistError as e:
             error = gettext(viewer.language, str(e))
         events.log("wishlist_search", profile_id=viewer.profile_id,
-                   data={"query": query, "result_count": len(results),
+                   data={"query": query, "page": page, "result_count": len(results),
                          "refused": error is not None})
         _remember_seen(request, viewer.kid_id, [r.video_id for r in results])
     return render_kid_template(request, viewer, "kid/wishlist.html", {
         "query": query,
         "results": results,
+        "page": found.page if found else 1,
+        "has_more": bool(found and found.has_more),
         "error": error,
         "asked": asked == "1",
         "my_requests": repo.list_for_profile(viewer.kid_id, limit=24),

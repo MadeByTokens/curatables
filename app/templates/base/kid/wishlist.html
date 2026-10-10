@@ -44,6 +44,12 @@
   </div>
   {% endfor %}
   <div class="clear"></div>
+  {% if page > 1 or has_more %}
+  <nav class="wishlist-pages" aria-label="{{ _('More videos') }}">
+    {% if page > 1 %}<a class="wishlist-page-btn" href="/wishlist?q={{ query|urlencode }}&amp;page={{ page - 1 }}"><span aria-hidden="true">&#9664;</span> {{ _("Back") }}</a>{% endif %}
+    {% if has_more %}<a class="wishlist-page-btn" href="/wishlist?q={{ query|urlencode }}&amp;page={{ page + 1 }}">{{ _("More videos") }} <span aria-hidden="true">&#9654;</span></a>{% endif %}
+  </nav>
+  {% endif %}
 {% else %}
   <div class="empty-state">
     <div class="empty-icon" aria-hidden="true">&#129300;</div>

@@ -13,6 +13,7 @@ import re
 import threading
 from typing import Any
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from app.services.safe_fetch import BlockedURL, check_url
 from app.backends.base import VideoBackend, VideoMetadata, BackendError, BackendErrorType
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 # path components. Anything else is a fixture-mode leak or a newly
 # added extractor with weird IDs — skip it rather than crash.
 _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
+_YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
 class YtdlpBackend(VideoBackend):
@@ -344,7 +346,7 @@ def _info_to_metadata(info: dict) -> VideoMetadata:
         view_count=info.get("view_count") or 0,
         upload_date=info.get("upload_date") or "",
         description=info.get("description") or "",
-        thumbnail_url=info.get("thumbnail") or "",
+        thumbnail_url=_thumbnail(info, extractor, full=True),
         extractor=extractor,
         original_url=info.get("webpage_url") or info.get("url") or "",
         is_live=_is_live(info),
@@ -355,11 +357,23 @@ def _is_live(info: dict) -> bool:
     return bool(info.get("is_live")) or info.get("live_status") in ("is_live", "is_upcoming")
 
 
-def _thumbnail(info: dict) -> str:
-    if info.get("thumbnail"):
-        return str(info["thumbnail"])
-    thumbs = [t for t in info.get("thumbnails") or [] if isinstance(t, dict) and t.get("url")]
-    return str(thumbs[-1]["url"]) if thumbs else ""
+def _thumbnail(info: dict, extractor: str, full: bool = False) -> str:
+    """The picture to download for a video. For YouTube that is a plain
+    JPEG: search and playlist entries list signed thumbnail links that
+    YouTube answers with AVIF or WebP, which old tablets can't show and
+    the thumbnail check refuses. hqdefault.jpg exists for every video."""
+    vid = str(info.get("id") or "")
+    youtube = ((extractor.startswith("youtube") or str(info.get("ie_key") or "").lower() == "youtube")
+               and _YOUTUBE_VIDEO_ID.match(vid))
+    url = str(info.get("thumbnail") or "")
+    if not url and not full:
+        thumbs = [t for t in info.get("thumbnails") or [] if isinstance(t, dict) and t.get("url")]
+        url = str(thumbs[-1]["url"]) if thumbs else ""
+    if youtube:
+        parts = urlsplit(url)
+        if not (full and parts.path.endswith(".jpg") and not parts.query):
+            return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
+    return url
 
 
 def _entries_to_metadata(entries: list,
@@ -391,7 +405,7 @@ def _entries_to_metadata(entries: list,
             view_count=e.get("view_count") or 0,
             upload_date=e.get("upload_date") or "",
             description=e.get("description") or "",
-            thumbnail_url=_thumbnail(e),
+            thumbnail_url=_thumbnail(e, extractor),
             extractor=extractor,
             original_url=e.get("webpage_url") or e.get("url") or "",
             is_live=_is_live(e),
