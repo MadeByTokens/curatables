@@ -47,6 +47,7 @@ class BackendErrorType(Enum):
     NETWORK = "network"                 # connection timeout, DNS failure, etc.
     AGE_RESTRICTED = "age_restricted"   # requires age verification
     FORMAT = "format"                   # no suitable format found
+    BLOCKED = "blocked"                 # address on the home network; never fetched
     UNKNOWN = "unknown"                 # unclassified error
 
 

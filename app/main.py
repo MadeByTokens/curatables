@@ -18,6 +18,7 @@ from app.middleware import (
     RequestLoggingMiddleware, BodySizeLimitMiddleware, RequestIDMiddleware,
     CSRFMiddleware, PrometheusMiddleware,
 )
+from app.middleware.host_check import HostCheckMiddleware
 from app.services.auth import AuthService
 from app.services.csrf import CSRFService
 from app.services.metrics import MetricsService
@@ -120,6 +121,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # Reads free space fresh on every render so the chip is always current.
     from app.services.storage_report import get_disk_status_brief
 
+    from app.features.parent_system.router import BOX_NOTICES
+    app.state.templates.env.globals["box_notices"] = BOX_NOTICES
     app.state.templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
     app.state.templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
         config.media_dir, config.storage.min_free_disk_bytes
@@ -263,14 +266,18 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # prometheus_enabled=False the middleware skips its work in O(1).
     app.add_middleware(PrometheusMiddleware, metrics=app.state.metrics)
 
-    # Outermost of all: reject oversized bodies before any other layer
-    # (CSRF parses form bodies) can read them into memory.
+    # Reject oversized bodies before any other layer (CSRF parses form
+    # bodies) can read them into memory.
     app.add_middleware(
         BodySizeLimitMiddleware,
         upload_limit=lambda: capped(config.media_dir, config.storage.max_upload_bytes),
         kid_upload_limit=lambda: capped(config.media_dir, min(config.storage.max_upload_bytes,
                                                               config.storage.max_kid_upload_bytes)),
     )
+
+    # Outermost of all: answer only to the box's own names and IP
+    # addresses (DNS rebinding).
+    app.add_middleware(HostCheckMiddleware, extra_hosts=lambda: config.server.allowed_hosts)
 
     # --- Exception handlers ---
     _error_logger = logging.getLogger("curatables.errors")

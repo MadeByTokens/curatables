@@ -89,6 +89,7 @@
         var sep = embed.indexOf('?') === -1 ? '?' : '&';
         player.innerHTML =
           '<iframe src="' + escapeHtml(embed) + sep + 'autoplay=1" ' +
+          'sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" ' +
           'allow="encrypted-media; fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>';
       } else {
         // Link-out fallback — no clean iframe for this platform.

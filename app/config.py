@@ -26,6 +26,10 @@ class ServerConfig:
     # Only the Raspberry Pi image has one; without it the system pages
     # (Linux password, Wi-Fi, drives, diagnostics) explain that.
     helper_socket: str = "/run/curatables-helper/helper.sock"
+    # Extra names the server answers to, besides the box's hostname
+    # (with .local, .lan, .home ...), localhost and any IP address.
+    # Anything else is refused, which stops DNS-rebinding attacks.
+    allowed_hosts: list[str] = field(default_factory=list)
 
 
 @dataclass

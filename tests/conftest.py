@@ -13,6 +13,12 @@ from app.services.auth import AuthService
 
 
 @pytest.fixture(autouse=True)
+def _test_client_host(monkeypatch):
+    """TestClient talks to http://testserver."""
+    monkeypatch.setenv("CURATABLES_ALLOWED_HOSTS", "testserver")
+
+
+@pytest.fixture(autouse=True)
 def _reset_auth_limiters():
     from app.services.auth import PIN_LIMITER
     PIN_LIMITER.reset()

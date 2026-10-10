@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from app.dependencies import get_profile_service
-from app.services.auth import PIN_LIMITER
+from app.dependencies import get_pin_throttle, get_profile_service
+from app.services.auth import PIN_LIMITER, PinThrottle
 from app.services.profiles import ProfileService
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
@@ -83,20 +83,23 @@ def profile_select(request: Request,
 def profile_pin(request: Request,
                 profile_id: int = Form(...),
                 pin: str = Form(...),
-                profiles_svc: ProfileService = Depends(get_profile_service)):
+                profiles_svc: ProfileService = Depends(get_profile_service),
+                pin_throttle: PinThrottle = Depends(get_pin_throttle)):
     profile = profiles_svc.get(profile_id)
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
     # Keyed by device as well, so one sibling's wrong guesses don't lock
     # the profile on everyone else's tablet.
     limiter_key = (profile.id, request.client.host if request.client else "")
-    if not PIN_LIMITER.check(limiter_key):
+    if pin_throttle.blocked(profile.id) or not PIN_LIMITER.check(limiter_key):
         return _pin_page(request, profile,
                          "Too many tries. Wait a little, then try again.", locked=True)
     if profiles_svc.check_pin(profile, pin):
         PIN_LIMITER.reset(limiter_key)
+        pin_throttle.succeeded(profile.id)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url="/", status_code=302)
+    pin_throttle.failed(profile.id)
     return _pin_page(request, profile, "Wrong PIN. Try again.")
 
 

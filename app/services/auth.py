@@ -40,6 +40,34 @@ class LoginThrottle:
         self.repo.clear(client)
 
 
+PIN_WINDOW_SECONDS = 3600
+PIN_FAILURES_PER_PROFILE = 20
+
+
+class PinThrottle:
+    """Wrong PINs per profile from every device together, kept in the
+    database so a restart does not reset them. The per-device limit
+    (PIN_LIMITER) keeps one sibling from locking the others out quickly;
+    this one bounds guessing from many addresses."""
+
+    def __init__(self, repo: LoginFailureRepository):
+        self.repo = repo
+
+    @staticmethod
+    def _key(profile_id: int | None) -> str:
+        return f"pin:{profile_id}"
+
+    def blocked(self, profile_id: int | None, now: float | None = None) -> bool:
+        since = (now if now is not None else time.time()) - PIN_WINDOW_SECONDS
+        return self.repo.count_since(since, self._key(profile_id)) >= PIN_FAILURES_PER_PROFILE
+
+    def failed(self, profile_id: int | None) -> None:
+        self.repo.record(self._key(profile_id), time.time())
+
+    def succeeded(self, profile_id: int | None) -> None:
+        self.repo.clear(self._key(profile_id))
+
+
 def hash_pin(pin: str) -> str:
     salt = os.urandom(16)
     dk = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, _PIN_ITERATIONS)
@@ -97,7 +125,17 @@ class AuthService:
         session.pop("profile_id", None)
         session["parent_authenticated"] = True
         session["parent_epoch"] = self.config.parent.session_epoch
+        session["parent_since"] = int(time.time())
 
     def is_parent_session(self, session) -> bool:
-        return bool(session.get("parent_authenticated")) and (
-            session.get("parent_epoch", 0) == self.config.parent.session_epoch)
+        """Signed in, with the current password, within session_timeout_hours
+        of signing in. The cookie is re-sent on every response, so its own
+        expiry only measures idle time; this caps the whole sign-in."""
+        if not session.get("parent_authenticated"):
+            return False
+        if session.get("parent_epoch", 0) != self.config.parent.session_epoch:
+            return False
+        since = session.get("parent_since")
+        if not isinstance(since, int):
+            return False
+        return time.time() - since < self.config.parent.session_timeout_hours * 3600

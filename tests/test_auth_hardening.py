@@ -166,3 +166,35 @@ def test_changing_pin_kind_requires_a_new_pin(app, authed_client):
     kai = _svc(app).get(pid)
     assert kai.pin_style == "pictures"
     assert _svc(app).check_pin(kai, "223")
+
+
+def test_pin_guessing_from_many_addresses_is_capped_per_profile(db):
+    from app.repositories.login_failure_repo import LoginFailureRepository
+    from app.services.auth import PIN_FAILURES_PER_PROFILE, LoginThrottle, PinThrottle
+    repo = LoginFailureRepository(db)
+    pins = PinThrottle(repo)
+    for _ in range(PIN_FAILURES_PER_PROFILE):
+        assert not pins.blocked(7)
+        pins.failed(7)
+    assert pins.blocked(7) and not pins.blocked(8)
+    assert not LoginThrottle(repo).blocked("192.0.2.9"), "kids' wrong PINs never lock the parent out"
+    pins.succeeded(7)
+    assert not pins.blocked(7)
+
+
+def test_a_parent_sign_in_ends_after_the_timeout_even_when_used(config, monkeypatch):
+    import time as real_time
+
+    from app.services import auth as auth_mod
+    svc = auth_mod.AuthService(config)
+    session = {}
+    svc.start_parent_session(session)
+    assert svc.is_parent_session(session)
+    later = real_time.time() + config.parent.session_timeout_hours * 3600 + 1
+    monkeypatch.setattr(auth_mod.time, "time", lambda: later)
+    assert not svc.is_parent_session(session)
+
+
+def test_sessions_from_before_the_sign_in_time_was_kept_must_sign_in_again(config):
+    from app.services.auth import AuthService
+    assert not AuthService(config).is_parent_session({"parent_authenticated": True, "parent_epoch": 0})

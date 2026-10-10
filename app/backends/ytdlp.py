@@ -14,6 +14,7 @@ import threading
 from typing import Any
 from pathlib import Path
 
+from app.services.safe_fetch import BlockedURL, check_url
 from app.backends.base import VideoBackend, VideoMetadata, BackendError, BackendErrorType
 
 logger = logging.getLogger(__name__)
@@ -120,10 +121,34 @@ class YtdlpBackend(VideoBackend):
         opts["extractor_args"] = {"youtube": {"player_client": ["all"]}}
         return opts
 
+    def _blocked(self, url: str) -> bool:
+        """True (with last_error set) when url points at the home network
+        or this box. Lists shared by other people can contain such links,
+        and opening one could change a router's or NAS's settings."""
+        if not url.startswith(("http://", "https://")):
+            return False
+        try:
+            check_url(url)
+        except BlockedURL as e:
+            if str(e).startswith("Cannot resolve"):
+                return False
+            self.last_error = BackendError(
+                error_type=BackendErrorType.BLOCKED,
+                message="This link points to a device on your home network, so Curatables won't open it.",
+                details=str(e),
+                suggestion="Use a link to the video's page on the internet.")
+            logger.warning("refused a home-network URL: %s", url)
+            return True
+        except OSError:
+            return False
+        return False
+
     def fetch_video_info(self, url: str) -> VideoMetadata | None:
         import yt_dlp
 
         self.last_error = None
+        if self._blocked(url):
+            return None
         opts = {**self._base_opts(), "skip_download": True}
 
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -155,6 +180,8 @@ class YtdlpBackend(VideoBackend):
             # Only the YouTube channel-URL convention needs /videos
             # appended; other platforms route differently.
             channel_url = channel_url.rstrip("/") + "/videos"
+        if self._blocked(channel_url):
+            return "Unknown", []
 
         opts = {
             **self._base_opts(),
@@ -182,6 +209,8 @@ class YtdlpBackend(VideoBackend):
         import yt_dlp
 
         self.last_error = None
+        if self._blocked(playlist_url):
+            return "Unknown", []
         opts = {
             **self._base_opts(),
             "extract_flat": True, "skip_download": True,
@@ -223,6 +252,8 @@ class YtdlpBackend(VideoBackend):
         import yt_dlp
 
         self.last_error = None
+        if self._blocked(url):
+            return None
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Prefer H.264 video (avc1) + AAC audio (mp4a) so the result is in

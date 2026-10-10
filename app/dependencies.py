@@ -16,7 +16,7 @@ from app.repositories import (
 )
 from app.backends.base import VideoBackend
 from app.backends.ytdlp import YtdlpBackend
-from app.services.auth import AuthService, LoginThrottle
+from app.services.auth import AuthService, LoginThrottle, PinThrottle
 from app.services.system_helper import SystemHelper
 from app.services.wishlist import WishlistService
 from app.services.content import ContentService
@@ -117,6 +117,10 @@ def get_auth_service(config=Depends(get_config)) -> AuthService:
 
 def get_login_throttle(db=Depends(get_db)) -> LoginThrottle:
     return LoginThrottle(LoginFailureRepository(db))
+
+
+def get_pin_throttle(db=Depends(get_db)) -> PinThrottle:
+    return PinThrottle(LoginFailureRepository(db))
 
 
 def get_video_source_service(backend=Depends(get_backend)) -> VideoSourceService:

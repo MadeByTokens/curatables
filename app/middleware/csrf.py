@@ -12,6 +12,7 @@ tokens go in form-data rather than an Authorization header.
 """
 
 import logging
+from urllib.parse import urlsplit
 
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
@@ -60,6 +61,11 @@ class CSRFMiddleware:
             return
 
         if path in CSRF_EXEMPT_EXACT or any(path.startswith(p) for p in CSRF_EXEMPT_PREFIXES):
+            # No token here, so at least refuse a form another site posted
+            # (signing the parent out, claiming first-run setup).
+            if _cross_site(scope):
+                await self._refuse(scope, receive, send, method, path)
+                return
             await self.app(scope, receive, send)
             return
 
@@ -68,26 +74,68 @@ class CSRFMiddleware:
         request = Request(scope, receive=receive)
         session = request.session
 
-        # Buffer the body so we can parse it for a csrf_token field AND
-        # still pass it through to the downstream app. Only small form
-        # posts come through here; large uploads go to allow-listed paths.
-        body = await request.body()
-
-        token = _extract_token(request, body)
-        if not self.csrf.validate(session, token):
-            logger.warning("CSRF token missing or invalid: %s %s",
-                           method, path)
-            resp = PlainTextResponse(
-                "CSRF token missing or invalid.", status_code=403)
-            await resp(scope, receive, send)
+        if request.headers.get("x-csrf-token"):
+            if not self.csrf.validate(session, request.headers["x-csrf-token"]):
+                await self._refuse(scope, receive, send, method, path)
+                return
+            await self.app(scope, receive, send)
             return
 
-        # Replay the buffered body downstream.
+        # Read only as much of the body as finding the token needs: all of
+        # a small form, but just the start of a multipart upload (the
+        # token is the form's first field). A request with a bad token is
+        # refused before a large upload is ever held in memory.
+        multipart = "multipart/form-data" in request.headers.get("content-type", "").lower()
+        prefix = b""
+        more = True
+        while more:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            prefix += message.get("body", b"")
+            more = message.get("more_body", False)
+            if multipart and (len(prefix) >= _MULTIPART_PREFIX or _TOKEN_FIELD in prefix
+                              and b"\n" in prefix.split(_TOKEN_FIELD, 1)[1].lstrip(b"\r\n")):
+                break
+
+        token = _extract_token(request, prefix)
+        if not self.csrf.validate(session, token):
+            await self._refuse(scope, receive, send, method, path)
+            return
+
+        sent_prefix = False
+
         async def _replay():
-            return {"type": "http.request", "body": body,
-                    "more_body": False}
+            nonlocal sent_prefix
+            if not sent_prefix:
+                sent_prefix = True
+                return {"type": "http.request", "body": prefix, "more_body": more}
+            return await receive()
 
         await self.app(scope, _replay, send)
+
+    async def _refuse(self, scope: Scope, receive: Receive, send: Send, method: str, path: str) -> None:
+        logger.warning("CSRF token missing or invalid: %s %s", method, path)
+        resp = PlainTextResponse("CSRF token missing or invalid.", status_code=403)
+        await resp(scope, receive, send)
+
+
+def _cross_site(scope: Scope) -> bool:
+    """True when the browser says the request came from a page on another
+    site (Origin header naming a different host). Requests without the
+    header (old browsers, tools) are let through."""
+    headers = dict(scope.get("headers") or [])
+    origin = headers.get(b"origin", b"").decode("latin-1").strip()
+    if not origin:
+        return False
+    if origin == "null":
+        return True
+    host = headers.get(b"host", b"").decode("latin-1").strip().lower()
+    return bool(urlsplit(origin).netloc.lower() != host)
+
+
+_MULTIPART_PREFIX = 64 * 1024
+_TOKEN_FIELD = b'name="csrf_token"'
 
 
 def _extract_token(request: Request, body: bytes) -> str:

@@ -149,3 +149,83 @@ class TestMultipartTokenExtraction:
         extracted = _extract_token(_multipart_request(), _multipart_body(token))
         assert extracted == token
         assert svc.validate(session, extracted) is True
+
+
+# --- streaming: big uploads are not held in memory to find the token ---------
+
+import asyncio  # noqa: E402
+
+from app.middleware.csrf import CSRFMiddleware  # noqa: E402
+
+
+class _Csrf:
+    def validate(self, session, token):
+        return token == "good-token"
+
+
+def _multipart(token, chunks):
+    head = (b"--B\r\nContent-Disposition: form-data; name=\"csrf_token\"\r\n\r\n" + token.encode()
+            + b"\r\n--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"v.mp4\"\r\n\r\n")
+    return [head] + [b"x" * 65536] * chunks + [b"\r\n--B--\r\n"]
+
+
+def _run(parts, headers=()):
+    reads = {"n": 0}
+    received = []
+
+    async def receive():
+        i = reads["n"]
+        reads["n"] += 1
+        return {"type": "http.request", "body": parts[i], "more_body": i < len(parts) - 1}
+
+    async def app(scope, rcv, send):
+        while True:
+            msg = await rcv()
+            received.append(msg.get("body", b""))
+            if not msg.get("more_body"):
+                break
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    sent = []
+
+    async def send(msg):
+        sent.append(msg)
+
+    scope = {"type": "http", "method": "POST", "path": "/upload", "session": {},
+             "headers": [(b"content-type", b"multipart/form-data; boundary=B"), *headers],
+             "query_string": b""}
+    asyncio.run(CSRFMiddleware(app, _Csrf())(scope, receive, send))
+    status = next(m["status"] for m in sent if m["type"] == "http.response.start")
+    return status, reads["n"], b"".join(received)
+
+
+def test_a_bad_token_is_refused_before_the_upload_is_read():
+    parts = _multipart("bad-token", chunks=50)
+    status, reads, _ = _run(parts)
+    assert status == 403 and reads == 1
+
+
+def test_a_good_token_passes_the_whole_upload_through():
+    parts = _multipart("good-token", chunks=50)
+    status, _, body = _run(parts)
+    assert status == 200 and body == b"".join(parts)
+
+
+def test_a_header_token_never_reads_the_body_first():
+    parts = _multipart("ignored", chunks=3)
+    status, _, body = _run(parts, headers=[(b"x-csrf-token", b"good-token")])
+    assert status == 200 and body == b"".join(parts)
+
+
+def test_another_site_cannot_post_to_the_sign_in_routes(app):
+    from fastapi.testclient import TestClient
+    del app.state.csrf.validate
+    c = TestClient(app, follow_redirects=False)
+    resp = c.post("/parent/login", data={"password": "testpass"},
+                  headers={"Origin": "http://attacker.example"})
+    assert resp.status_code == 403
+    ok = c.post("/parent/login", data={"password": "testpass"}, headers={"Origin": "http://testserver"})
+    assert ok.status_code == 302
+    assert c.post("/profiles/select", data={"profile_id": "1"},
+                  headers={"Origin": "null"}).status_code == 403

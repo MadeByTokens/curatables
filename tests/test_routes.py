@@ -530,3 +530,4 @@ class TestCommentInlineEditXHR:
         resp = client.post(f"/watch/{vid}/comment", data={"body": "hi"})
         assert resp.status_code == 302
         assert "#comments" in resp.headers["location"]
+
