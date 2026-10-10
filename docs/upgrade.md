@@ -61,22 +61,34 @@ The system helper ([`syshelper/upgrade.py`](../syshelper/upgrade.py)):
 
 1. downloads `curatables-<version>.tar.gz` from the release over HTTPS
    and checks it against the release's `SHA256SUMS`;
-2. unpacks it to `/opt/curatables.new` (refusing links that leave the
-   folder, devices and `..` paths), builds its venv there and runs
-   `run.py --check`, while the running version keeps serving;
+2. unpacks it to its own folder, `/opt/curatables-<version>-<time>`
+   (refusing links that leave the folder, devices and `..` paths),
+   builds its venv there and runs `run.py --check`, while the running
+   version keeps serving;
 3. takes a backup (`curatables-backup.service`);
-4. stops the server, moves `/opt/curatables` to `/opt/curatables.previous`
-   and the new tree into place, runs
+4. stops the server, points the `/opt/curatables` link at the new folder
+   and `/opt/curatables.previous` at the old one (one atomic rename each;
+   the image's plain `/opt/curatables` folder becomes
+   `/opt/curatables-<version>-original` the first time), runs
    [`scripts/apply-system.sh`](../scripts/apply-system.sh) (so a release
    can add or change services) and starts the server;
 5. waits up to three minutes for `/healthz` to report the new version.
-   If it doesn't, it moves the old version back, restores the backup and
-   starts it again; the failed tree stays in `/opt/curatables.failed`.
+   If it doesn't, it points the link back and starts the old version;
+   the backup is restored only if the new version added database
+   migrations. A `pending-update.json` marker covers a power cut during
+   this check: the helper checks again when it next starts and goes
+   back if the new version still doesn't answer.
 
-**Go back to <previous>** swaps the two versions again and restores the
-backup made just before that update. Only the library stays on the SD
-card between versions; the code is replaced entirely, so a separate
-partition is not needed.
+Folders are never renamed after their venv is built, because a venv's
+scripts name their interpreter by full path. Older version folders are
+deleted after a successful update; the running and the previous one
+stay.
+
+**Go back to <previous>** points the link back. Today's library is kept
+unless the update added database migrations; then the backup from just
+before the update is restored (after a fresh backup of today's). Only
+the library stays on the SD card between versions; the code is replaced
+entirely, so a separate partition is not needed.
 
 Releases need the update file attached: the
 [`release-source.yml`](../.github/workflows/release-source.yml) workflow

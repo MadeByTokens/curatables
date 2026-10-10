@@ -30,7 +30,7 @@ SVC_USER="${CURATABLES_USER:-curatables}"
 
 REQ="$DATA/update-request.json"
 RES="$DATA/update-result.json"
-PIP="$ROOT/.venv/bin/pip"
+
 PY="$ROOT/.venv/bin/python"
 # Root only ever runs the system interpreter; the venv's Python (which
 # imports packages just fetched from PyPI) runs as the service user.
@@ -90,7 +90,7 @@ before="$(ytdlp_ver)"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
-if as_venv_owner "$PIP" install --upgrade 'yt-dlp>=2024.0' >"$log" 2>&1; then
+if as_venv_owner "$PY" -m pip install --upgrade 'yt-dlp>=2024.0' >"$log" 2>&1; then
     after="$(ytdlp_ver)"
     if [[ "$before" == "$after" ]]; then
         write_result "ok" "Already up to date." "$before" "$after"

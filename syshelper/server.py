@@ -103,6 +103,7 @@ def serve() -> None:
     os.chmod(path, 0o660)
     sock.listen(8)
     logger.info("listening on %s for %s", path, SETTINGS.service_user)
+    threading.Thread(target=upgrade.resume_pending, daemon=True).start()
     while True:
         conn, _ = sock.accept()
         threading.Thread(target=_serve_one, args=(conn, allowed), daemon=True).start()

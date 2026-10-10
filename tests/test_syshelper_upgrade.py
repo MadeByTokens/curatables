@@ -23,14 +23,16 @@ def _tree(root, version):
     (root / "run.py").write_text("print('ok')\n")
 
 
-def _tarball(path, version, extra=None):
+def _tarball(path, version, extra=None, migrations=()):
+    files = {
+        "app/__init__.py": f'__version__ = "{version}"\n',
+        "scripts/apply-system.sh": "#!/bin/sh\n",
+        "requirements.txt": "fastapi\n",
+        "run.py": "print('ok')\n",
+    }
+    files.update({f"app/db/migrations/{m}": "" for m in migrations})
     with tarfile.open(path, "w:gz") as tar:
-        for name, data in {
-            "app/__init__.py": f'__version__ = "{version}"\n',
-            "scripts/apply-system.sh": "#!/bin/sh\n",
-            "requirements.txt": "fastapi\n",
-            "run.py": "print('ok')\n",
-        }.items():
+        for name, data in files.items():
             info = tarfile.TarInfo(f"curatables-{version}/{name}")
             info.size = len(data)
             tar.addfile(info, io.BytesIO(data.encode()))
@@ -51,17 +53,24 @@ def box(fake, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setattr(SETTINGS, "backup_dir", backups)
     restarts = []
     monkeypatch.setattr(system, "later", lambda argv, delay=1.5: restarts.append(argv))
+    monkeypatch.setattr(upgrade, "_release_dir", lambda v: tmp_path / "opt" / f"curatables-{v}-test")
     monkeypatch.setattr(upgrade.time, "sleep", lambda s: None)
     tarball = tmp_path / "release.tar.gz"
     digest = _tarball(tarball, "0.6.0")
+    tarball_with_migration = tmp_path / "release-m.tar.gz"
+    _tarball(tarball_with_migration, "0.6.0", migrations=("0011_new.py",))
     release = {"tag_name": "v0.6.0", "body": "Notes", "published_at": "2026-10-10T00:00:00Z",
                "assets": [{"name": "curatables-0.6.0.tar.gz", "browser_download_url": "https://x/t.tgz"},
                           {"name": "SHA256SUMS", "browser_download_url": "https://x/sums"}]}
-    state = {"sums": f"{digest}  curatables-0.6.0.tar.gz\n", "healthy": True}
+    state = {"sums": f"{digest}  curatables-0.6.0.tar.gz\n", "healthy": True, "migration": False,
+             "bad_sum": False}
 
     def download(url, dest, *, max_bytes, timeout=60):
-        dest.write_bytes(tarball.read_bytes())
-        return hashlib.sha256(tarball.read_bytes()).hexdigest()
+        src = tarball_with_migration if state["migration"] else tarball
+        dest.write_bytes(src.read_bytes())
+        digest = hashlib.sha256(src.read_bytes()).hexdigest()
+        state["sums"] = state["sums"] if state["bad_sum"] else f"{digest}  curatables-0.6.0.tar.gz\n"
+        return digest
     monkeypatch.setattr(upgrade.fetch, "get_json", lambda url, **k: release)
     monkeypatch.setattr(upgrade.fetch, "get_text", lambda url, **k: state["sums"])
     monkeypatch.setattr(upgrade.fetch, "download", download)
@@ -99,10 +108,12 @@ def test_already_newest_is_refused(box):
 def test_update_builds_beside_the_running_code_then_switches(box):
     result = upgrade.curatables_update({})(FakeJob())
     assert result == {"from": "0.5.0", "to": "0.6.0"}
-    assert upgrade.version_of(box["code"]) == "0.6.0"
+    assert box["code"].is_symlink() and upgrade.version_of(box["code"]) == "0.6.0"
     assert upgrade.version_of(upgrade._previous_dir()) == "0.5.0"
+    assert upgrade._real(upgrade._previous_dir()).name == "curatables-0.5.0-original"
     argvs = box["fake"].argvs()
-    pip = next(i for i, a in enumerate(argvs) if a[0].endswith("/.venv/bin/pip"))
+    pip = next(i for i, a in enumerate(argvs) if a[1:3] == ["-m", "pip"])
+    assert argvs[pip][0] == str(upgrade._release_dir("0.6.0") / ".venv" / "bin" / "python")
     backup = argvs.index(["systemctl", "start", "curatables-backup.service"])
     stop = argvs.index(["systemctl", "stop", "curatables.service"])
     assert pip < backup < stop, "build and back up before the old version stops"
@@ -110,46 +121,89 @@ def test_update_builds_beside_the_running_code_then_switches(box):
     assert box["restarts"] == [["systemctl", "restart", "curatables-helper.service"]]
     last = json.loads((SETTINGS.updates_dir / upgrade.RESULT).read_text())
     assert last["state"] == "done" and last["backup"] == "curatables-2026-10-09-030000.db"
+    assert not (SETTINGS.updates_dir / upgrade.PENDING).exists()
 
 
-def test_an_update_that_does_not_start_goes_back_and_restores(box):
+def test_an_update_that_does_not_start_goes_back(box):
     box["state"]["healthy"] = False
     with pytest.raises(HelperError, match="went back to 0.5.0"):
         upgrade.curatables_update({})(FakeJob())
     assert upgrade.version_of(box["code"]) == "0.5.0"
-    assert upgrade.version_of(upgrade._failed_dir()) == "0.6.0"
+    assert not upgrade._previous_dir().exists()
+    assert not [a for a in box["fake"].argvs() if a[:2] == ["runuser", "-u"]], "no schema change, no restore"
+    assert json.loads((SETTINGS.updates_dir / upgrade.RESULT).read_text())["state"] == "failed"
+    assert not (SETTINGS.updates_dir / upgrade.PENDING).exists()
+
+
+def test_a_failed_update_that_changed_the_database_restores_it(box):
+    box["state"]["healthy"] = False
+    box["state"]["migration"] = True
+    with pytest.raises(HelperError):
+        upgrade.curatables_update({})(FakeJob())
     restore = [a for a in box["fake"].argvs() if a[:2] == ["runuser", "-u"]]
     assert restore and restore[0][-1].endswith("curatables-2026-10-09-030000.db")
-    assert json.loads((SETTINGS.updates_dir / upgrade.RESULT).read_text())["state"] == "failed"
 
 
 def test_a_checksum_mismatch_changes_nothing(box):
+    box["state"]["bad_sum"] = True
     box["state"]["sums"] = "0" * 64 + "  curatables-0.6.0.tar.gz\n"
     with pytest.raises(HelperError, match="checksum"):
         upgrade.curatables_update({})(FakeJob())
-    assert upgrade.version_of(box["code"]) == "0.5.0"
+    assert upgrade.version_of(box["code"]) == "0.5.0" and not box["code"].is_symlink()
     assert not box["fake"].ran("systemctl", "stop", "curatables.service")
 
 
 def test_failed_package_install_changes_nothing(box):
-    box["fake"].on([str(upgrade._new_dir() / ".venv" / "bin" / "pip")], rc=1)
+    box["fake"].on([str(upgrade._release_dir("0.6.0") / ".venv" / "bin" / "python"), "-m", "pip"], rc=1)
     with pytest.raises(HelperError, match="Nothing was changed"):
         upgrade.curatables_update({})(FakeJob())
-    assert upgrade.version_of(box["code"]) == "0.5.0" and not upgrade._new_dir().exists()
+    assert upgrade.version_of(box["code"]) == "0.5.0" and not upgrade._release_dir("0.6.0").exists()
 
 
-def test_rollback_swaps_back_and_restores_the_backup(box):
+def test_rollback_swaps_back_and_keeps_todays_data_without_schema_changes(box):
     upgrade.curatables_update({})(FakeJob())
     box["fake"].calls.clear()
     result = upgrade.curatables_rollback({})(FakeJob())
-    assert result["to"] == "0.5.0" and upgrade.version_of(box["code"]) == "0.5.0"
+    assert result["to"] == "0.5.0" and not result["restored"]
+    assert upgrade.version_of(box["code"]) == "0.5.0"
     assert upgrade.version_of(upgrade._previous_dir()) == "0.6.0"
+    assert ["systemctl", "start", "curatables-backup.service"] in box["fake"].argvs()
+    assert not any(a[:2] == ["runuser", "-u"] for a in box["fake"].argvs())
+
+
+def test_rollback_after_a_schema_change_restores_the_pre_update_backup(box):
+    box["state"]["migration"] = True
+    upgrade.curatables_update({})(FakeJob())
+    result = upgrade.curatables_rollback({})(FakeJob())
+    assert result["restored"]
     assert any(a[:2] == ["runuser", "-u"] for a in box["fake"].argvs())
 
 
 def test_no_previous_version_no_rollback(box):
     with pytest.raises(HelperError, match="no previous version"):
         upgrade.curatables_rollback({})
+
+
+def test_an_unconfirmed_update_is_undone_when_the_helper_starts(box):
+    upgrade.curatables_update({})(FakeJob())
+    old = upgrade._real(upgrade._previous_dir())
+    old.chmod(0o755)
+    upgrade._write_pending(to_version="0.6.0", from_version="0.5.0", backup="b.db", schema_changed=False,
+                           old_dir=str(old), previous_before="")
+    box["state"]["healthy"] = False
+    upgrade.resume_pending()
+    assert upgrade.version_of(box["code"]) == "0.5.0"
+    assert not (SETTINGS.updates_dir / upgrade.PENDING).exists()
+    assert json.loads((SETTINGS.updates_dir / upgrade.RESULT).read_text())["state"] == "failed"
+
+
+def test_an_unconfirmed_update_that_answers_is_kept(box):
+    upgrade.curatables_update({})(FakeJob())
+    upgrade._write_pending(to_version="0.6.0", from_version="0.5.0", backup="", schema_changed=False,
+                           old_dir=str(upgrade._real(upgrade._previous_dir())), previous_before="")
+    upgrade.resume_pending()
+    assert upgrade.version_of(box["code"]) == "0.6.0"
+    assert not (SETTINGS.updates_dir / upgrade.PENDING).exists()
 
 
 @pytest.mark.parametrize("name,kind", [
@@ -235,3 +289,15 @@ def test_fetch_refuses_plain_http():
     with pytest.raises(HelperError, match="HTTPS"):
         fetch.get_json("http://example.com/x")
 
+
+
+def test_a_pending_file_naming_a_folder_elsewhere_is_ignored(box, tmp_path):
+    upgrade.curatables_update({})(FakeJob())
+    elsewhere = tmp_path / "evil"
+    _tree(elsewhere, "0.1.0")
+    upgrade._write_pending(to_version="0.6.0", from_version="0.5.0", backup="../../etc/shadow",
+                           schema_changed=True, old_dir=str(elsewhere), previous_before="")
+    box["state"]["healthy"] = False
+    upgrade.resume_pending()
+    assert upgrade.version_of(box["code"]) == "0.6.0"
+    assert oct(SETTINGS.updates_dir.stat().st_mode & 0o777) == "0o700"

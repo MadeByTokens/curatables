@@ -181,7 +181,7 @@ Outside the data dir:
 | `/opt/curatables` | Code and `.venv` on a systemd install or the Pi image. Root-owned; read-only to the service. |
 | `/run/curatables-helper/helper.sock` | Socket of the root system helper (`curatables-helper.service`, Pi image), `root:curatables` 0660. |
 | `/mnt/curatables-media`, `/mnt/curatables-drives/<name>` | The videos drive, and USB drives opened for importing from Box → Drives. |
-| `/opt/curatables.previous`, `/var/lib/curatables-updates` | After an update from Box → Updates: the version before it (for **Go back**), and the download and `last-update.json` result. |
+| `/opt/curatables-<version>-<time>`, `/opt/curatables.previous`, `/var/lib/curatables-updates` | After an update from Box → Updates, `/opt/curatables` is a link to the running version's folder and `.previous` to the one before it (for **Go back**); the updates folder holds the download, `last-update.json` and, during the post-switch check, `pending-update.json`. |
 | `/var/lib/curatables-backups` | Nightly snapshots (DB + `config.json`) from `curatables-backup.timer`, created by systemd (`StateDirectory=`, mode 0700, owned by the service user). On the system disk, so a failed media drive doesn't take the backups with it. See [backup.md](backup.md). |
 
 Container images should mount `/curatables-data` (or whatever path

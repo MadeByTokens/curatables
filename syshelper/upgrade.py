@@ -50,15 +50,58 @@ def newer(candidate: str, installed: str) -> bool:
 
 
 def _previous_dir() -> Path:
+    """A link to the version before the running one."""
     return SETTINGS.code_dir.with_name(SETTINGS.code_dir.name + ".previous")
 
 
-def _new_dir() -> Path:
-    return SETTINGS.code_dir.with_name(SETTINGS.code_dir.name + ".new")
+def _release_dir(version: str) -> Path:
+    """Each version gets its own folder, never renamed afterwards (its
+    venv's scripts name their interpreter by full path), and
+    /opt/curatables is a link to the running one."""
+    stamp = time.strftime("%Y%m%d%H%M%S")
+    return SETTINGS.code_dir.with_name(f"{SETTINGS.code_dir.name}-{version}-{stamp}")
 
 
-def _failed_dir() -> Path:
-    return SETTINGS.code_dir.with_name(SETTINGS.code_dir.name + ".failed")
+def _real(path: Path) -> Path:
+    return Path(os.path.realpath(path))
+
+
+def _point(link: Path, target: Path) -> None:
+    """Make link point at target in one atomic step."""
+    tmp = link.with_name(link.name + ".tmp-link")
+    if os.path.lexists(tmp):
+        os.unlink(tmp)
+    os.symlink(target, tmp)
+    os.replace(tmp, link)
+
+
+def _link_layout() -> None:
+    """The image ships /opt/curatables as a plain folder; turn it into a
+    link to a versioned folder the first time an update switches."""
+    code = SETTINGS.code_dir
+    if code.is_symlink() or not code.is_dir():
+        return
+    dest = code.with_name(f"{code.name}-{version_of(code) or 'original'}-original")
+    os.rename(code, dest)
+    _point(code, dest)
+
+
+def _prune(keep: set[Path]) -> None:
+    for d in SETTINGS.code_dir.parent.glob(SETTINGS.code_dir.name + "-*"):
+        if d.is_dir() and not d.is_symlink() and _real(d) not in keep:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _migrations(code_dir: Path) -> set[str]:
+    try:
+        return {p.name for p in (code_dir / "app" / "db" / "migrations").iterdir()}
+    except OSError:
+        return set()
+
+
+def schema_changed(newer: Path, older: Path) -> bool:
+    """True when newer adds database migrations older does not know."""
+    return bool(_migrations(newer) - _migrations(older))
 
 
 def latest_release() -> dict:
@@ -87,7 +130,7 @@ def _read_result() -> dict:
 
 
 def _write_result(**fields) -> None:
-    SETTINGS.updates_dir.mkdir(parents=True, exist_ok=True)
+    _updates_dir()
     fields["at"] = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
     tmp = SETTINGS.updates_dir / (RESULT + ".tmp")
     tmp.write_text(json.dumps(fields, indent=2))
@@ -203,16 +246,98 @@ def _apply_system(job: Job) -> None:
         job.log("Warning: refreshing the system files reported a problem")
 
 
-def _switch(job: Job, incoming: Path, outgoing_to: Path) -> None:
-    """Make incoming the running code; the current code moves to outgoing_to."""
+def _switch(job: Job, incoming: Path) -> Path:
+    """Make incoming the running code and the current code the previous
+    one. Returns the folder that was running."""
     runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
-    if outgoing_to.exists():
-        shutil.rmtree(outgoing_to)
-    os.rename(SETTINGS.code_dir, outgoing_to)
-    os.rename(incoming, SETTINGS.code_dir)
-    runner.run(["chown", "-R", "root:root", str(SETTINGS.code_dir)], timeout=600)
+    _link_layout()
+    outgoing = _real(SETTINGS.code_dir)
+    runner.run(["chown", "-R", "root:root", str(incoming)], timeout=600)
+    _point(SETTINGS.code_dir, incoming)
+    _point(_previous_dir(), outgoing)
     _apply_system(job)
     runner.run(["systemctl", "start", "curatables.service"], timeout=120)
+    return outgoing
+
+
+PENDING = "pending-update.json"
+
+
+def _updates_dir() -> Path:
+    SETTINGS.updates_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(SETTINGS.updates_dir, 0o700)
+    return SETTINGS.updates_dir
+
+
+def _write_pending(**fields) -> None:
+    (_updates_dir() / PENDING).write_text(json.dumps(fields))
+
+
+def _trusted_release_dir(raw: object) -> Path | None:
+    """A version folder named in the pending file, only if it really is
+    one: a root-owned, not group/other-writable sibling of the code link."""
+    if not isinstance(raw, str) or not raw:
+        return None
+    path = _real(Path(raw))
+    if path.parent != _real(SETTINGS.code_dir.parent) or not path.name.startswith(SETTINGS.code_dir.name + "-"):
+        return None
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return None
+    if not path.is_dir() or st.st_mode & 0o022 or (os.geteuid() == 0 and st.st_uid != 0):
+        return None
+    return path
+
+
+def _clear_pending() -> None:
+    (SETTINGS.updates_dir / PENDING).unlink(missing_ok=True)
+
+
+def _go_back(job: Job, *, to: Path, previous: Path | None, restore_backup: str) -> None:
+    """Return to the folder `to` after a failed update."""
+    runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
+    _point(SETTINGS.code_dir, to)
+    if previous is not None and previous.is_dir():
+        _point(_previous_dir(), previous)
+    elif os.path.lexists(_previous_dir()):
+        os.unlink(_previous_dir())
+    _apply_system(job)
+    _restore(job, restore_backup)
+    runner.run(["systemctl", "start", "curatables.service"], timeout=120)
+
+
+def resume_pending() -> None:
+    """Run when the helper starts. An update that was switched in but
+    never confirmed (the power went out during its check) is checked
+    again, and undone if the new version still does not answer."""
+    try:
+        pending = json.loads((SETTINGS.updates_dir / PENDING).read_text())
+    except (OSError, ValueError):
+        return
+    target = str(pending.get("to_version") or "")
+    if _healthy(target, seconds=300):
+        _write_result(state="done", from_version=pending.get("from_version"), to_version=target,
+                      backup=pending.get("backup"), message=f"Updated to {target}.")
+        _clear_pending()
+        return
+
+    class _Log:
+        def log(self, message: str) -> None:
+            pass
+    old = _trusted_release_dir(pending.get("old_dir"))
+    if old is not None:
+        before = _trusted_release_dir(pending.get("previous_before"))
+        backup = str(pending.get("backup") or "")
+        if not (re.fullmatch(r"curatables-\d{4}-\d{2}-\d{2}-\d{6}\.db", backup)
+                and (SETTINGS.backup_dir / backup).is_file()):
+            backup = ""
+        _go_back(_Log(), to=old, previous=before,  # type: ignore[arg-type]
+                 restore_backup=backup if pending.get("schema_changed") is True else "")
+        _write_result(state="failed", from_version=pending.get("from_version"), to_version=target,
+                      message=f"{target} did not start after a restart, so the box went back to "
+                              f"{pending.get('from_version')}.")
+    _clear_pending()
 
 
 def _restart_helpers(job: Job) -> None:
@@ -240,14 +365,15 @@ def curatables_update(params: dict):
         if digest != _expected_sum(fetch.get_text(latest["sums"]), tarball.name):
             raise HelperError("The download does not match its checksum, so it was not used. Try again.")
         job.log("Unpacking")
-        new = _new_dir()
+        new = _release_dir(target)
         unpack(tarball, new)
         if version_of(new) != target:
+            shutil.rmtree(new, ignore_errors=True)
             raise HelperError(f"The release file says it is version {version_of(new) or '?'}, not {target}.")
         job.log("Installing its Python packages (this takes a few minutes; kids can keep watching)")
         rc = runner.stream(["python3", "-m", "venv", str(new / ".venv")], job.log, timeout=600)
         if rc == 0:
-            rc = runner.stream([str(new / ".venv" / "bin" / "pip"), "install", "--no-input",
+            rc = runner.stream([str(new / ".venv" / "bin" / "python"), "-m", "pip", "install", "--no-input",
                                 "-r", str(new / "requirements.txt")], job.log, timeout=3600)
         if rc != 0:
             shutil.rmtree(new, ignore_errors=True)
@@ -258,22 +384,28 @@ def curatables_update(params: dict):
             shutil.rmtree(new, ignore_errors=True)
             raise HelperError("The new version failed its self-check. Nothing was changed.")
         backup = _backup(job)
+        changed = schema_changed(new, _real(SETTINGS.code_dir))
+        previous_before = _real(_previous_dir()) if os.path.lexists(_previous_dir()) else None
         job.log("Switching to the new version (kids' videos pause for a minute)")
-        _switch(job, new, _previous_dir())
+        _write_pending(to_version=target, from_version=installed, backup=backup, schema_changed=changed,
+                       old_dir=str(_real(SETTINGS.code_dir) if SETTINGS.code_dir.is_symlink() else ""),
+                       previous_before=str(previous_before or ""))
+        old = _switch(job, new)
+        _write_pending(to_version=target, from_version=installed, backup=backup, schema_changed=changed,
+                       old_dir=str(old), previous_before=str(previous_before or ""))
         if not _healthy(target):
             job.log("The new version did not start; going back")
-            runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
-            _switch(job, _previous_dir(), _failed_dir())
-            runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
-            _restore(job, backup)
-            runner.run(["systemctl", "start", "curatables.service"], timeout=120)
+            _go_back(job, to=old, previous=previous_before, restore_backup=backup if changed else "")
+            _clear_pending()
             _write_result(state="failed", from_version=installed, to_version=target, backup=backup,
                           message=f"{target} did not start, so the box went back to {installed}.")
             raise HelperError(f"Curatables {target} did not start, so the box went back to {installed}. "
                               "Nothing was lost. The diagnostics report has details.")
+        _clear_pending()
         shutil.rmtree(work_dir, ignore_errors=True)
+        _prune({_real(SETTINGS.code_dir), _real(_previous_dir())})
         _write_result(state="done", from_version=installed, to_version=target, backup=backup,
-                      message=f"Updated from {installed} to {target}.")
+                      schema_changed=changed, message=f"Updated from {installed} to {target}.")
         job.log(f"Curatables {target} is running")
         _restart_helpers(job)
         return {"from": installed, "to": target}
@@ -284,24 +416,34 @@ def curatables_update(params: dict):
 @action("curatables_rollback", job=True, title="Going back to the previous version")
 def curatables_rollback(params: dict):
     previous = version_of(_previous_dir())
-    if not previous:
+    if not previous or not _previous_dir().is_dir():
         raise HelperError("There is no previous version to go back to.")
     installed = version_of(SETTINGS.code_dir)
     last = _read_result()
 
     def work(job: Job) -> dict:
-        _switch(job, _previous_dir(), _new_dir())
-        os.rename(_new_dir(), _previous_dir())
-        if last.get("state") == "done" and last.get("from_version") == previous and last.get("backup"):
-            runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
-            _restore(job, str(last["backup"]))
-            runner.run(["systemctl", "start", "curatables.service"], timeout=120)
+        current, earlier = _real(SETTINGS.code_dir), _real(_previous_dir())
+        must_restore = schema_changed(current, earlier)
+        safety = _backup(job)
+        backup = str(last.get("backup") or "") if must_restore else ""
+        if must_restore and not (last.get("from_version") == previous and backup):
+            raise HelperError("This update changed the database and its backup is gone, so going back "
+                              "is not safe. Nothing was changed.")
+        if must_restore:
+            job.log("The update changed the database, so the settings and video list from before it "
+                    f"come back too (today's are kept in the backup {safety})")
+        runner.run(["systemctl", "stop", "curatables.service"], timeout=120)
+        _point(SETTINGS.code_dir, earlier)
+        _point(_previous_dir(), current)
+        _apply_system(job)
+        _restore(job, backup)
+        runner.run(["systemctl", "start", "curatables.service"], timeout=120)
         ok = _healthy(previous)
         _write_result(state="rolled_back" if ok else "failed", from_version=installed, to_version=previous,
-                      message=f"Went back from {installed} to {previous}." if ok
+                      backup=safety, message=f"Went back from {installed} to {previous}." if ok
                       else f"Went back to {previous}, but it did not answer yet.")
         _restart_helpers(job)
-        return {"from": installed, "to": previous, "healthy": ok}
+        return {"from": installed, "to": previous, "healthy": ok, "restored": bool(backup)}
 
     return work
 

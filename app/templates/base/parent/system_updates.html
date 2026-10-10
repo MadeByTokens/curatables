@@ -23,9 +23,10 @@ kids cannot watch. If the new version does not start, the box goes back to this 
 </form>
 {% endif %}
 {% if info.previous %}
-<p class="fs-14 mw-500 mt-16">The previous version ({{ info.previous }}) is kept. Going back restores the
-settings and video list saved just before the update.</p>
-<form method="POST" action="/parent/system/updates/rollback" data-confirm="Go back to Curatables {{ info.previous }}? Changes made since the update are lost.">
+<p class="fs-14 mw-500 mt-16">The previous version ({{ info.previous }}) is kept. Going back keeps today's
+videos, kids and settings, unless the update changed how they are stored: then the ones saved just
+before the update come back (a backup of today's is made first).</p>
+<form method="POST" action="/parent/system/updates/rollback" data-confirm="Go back to Curatables {{ info.previous }}?">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="btn btn-secondary">Go back to {{ info.previous }}</button>
 </form>

@@ -132,7 +132,8 @@ walks you through it.
     videos, kids and settings are kept. The new version is prepared while
     the old one keeps running; kids only lose about a minute. If it
     doesn't start, the box goes back to the old one by itself, and
-    **Go back to …** undoes an update you don't like.
+    **Go back to …** undoes an update you don't like (keeping today's
+    videos, kids and settings whenever it can).
   - **Update the downloader** when YouTube videos stop downloading.
   - **Update system packages** installs the operating system's updates.
     Security updates also install by themselves every day. If the page
