@@ -25,17 +25,9 @@
 
 set -euo pipefail
 
-# Bookworm and later mount the FAT boot partition at /boot/firmware; older layouts
-# use /boot. Take the first that has our file.
-WIFI_FILE=""
-for cand in ${CURATABLES_WIFI_FILE:-} /boot/firmware/curatables-wifi.txt /boot/curatables-wifi.txt; do
-	if [ -f "$cand" ]; then
-		WIFI_FILE="$cand"
-		break
-	fi
-done
+WIFI_FILE="${CURATABLES_WIFI_FILE:-/boot/firmware/curatables-wifi.txt}"
 
-[ -n "$WIFI_FILE" ] || { echo "firstboot: no curatables-wifi.txt found, skipping Wi-Fi setup"; exit 0; }
+[ -f "$WIFI_FILE" ] || { echo "firstboot: no curatables-wifi.txt found, skipping Wi-Fi setup"; exit 0; }
 
 LOG_FILE="$(dirname "$WIFI_FILE")/curatables-firstboot.log"
 
