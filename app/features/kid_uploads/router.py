@@ -155,16 +155,15 @@ async def kid_upload(request: Request,
         logger.info("Kid upload refused for %s: %s", viewer.profile_id, reason)
         return fail("There isn't enough free space on this computer. Ask a grown-up.", 507)
 
-    # 4. Stream into the tus staging area via the existing UploadService
-    #    lifecycle (create -> append -> finalize). The kid route does
-    #    not expose tus to the client; it just reuses the same server
-    #    pipeline so validation, hashing, and dedup are identical.
+    # 4. Stream into the same staging area the parent's tus uploads use
+    #    (create -> append -> finalize), so validation, hashing and dedup
+    #    are identical.
     filename = file.filename or "upload.mp4"
     session = uploads.create(
         filename=filename,
         total_size=total_size,
         channel_id=channel_id,
-        title=(title or "").strip(),
+        title=title.strip(),
     )
     try:
         offset = 0

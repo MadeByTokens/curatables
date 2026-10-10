@@ -1,5 +1,5 @@
-from __future__ import annotations
 """Parent profile management: create, edit, delete child profiles."""
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse
@@ -9,7 +9,7 @@ from app.services.profiles import ProfileService
 from app.services.content import ContentService
 from app.models import ViewerContext
 from app.constants import (
-    AVATAR_CHOICES, PICTURE_PIN_LENGTH, PIN_PICTURES, PIN_STYLE_CHOICES,
+    AVATAR_CHOICES, AVATAR_EMOJIS, PICTURE_PIN_LENGTH, PIN_PICTURES, PIN_STYLE_CHOICES,
     SEARCH_CHOICES, THEME_CHOICES,
 )
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGES
@@ -78,12 +78,10 @@ def _render_form(request: Request, content: ContentService, profile=None,
 def list_profiles(request: Request,
                   viewer: ViewerContext = Depends(require_parent),
                   profiles_svc: ProfileService = Depends(get_profile_service)):
-    profiles = profiles_svc.list()
-    avatars = dict(AVATAR_CHOICES)
     return request.app.state.templates.TemplateResponse(request, "parent/profiles.html", {
         "request": request,
-        "profiles": profiles,
-        "avatars": avatars,
+        "profiles": profiles_svc.list(),
+        "avatars": AVATAR_EMOJIS,
     })
 
 

@@ -1,9 +1,7 @@
 """Parent home dashboard — the /parent/ landing view.
 
-Extracted from parent_content/router.py where it grew alongside the
-CRUD routes and was making that file unwieldy. This is read-only view
-logic only; every action (add video, edit, moderate) still lives in
-its own feature.
+Read-only; every action (add video, edit, moderate) lives in its own
+feature.
 """
 
 import time

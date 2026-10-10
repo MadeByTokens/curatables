@@ -1,5 +1,5 @@
-from __future__ import annotations
 """Parent channel management: create, edit, delete internal channels."""
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import HTMLResponse, RedirectResponse
@@ -75,16 +75,15 @@ def edit_submit(request: Request, channel_id: int,
     name = name.strip()
     if not name:
         return RedirectResponse(url=f"/parent/channels/{channel_id}/edit", status_code=302)
-    owner_id: int | None = None
-    owner_raw = (owner_profile_id or "").strip()
-    if owner_raw and owner_raw.isdigit():
-        owner_id = int(owner_raw)
+    owner_raw = owner_profile_id.strip()
+    owner_id = int(owner_raw) if owner_raw.isdigit() else None
     try:
         channels_svc.update(channel_id, name=name,
                             description=description.strip(),
                             position=max(0, position),
                             owner_profile_id=owner_id)
     except ValueError:
+        # Another channel has that name: keep the old one, save the rest.
         channels_svc.update(channel_id, description=description.strip(),
                             position=max(0, position),
                             owner_profile_id=owner_id)
@@ -97,8 +96,8 @@ def delete_channel(request: Request, channel_id: int,
                    viewer: ViewerContext = Depends(require_parent),
                    channels_svc: ChannelService = Depends(get_channel_service)):
     reassign_id: int | None = None
-    raw = (reassign_to or "").strip()
-    if raw and raw.isdigit():
+    raw = reassign_to.strip()
+    if raw.isdigit():
         candidate = int(raw)
         if candidate == channel_id:
             # Refuse self-reassignment; fall through to orphan behavior.

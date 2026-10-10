@@ -1,13 +1,15 @@
 """Media streaming: video and thumbnail serving."""
 
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import FileResponse, Response
 
-logger = logging.getLogger(__name__)
-
-from app.dependencies import get_viewer, get_content_service, get_storage_service, get_thumbnail_service, get_kid_library_service, get_config
+from app.dependencies import (
+    get_config, get_content_service, get_kid_library_service, get_storage_service,
+    get_thumbnail_service, get_viewer,
+)
 from app.services.content import ContentService, VideoNotFound
 from app.services.storage import StorageService
 from app.services.subtitles import language_code, language_label, to_vtt
@@ -16,8 +18,11 @@ from app.services.kid_library import KidLibraryService
 from app.config import Config
 from app.models import ViewerContext
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/media", tags=["media"])
 
+_PLACEHOLDER_THUMB = Path(__file__).resolve().parents[2] / "static" / "placeholder-thumb.svg"
 
 _TRANSPARENT_PIXEL = (
     b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01'
@@ -91,10 +96,7 @@ def serve_thumbnail(request: Request, video_id: str,
                             media_type=_sniff_image_mime(path),
                             headers=no_cache)
 
-    # Serve "thumbnail not available" placeholder
-    import os
-    placeholder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "placeholder-thumb.svg")
-    return FileResponse(placeholder, media_type="image/svg+xml")
+    return FileResponse(str(_PLACEHOLDER_THUMB), media_type="image/svg+xml")
 
 
 _VIDEO_MIME_BY_EXT = {
@@ -156,12 +158,11 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
     fly, so captions display centered regardless of whatever alignment
     metadata came with the source.
     """
-    from pathlib import Path
     try:
         video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404)
-    # Sanitize filename to prevent path traversal
+    # .name drops any directory part: no path traversal.
     sub_path = storage.subtitle_dir(video) / Path(filename).name
     if not sub_path.is_file() or sub_path.suffix not in (".vtt", ".srt"):
         return Response(status_code=404)
@@ -173,7 +174,7 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
                     media_type="text/vtt; charset=utf-8")
 
 
-def _serve_channel_asset(config, content: ContentService, viewer: ViewerContext,
+def _serve_channel_asset(config: Config, content: ContentService, viewer: ViewerContext,
                          channel_id: int, asset_prefix: str):
     """Serve a channel banner or icon from {media_dir}/channels/{id}/{prefix}.*"""
     visible = content.visible_channel_ids(viewer)

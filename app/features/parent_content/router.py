@@ -1,13 +1,14 @@
 """Parent content management: add, edit, list, hide, delete, moderate."""
 
 import logging
+import re
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-logger = logging.getLogger(__name__)
-
+from app.backends.base import VideoMetadata
 from app.dependencies import (
     require_parent, get_content_service, get_channel_service,
     get_stats_service, get_comment_service, get_thumbnail_service, get_wishlist_repo,
@@ -22,13 +23,19 @@ from app.services.thumbnails import ThumbnailService
 from app.services.reactions import EMOJI_MAP
 from app.services.stats import StatsService
 from app.services.comments import CommentService
+from app.services.rate_limit import RateLimitExceeded
 from app.models import ViewerContext
 from app.web import form_str
-from urllib.parse import quote
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/parent", tags=["parent-content"])
 
 ITEMS_PER_PAGE = 30
+
+# Video IDs differ per site (numeric, alphanumeric, UUIDs ...); this only
+# makes sure one is safe to use in a file path.
+_SAFE_VIDEO_ID = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
 
 
 CONTENT_FILTERS = [
@@ -147,28 +154,14 @@ async def add_confirm(request: Request,
         resolution = content.config.storage.default_resolution
 
     video_ids = [v for v in form.getlist("video_ids") if isinstance(v, str)]
-    import re
-    from app.backends.base import VideoMetadata
-
-    # Relaxed ID validation: any safe slug-shaped string up to 128
-    # chars. The narrow 11-char YouTube-ID regex would drop Vimeo's
-    # numeric IDs, Dailymotion alphanumerics, PeerTube UUIDs, and
-    # anything else yt-dlp knows about. The character class is
-    # still tight enough that we never build a filesystem path with
-    # `..` / `/` / `\x00` in it.
-    _SAFE_VIDEO_ID = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
-
     added = 0
     skipped = 0
     unreviewed = 0
     for vid in video_ids:
         if not _SAFE_VIDEO_ID.match(vid):
             continue
-        # Gate: parent must have ticked "I have already fully watched this video" on the
-        # preview page. Client-side JS already disables the Add button
-        # until every box is checked, but enforce it here too so bypassing
-        # the script can't queue a download of something the parent never
-        # watched.
+        # The page's script keeps Add disabled until every "I have already
+        # fully watched this video" box is ticked; enforce it here too.
         if not form.get(f"watched_{vid}"):
             unreviewed += 1
             continue
@@ -254,8 +247,7 @@ async def edit_save(request: Request, video_id: str,
         channel_error = f" The channel was not changed: {e}"
     if resolution:
         fields["resolution"] = resolution
-    # Unchecked checkboxes don't appear in the form body at all —
-    # we treat "present and truthy" as True, everything else as False.
+    # An unticked checkbox is absent from the form.
     fields["keep_forever"] = 1 if form.get("keep_forever") else 0
     video = content.update_video(video_id, **fields)
 
@@ -405,7 +397,6 @@ def post_comment_on_video(request: Request, video_id: str,
                           parent_comment_id: int = Form(None),
                           viewer: ViewerContext = Depends(require_parent),
                           comments: CommentService = Depends(get_comment_service)):
-    from app.services.rate_limit import RateLimitExceeded
     if body.strip():
         try:
             comments.post(video_id, body, viewer, parent_comment_id)

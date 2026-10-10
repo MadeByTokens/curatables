@@ -41,11 +41,8 @@ def profile_picker(request: Request,
         # Single-kid household with no PIN: zero-click auto-select.
         _enter_kid_mode(request, profiles[0].id)
         return RedirectResponse(url="/", status_code=302)
-    # Picker has no viewer context (pre-login), use base templates.
-    # When profiles is empty the template renders an empty-state
-    # message with a link to /parent/profiles/ so the parent can
-    # create one. Don't redirect to /, that would loop the
-    # anonymous-kid middleware.
+    # With no profiles the page links to /parent/profiles/; redirecting
+    # to / instead would loop through the anonymous-kid redirect.
     return request.app.state.templates.TemplateResponse(request, "kid/profiles.html", {
         "request": request,
         "profiles": profiles,
@@ -57,7 +54,7 @@ def _pin_page(request: Request, profile, error: str | None = None,
               locked: bool = False):
     return render_kid_template(request, _viewer_for_profile(profile), "kid/pin.html", {
         "profile": profile,
-        "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, "\U0001f464"),
+        "avatar_emoji": AVATAR_EMOJIS.get(profile.avatar, AVATAR_EMOJIS["default"]),
         "error": gettext(profile.language, error) if error else None,
         "locked": locked,
         "pin_pictures": PIN_PICTURES,

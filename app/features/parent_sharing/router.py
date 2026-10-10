@@ -1,14 +1,11 @@
-from __future__ import annotations
 """Shared-curation routes: export a channel / import a .ytc or .txt file.
 
 Export hangs off /parent/channels/{id}/export?format=ytc|txt|pdf;
-import gets its own /parent/channels/import form. After a successful
-import POST we render the existing /parent/add preview template in
-place (same URL), so the parent's review flow is identical whether
-they added videos by URL or via import.
+import gets its own /parent/channels/import form. A successful import
+renders the /parent/add preview page in place, so reviewing works the
+same whether the videos came from a URL or a file.
 """
-
-import logging
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from starlette.concurrency import run_in_threadpool
@@ -25,8 +22,6 @@ from app.services.sharing import (
     pdf_available, SharingError, SharingUnavailable,
 )
 from app.models import ViewerContext
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/parent/channels", tags=["parent-sharing"])
 
@@ -106,17 +101,21 @@ def export_channel(request: Request, channel_id: int,
     )
 
 
+def _import_form(request: Request, channels_svc: ChannelService,
+                 error: str | None = None, status_code: int = 200):
+    return request.app.state.templates.TemplateResponse(request, "parent/sharing_import.html", {
+        "request": request,
+        "channels": channels_svc.list(),
+        "error": error,
+        "max_bytes": _IMPORT_MAX_BYTES,
+    }, status_code=status_code)
+
+
 @router.get("/import", response_class=HTMLResponse)
 def import_form(request: Request,
                 viewer: ViewerContext = Depends(require_parent),
                 channels_svc: ChannelService = Depends(get_channel_service)):
-    return request.app.state.templates.TemplateResponse(request,
-        "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": None,
-            "max_bytes": _IMPORT_MAX_BYTES,
-        })
+    return _import_form(request, channels_svc)
 
 
 @router.post("/import")
@@ -128,10 +127,7 @@ async def import_submit(request: Request,
                         viewer: ViewerContext = Depends(require_parent),
                         channels_svc: ChannelService = Depends(get_channel_service),
                         content: ContentService = Depends(get_content_service)):
-    templates = request.app.state.templates
-
-    # Pick up the raw bytes from either the uploaded file or the
-    # paste-in textarea. File wins if both are present.
+    # The uploaded file wins over the paste-in textarea.
     raw: bytes = b""
     filename = ""
     if file is not None and file.filename:
@@ -142,90 +138,49 @@ async def import_submit(request: Request,
         filename = "pasted.txt"
 
     if not raw:
-        return templates.TemplateResponse(request, "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": "Pick a file or paste a URL list first.",
-            "max_bytes": _IMPORT_MAX_BYTES,
-        }, status_code=400)
+        return _import_form(request, channels_svc,
+                            "Pick a file or paste a URL list first.", 400)
 
     if len(raw) > _IMPORT_MAX_BYTES:
-        return templates.TemplateResponse(request, "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": (
-                f"File is too large ({len(raw)/1024/1024:.1f} MB). "
-                f"Maximum is {_IMPORT_MAX_BYTES/1024/1024:.0f} MB."),
-            "max_bytes": _IMPORT_MAX_BYTES,
-        }, status_code=413)
+        return _import_form(request, channels_svc, (
+            f"File is too large ({len(raw)/1024/1024:.1f} MB). "
+            f"Maximum is {_IMPORT_MAX_BYTES/1024/1024:.0f} MB."), 413)
 
-    # Format dispatch: .ytc vs plain text. File extension is the
-    # primary signal; fall back to "starts with {" for JSON autodetect.
-    lower = (filename or "").lower()
+    # The file extension decides; without one, JSON content means .ytc.
     try:
-        if lower.endswith(".ytc") or raw.lstrip().startswith(b"{"):
+        if filename.lower().endswith(".ytc") or raw.lstrip().startswith(b"{"):
             payload = decode_ytc(raw)
         else:
             payload = parse_text(raw)
     except SharingError as e:
-        return templates.TemplateResponse(request, "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": str(e),
-            "max_bytes": _IMPORT_MAX_BYTES,
-        }, status_code=400)
+        return _import_form(request, channels_svc, str(e), 400)
 
     if not payload.entries:
-        return templates.TemplateResponse(request, "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": "No URLs found in this file.",
-            "max_bytes": _IMPORT_MAX_BYTES,
-        }, status_code=400)
-
-    # Resolve the target channel now so the hidden field on the
-    # preview form carries it through to /parent/add/confirm exactly
-    # like the URL-based add flow does.
-    resolved_channel_name = (new_channel_name or payload.channel_name or "").strip()
-    resolved_channel_id_str = (target_channel_id or "").strip()
+        return _import_form(request, channels_svc, "No URLs found in this file.", 400)
 
     urls = [entry.url for entry in payload.entries]
     videos, failed = await run_in_threadpool(content.fetch_previews_for_urls, urls)
 
     if not videos:
-        err = (
+        return _import_form(request, channels_svc, (
             "None of the imported URLs could be fetched. Check your network "
-            "and yt-dlp install. "
-            f"({len(failed)} URL(s) failed.)"
-        )
-        return templates.TemplateResponse(request, "parent/sharing_import.html", {
-            "request": request,
-            "channels": channels_svc.list(),
-            "error": err,
-            "max_bytes": _IMPORT_MAX_BYTES,
-        }, status_code=400)
+            f"and yt-dlp install. ({len(failed)} URL(s) failed.)"), 400)
 
-    # The preview page expects a single "source" label at the top; for
-    # imports we synthesise one from the decoded channel name.
-    source_title = payload.channel_name or "Imported list"
-    # source_url is used for channel/playlist confirms to pass through to
-    # SourceRepository. For imports there's no single URL, so use a
-    # tagged sentinel that the confirm handler accepts as "video-type" add.
-    source_url = f"curatables://import/{payload.source_format}"
-
-    # Render the same preview template /parent/add uses.
-    return templates.TemplateResponse(request, "parent/content_preview.html", {
+    # The preview form carries the target channel through to
+    # /parent/add/confirm, like the URL-based add flow. There is no single
+    # source URL, so a tagged one stands in; each entry is added as a video.
+    return request.app.state.templates.TemplateResponse(request, "parent/content_preview.html", {
         "request": request,
-        "url_type": "video",         # treat each entry independently
+        "url_type": "video",
         "videos": videos,
-        "source_url": source_url,
-        "source_title": source_title,
+        "source_url": f"curatables://import/{payload.source_format}",
+        "source_title": payload.channel_name or "Imported list",
         "channels": channels_svc.list(),
         "default_resolution": content.config.storage.default_resolution,
         "import_context": {
             "format": payload.source_format,
             "failed_count": len(failed),
-            "target_channel_id": resolved_channel_id_str,
-            "new_channel_name": resolved_channel_name,
+            "target_channel_id": target_channel_id.strip(),
+            "new_channel_name": (new_channel_name or payload.channel_name or "").strip(),
         },
     })

@@ -23,7 +23,6 @@ from app.template_utils import render_kid_template
 router = APIRouter(tags=["kid-comments"])
 
 
-
 @router.post("/watch/{video_id}/comment")
 def post_comment(request: Request, video_id: str,
                  body: str = Form(...),

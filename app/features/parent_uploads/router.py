@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/parent", tags=["parent-uploads"])
 
 
-def _max_upload(config) -> int:
+def _max_upload(config: Config) -> int:
     return capped(config.media_dir, config.storage.max_upload_bytes)
 
 
@@ -100,44 +100,46 @@ def _ensure_default_channel(channel_repo: ChannelRepository) -> int:
 # Upload page
 # ---------------------------------------------------------------------------
 
+def _upload_page(request: Request, channel_repo: ChannelRepository, config: Config,
+                 error: str | None = None, status_code: int = 200):
+    default_channel_id = _ensure_default_channel(channel_repo)
+    return request.app.state.templates.TemplateResponse(request, "parent/upload.html", {
+        "request": request,
+        "channels": channel_repo.list(),
+        "default_channel_id": default_channel_id,
+        "max_upload_bytes": _max_upload(config),
+        "error": error,
+    }, status_code=status_code)
+
+
 @router.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request,
                 viewer: ViewerContext = Depends(require_parent),
                 channel_repo: ChannelRepository = Depends(get_channel_repo),
                 config: Config = Depends(get_config)):
-    default_channel_id = _ensure_default_channel(channel_repo)
-    channels = channel_repo.list()
-    return request.app.state.templates.TemplateResponse(request, "parent/upload.html", {
-        "request": request,
-        "channels": channels,
-        "default_channel_id": default_channel_id,
-        "max_upload_bytes": _max_upload(config),
-        "error": None,
-    })
+    return _upload_page(request, channel_repo, config)
 
 
 # ---------------------------------------------------------------------------
 # tus protocol
 # ---------------------------------------------------------------------------
 
-@router.options("/upload/tus")
-def tus_options(request: Request,
-                config: Config = Depends(get_config)):
+def _tus_capabilities(config: Config) -> Response:
     return Response(status_code=204, headers=_tus_headers({
         "Tus-Version": _TUS_VERSION,
         "Tus-Extension": _TUS_EXTENSION,
         "Tus-Max-Size": str(_max_upload(config)),
     }))
+
+
+@router.options("/upload/tus")
+def tus_options(config: Config = Depends(get_config)):
+    return _tus_capabilities(config)
 
 
 @router.options("/upload/tus/{token}")
-def tus_options_token(token: str,
-                      config: Config = Depends(get_config)):
-    return Response(status_code=204, headers=_tus_headers({
-        "Tus-Version": _TUS_VERSION,
-        "Tus-Extension": _TUS_EXTENSION,
-        "Tus-Max-Size": str(_max_upload(config)),
-    }))
+def tus_options_token(token: str, config: Config = Depends(get_config)):
+    return _tus_capabilities(config)
 
 
 @router.post("/upload/tus")
@@ -270,55 +272,26 @@ def upload_finalize(request: Request, token: str,
                     uploads: UploadService = Depends(get_upload_service),
                     channel_repo: ChannelRepository = Depends(get_channel_repo),
                     config: Config = Depends(get_config)):
-    templates = request.app.state.templates
     try:
         video = uploads.finalize(token)
     except UnsupportedCodec as e:
         logger.info("Upload %s rejected: unsupported codec %s", token, e.codec_name)
-        return templates.TemplateResponse(request, "parent/upload.html", {
-            "request": request,
-            "channels": channel_repo.list(),
-            "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": _max_upload(config),
-            "error": e.conversion_hint,
-        }, status_code=415)
+        return _upload_page(request, channel_repo, config, e.conversion_hint, 415)
     except ProbeError as e:
         logger.info("Upload %s rejected: probe failure: %s", token, e)
-        return templates.TemplateResponse(request, "parent/upload.html", {
-            "request": request,
-            "channels": channel_repo.list(),
-            "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": _max_upload(config),
-            "error": f"Could not read the uploaded file: {e}",
-        }, status_code=400)
+        return _upload_page(request, channel_repo, config,
+                            f"Could not read the uploaded file: {e}", 400)
     except InsufficientDiskSpace as e:
-        return templates.TemplateResponse(request, "parent/upload.html", {
-            "request": request,
-            "channels": channel_repo.list(),
-            "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": _max_upload(config),
-            "error": str(e),
-        }, status_code=507)
+        return _upload_page(request, channel_repo, config, str(e), 507)
     except DuplicateUpload as e:
         channel = (channel_repo.get(e.video.channel_id)
                    if e.video.channel_id is not None else None)
         where = f'the "{channel.name}" channel' if channel else "no channel"
-        return templates.TemplateResponse(request, "parent/upload.html", {
-            "request": request,
-            "channels": channel_repo.list(),
-            "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": _max_upload(config),
-            "error": (f'This file is already in the library as "{e.video.title}", '
-                      f"in {where}. Open it from Content to move it."),
-        }, status_code=409)
+        return _upload_page(request, channel_repo, config, (
+            f'This file is already in the library as "{e.video.title}", '
+            f"in {where}. Open it from Content to move it."), 409)
     except (UploadNotFound, UploadError) as e:
-        return templates.TemplateResponse(request, "parent/upload.html", {
-            "request": request,
-            "channels": channel_repo.list(),
-            "default_channel_id": _ensure_default_channel(channel_repo),
-            "max_upload_bytes": _max_upload(config),
-            "error": str(e),
-        }, status_code=400)
+        return _upload_page(request, channel_repo, config, str(e), 400)
 
     return RedirectResponse(
         url=f"/parent/content?highlight={quote(video.video_id)}",

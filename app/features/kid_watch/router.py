@@ -3,7 +3,10 @@
 from fastapi import APIRouter, Depends, Query, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from app.dependencies import get_viewer, get_content_service, get_reaction_service, get_comment_service, get_kid_library_service
+from app.dependencies import (
+    get_comment_service, get_content_service, get_kid_library_service, get_reaction_service,
+    get_viewer,
+)
 from app.services.content import ContentService, VideoNotFound
 from app.services.reactions import ReactionService
 from app.services.comments import CommentService
@@ -39,12 +42,10 @@ def watch(request: Request, video_id: str,
         return RedirectResponse(url="/", status_code=302)
     tags = []
     if viewer.is_child and viewer.profile_id:
-        patched = kid_lib.apply_overrides(viewer.profile_id, [video])
-        video = patched[0]
+        video = kid_lib.apply_overrides(viewer.profile_id, [video])[0]
         tags = kid_lib.tags_for_video(viewer.profile_id, video_id)
 
     my_reaction = None
-    reaction_counts = {}
     if viewer.profile_id:
         my_reaction = reactions.get_for_video(viewer.profile_id, video_id)
     reaction_counts = reactions.get_counts(video_id)

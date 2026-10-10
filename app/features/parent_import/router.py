@@ -21,15 +21,20 @@ from app.dependencies import (
     get_lookup_service, require_parent,
 )
 from app.models import ViewerContext
-from app.repositories import ChannelRepository
-from app.repositories.import_job_repo import ACTIVE_STATES, FINISHED_STATES, ImportJob, \
-    ImportJobRepository
+from app.repositories import ChannelRepository, VideoRepository
+from app.repositories.import_job_repo import (
+    ACTIVE_STATES, FINISHED_STATES, ImportJob, ImportJobRepository,
+)
 from app.features.parent_uploads.router import _ensure_default_channel
 from app.services.images import MAX_IMAGE_BYTES, image_extension
-from app.services.import_scan import ImportPathError
+from app.services.import_scan import ImportPathError, ProbeCache
 from app.services.imports import ORIGINS, ImportFailed, ImportService
+from app.services.ingest import IngestService
 from app.services.lookup import LookupService
+from app.services.media_probe import MediaProbeService
+from app.services.storage import StorageService
 from app.services.subtitles import language_label
+from app.services.thumbnails import ThumbnailService
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +120,6 @@ def _prepare_in_background(request: Request, batch: str) -> None:
     config = request.app.state.config
 
     def run() -> None:
-        from app.repositories import ChannelRepository, VideoRepository
-        from app.services.import_scan import ProbeCache
-        from app.services.ingest import IngestService
-        from app.services.media_probe import MediaProbeService
-        from app.services.storage import StorageService
-        from app.services.thumbnails import ThumbnailService
         conn = connect()
         try:
             probe = MediaProbeService()
@@ -146,8 +145,7 @@ def _prepare_in_background(request: Request, batch: str) -> None:
 @router.get("/", response_class=HTMLResponse)
 def import_home(request: Request, viewer: ViewerContext = Depends(require_parent),
                 service: ImportService = Depends(get_import_service),
-                repo: ImportJobRepository = Depends(get_import_job_repo),
-                config: Config = Depends(get_config)):
+                repo: ImportJobRepository = Depends(get_import_job_repo)):
     active = repo.list_states(ACTIVE_STATES)
     finished = repo.list_states(FINISHED_STATES, limit=40)
     return _templates(request).TemplateResponse(request, "parent/import.html", {

@@ -1,12 +1,8 @@
 """Kid browsing: home grid with pagination and channel filtering."""
 
-from fastapi import APIRouter, Depends, Query, Request
-from starlette.responses import (
-    HTMLResponse, RedirectResponse, Response,
-)
-
-from fastapi import Form
+from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.datastructures import UploadFile as StarletteUploadFile
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
@@ -57,10 +53,9 @@ def home(request: Request,
          kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     if viewer.viewer_type == "anonymous":
         profiles = profiles_svc.list()
-        if profiles:
-            if len(profiles) == 1 and not profiles[0].pin:
-                request.session["profile_id"] = profiles[0].id
-                return RedirectResponse(url="/", status_code=302)
+        if len(profiles) == 1 and not profiles[0].pin:
+            request.session["profile_id"] = profiles[0].id
+            return RedirectResponse(url="/", status_code=302)
         return RedirectResponse(url="/profiles", status_code=302)
 
     videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
@@ -201,7 +196,6 @@ def video_reset_field(request: Request, video_id: str,
         kid_lib.clear_thumbnail(viewer.kid_id, video_id)
     return RedirectResponse(
         url=f"/video/{video_id}/edit", status_code=302)
-
 
 
 @router.post("/video/{video_id}/tags/add")
