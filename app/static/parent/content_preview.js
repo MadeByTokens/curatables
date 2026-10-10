@@ -94,7 +94,7 @@
         player.innerHTML =
           '<div class="placeholder fd-col p-20">' +
           '  <p class="embed-note-title"><strong>Embed video player not available.</strong></p>' +
-          '  <p class="embed-note">Click below to watch the original URL (opens in a new tab).</p>' +
+          '  <p class="embed-note">Click the button below to watch the original URL (opens in a new tab).</p>' +
           linkHtml +
           (ext ? '<div class="mt-10 fs-12 muted-5">source: ' + escapeHtml(ext) + '</div>' : '') +
           '</div>';
