@@ -17,7 +17,7 @@ type commands on the box (over SSH). Setup problems are in the
 
 **How do I find the box's number address?**
 Look in your router's list of connected devices for `curatables`, then
-browse to `http://<that address>/` (like `http://192.168.1.23/`; add
+browse to `http://<that address>/` (like `http://192.168.1.50/`; add
 `:8080` on a try-out install). **Box → Login, network & power** also
 shows it.
 
@@ -49,16 +49,18 @@ press **Retry** on the failed videos. If it still fails, turn on
 **Settings → Advanced → Anti-Bot → Browser Impersonation** (makes
 downloads look like a normal browser).
 
-**A kid says a video "is getting ready" for a long time.**
-It was removed from disk to save space (nobody watched it for a while)
-and is downloading again. Mark videos you want to keep as **Keep
-forever** on their edit page, or tick **Set newly added videos to Keep
-forever** in **Settings → Storage**.
+**A kid sees "Getting your video ready…" for a long time.**
+Its file is not on the box, so it is downloading again. Videos are kept
+unless you turned on **Settings → Freeing up space**; then a video nobody
+watched for that many days loses its file and comes back when tapped. To
+stop that for a favourite, tick **Keep forever** on its edit page, or set
+Freeing up space back to `0`.
 
 **A kid sees no videos at all.**
 Check **Kids → Edit → Visible channels**: if "Only show the channels
 ticked below" is on with nothing ticked, that kid sees only their own
-channels. Also check the videos are not **Hidden**.
+channels. Also check the videos have a channel (a video whose channel is
+**(none)** is hidden from every kid) and are not **Hidden**.
 
 **The disk is full.**
 Curatables keeps every video and never deletes one on its own. The

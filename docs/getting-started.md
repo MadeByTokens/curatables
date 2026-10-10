@@ -189,11 +189,15 @@ videos you've approved.
 
 ### Add your first video
 
-1. In the parent dashboard, find **Add a video** (paste a link).
+1. In the parent dashboard, open **+ Add**.
 2. Paste a video, channel, or playlist link — from YouTube, Vimeo,
    TikTok, and [~1,800 other sites](https://github.com/yt-dlp/yt-dlp).
-3. Preview, then confirm. Curatables downloads it and prepares it for
-   playback.
+3. Watch each video in the preview, tick **I have already fully watched
+   this video**, pick a channel and press **Add**. A video with no
+   channel is hidden from the kids. Curatables downloads it and prepares
+   it for playback.
+4. Make a profile for each kid under **Kids → Create Profile**. The
+   dashboard's **Help** page walks you through the rest.
 
 #### Why does a new video take a while?
 
@@ -324,7 +328,7 @@ Linux. It needs a little help elsewhere:
 - **Android**: Chrome resolves `.local` names; many other browsers don't.
 - **Any device**: as a fallback, use the box's **IP address** instead of
   the name. Find it by running `hostname -I` on the box (the first number,
-  e.g. `192.168.50.42`), then browse to `http://192.168.50.42:8080/`.
+  e.g. `192.168.1.50`), then browse to `http://192.168.1.50:8080/`.
 
 The deployment doc has a deeper checklist:
 [deployment.md → Verifying the mDNS setup](deployment.md#verifying-the-mdns-setup).

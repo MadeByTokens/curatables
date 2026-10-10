@@ -14,6 +14,7 @@ ready-made image, follow [getting-started.md](getting-started.md).
 - [1. Put Curatables on the SD card](#1-put-curatables-on-the-sd-card)
 - [2. Connect the box to your network](#2-connect-the-box-to-your-network)
 - [3. First start: two passwords](#3-first-start-two-passwords)
+  - [Your first video and your first kid](#your-first-video-and-your-first-kid)
 - [4. The Box pages](#4-the-box-pages)
 - [5. USB drives for more videos](#5-usb-drives-for-more-videos)
 - [6. Backups](#6-backups)
@@ -88,7 +89,7 @@ then open **http://curatables.local** in a browser on the same network.
 > **The page doesn't open?** Some Android phones don't understand
 > `.local` addresses: try a laptop, an iPhone or an iPad instead, or find
 > the box (called `curatables`) in your router's list of connected
-> devices and type its number address (like `http://192.168.1.23`).
+> devices and type its number address (like `http://192.168.1.50`).
 
 Setup opens by itself and asks for **two different passwords**. Let your
 password manager suggest and save both: the pages are made so it
@@ -109,8 +110,28 @@ Do this within 30 minutes of turning the box on. After that, setup
 closes for safety; unplug the box for ten seconds and plug it back in to
 open it again.
 
-Then add your kids and your first videos: the dashboard's **Help** page
-walks you through it.
+### Your first video and your first kid
+
+1. **Make a channel or two.** A channel is a shelf of videos, like
+   "Animals" or "Bedtime". Open **Channels** in the parent menu and
+   create one.
+2. **Add a video.** Open **+ Add** and paste a link to a video, a whole
+   channel or a playlist. Watch each video in the preview, tick **I have
+   already fully watched this video**, pick its channel and press
+   **Add**. A video with no channel is hidden from the kids. It then
+   downloads and is converted so it plays on older tablets too; on a
+   Raspberry Pi 4 that takes a few minutes. **Content → Downloading**
+   shows how it's going.
+3. **Make a profile for each kid.** Open **Kids → Create Profile**, give
+   it a name and a picture, and choose what the child may do. A new
+   profile can watch and react, nothing more, and sees every channel
+   until you tick only some. A PIN is optional.
+4. **Set up the tablet.** On the kid's tablet, open the kid address
+   shown on the **Kids** page (or scan its QR code with the camera) and
+   add it to the home screen. To keep your child inside it, see
+   [What you still need to do on the device](safety-model.md#what-you-still-need-to-do-on-the-device).
+
+The dashboard's **Help** page has more tips.
 
 ## 4. The Box pages
 
@@ -176,7 +197,7 @@ matters:
 **exFAT**, give it a name and type **ERASE** to confirm. Everything on
 the drive is deleted.
 
-**Before unplugging it,** press **Eject safely** (or **Eject**). Pulling
+**Before unplugging it,** press **Eject safely**. Pulling
 a drive out while it's in use is the most common way to damage it.
 
 **If the drive is unplugged or the power goes out,** kids see a calm
@@ -190,8 +211,8 @@ videos** on it. The box copies everything across and switches over; the
 old drive keeps its copy until you erase it. **Move videos back to the
 SD card** does the reverse, if they fit.
 
-**Importing videos you already have on a drive:** press **Import videos
-from it** under the drive. The Import page then lists the drive's
+**Importing videos you already have on a drive:** press **Import from it**
+under the drive. The Import page then lists the drive's
 folders.
 
 **Power warning:** if the Drives page says the box is **not getting
@@ -218,7 +239,7 @@ See [backup.md](backup.md) for the details.
 |-----|-------|
 | YouTube videos stop downloading | **Box → Updates → Update the downloader**, then **Retry** on the failed videos |
 | Kids see "the videos are resting" | Plug the videos drive in, then **Reconnect** on **Box → Drives & backups** |
-| A kid sees no videos | **Kids → Edit → Visible channels**; check the videos aren't **Hidden** |
+| A kid sees no videos | **Kids → Edit → Visible channels**; check the videos have a channel and aren't **Hidden** |
 | A new video doesn't show up | It is still downloading: **Content → Downloading** |
 | You forgot the parent password | `curatables-reset.txt` on the SD card (table below) |
 | The dashboard won't open | The list under "The dashboard won't open at all" below |
