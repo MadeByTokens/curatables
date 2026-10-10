@@ -981,6 +981,7 @@ video:focus {
 @supports (display: grid) {
     .video-grid > .clear { display: none; }
     .video-grid > .empty-state { grid-column: 1 / -1; }
+    .video-grid > .wishlist-pages { grid-column: 1 / -1; }
 }
 
 .card-reactions {
