@@ -84,6 +84,8 @@ markers = [
     "smoke: end-to-end smoke test that boots a real uvicorn subprocess (slow; deselected by default — run with `pytest -m smoke`).",
 ]
 addopts = "-m 'not smoke'"
+# A test that hangs prints every thread's stack instead of stalling silently.
+faulthandler_timeout = 600
 
 [tool.ruff]
 target-version = "py310"
