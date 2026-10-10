@@ -34,7 +34,6 @@
 
 {% set ds = disk_status() %}
 
-{# ============ 1. NEEDS ATTENTION ============ #}
 {% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
@@ -115,7 +114,6 @@
 </div>
 {% endif %}
 
-{# ============ 2. TODAY AT A GLANCE ============ #}
 <div class="dash-section">
   <h2>Today</h2>
   <div>
@@ -142,7 +140,6 @@
   </div>
 </div>
 
-{# ============ 3. PER-KID ROW ============ #}
 {% if per_kid %}
 <div class="dash-section">
   <h2>Per kid (today)</h2>
@@ -180,7 +177,6 @@
 </div>
 {% endif %}
 
-{# ============ 4. RECENT ACTIVITY ============ #}
 <div class="dash-section">
   <h2>Recent activity</h2>
   <div class="recent-row">
@@ -243,7 +239,6 @@
   </div>
 </div>
 
-{# ============ 5. QUICK ACTIONS ============ #}
 <div class="dash-section">
   <h2>Quick add</h2>
   <form method="POST" action="/parent/add" class="mw-600 d-flex gap-8">

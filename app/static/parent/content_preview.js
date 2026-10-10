@@ -25,7 +25,7 @@
       ? 'Add ' + boxes.length + ' video(s)'
       : 'Add ' + watched + ' watched video(s)';
     if (hint) {
-      hint.style.display = left === 0 ? 'none' : 'inline-block';
+      hint.hidden = left === 0;
       if (watched > 0) {
         hint.textContent = left + ' not watched yet will be left out.';
       }
@@ -51,7 +51,6 @@
   }
 
   function extractVid(cb) {
-    // name is "watched_<videoid>"
     return cb.name.replace(/^watched_/, '');
   }
 
@@ -59,11 +58,9 @@
     boxes[i].addEventListener('change', refreshGate);
   }
 
-  // Multi-video: wire the "Watch" buttons to swap the shared player
-  // pane. For platforms in the Tier 1 iframe allow-list the button
-  // carries a data-embed URL and we render an iframe; for everything
-  // else we render a link-out card pointing at data-orig, opened in
-  // a new tab.
+  // Several videos share one player: each Watch button loads its video
+  // there, as an iframe when the site can be embedded (data-embed) and
+  // as a link to the original page otherwise.
   var player = document.getElementById('review-player');
   var current = document.getElementById('review-current');
   var watchBtns = form.querySelectorAll('.watch-btn');
@@ -83,16 +80,13 @@
       if (!player) return;
 
       if (embed) {
-        // Iframe path — append autoplay so clicking Watch feels
-        // responsive. Some sites (YouTube) ignore the param but
-        // most honour it.
+        // Some sites (YouTube) ignore autoplay; most honour it.
         var sep = embed.indexOf('?') === -1 ? '?' : '&';
         player.innerHTML =
           '<iframe src="' + escapeHtml(embed) + sep + 'autoplay=1" ' +
           'sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" ' +
           'allow="encrypted-media; fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>';
       } else {
-        // Link-out fallback — no clean iframe for this platform.
         var linkHtml = orig
           ? '<a class="btn-linkout" href="' + escapeHtml(orig) +
             '" target="_blank" rel="noopener noreferrer">Watch on source &#8599;</a>'
@@ -107,7 +101,6 @@
       }
 
       if (current) current.textContent = 'Now playing: ' + title;
-      // Scroll the player into view so the parent doesn't have to hunt for it
       player.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }

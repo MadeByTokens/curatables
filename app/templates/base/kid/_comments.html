@@ -1,11 +1,7 @@
-{# Single source of truth for a comment node. Rendered both in the
-   watch-page comment list and as the XHR response when a kid/parent
-   posts a comment or reply (so the new node can be inserted in place
-   without reloading and restarting the video). The macro is recursive:
-   a top-level comment renders its own reply form plus a .replies
-   container holding its (one-level-deep) replies. data-comment-id and
-   data-parent-id are the anchors the watch-page JS uses to place a
-   newly-posted node. #}
+{# One comment with its reply form and, for a top-level comment, its
+   replies. Also the XHR response to posting one, so watch.js can insert
+   it without reloading the video; data-parent-id tells it which .replies
+   container a reply goes into. #}
 {% macro comment_node(comment, video_id, viewer, csrf_token) %}
 <div class="comment{% if comment.parent_comment_id %} reply{% endif %}" data-comment-id="{{ comment.id }}"{% if comment.parent_comment_id %} data-parent-id="{{ comment.parent_comment_id }}"{% endif %}>
   <div class="comment-author">{% if comment.is_parent_user %}<span aria-hidden="true">&#129489;</span> {% endif %}{{ _(comment.author_name) if comment.is_parent_user else comment.author_name }}</div>

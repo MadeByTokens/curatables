@@ -1,30 +1,31 @@
-function toggleAll(source) {
-  var boxes = document.querySelectorAll('input[form="bulk-form"][name="video_ids"]');
-  for (var i = 0; i < boxes.length; i++) { boxes[i].checked = source.checked; }
-}
-function confirmBulk() {
-  var btn = document.activeElement;
-  var action = btn && btn.name === 'action' ? btn.value : '';
-  var boxes = document.querySelectorAll('input[form="bulk-form"][name="video_ids"]:checked');
-  if (boxes.length === 0) {
-    alert('Pick at least one video first.');
-    return false;
-  }
-  if (action === 'delete') {
-    return confirm('Delete ' + boxes.length + ' video(s)? This removes the files on disk.');
-  }
-  return true;
-}
 (function () {
   var form = document.getElementById('bulk-form');
   var all = document.getElementById('select-all');
+  var boxSelector = 'input[form="bulk-form"][name="video_ids"]';
+
+  function confirmBulk(button) {
+    var action = button && button.name === 'action' ? button.value : '';
+    var picked = document.querySelectorAll(boxSelector + ':checked');
+    if (picked.length === 0) {
+      alert('Pick at least one video first.');
+      return false;
+    }
+    if (action === 'delete') {
+      return confirm('Delete ' + picked.length + ' video(s)? This removes the files on disk.');
+    }
+    return true;
+  }
+
   if (form) {
     form.addEventListener('submit', function (e) {
-      if (!confirmBulk()) { e.preventDefault(); }
+      if (!confirmBulk(e.submitter || document.activeElement)) { e.preventDefault(); }
     });
   }
   if (all) {
-    all.addEventListener('change', function () { toggleAll(all); });
+    all.addEventListener('change', function () {
+      var boxes = document.querySelectorAll(boxSelector);
+      for (var i = 0; i < boxes.length; i++) { boxes[i].checked = all.checked; }
+    });
   }
 })();
 

@@ -17,9 +17,8 @@
     <div class="mt-6 muted fs-13">{{ _("Original: {title}", title=video.original_title) }}</div>
   </div>
 
-  <!-- Reset-single-field forms. Sit outside the main edit form so
-       their Submit buttons can be associated via the HTML `form=`
-       attribute without being treated as a main-form submit. -->
+  {# Outside the edit form because forms can't nest; the Reset buttons
+     inside it point here with form="...". #}
   <form id="reset-title" method="POST" action="/video/{{ video.video_id }}/reset" class="d-none">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="field" value="title">
@@ -55,7 +54,7 @@
     </div>
 
     <div class="mb-16">
-      <label class="d-block fw-bold mb-4">{{ _("Custom Thumbnail") }}</label>
+      <label for="thumb-input" class="d-block fw-bold mb-4">{{ _("Custom Thumbnail") }}</label>
       <input type="file" id="thumb-input" name="thumbnail" accept="image/*" class="fs-14">
       <div class="mt-6 muted fs-12">{{ _("Pick an image, then Save — the picture above updates once it's saved.") }}</div>
       {% if overrides and overrides.has_custom_thumb %}
@@ -97,7 +96,4 @@
     </div>
   </form>
 </div>
-{# Thumbnail preview is a server round-trip now (no client JS): the form
-   posts the image, the server stores it, and the reloaded page shows the
-   new thumbnail. Keeps this page in the zero-JS kid budget (M4/M7). #}
 {% endblock %}

@@ -1,8 +1,8 @@
 /* Kid upload: plain XHR multipart with progress. ES3 only — no fetch,
    no const/let, no arrow functions. Runs on iOS 9 Safari. */
 (function () {
-  var MAX_BYTES = parseInt(document.getElementById("upload-form").getAttribute("data-max-bytes"), 10);
   var form = document.getElementById('upload-form');
+  var MAX_BYTES = parseInt(form.getAttribute('data-max-bytes'), 10);
   var fileInput = document.getElementById('file');
   var progressWrap = document.getElementById('progress-wrap');
   var bar = document.getElementById('bar');

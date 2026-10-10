@@ -37,9 +37,8 @@
     return (n / 1073741824).toFixed(2) + " GB";
   }
 
-  // buildMetadata: filter empty-string values. tus-js-client issue #41
-  // (protocol-level) causes Safari to refuse the Upload-Metadata header
-  // when any value is empty. Never pass empty strings.
+  // Leave empty values out: Safari rejects an Upload-Metadata header
+  // that contains one (tus-js-client issue #41).
   function buildMetadata(file, channelId, title) {
     var m = {
       filename: file.name,
@@ -50,10 +49,8 @@
     return m;
   }
 
-  // onShouldRetry: short-circuit for unrecoverable statuses. The 507
-  // case is the one that matters most for Curatables because our own
-  // disk-quota guard returns 507, and the default retry burns 39 s
-  // hammering the backend.
+  // Don't retry errors that retrying cannot fix, such as 507 from the
+  // free-disk-space check; the default retries would take 39 s.
   function shouldRetry(err, retryAttempt, options) {
     var resp = err && err.originalResponse;
     var code = (resp && resp.getStatus) ? resp.getStatus() : 0;
@@ -111,9 +108,7 @@
     pendingResume = prev;
     var name = (prev.metadata && prev.metadata.filename) || "(unknown file)";
     resumeNameEl.textContent = name;
-    // The banner starts at 0% until we learn the real offset. Once the
-    // user re-picks the file and the upload reports progress, the
-    // onProgress callback takes over.
+    // The real offset is only known once the file is picked again.
     resumePctEl.textContent = "0";
     resumeBanner.hidden = false;
   }
@@ -123,8 +118,7 @@
     pendingResume = null;
   }
 
-  // On page load: probe localStorage for in-flight uploads and show a
-  // resume banner for the most recent entry if any exist.
+  // Offer to resume the most recent unfinished upload.
   if (typeof tus !== "undefined" && tus.isSupported && window.localStorage) {
     try {
       var probe = new tus.Upload(new Blob([]), { endpoint: "/parent/upload/tus" });
@@ -135,15 +129,14 @@
             if (uploads && uploads.length) {
               showResumeBanner(uploads[uploads.length - 1]);
             }
-          }).catch(function () { /* ignore */ });
+          }).catch(function () {});
         }
       }
-    } catch (e) { /* old bundle or Blob constructor blocked, skip silently */ }
+    } catch (e) { /* no resume support in this browser */ }
   }
 
-  // iOS Safari silently transcodes picked videos before handing them to
-  // JS. Show a preparing state the moment the change event fires so the
-  // UI doesn't look frozen during the transcode.
+  // iOS Safari transcodes a picked video before handing it over, which
+  // can take a while; show that something is happening.
   fileInput.addEventListener("change", function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
@@ -175,9 +168,7 @@
     bar.value = 0;
     retryCount = 0;
 
-    // If a pending resume exists and the picked file matches by name
-    // and size, tus-js-client will resume automatically via
-    // resumeFromPreviousUpload. Otherwise we upload from zero.
+    // Resume only when the picked file matches the unfinished one.
     var resumeFrom = null;
     if (pendingResume && pendingResume.metadata &&
         pendingResume.metadata.filename === file.name &&
@@ -203,9 +194,6 @@
     reset();
   });
 
-  // beforeunload guard: fire the native "are you sure?" prompt only when
-  // an upload is actually in flight. Skipping this when currentUpload is
-  // null means normal navigation is unaffected.
   window.addEventListener("beforeunload", function (e) {
     if (currentUpload) {
       e.preventDefault();
