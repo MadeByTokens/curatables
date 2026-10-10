@@ -27,6 +27,15 @@
     }
   }
 
+  // Tapping Videos or Channels searches again right away.
+  var form = document.querySelector('form.wishlist-form');
+  var radios = form ? form.querySelectorAll('input[name="mode"]') : [];
+  for (var j = 0; j < radios.length; j++) {
+    radios[j].onclick = function () {
+      if (form.q.value.replace(/\s+/g, '') && start()) { form.submit(); }
+    };
+  }
+
   // Coming back with the browser's Back button shows the old page from
   // memory; it must not stay stuck on "Looking…".
   window.onpageshow = function (e) { if (e && e.persisted) { stop(); } };

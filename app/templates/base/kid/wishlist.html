@@ -36,7 +36,7 @@
   {% endif %}
   {% if channel_id %}
   <h3 class="wishlist-channel-title"><span aria-hidden="true">&#128250;</span> {{ channel_title or _("Channel") }}</h3>
-  {% if query %}<a class="wishlist-back" href="/wishlist?q={{ query|urlencode }}&amp;mode=channels" data-looking><span aria-hidden="true">&#9664;</span> {{ _("Back to the channels") }}</a>{% endif %}
+  {% if query %}<a class="wishlist-pill wishlist-back" href="/wishlist?q={{ query|urlencode }}&amp;mode=channels" data-looking><span aria-hidden="true">&#9664;</span> {{ _("Back to the channels") }}</a>{% endif %}
   {% endif %}
   {% if (query or channel_id) and not error and (results or channels) %}
   <nav class="wishlist-sorts" aria-label="{{ _('Order') }}">

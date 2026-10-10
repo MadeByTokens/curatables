@@ -1215,7 +1215,7 @@ input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; 
 .wishlist-avatar { display: block; padding: 16px 16px 4px; }
 .wishlist-avatar img { width: 120px; height: 120px; border-radius: 60px; background: #ddd; }
 .wishlist-channel-title { margin: 18px 0 4px; }
-.wishlist-back { display: inline-block; min-height: 44px; line-height: 44px; font-weight: bold; }
+.wishlist-back { margin-top: 6px; color: #333; background: #eee; }
 .wishlist-meta {
     display: block;
     padding: 0 10px 8px;
