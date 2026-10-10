@@ -12,12 +12,12 @@ def _svc(app):
     return ProfileService(ProfileRepository(next(app.dependency_overrides[get_db]())))
 
 
-def test_pin_hash_roundtrip_and_legacy_plaintext():
+def test_pin_hash_roundtrip():
     stored = hash_pin("1234")
     assert stored != "1234"
     assert verify_pin(stored, "1234")
     assert not verify_pin(stored, "4321")
-    assert verify_pin("1234", "1234")
+    assert not verify_pin("1234", "1234")
     assert not verify_pin("", "")
 
 

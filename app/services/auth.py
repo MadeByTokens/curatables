@@ -1,4 +1,5 @@
-"""Authentication service — password hashing and verification."""
+"""Parent password and kid PIN hashing, sign-in throttles, parent sessions."""
+
 from __future__ import annotations
 
 import hashlib
@@ -11,6 +12,7 @@ from app.repositories.login_failure_repo import LoginFailureRepository
 from app.services.rate_limit import RateLimiter
 
 MIN_PASSWORD_LENGTH = 8
+_PASSWORD_ITERATIONS = 600_000
 _PIN_ITERATIONS = 100_000
 _PIN_PREFIX = "pbkdf2$"
 
@@ -79,12 +81,9 @@ def is_hashed_pin(stored: str) -> bool:
 
 
 def verify_pin(stored: str, attempt: str) -> bool:
-    """Check a PIN attempt against a stored value. Rows written before
-    PIN hashing hold the PIN itself; those are compared directly."""
-    if not stored:
-        return False
+    """Check a PIN attempt against a hash from hash_pin()."""
     if not is_hashed_pin(stored):
-        return hmac.compare_digest(stored.encode(), attempt.encode())
+        return False
     try:
         salt_hex, hash_hex = stored[len(_PIN_PREFIX):].split("$", 1)
         dk = hashlib.pbkdf2_hmac("sha256", attempt.encode(),
@@ -100,7 +99,7 @@ class AuthService:
 
     def hash_password(self, password: str) -> str:
         salt = os.urandom(16)
-        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations=600000)
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations=_PASSWORD_ITERATIONS)
         return salt.hex() + ":" + dk.hex()
 
     def verify_password(self, password: str) -> bool:
@@ -110,7 +109,7 @@ class AuthService:
         try:
             salt_hex, hash_hex = stored.split(":", 1)
             salt = bytes.fromhex(salt_hex)
-            dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations=600000)
+            dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations=_PASSWORD_ITERATIONS)
             return hmac.compare_digest(dk.hex(), hash_hex)
         except (ValueError, AttributeError):
             return False
