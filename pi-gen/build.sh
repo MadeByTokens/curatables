@@ -32,7 +32,7 @@ say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v docker >/dev/null 2>&1 || die "docker not found"
-command -v rsync  >/dev/null 2>&1 || die "rsync not found"
+command -v git    >/dev/null 2>&1 || die "git not found"
 docker info >/dev/null 2>&1 || die "docker daemon not reachable (need permission / running daemon)"
 [ -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ] || \
 	die "qemu-aarch64 binfmt not registered — see header for how to install ARM emulation"
@@ -63,24 +63,14 @@ else
 	say "Reusing existing pi-gen checkout at ${PIGEN_DIR}"
 fi
 
-# 2. Stage this checkout's source into the custom stage. Excludes build
-#    artifacts and, crucially, the staging/clone dirs to avoid recursion.
+# 2. Stage the committed source (HEAD, without pi-gen/) into the custom
+#    stage. Only tracked files go in: never local notes, caches or build
+#    leftovers, and uncommitted edits are not part of the image.
 DEST="${HERE}/stage-curatables/01-install/files/curatables"
-say "Staging curatables source into ${DEST}"
+say "Staging curatables $(git -C "${REPO_ROOT}" rev-parse --short HEAD) into ${DEST}"
 rm -rf "${DEST}"
 mkdir -p "${DEST}"
-rsync -a \
-	--exclude '.git' \
-	--exclude '.venv' \
-	--exclude '__pycache__' \
-	--exclude '.pytest_cache' \
-	--exclude '.mypy_cache' \
-	--exclude '.ruff_cache' \
-	--exclude '.claude' \
-	--exclude '.coverage' \
-	--exclude 'curatables-data' \
-	--exclude 'pi-gen' \
-	"${REPO_ROOT}/" "${DEST}/"
+git -C "${REPO_ROOT}" archive --format=tar HEAD -- . ':!pi-gen' | tar -x -C "${DEST}"
 
 # 3. Install our config + stage into the pi-gen checkout.
 say "Installing config + stage-curatables into pi-gen"
