@@ -3,3 +3,6 @@
 # unattended-upgrades: daily Debian security updates (enabled by
 # scripts/apply-system.sh).
 unattended-upgrades
+# exfatprogs: mkfs.exfat and fsck.exfat for Box, Drives (Format, Check &
+# repair). Raspberry Pi OS already has it; listed so it stays.
+exfatprogs

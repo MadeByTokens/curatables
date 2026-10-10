@@ -79,3 +79,8 @@ def test_wifi_coming_up_without_a_cable_is_left_alone(tmp_path):
                                           ("eth0", "dhcp4-change"), ("", "up")])
 def test_other_events_change_nothing(tmp_path, iface, action):
     assert _run(tmp_path, iface, action, eth="unavailable", wifi="disconnected") == []
+
+
+def test_a_cable_without_internet_still_keeps_wifi_off(tmp_path):
+    calls = _run(tmp_path, "wlan0", "up", eth="connected (site only)")
+    assert "device disconnect wlan0" in calls

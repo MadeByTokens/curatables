@@ -196,9 +196,9 @@ def mount_options(fstype: str, *, read_only: bool = False) -> tuple[str, str]:
     """(filesystem type for mount, options) for a drive the service user
     must be able to write."""
     uid, gid = _svc_ids()
-    owned = f"uid={uid},gid={gid},fmask=0137,dmask=0027"
+    owned = f"uid={uid},gid={gid},fmask=0137,dmask=0027,nosuid,nodev"
     if fstype == "ext4":
-        fs, opts = "ext4", "defaults,noatime"
+        fs, opts = "ext4", "defaults,noatime,nosuid,nodev"
     elif fstype == "exfat":
         fs, opts = "exfat", owned + ",noatime"
     elif fstype == "ntfs":
@@ -350,7 +350,11 @@ def drive_use_for_videos(params: dict):
         else:
             if state["configured"] and state["uuid"] != part["uuid"]:
                 _stop_curatables(job)
-                _remove_media_fstab(job)
+                try:
+                    _remove_media_fstab(job)
+                except Exception:
+                    _start_curatables(job)
+                    raise
             _run_setup_script(job, device)
         return {"device": device, "fat32": part["fstype"] == "vfat"}
 
@@ -374,10 +378,22 @@ def _move_to(job: Job, device: str, part: dict) -> None:
     finally:
         _umount(str(trial), job)
     _stop_curatables(job)
-    _umount(str(SETTINGS.media_mount), job)
-    _remove_media_fstab(job)
+    try:
+        _umount(str(SETTINGS.media_mount), job)
+        _remove_media_fstab(job)
+    except Exception:
+        _back_to_old_drive(job)
+        raise
     job.log("The old drive keeps its copy of the videos; you can unplug it once this finishes")
     _run_setup_script(job, device)
+
+
+def _back_to_old_drive(job: Job) -> None:
+    """A switch failed before the new drive was set up: reopen the old
+    videos drive if it is still listed, and start Curatables again."""
+    if _media_fstab() and not _mounted_at(SETTINGS.media_mount):
+        runner.run(["mount", str(SETTINGS.media_mount)], timeout=120)
+    _start_curatables(job)
 
 
 @action("drive_back_to_sd", job=True, title="Moving videos back to the SD card")
@@ -478,6 +494,7 @@ def drive_reconnect(params: dict):
     return work
 
 
+FSCK_OK = {"exfat": (0, 1), "vfat": (0, 1), "ext4": (0, 1), "ntfs": (0,)}
 FSCK = {
     "exfat": ["fsck.exfat", "-y"],
     "vfat": ["fsck.vfat", "-a", "-w"],
@@ -504,7 +521,7 @@ def drive_repair(params: dict):
                 _umount(part["mountpoint"], job)
             job.log(f"Checking the {part['fs_name']} drive (this can take a while)")
             rc = runner.stream([*FSCK[part["fstype"]], device], job.log, timeout=6 * 3600)
-            if rc not in (0, 1):
+            if rc not in FSCK_OK[part["fstype"]]:
                 raise HelperError("The check found problems it could not fix. Copy what you need "
                                   "to a computer and format the drive.")
             job.log("The drive is fine" if rc == 0 else "Problems were found and fixed")
@@ -532,9 +549,13 @@ def drive_format(params: dict):
         raise HelperError("Type ERASE to confirm that everything on the drive will be deleted.")
     disk = _find_disk(disk_path)
     for part in disk["partitions"]:
-        if part["role"] in ("system", "library", "videos"):
+        if part["role"] in ("system", "library", "videos") or part["is_videos_drive"]:
             raise HelperError("That drive is in use by the box (it holds the videos or the system). "
                               "Move the videos off it first.")
+
+    mkfs = "mkfs.exfat" if fstype == "exfat" else "mkfs.ext4"
+    if not shutil.which(mkfs, path=runner.ENV["PATH"]):
+        raise HelperError(f"The box cannot make {FS_NAMES[fstype]} drives ({mkfs} is missing). Nothing was erased.")
 
     def work(job: Job) -> dict:
         for part in disk["partitions"]:
@@ -609,7 +630,7 @@ def drive_open_for_import(params: dict):
         target = _import_dir_for(part)
         target.mkdir(parents=True, exist_ok=True)
         fs, opts = mount_options(part["fstype"])
-        result = runner.run(["mount", "-t", fs, "-o", opts + ",nosuid,nodev,noexec", device, str(target)],
+        result = runner.run(["mount", "-t", fs, "-o", opts + ",noexec", device, str(target)],
                             timeout=120)
         if not result.ok:
             _forget_import_mount(str(target))

@@ -682,7 +682,8 @@ def test_reset_file_clears_the_parent_password_once(boot):
     (boot / "curatables-reset.txt").write_text("")
     assert bootfs.reset_from_boot() == 0
     cfg = json.loads((SETTINGS.data_dir / "config.json").read_text())
-    assert cfg["parent"] == {"password_hash": None, "session_epoch": 4, "system_setup_done": False}
+    assert cfg["parent"] == {"password_hash": None, "session_epoch": 4, "system_setup_done": False,
+                             "linux_password_reset": True}
     assert cfg["storage"] == {"cache_days": 9}
     assert not (boot / "curatables-reset.txt").exists()
     done = (boot / "curatables-reset-done.txt").read_text()
@@ -725,3 +726,55 @@ def test_recovery_units_only_run_when_their_file_is_there():
     assert "Before=curatables.service" in reset
     diag = (root / "curatables-diagnose.service").read_text()
     assert "ConditionPathExists=/boot/firmware/curatables-diagnose.txt" in diag
+
+
+# --- review fixes -------------------------------------------------------------
+
+def test_format_refuses_the_videos_drive_even_when_it_is_not_mounted(fake):
+    SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "exfat")))
+    with pytest.raises(HelperError, match="in use"):
+        drives.drive_format({"disk": "/dev/sda", "fstype": "exfat", "label": "KIDS", "confirm": "ERASE"})
+
+
+def test_format_needs_the_mkfs_tool_before_erasing(fake, monkeypatch):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "vfat")))
+    monkeypatch.setattr(drives.shutil, "which", lambda name, path=None: None)
+    with pytest.raises(HelperError, match="Nothing was erased"):
+        drives.drive_format({"disk": "/dev/sda", "fstype": "exfat", "label": "KIDS", "confirm": "ERASE"})
+    assert not fake.ran("wipefs")
+
+
+def test_a_failed_switch_to_a_new_drive_starts_curatables_again(fake, monkeypatch):
+    SETTINGS.fstab_path.write_text(f"UUID=OLD-0000 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    (SETTINGS.media_mount / "curatables-library").mkdir(parents=True)
+    fake.on(["lsblk"], out=_lsblk(_usb("sdb", "exfat", uuid="NEW-1111", label="BIG")))
+    fake.on(["findmnt"], fn=lambda argv: Result(0, "/dev/sda1\n") if str(SETTINGS.media_mount) in argv
+            else Result(0, ""))
+    fake.on(["umount", str(SETTINGS.media_mount)], rc=32, err="target is busy")
+    monkeypatch.setattr(drives, "_copy_library", lambda *a, **k: None)
+    with pytest.raises(HelperError, match="still in use"):
+        drives.drive_use_for_videos({"device": "/dev/sdb1"})(FakeJob())
+    argvs = fake.argvs()
+    assert argvs.index(["systemctl", "stop", "curatables.service"]) < argvs.index(
+        ["systemctl", "start", "curatables.service"])
+
+
+def test_ntfsfix_exit_code_one_is_a_failure(fake):
+    fake.on(["lsblk"], out=_lsblk(_usb("sda", "ntfs")))
+    fake.on(["ntfsfix"], rc=1)
+    with pytest.raises(HelperError, match="could not fix"):
+        drives.drive_repair({"device": "/dev/sda1"})(FakeJob())
+
+
+def test_connected_without_internet_still_counts_as_connected(fake):
+    fake.on(["nmcli", "-t", "-e", "yes", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"],
+            out="eth0:ethernet:connected (site only):Wired\nwlan0:wifi:disconnected:\n")
+    from syshelper import nm
+    assert nm.wired_connected()
+
+
+def test_media_mounts_never_allow_setuid_or_devices(fake):
+    for fstype in ("ext4", "exfat", "ntfs", "vfat"):
+        opts = drives.mount_options(fstype)[1].split(",")
+        assert "nosuid" in opts and "nodev" in opts, fstype

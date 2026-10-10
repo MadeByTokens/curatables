@@ -42,9 +42,9 @@ def _tcp(host: str, port: int, timeout: float = 5) -> str:
 def check_network() -> list[dict]:
     out = []
     devs = nm.devices()
-    wired = any(d["type"] == "ethernet" and d["state"] == "connected" for d in devs)
+    wired = any(d["type"] == "ethernet" and d["state"].startswith("connected") for d in devs)
     wifi = next((d for d in devs if d["type"] == "wifi"), None)
-    wifi_up = bool(wifi and wifi["state"] == "connected")
+    wifi_up = bool(wifi and wifi["state"].startswith("connected"))
     if wired:
         out.append(_check("network", "Network connection", OK, "Connected by Ethernet cable."))
     elif wifi and wifi_up:

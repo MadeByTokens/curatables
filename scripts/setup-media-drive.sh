@@ -16,16 +16,16 @@ SVC_GID="$(id -g "$SVC_USER")"
 case "$FSTYPE" in
     ext4)
         MOUNT_FS=ext4; PASS=2
-        MOUNT_OPTS="defaults,noatime" ;;
+        MOUNT_OPTS="defaults,noatime,nosuid,nodev" ;;
     exfat)
         MOUNT_FS=exfat; PASS=0
-        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime" ;;
+        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime,nosuid,nodev" ;;
     ntfs)
         MOUNT_FS=ntfs3; PASS=0
-        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime" ;;
+        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime,nosuid,nodev" ;;
     vfat)
         MOUNT_FS=vfat; PASS=0
-        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime,utf8"
+        MOUNT_OPTS="uid=$SVC_UID,gid=$SVC_GID,fmask=0137,dmask=0027,noatime,nosuid,nodev,utf8"
         say "warning: $DEV is FAT32, which cannot hold files over 4 GB. Curatables skips anything bigger." ;;
     *)
         die "$DEV is '$FSTYPE'. The media drive must be exFAT, NTFS, ext4 or FAT32." ;;

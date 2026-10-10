@@ -18,7 +18,7 @@ WIFI_TEST_FLAG="${CURATABLES_WIFI_TEST_FLAG:-/run/curatables-wifi-test}"
 [ -n "$IFACE" ] || exit 0
 
 wired_connected() {
-	nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected$'
+	nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'
 }
 
 wifi_devices() {

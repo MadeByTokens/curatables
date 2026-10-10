@@ -112,7 +112,8 @@ when they moved to this drive.</p>
     </div>
     {% endif %}
     {% endfor %}
-    {% if not disk.partitions|selectattr("role", "in", ["videos", "system", "library"])|list %}
+    {% if not disk.partitions|selectattr("role", "in", ["videos", "system", "library"])|list
+      and not disk.partitions|selectattr("is_videos_drive")|list %}
     <details class="mt-16">
       <summary>Format this drive (erases everything on it)</summary>
       <form method="POST" action="/parent/system/drives/format" class="mt-6">

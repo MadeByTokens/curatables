@@ -36,10 +36,10 @@ def wifi_status(params: dict) -> dict:
     wifi = next((d for d in devs if d["type"] == "wifi"), None)
     wired = next((d for d in devs if d["type"] == "ethernet"), None)
     status: dict = {
-        "wired": bool(wired and wired["state"] == "connected"),
-        "wired_addresses": nm.ipv4(wired["device"]) if wired and wired["state"] == "connected" else [],
+        "wired": bool(wired and wired["state"].startswith("connected")),
+        "wired_addresses": nm.ipv4(wired["device"]) if wired and wired["state"].startswith("connected") else [],
         "wifi_device": wifi["device"] if wifi else "",
-        "wifi_connected": bool(wifi and wifi["state"] == "connected"),
+        "wifi_connected": bool(wifi and wifi["state"].startswith("connected")),
         "ssid": "", "signal": 0, "wifi_addresses": [],
         "saved_ssid": "", "country": _country(),
     }
@@ -93,7 +93,7 @@ def _wifi_off(dev: str) -> None:
 
 def _connected_with_address(dev: str) -> bool:
     state = next((d for d in nm.devices() if d["device"] == dev), None)
-    return bool(state and state["state"] == "connected" and nm.ipv4(dev))
+    return bool(state and state["state"].startswith("connected") and nm.ipv4(dev))
 
 
 @action("wifi_set", job=True, title="Switching Wi-Fi")
@@ -105,7 +105,7 @@ def wifi_set(params: dict):
 
     def work(job: Job) -> dict:
         previous = next((d["connection"] for d in nm.devices() if d["device"] == dev
-                         and d["state"] == "connected"), "")
+                         and d["state"].startswith("connected")), "")
         wired = nm.wired_connected()
         SETTINGS.wifi_test_flag.touch()
         try:
@@ -132,7 +132,8 @@ def wifi_set(params: dict):
                                  "ifname", dev], timeout=CONNECT_WAIT + 15)
                 if up.ok and _wait_for_address(dev):
                     break
-                reason = _redact(up.text, psk)
+                reason = (_redact(up.text, psk) if not up.ok else
+                          "It joined the network but got no address from the router.")
                 if attempt == 0:
                     job.log("The first try did not connect; trying once more")
             else:

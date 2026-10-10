@@ -43,7 +43,7 @@ def wifi_device() -> str:
 
 
 def wired_connected() -> bool:
-    return any(d["type"] == "ethernet" and d["state"] == "connected" for d in devices())
+    return any(d["type"] == "ethernet" and d["state"].startswith("connected") for d in devices())
 
 
 def ipv4(device: str) -> list[str]:
