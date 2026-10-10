@@ -71,7 +71,7 @@ Directory-level only; open the directory for the current file list.
 | `systemd/` | Units for the server, the system helper, the yt-dlp updater (path + service), the nightly backup (service + timer), and the Pi's first boot, SD-card recovery, SD-card diagnostics and unicast mDNS. |
 | `pi-gen/` | Raspberry Pi appliance image build ([`pi-gen/README.md`](../pi-gen/README.md)). |
 | `tools/` | `curatables-cli.py`, a standalone yt-dlp helper; not part of the server. |
-| `docs/` | User and contributor docs; `docs/design/` holds designs for unbuilt features, `docs/history/` superseded plans and research. |
+| `docs/` | User and contributor docs; `docs/design/` holds design notes (some built, some future work; [docs/README.md](README.md#design-notes-future-work) says which), `docs/history/` superseded plans and research. |
 
 ---
 
@@ -133,6 +133,14 @@ HTTP exceptions. Services worth knowing about:
   **`CSRFService`**, **`RateLimiter`**, **`MetricsService`**.
 - **`updates.py`** — app-side half of the yt-dlp updater (see
   [In-app yt-dlp update](#in-app-yt-dlp-update)).
+- **`search_gate.GATE`** and **`WishlistService`** (`wishlist.py`) — every
+  YouTube search and lookup, and kids' video requests (see
+  [YouTube searches and video requests](#youtube-searches-and-video-requests)).
+- **Imports** (`imports.py`, `ingest.py`, `lookup.py`) — see
+  [Imports from a drive](#imports-from-a-drive).
+- **`system_helper.py`** — the client for the root system helper (see
+  [System helper](#system-helper)); **`storage_report.py`** — disk levels
+  and the storage page.
 
 ### 4. Features / Routes (`app/features/`)
 
@@ -204,8 +212,8 @@ condition `kid_sees_channel()` in `app/repositories/channel_repo.py`;
 `list_visible_to` and the comment queries both use it.
 
 Two more states keep content hidden until a parent acts: `videos.status =
-'review'` (a kid upload into a shared channel, or a re-download that no
-longer matches what was approved) and `'hidden'`.
+'review'` (a kid upload into a shared channel, or a re-download that does
+not match what was approved) and `'hidden'`.
 
 ---
 
@@ -306,12 +314,12 @@ When a kid opens an evicted video, `ContentService.try_rehydrate_evicted`
 atomically flips it back to `pending` (two taps queue one download) and
 the kid sees `kid/preparing.html`, which keeps refreshing while the video
 is pending or downloading. A re-download is compared with the length the
-parent approved; if it differs by more than 10 s **and** 5 % the URL now
-serves something else, and the video goes to `status='review'`.
+parent approved; if it differs by more than 10 s **and** 5 %, the URL is taken
+to serve something else, and the video goes to `status='review'`.
 
 Canonical thumbnails live at `thumbnails/videos/<id>.jpg`, outside the
 video directory, so evicting a video keeps the picture the parent chose
-(older `videos/<id>/thumb.jpg` files are moved there on first access).
+(a thumbnail found at `videos/<id>/thumb.jpg` is moved there on first access).
 
 ### Playback baseline
 
@@ -396,7 +404,7 @@ than i/b/u, Windows-1252 and UTF-16 text) and stripping VTT cue settings.
 the storage report and crash recovery all take the media dir; the
 database, config, logs and update flag files stay in the data dir. A test
 fails if code joins `videos`/`uploads`/`thumbnails`/`channels` onto the
-data dir again.
+data dir.
 
 When `storage.media_path` is set but the drive is not mounted
 (`media_fs.media_missing`), the app runs degraded: kid pages show
@@ -405,6 +413,49 @@ keeps working so the drive can be reconnected, and startup jobs, crash
 recovery and cache eviction skip all media work. Nothing is ever
 written to the empty mount point. On a FAT32 drive,
 `media_fs.capped` limits upload and download sizes to 4 GB.
+
+---
+
+## YouTube searches and video requests
+
+Every question the server asks YouTube on someone's behalf (a kid's
+**Find new** search, a channel page, the details of one video, and the
+parent's **+ Add** preview of a video, channel or playlist) goes through
+one object, `GATE` in `app/services/search_gate.py`:
+
+- **Cache.** Answers are kept in their own SQLite file, `db/cache.db`
+  (opened in `app/main.py`; safe to delete, not backed up): a video's
+  details for 7 days, searches and channel or playlist listings for 6
+  hours, at most 5,000 entries. Refresh, Back, the next page, a restart,
+  another kid and the parent's preview all reuse them.
+- **One call at a time** for the whole box.
+- **Limits.** Each kid has a tap limit (8 per 30 s, cached or not) and a
+  YouTube-call limit (12 per 5 min); the box has its own budget (30 per
+  10 min). A kid over a limit sees a "slow down" or "busy" screen.
+- **Rest.** When YouTube answers with a bot check or "too many
+  requests", searching stops for 30 minutes. The dashboard shows the
+  gate's state.
+
+**Kids' video requests** (the wishlist, off per profile until the
+parent switches on **Ask for new videos**):
+`app/features/kid_wishlist/` runs the search through `WishlistService`
+(`app/services/wishlist.py`), which applies the parent's rules
+(`config.wishlist`: blocked words, allowed channels, maximum length; live
+streams are never shown) and fetches thumbnails itself, so the kid's
+device never talks to YouTube. `POST /wishlist/ask` takes only a video
+id, fetches its details again, re-applies the rules and stores a pending
+`wishlist_requests` row with what YouTube said. The kid is then offered
+`/wishlist/asked/<id>`, where they can give the request their own name
+and description and pick one of their visible channels
+(`WishlistRepository.choose`); YouTube's original title and description
+are kept next to them (migration 0013).
+
+The parent's inbox is `app/features/parent_requests/`. **Review** opens
+the normal Review & add page (`parent/content_preview.html`) filled from
+the stored row, with the kid's choices pre-filled and editable; it asks
+YouTube nothing. Nothing downloads until the parent adds it. **Not this
+one** marks the request rejected, which hides that video from the kid's
+searches.
 
 ---
 
@@ -424,7 +475,8 @@ calls, in order:
 
 The maintenance loop wakes every `storage.cache_cleanup_interval_minutes`
 (default 60; 0 disables it), re-reads the config, and on a worker thread
-evicts expired cache videos and deletes usage events older than
+evicts expired cache videos (only when `storage.cache_days` > 0; see
+[Cache eviction](#cache-eviction)) and deletes usage events older than
 `storage.events_retention_days` (default 365; 0 keeps them).
 
 Everything in this module opens its own SQLite connection.
@@ -449,7 +501,8 @@ From outermost to innermost:
    would buffer an oversized request into memory first. Limits are per
    route and read from config on each request: parent tus uploads →
    `max_upload_bytes`; kid `POST /upload` → `max_kid_upload_bytes`;
-   picture edits and curation-list imports → 6 MB; everything else → 1 MB.
+   picture edits, curation-list imports and the Import page's picture
+   and batch forms → 6 MB; everything else → 1 MB.
 3. **`PrometheusMiddleware`** — sees the final status code (no-op unless
    `server.prometheus_enabled`).
 4. **`SessionMiddleware`** — signed cookie, `SameSite=Strict`.
@@ -509,7 +562,8 @@ Don't fork templates per theme.
 
 The service unit (`systemd/curatables.service`) is sandboxed:
 `ProtectSystem=strict` with `ReadWritePaths=<data dir>` means the app can
-write **only** its data dir — the venv is read-only to it — and
+write **only** its data dir (and, on the Pi image, the videos drive,
+through a drop-in) — the venv is read-only to it — and
 `NoNewPrivileges=true` means it cannot `sudo` or restart itself. So the
 dashboard's "Update yt-dlp" button cannot pip-install directly. Instead:
 
@@ -610,7 +664,8 @@ new class and one line in `app/dependencies.py:get_backend()`.
 The interface is URL-based so every yt-dlp extractor works the same way:
 `fetch_video_info(url)`, `fetch_channel_videos(url, max_results)`,
 `fetch_playlist(url, max_results)`, `download_video(url, output_dir,
-resolution, subtitle_langs)`. The returned `VideoMetadata` carries
+resolution, subtitle_langs)`, and for kids' requests `search(query,
+max_results)` and `search_channels(query, max_results)`. The returned `VideoMetadata` carries
 `extractor` and `original_url`, which build the composite stored ID
 `{extractor}_{raw_id}` (`app/services/ids.py:make_video_id`; IDs that had
 to be sanitised get a short hash suffix so two can't collide).
@@ -717,9 +772,9 @@ Details: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ---
 
-## Not built (yet)
+## Not built
 
-The architecture can take these without restructuring; none exist today.
+The architecture can take these without restructuring; none exist.
 
 - **Plugin system.** Services can become swappable interfaces through the
   DI layer.
@@ -727,9 +782,8 @@ The architecture can take these without restructuring; none exist today.
 - **Content-safety agent / LLM features.** Designed in
   [`design/v0.6-safety-agent.md`](design/v0.6-safety-agent.md).
 - **Filtered real-time proxy, LLM filter layers, offline web pages.**
-  See [`design/`](design/). The wishlist (Mode A) exists:
-  `app/features/kid_wishlist/`, `app/features/parent_requests/`,
-  `app/services/wishlist.py`.
+  See [`design/`](design/). (Kids' video requests are built; see
+  [YouTube searches and video requests](#youtube-searches-and-video-requests).)
 - **Source subscriptions** (auto-sync of channels/playlists).
 
 ---

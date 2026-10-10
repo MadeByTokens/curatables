@@ -43,14 +43,15 @@ These are installed via the host's package manager (`apt`, `brew`,
 |---|---|---|---|---|
 | `python3` (≥ 3.10) | `python3 python3-pip` | `python` | `python3 py3-pip` | Server runtime (see above). |
 | `ffmpeg` (incl. `ffprobe`) | `ffmpeg` | `ffmpeg` | `ffmpeg` | Merges yt-dlp's separate video+audio streams, processes subtitles, extracts frames for thumbnails (`app/services/thumbnails.py:extract_frame`), probes and normalizes every ingest (`media_probe.py`, `normalize.py`). `run.py:check_dependencies` hard-fails if `ffmpeg` is missing from `PATH`. |
-| `ca-certificates` | `ca-certificates` | (bundled) | `ca-certificates` | TLS roots for HTTPS outbound (yt-dlp, zeroconf timeservers, `curl_cffi`). Not a Curatables bug when missing; outbound requests just fail. |
+| `ca-certificates` | `ca-certificates` | (bundled) | `ca-certificates` | TLS roots for HTTPS outbound (yt-dlp, `curl_cffi`, title lookups on the Import page, update downloads). Not a Curatables bug when missing; outbound requests just fail. |
 
 Install-time and host tools (not probed by `run.py`): `python3-venv`
 (builds the venv), `curl` and `unzip` (Deno installer), `rsync`
 (`install.sh --systemd` copies the checkout to `/opt/curatables`),
 `avahi-daemon` + `libnss-mdns` (see §5). `git` is needed only to install
-or upgrade by cloning; the Pi image ships it so an appliance can be
-upgraded with `git clone` + `install.sh --systemd`.
+or upgrade by cloning. The Pi image updates from **Box → Updates** and
+ships `git` only for upgrading from a terminal with `git clone` +
+`install.sh --systemd`.
 
 **Pi image only** (the system helper, `syshelper/`, runs these as root
 for the Box pages): `nmcli` (NetworkManager: Wi-Fi), `chpasswd`,
@@ -73,7 +74,7 @@ Authoritative list lives in `requirements.txt`. Rationale for each:
 | Package | Purpose | What breaks without it |
 |---|---|---|
 | `fastapi>=0.100,<1.0` | Web framework: routing, request lifecycle, dependency injection. | Everything — the app can't start. |
-| `starlette>=0.29,<2.0` | ASGI toolkit FastAPI is built on; pulled in transitively but pinned directly because we rely on its `TemplateResponse(request, name, context)` signature (added in 0.29, deprecated-old-signature removed in 1.0). | Template rendering 500s on any version that predates the new signature. |
+| `starlette>=0.29,<2.0` | ASGI toolkit FastAPI is built on; pulled in transitively but pinned directly because the app uses its `TemplateResponse(request, name, context)` signature (Starlette ≥ 0.29). | Template rendering 500s on a version without that signature. |
 | `uvicorn>=0.20,<1.0` | ASGI server hosting the FastAPI app. | `run.py` can't start the server. |
 | `jinja2>=3.1,<4.0` | Template engine for every HTML page (kid UI, parent dashboard). | Every HTML route 500s. |
 | `python-multipart>=0.0.6,<1.0` | Form parsing for FastAPI `Form()` params. Not a hard dep of FastAPI itself; forms silently 500 without it. | Login, settings save, add-video, channel edit, sharing import — every POST route fails at request time with a `RuntimeError`. |
@@ -159,21 +160,29 @@ container vs. on the host.
 
 ## 6. Runtime filesystem layout
 
-Curatables writes only under its data dir: `--data-dir`, else
-`config.storage.path`, else `~/curatables-data/`. The systemd install and
+Curatables writes its database, settings and logs under its data dir:
+`--data-dir`, else `config.storage.path`, else `~/curatables-data/`.
+Videos, uploads, thumbnails and channel art go in the media folder:
+`storage.media_path` when it is set (a USB drive), otherwise the data
+dir. The systemd install and
 the Pi image use `/home/curatables/curatables-data` (optionally a USB
 drive mounted there, see
 [deployment.md](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)).
-`app/config.py:ensure_directories` creates `db/`, `videos/`,
-`thumbnails/`, `logs/`, `uploads/` and `uploads/.tmp/` at startup; the
-rest is created on demand.
+`app/config.py:ensure_directories` creates `db/` and `logs/` in the data
+dir and `videos/`, `thumbnails/`, `uploads/` and `uploads/.tmp/` in the
+media folder at startup; the rest is created on demand. It never creates
+a missing external media folder: the server starts without it and kids
+see a "videos are resting" screen.
+
+In the table, `videos/`, `uploads/`, `thumbnails/` and `channels/` live
+in the media folder; everything else is in the data dir.
 
 | Path | Purpose | Volume-mount in a container? |
 |---|---|---|
 | `config.json` | Settings, PBKDF2 parent password hash, session secret and epoch. Read by `app/config.py:load_config`, written atomically. After a dashboard relocation the old location keeps a pointer `config.json` holding only the new `storage.path`. | Yes. |
 | `db/curatables.db` (+ `-wal`, `-shm`) | SQLite database, WAL mode. Schema from `app/db/migrations/` (snapshot in `app/db/schema.sql`). | Yes. |
-| `db/cache.db` (+ `-wal`, `-shm`) | What YouTube answered to searches and video lookups (`app/services/search_gate.py`), so they aren't asked twice. | No — safe to delete; it refills. |
-| `videos/<id>/` | Downloaded video (`video.mp4`, or the original `.webm`/`.mkv` if it could not be normalized) and subtitle tracks. Deleted when a cache video is evicted. | Yes — big and expensive to re-download. |
+| `db/cache.db` (+ `-wal`, `-shm`) | What YouTube answered (`app/services/search_gate.py`): video details for 7 days, searches and channel listings for 6 hours, so they aren't asked twice. | No — safe to delete; it refills. |
+| `videos/<id>/` | Downloaded video (`video.mp4`, or the original `.webm`/`.mkv` if it could not be normalized) and subtitle tracks. Kept until the video is deleted, unless **Freeing up space** (`storage.cache_days` > 0) removes the file of a video nobody watched for that many days. | Yes — big and expensive to re-download. |
 | `uploads/<id>/` | Parent- and kid-uploaded videos, normalized on finalize like downloads. Never evicted. | Yes — user-generated content. |
 | `uploads/.tmp/` | In-progress resumable (tus) uploads. Files older than 24 h are swept at startup (`app/lifecycle.py:startup_jobs`). | Yes — interrupted uploads can resume across restarts. |
 | `thumbnails/videos/<id>.jpg` | Canonical thumbnail for each video. Kept when the video file is evicted. | Yes. |
@@ -207,8 +216,8 @@ to `run.py` so every subdirectory lands under the mount.
 | **Default port** | `8080` (see `app/config.py:ServerConfig.port`). No privilege required. |
 | **Port 80** | Optional. Requires `CAP_NET_BIND_SERVICE` on Linux. The shipped `systemd/curatables.service` unit grants this via `AmbientCapabilities=CAP_NET_BIND_SERVICE` — see `docs/deployment.md` for the full "unprivileged user + one capability" recipe. In a container, pass `--cap-add NET_BIND_SERVICE` (docker) or the equivalent (podman, k8s `securityContext.capabilities.add`). |
 | **mDNS** | Uses UDP/5353 on the `224.0.0.251` multicast group. Outbound and inbound. `zeroconf.asyncio.AsyncZeroconf` opens this automatically; no explicit port config in `config.json`. |
-| **Outbound HTTPS** | Required for yt-dlp to reach YouTube/etc. Containers that egress-filter must allow at least `*.youtube.com`, `*.googlevideo.com`, `*.ggpht.com` (thumbnails). |
-| **Maintenance cadence** | `config.storage.cache_cleanup_interval_minutes` (default 60). The lifespan task in `app/lifecycle.py` evicts cache videos not watched for `cache_days` and deletes usage events older than `events_retention_days` (default 365) on this interval. Set to 0 to disable it (the on-demand rehydrate path keeps working either way). |
+| **Outbound HTTPS** | Required for yt-dlp to reach YouTube/etc. Containers that egress-filter must allow at least `*.youtube.com`, `*.googlevideo.com`, `*.ggpht.com` and `i.ytimg.com` (thumbnails). The Import page's lookups also reach `*.wikipedia.org`, `www.wikidata.org` and, with a key, `api.themoviedb.org` / `image.tmdb.org`; Box → Updates on the Pi image reaches `api.github.com` and GitHub release downloads. |
+| **Maintenance cadence** | `config.storage.cache_cleanup_interval_minutes` (default 60). The lifespan task in `app/lifecycle.py` evicts videos not watched for `cache_days` when that is above 0 (the default, 0, removes nothing) and deletes usage events older than `events_retention_days` (default 365) on this interval. Set to 0 to disable it (the on-demand rehydrate path keeps working either way). |
 | **Downloads at once** | `config.storage.max_concurrent_downloads` (default 1) sizes the shared download queue; `max_download_bytes` (default 4 GB) caps a single download. |
 
 ---
@@ -364,8 +373,9 @@ the image.
 `uvicorn` handles `SIGINT`/`SIGTERM` correctly as PID 1, which is
 what you get when `ENTRYPOINT` invokes `run.py` directly. You do
 **not** need `tini` or `dumb-init` unless you're also launching
-subprocess children that orphan on the uvicorn process (currently
-none — yt-dlp runs synchronously inside the download worker).
+subprocess children that orphan on the uvicorn process. Curatables'
+own children (ffmpeg, run in its own process group, and Deno, which
+yt-dlp starts and waits for) are reaped by the code that started them.
 
 ### Deno
 

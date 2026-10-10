@@ -2,7 +2,7 @@
 
 > Companion to [`SECURITY.md`](../SECURITY.md). This file describes the
 > trust boundaries, the attack surface, and — critically — the risks
-> Curatables does **not** mitigate today. It is intentionally honest:
+> Curatables does **not** mitigate. It is intentionally honest:
 > "we don't defend against X" is a feature of a threat model, not a bug.
 > The plain-language version for parents is
 > [`safety-model.md`](safety-model.md).
@@ -17,8 +17,10 @@ Curatables is designed for one specific operating environment:
   `scripts/install.sh --systemd`.
 - Reachable on that LAN only, typically as `http://curatables.local/`
   via mDNS, plain HTTP on port 80.
-- Media optionally on an external ext4 USB drive mounted at the data
-  dir (`scripts/setup-external-drive.sh`).
+- Media optionally on a USB drive (`scripts/setup-external-drive.sh`):
+  either an ext4 drive mounted at the data dir, or, with
+  `--media-only`, an exFAT, NTFS, FAT32 or ext4 drive at
+  `/mnt/curatables-media` holding only the media.
 - One administrator (the parent) with shell access to the box.
 - Zero, one, or more kid profiles, used on family devices on the same
   LAN.
@@ -38,7 +40,7 @@ Both the image and `install.sh --systemd` produce the same layout:
 | Path | Owner | Notes |
 |------|-------|-------|
 | `/opt/curatables` (code + `.venv`) | root | Read-only to the service. `chown -R root:root` after every install/build. |
-| `/home/curatables/curatables-data` | `curatables` | Data dir: `config.json`, SQLite DB, videos, thumbnails, update flag files. |
+| `/home/curatables/curatables-data` | `curatables` | Data dir: `config.json`, SQLite DB (`db/`, including the `cache.db` YouTube answer cache), videos, thumbnails, update flag files. |
 | `/var/lib/curatables-backups` | `curatables`, mode 0700 | Nightly snapshots (systemd `StateDirectory`), off the media drive. |
 | `/usr/local/bin/deno` | root | Pinned release from GitHub, SHA-256 checked by `scripts/install-deno.sh`. |
 
@@ -166,8 +168,9 @@ PINs are a sibling barrier, not an access-control boundary.
 - 4–6 digits, or a picture PIN of 3 picks from 9 pictures (stored as
   the 3 digits the pictures stand for, so 729 combinations), stored as
   PBKDF2-HMAC-SHA256 (100,000 iterations, random
-  salt; migration 0005 converted existing rows), compared with
-  `hmac.compare_digest`. A legacy plaintext value would still verify.
+  salt), compared with `hmac.compare_digest`. A stored value without
+  the hash prefix is compared as plain text (migration 0005 hashed every
+  existing row).
 - **5 attempts per device per profile per 5 minutes** (in memory), and
   **20 per profile per hour from all devices together**, kept in the
   database so a restart does not reset it. On average that is about
@@ -285,7 +288,7 @@ is the parent's job; Curatables cannot enforce it.
 Plain HTTP: a passive sniffer on the LAN can capture the parent cookie
 and replay it until it expires or the password is changed (which bumps
 the session epoch). `HttpOnly` blocks script access; `SameSite=Strict`
-blocks cross-site use. There is no TLS option today. Don't run the
+blocks cross-site use. There is no TLS option. Don't run the
 dashboard on shared networks (apartment Wi-Fi, hotspots).
 
 A parent session left open on a shared device is full parent access to
@@ -462,7 +465,9 @@ or other non-public address (`YtdlpBackend._blocked`); a kid with
 the wishlist switch on can only send a search phrase (`ytsearch` of up
 to 100 characters, through the search gate below) and an 11-character
 YouTube video id or 24-character channel id,
-from which the server builds the watch URL itself; downloads
+from which the server builds the watch URL itself, and, for a pending
+request of their own, a name (200 characters), a description (1,000
+characters) and one of the channels they can see; downloads
 use `noplaylist` and `storage.max_download_bytes` (default 4 GB); the
 service unit confines a compromise to the service user (data dir,
 network egress, update requests). There is no further sandbox.
@@ -537,7 +542,10 @@ streams, YouTube ids only. Thumbnails are fetched by the server
 profile was just shown or asked for (kept in the session under the
 profile id). `POST /wishlist/ask` takes only a video id, re-fetches its
 metadata and re-applies the rules before storing a pending
-`wishlist_requests` row. Nothing is downloaded or playable until the
+`wishlist_requests` row. The kid can then give their own pending
+request a name, a description and a channel (`POST
+/wishlist/asked/<id>`): text is trimmed and length-capped, and a
+channel the kid can't see is dropped. Nothing is downloaded or playable until the
 parent adds it through the normal preview, which marks the request
 approved; a rejected video never reappears in that kid's results.
 
@@ -549,12 +557,14 @@ listings for 6 hours; the parent's Add preview of a YouTube video,
 channel or playlist uses it too), one call at a time, per-kid tap and call limits, a box-wide
 budget, and a 30-minute pause after a bot check or HTTP 429 (shown on
 the parent dashboard). The limits live in memory, so a restart clears
-them. A video request stores what YouTube said about the video, so the
-parent's review asks YouTube nothing.
+them. A video request stores what YouTube said about the video, next to the
+kid's choices, so the parent's review asks YouTube nothing.
 
 Residual: titles and thumbnails from an unfiltered search reach the
 kid before any human sees them; the word list and allowlist are the
-only filter (no SafeSearch, no classifier yet).
+only filter (no SafeSearch, no classifier). Kid-written request names and
+descriptions reach the parent's review page as text, escaped by Jinja's
+autoescape like every other field.
 
 ## Defense-in-depth: what's in place
 

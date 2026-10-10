@@ -87,8 +87,8 @@ Configurable via `config.json`:
 ```
 
 If `mdns_enabled` is false, the advertiser is never started. If the
-`zeroconf` library isn't installed at all, Curatables logs a warning
-at startup and carries on; the rest of the server works fine.
+`zeroconf` library isn't installed at all, Curatables logs a notice
+(`mDNS advertisement skipped`) at startup and carries on; the rest of the server works fine.
 
 ### Part 2 — Binding to port 80 without running as root
 
@@ -245,7 +245,8 @@ With `storage.media_path` set and that folder missing (the drive is
 unplugged or did not mount), the server still starts so the parent can
 reconnect the drive from the dashboard, but it stores nothing: kids see a
 "videos are resting" screen, the parent sees a notice, and startup crash
-recovery, resumed downloads and the cache sweep leave the library alone.
+recovery, resumed downloads and **Freeing up space** (when it is on) leave the
+library alone.
 Nothing can be written to the SD card through the immutable mount point.
 
 exFAT and FAT32 have no journal: after an unplug or a power cut, use
@@ -411,5 +412,4 @@ If `curatables.local` doesn't resolve:
 The mDNS advertiser reads from `config.server.port` and
 `config.server.mdns_name` at app-lifespan start time. Changing those
 values in `~/curatables-data/config.json` takes effect on the next
-server restart. There is no reload-in-place path — the project is
-pre-launch and the added complexity isn't justified yet.
+server restart. There is no reload-in-place; restart the service.

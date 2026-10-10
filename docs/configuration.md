@@ -10,11 +10,13 @@ stored, for when you need to edit it by hand or script an install.
 |---|---|
 | Server and storage settings, parent password hash | `config.json` in the data dir |
 | Kid profiles, channels, videos, comments, usage | `db/curatables.db` in the data dir |
+| What YouTube answered (video details for 7 days, searches and channel listings for 6 hours) | `db/cache.db` in the data dir; safe to delete |
 | Data dir location | `--data-dir` on the command line (the systemd unit passes `/home/curatables/curatables-data`); default `~/curatables-data` |
 
 Stop the server before editing `config.json` by hand
 (`sudo systemctl stop curatables`), and start it again afterwards.
-Unknown keys make startup fail, so check spelling.
+Keys Curatables doesn't know are dropped without a warning, so check
+the spelling: a misspelled key has no effect.
 
 ## `config.json`
 
@@ -39,13 +41,13 @@ Unknown keys make startup fail, so check spelling.
 | `path` | data dir | (read-only) | Where everything lives. Set by `--data-dir`. |
 | `media_path` | empty | (read-only) | Where videos, uploads, thumbnails and channel pictures live, if not inside `path`. Set by `setup-external-drive.sh --media-only`, so the media can be on an exFAT, NTFS or FAT32 drive while the database stays on the SD card. If it is set and missing, the server starts without it: kids see a "videos are resting" screen and nothing is stored. |
 | `import_roots` | `[]` | Import from a drive | Folders the [Import](getting-started.md#import-videos-already-on-a-drive) page may list video files from. The library's own folders are never listed. |
-| `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives | USB drives opened with *Import videos from it* are mounted in folders here; each mounted one is an import folder too. |
+| `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives | USB drives opened with *Import from it* are mounted in folders here; each mounted one is an import folder too. |
 | `drive_backups` | `false` | Box → Drives | Also copy each nightly backup to `<media_path>/backups` on the videos drive. |
-| `cache_days` | `0` | Settings → Freeing up space | A downloaded video nobody watched for this many days is removed from disk and downloads again when next tapped. `0` keeps everything. |
+| `cache_days` | `0` | Settings → Freeing up space | A downloaded video nobody watched for this many days loses its file; it stays listed and downloads again when next tapped. Uploads, imported files and **Keep forever** videos are never removed. `0`, the default, keeps every video. This is the only setting that removes video files. |
 | `low_space_percent` | `15` | — | The dashboard and the storage page warn when the videos drive has this much free or less. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
 | `subtitle_langs` | `en` | Storage | Comma-separated language codes, `all`, or empty for none. |
-| `min_free_disk_bytes` | 2 GB | Advanced | Downloads and uploads stop when free space would drop below this. Nothing is removed to make room. |
+| `min_free_disk_bytes` | 2 GB | Advanced | New downloads and uploads are refused when free space would drop below this. Nothing is removed to make room. |
 | `max_download_bytes` | 4 GB | Advanced | Source files bigger than this are not downloaded. |
 | `max_concurrent_downloads` | `1` | Advanced | Downloads + conversions running at once. Keep `1` on a Raspberry Pi. |
 | `max_upload_bytes` | 10 GB | Advanced | Largest file a parent can upload. |
@@ -66,6 +68,7 @@ Unknown keys make startup fail, so check spelling.
 | `session_epoch` | `0` | Bumped on every password change; sessions from an older epoch are signed out. |
 | `setup_window_minutes` | `30` | While no password is set, the setup page only works for this many minutes after the server starts; restart it to reopen. `0` keeps it open. |
 | `system_setup_done` | `false` | First-run step 2 (the Linux login password) is done. Only asked for on the Pi image. `curatables-reset.txt` on the SD card sets it back to `false`. |
+| `linux_password_reset` | `false` | Set by `curatables-reset.txt`: step 2 may then choose a new Linux password without the old one. |
 
 ### `wishlist`
 

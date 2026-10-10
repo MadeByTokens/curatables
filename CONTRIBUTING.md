@@ -8,7 +8,7 @@ on devices as old as Safari iOS 9.
 
 ## Getting set up
 
-Curatables is a Linux-only host today (Debian/Ubuntu family,
+Curatables hosts run Linux only (Debian/Ubuntu family,
 including Raspberry Pi OS). macOS and Windows can be **clients**
 of a running server but are not supported as hosts.
 
@@ -85,14 +85,15 @@ prepended to the subprocess's `PYTHONPATH` so `import yt_dlp`
 resolves to a stub that returns deterministic metadata. No
 network access is required at any point.
 
-### Lint
+### Lint and type check
 
 ```bash
 .venv/bin/ruff check .
 shellcheck scripts/*.sh pi-gen/build.sh pi-gen/stage-curatables/*/*.sh
+.venv/bin/mypy app syshelper
 ```
 
-`ruff` is in `requirements-dev.txt`; its rule set (correctness-focused:
+`ruff` and `mypy` are in `requirements-dev.txt`; its rule set (correctness-focused:
 pyflakes, pycodestyle errors, bugbear, async) is in `pyproject.toml`.
 `shellcheck` comes from your package manager (`apt install shellcheck`).
 New scripts are linted too.
@@ -162,10 +163,9 @@ Other conventions worth knowing:
   and safe on existing data. Never edit a migration that has
   shipped.
 - **TemplateResponse signature:** always
-  `TemplateResponse(request, "name.html", {...})`. The old
-  `TemplateResponse("name.html", {...})` form silently 500s on
-  Starlette ≥1.0; `tests/test_template_response_signature.py`
-  enforces the new form.
+  `TemplateResponse(request, "name.html", {...})`. The form without
+  `request` fails with a 500 on current Starlette;
+  `tests/test_template_response_signature.py` enforces it.
 - **Multi-source URLs:** the add path accepts any URL `yt-dlp`
   supports. Keep YouTube-specific URL handling inside the
   fast-path parser in `app/services/video_source.py`, the Tier 1
