@@ -1,10 +1,15 @@
-"""Comment repository — threaded comments on videos."""
+"""Comment repository: threaded comments on videos."""
+
 from __future__ import annotations
 
 from app.models.comment import Comment
 from app.repositories.base import BaseRepository
 from app.repositories.channel_repo import kid_sees_channel
 
+_SELECT_WITH_AUTHOR = (
+    "SELECT c.*, COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') AS author_name "
+    "FROM comments c LEFT JOIN profiles p ON c.profile_id = p.id "
+)
 
 # A comment on a video is visible to a kid (bound as the single ?) when
 # it is the parent's, the kid's own, or written by a profile that can see
@@ -35,7 +40,6 @@ class CommentRepository(BaseRepository):
         return self._new_id(cur)
 
     def delete(self, comment_id: int) -> None:
-        # Delete replies first, then the comment
         self.db.execute(
             "DELETE FROM comments WHERE parent_comment_id = ?", (comment_id,)
         )
@@ -44,36 +48,19 @@ class CommentRepository(BaseRepository):
 
     def get_by_id(self, comment_id: int) -> Comment | None:
         row = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.id = ?",
+            _SELECT_WITH_AUTHOR + "WHERE c.id = ?",
             (comment_id,),
         ).fetchone()
         return self._to_model(row) if row else None
 
-    def count_for_video(self, video_id: str) -> int:
-        row = self.db.execute(
-            "SELECT COUNT(*) as cnt FROM comments WHERE video_id = ?",
-            (video_id,),
-        ).fetchone()
-        return int(row["cnt"])
-
-    # --- Paginated reads: page by top-level comment so reply threads
-    # stay intact (no half-thread cut off at the page boundary). ---
+    # Pages are counted in top-level comments so a reply thread is never
+    # split across two pages.
 
     def list_top_level_for_video(self, video_id: str,
                                  limit: int = 20,
                                  offset: int = 0) -> list[Comment]:
         rows = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
+            _SELECT_WITH_AUTHOR + "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
             "ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?",
             (video_id, limit, offset),
         ).fetchall()
@@ -84,12 +71,7 @@ class CommentRepository(BaseRepository):
                                   limit: int = 20,
                                   offset: int = 0) -> list[Comment]:
         rows = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
+            _SELECT_WITH_AUTHOR + "WHERE c.video_id = ? AND c.parent_comment_id IS NULL "
             f"AND {_VISIBLE_TO_KID} "
             "ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?",
             (video_id, viewer_profile_id, limit, offset),
@@ -109,12 +91,7 @@ class CommentRepository(BaseRepository):
             visible = f"AND {_VISIBLE_TO_KID} "
             params.append(viewer_profile_id)
         rows = self.db.execute(
-            f"SELECT c.*, "
-            f"COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            f"COALESCE(p.avatar, 'default') as author_avatar "
-            f"FROM comments c "
-            f"LEFT JOIN profiles p ON c.profile_id = p.id "
-            f"WHERE c.parent_comment_id IN ({placeholders}) "
+            _SELECT_WITH_AUTHOR + f"WHERE c.parent_comment_id IN ({placeholders}) "
             f"{visible}"
             f"ORDER BY c.created_at ASC",
             params,
@@ -140,11 +117,10 @@ class CommentRepository(BaseRepository):
         return int(row["cnt"])
 
     def list_recent(self, limit: int = 50) -> list[Comment]:
-        """Get recent comments across all videos (for parent moderation)."""
+        """Recent comments across all videos, for parent moderation."""
         rows = self.db.execute(
             "SELECT c.*, "
             "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar, "
             "COALESCE(v.title, c.video_id) as video_title "
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
@@ -174,12 +150,7 @@ class CommentRepository(BaseRepository):
     def list_recent_by_profile(self, profile_id: int,
                                limit: int = 20) -> list[Comment]:
         rows = self.db.execute(
-            "SELECT c.*, "
-            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Parent') as author_name, "
-            "COALESCE(p.avatar, 'default') as author_avatar "
-            "FROM comments c "
-            "LEFT JOIN profiles p ON c.profile_id = p.id "
-            "WHERE c.profile_id = ? "
+            _SELECT_WITH_AUTHOR + "WHERE c.profile_id = ? "
             "ORDER BY c.created_at DESC LIMIT ?",
             (profile_id, limit),
         ).fetchall()
@@ -196,6 +167,5 @@ class CommentRepository(BaseRepository):
             is_parent_user=d.get("is_parent_user", 0),
             created_at=d.get("created_at", ""),
             author_name=d.get("author_name", ""),
-            author_avatar=d.get("author_avatar", "default"),
             video_title=d.get("video_title") or "",
         )

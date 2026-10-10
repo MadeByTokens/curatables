@@ -136,21 +136,6 @@ class TestChannelVisibility:
         visible = set(repo.list_visible_to(alice))
         assert bob_owned in visible
 
-    def test_list_owned_by(self, db):
-        alice = _make_kid_profile(db, "alice")
-        bob = _make_kid_profile(db, "bob")
-        repo = ChannelRepository(db)
-        repo.create("Family")
-        a1 = repo.create("Alice's Art", owner_profile_id=alice)
-        a2 = repo.create("Alice's Music", owner_profile_id=alice)
-        repo.create("Bob's Films", owner_profile_id=bob)
-
-        alice_channels = repo.list_owned_by(alice)
-        ids = {c.id for c in alice_channels}
-        assert ids == {a1, a2}
-        assert repo.count_owned_by(alice) == 2
-        assert repo.count_owned_by(bob) == 1
-
 
 # ---------------------------------------------------------------------------
 # ContentService kid visibility

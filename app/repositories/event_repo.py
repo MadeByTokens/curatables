@@ -1,7 +1,9 @@
+"""Event repository: usage event logging and statistics."""
+
 from __future__ import annotations
-"""Event repository — usage event logging and statistics."""
 
 import sqlite3
+
 from app.models import Event
 from app.repositories.base import BaseRepository
 
@@ -44,8 +46,6 @@ class EventRepository(BaseRepository):
                 (limit,),
             ).fetchall()
         return [self._to_model(r) for r in rows]
-
-    # --- Aggregation queries for stats dashboard ---
 
     def count_events(self, event_type: str,
                      profile_id: int | None = None,
@@ -106,7 +106,7 @@ class EventRepository(BaseRepository):
 
     def stats_per_profile(self, since: str | None = None) -> list[dict]:
         sql = ("SELECT e.profile_id, "
-               "COALESCE(p.display_name, p.name, 'Unknown') as profile_name, "
+               "COALESCE(NULLIF(p.display_name, ''), p.name, 'Unknown') as profile_name, "
                "COALESCE(p.avatar, 'default') as avatar, "
                "COUNT(*) as completions, "
                "COALESCE(SUM(json_extract(e.data_json, '$.watch_seconds')), 0) as secs "
@@ -121,8 +121,7 @@ class EventRepository(BaseRepository):
         return [dict(r) for r in self.db.execute(sql, params).fetchall()]
 
     def last_watched_video_id(self, profile_id: int) -> str | None:
-        """Most-recent video a profile completed or opened. Returns just
-        the video_id; callers resolve the full Video row themselves."""
+        """ID of the video this profile most recently opened or completed."""
         row = self.db.execute(
             "SELECT video_id FROM events "
             "WHERE profile_id = ? "
@@ -164,4 +163,3 @@ class EventRepository(BaseRepository):
         )
         self.db.commit()
         return cur.rowcount
-

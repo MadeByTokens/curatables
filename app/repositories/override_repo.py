@@ -1,5 +1,6 @@
+"""Per-kid video overrides: custom title, description and thumbnail flag."""
+
 from __future__ import annotations
-"""Profile video override repository — per-kid title/thumbnail overrides."""
 
 import sqlite3
 
@@ -21,9 +22,8 @@ class ProfileVideoOverrideRepository(BaseRepository):
                title: str | None = None,
                description: str | None = None,
                has_custom_thumb: int | None = None) -> None:
-        # Race-free upsert: try INSERT optimistically; on UNIQUE conflict
-        # (concurrent tab already inserted), fall through to the selective
-        # UPDATE path. Same pattern ChannelRepository.create uses.
+        # INSERT first; on a primary-key conflict (the row exists, perhaps
+        # just inserted by a concurrent request) fall through to UPDATE.
         try:
             self.db.execute(
                 "INSERT INTO profile_video_overrides "
@@ -36,9 +36,7 @@ class ProfileVideoOverrideRepository(BaseRepository):
             return
         except sqlite3.IntegrityError:
             pass
-        # Row already exists — UPDATE only the fields the caller specified.
-        # None means "don't touch this column" (clear_field handles the
-        # explicit set-to-NULL case).
+        # None means "leave unchanged"; clear_field() sets a column to NULL.
         parts: list[str] = []
         vals: list[object] = []
         if title is not None:
@@ -73,19 +71,12 @@ class ProfileVideoOverrideRepository(BaseRepository):
 
     def clear_field(self, profile_id: int, video_id: str,
                     field: str) -> None:
-        """Explicitly NULL out one override field without touching the
-        others. Different from upsert(field=None), which means 'don't
-        touch this field'. `field` must be one of 'title', 'description'."""
+        """Set one override column, 'title' or 'description', to NULL."""
         if field not in ("title", "description"):
             raise ValueError(f"Cannot clear field '{field}'")
-        if self.get(profile_id, video_id) is None:
-            return
         self.db.execute(
             f"UPDATE profile_video_overrides SET {field} = NULL "
             "WHERE profile_id = ? AND video_id = ?",
             (profile_id, video_id),
         )
         self.db.commit()
-
-    def clear_title(self, profile_id: int, video_id: str) -> None:
-        self.clear_field(profile_id, video_id, "title")

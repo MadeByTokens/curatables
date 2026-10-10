@@ -1,8 +1,10 @@
-"""Channel repository — internal (parent-defined) channels."""
+"""Channel repository: parent-created and kid-owned channels."""
+
 from __future__ import annotations
 
 import builtins
 import sqlite3
+
 from app.models import Channel
 from app.repositories.base import BaseRepository
 
@@ -45,13 +47,9 @@ class ChannelRepository(BaseRepository):
 
     def create(self, name: str, description: str = "",
                owner_profile_id: int | None = None) -> int:
-        """Create a channel. Returns ID (existing if duplicate name).
-
-        When owner_profile_id is None the channel is parent-created
-        (visible to all profiles subject to their whitelist). When set,
-        the channel is owned by that kid profile and only visible to
-        them until the parent shares it.
-        """
+        """Create a channel and return its ID (the existing one's for a
+        duplicate name). A kid-owned channel (owner_profile_id set) is
+        visible only to that kid until the parent shares it."""
         try:
             cur = self.db.execute(
                 "INSERT INTO channels (name, description, owner_profile_id) "
@@ -104,23 +102,12 @@ class ChannelRepository(BaseRepository):
         return [(self._to_model(r), r["video_count"]) for r in rows]
 
     def delete(self, channel_id: int, reassign_to: int | None = None) -> None:
-        """Delete a channel.
-
-        When `reassign_to` is an int, videos previously in this
-        channel move to that channel instead of being orphaned to
-        channel_id=NULL. The caller is responsible for verifying
-        reassign_to != channel_id and that the target exists.
-        """
-        if reassign_to is not None:
-            self.db.execute(
-                "UPDATE videos SET channel_id = ? WHERE channel_id = ?",
-                (reassign_to, channel_id),
-            )
-        else:
-            self.db.execute(
-                "UPDATE videos SET channel_id = NULL WHERE channel_id = ?",
-                (channel_id,),
-            )
+        """Delete a channel, moving its videos to `reassign_to` (or to no
+        channel when None). The caller validates `reassign_to`."""
+        self.db.execute(
+            "UPDATE videos SET channel_id = ? WHERE channel_id = ?",
+            (reassign_to, channel_id),
+        )
         self.db.execute("DELETE FROM channels WHERE id = ?", (channel_id,))
         self.db.commit()
 
@@ -137,22 +124,6 @@ class ChannelRepository(BaseRepository):
             icon_filename=d.get("icon_filename") or "",
             color=d.get("color") or "#2a9d8f",
         )
-
-    def list_owned_by(self, profile_id: int) -> builtins.list[Channel]:
-        """Return channels owned by the given profile."""
-        rows = self.db.execute(
-            "SELECT * FROM channels WHERE owner_profile_id = ? "
-            "ORDER BY position, name",
-            (profile_id,),
-        ).fetchall()
-        return [self._to_model(r) for r in rows]
-
-    def count_owned_by(self, profile_id: int) -> int:
-        row = self.db.execute(
-            "SELECT COUNT(*) AS cnt FROM channels WHERE owner_profile_id = ?",
-            (profile_id,),
-        ).fetchone()
-        return int(row["cnt"])
 
     def list_visible_to(self, profile_id: int) -> builtins.list[int]:
         """IDs of the channels the kid profile may see (see kid_sees_channel)."""

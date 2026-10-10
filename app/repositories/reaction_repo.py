@@ -1,5 +1,6 @@
+"""Reaction repository: one emoji reaction per profile and video."""
+
 from __future__ import annotations
-"""Reaction repository — emoji reactions on videos."""
 
 from app.repositories.base import BaseRepository
 
@@ -60,7 +61,7 @@ class ReactionRepository(BaseRepository):
     def list_for_video_with_profiles(self, video_id: str) -> list[dict]:
         rows = self.db.execute(
             "SELECT r.emoji, "
-            "COALESCE(p.display_name, p.name, 'Unknown') as profile_name "
+            "COALESCE(NULLIF(p.display_name, ''), p.name, 'Unknown') as profile_name "
             "FROM reactions r "
             "LEFT JOIN profiles p ON r.profile_id = p.id "
             "WHERE r.video_id = ? "
@@ -94,8 +95,5 @@ class ReactionRepository(BaseRepository):
         ).fetchall()
         result: dict[str, dict[str, int]] = {}
         for r in rows:
-            vid = r["video_id"]
-            if vid not in result:
-                result[vid] = {}
-            result[vid][r["emoji"]] = r["cnt"]
+            result.setdefault(r["video_id"], {})[r["emoji"]] = r["cnt"]
         return result

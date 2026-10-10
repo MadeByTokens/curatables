@@ -1,5 +1,6 @@
+"""Per-kid channel bookmarks: videos a kid saved into a channel."""
+
 from __future__ import annotations
-"""Profile channel video repository — per-kid channel bookmarks."""
 
 from app.repositories.base import BaseRepository
 

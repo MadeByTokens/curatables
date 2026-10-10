@@ -1,14 +1,16 @@
+"""Profile repository: kid profiles and their channel lists."""
+
 from __future__ import annotations
-"""Profile repository — child profiles and their channel permissions."""
 
 import builtins
 import sqlite3
 from typing import Any
+
 from app.models import Profile
 from app.models.profile import FEATURE_SWITCHES
+from app.repositories.base import BaseRepository
 
 FEATURE_FIELDS = tuple(field for field, _label, _default in FEATURE_SWITCHES)
-from app.repositories.base import BaseRepository
 
 
 class ProfileRepository(BaseRepository):
@@ -84,7 +86,7 @@ class ProfileRepository(BaseRepository):
         self.db.commit()
 
     def delete(self, profile_id: int) -> None:
-        # profile_channels rows are removed automatically via ON DELETE CASCADE
+        # profile_channels rows go with it (ON DELETE CASCADE).
         self.db.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
         self.db.commit()
 

@@ -1,5 +1,6 @@
+"""Tag repository: per-kid video tags."""
+
 from __future__ import annotations
-"""Tag repository — per-kid video tagging system."""
 
 from app.models.tag import Tag
 from app.repositories.base import BaseRepository
@@ -8,10 +9,8 @@ from app.repositories.base import BaseRepository
 class TagRepository(BaseRepository):
 
     def get_or_create(self, name: str) -> int:
-        # Race-free under concurrent callers: INSERT OR IGNORE leaves the
-        # row alone if it already exists (either from a previous call or
-        # a concurrent one that just won the write). The subsequent SELECT
-        # always sees it because SQLite serializes writes.
+        # INSERT OR IGNORE then SELECT is safe against a concurrent insert
+        # of the same name because SQLite serializes writes.
         name = name.strip()
         self.db.execute(
             "INSERT OR IGNORE INTO tags (name) VALUES (?)", (name,)

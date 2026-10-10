@@ -2,7 +2,7 @@
 
 from app.models import Video, Profile
 from app.repositories import (
-    VideoRepository, ChannelRepository, ProfileRepository,
+    VideoRepository, ChannelRepository, EventRepository, ProfileRepository,
 )
 
 
@@ -84,3 +84,20 @@ class TestProfileRepository:
             "SELECT * FROM profile_channels WHERE profile_id = ?", (pid,)
         ).fetchall()
         assert len(rows) == 0
+
+
+class TestProfileNameFallback:
+    """A profile with no display name is shown by its name."""
+
+    def test_reactions_and_watch_stats_use_name(self, db):
+        from app.repositories.reaction_repo import ReactionRepository
+
+        pid = ProfileRepository(db).create(Profile(name="kiddo"))
+        VideoRepository(db).insert(_make_video("v1"))
+        ReactionRepository(db).upsert(pid, "v1", "heart")
+        EventRepository(db).insert_raw("video_complete", "v1", pid, '{"watch_seconds": 5}')
+
+        reactions = ReactionRepository(db).list_for_video_with_profiles("v1")
+        assert [r["profile_name"] for r in reactions] == ["kiddo"]
+        stats = EventRepository(db).stats_per_profile()
+        assert [s["profile_name"] for s in stats] == ["kiddo"]

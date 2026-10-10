@@ -1,4 +1,5 @@
 """Import jobs: one row per file, draft → queued → working → outcome."""
+
 from __future__ import annotations
 
 import builtins

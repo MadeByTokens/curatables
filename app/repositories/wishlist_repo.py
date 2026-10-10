@@ -1,4 +1,5 @@
 """Kid video requests (the wishlist): pending → approved | rejected."""
+
 from __future__ import annotations
 
 import builtins
@@ -41,6 +42,11 @@ class WishlistRequest:
 
 
 class WishlistRepository(BaseRepository):
+
+    _SELECT = (
+        "SELECT w.*, COALESCE(NULLIF(p.display_name, ''), p.name, '') AS profile_name "
+        "FROM wishlist_requests w LEFT JOIN profiles p ON p.id = w.profile_id"
+    )
 
     def add(self, profile_id: int, video_id: str, meta: VideoMetadata, url: str) -> int:
         """Record a pending request and return its id; asking again for the
@@ -118,11 +124,6 @@ class WishlistRepository(BaseRepository):
             "WHERE video_id = ? AND status = 'pending'", (video_id,))
         self.db.commit()
         return cur.rowcount
-
-    _SELECT = (
-        "SELECT w.*, COALESCE(NULLIF(p.display_name, ''), p.name, '') AS profile_name "
-        "FROM wishlist_requests w LEFT JOIN profiles p ON p.id = w.profile_id"
-    )
 
     @staticmethod
     def _to_model(row) -> WishlistRequest:

@@ -1,8 +1,10 @@
-"""Video repository — all video-related SQL."""
+"""Video repository."""
+
 from __future__ import annotations
 
 import builtins
 import sqlite3
+
 from app.models import Video
 from app.repositories.base import BaseRepository
 
@@ -128,14 +130,12 @@ class VideoRepository(BaseRepository):
 
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
                      limit: int = 24, offset: int = 0) -> builtins.list[Video]:
-        """Search within ready videos by title and description.
-
-        channel_ids=None searches every video; an empty list matches nothing.
-        """
+        """Search ready videos by title and description. `channel_ids`
+        None searches every video; an empty list matches nothing."""
         like = f"%{query}%"
-        if channel_ids is not None and not channel_ids:
-            return []
         if channel_ids is not None:
+            if not channel_ids:
+                return []
             placeholders = ",".join("?" for _ in channel_ids)
             params: list = list(channel_ids)
             params.extend([like, like, limit, offset])
@@ -216,8 +216,7 @@ class VideoRepository(BaseRepository):
         return int(row["cnt"])
 
     def list_pending(self) -> builtins.list[Video]:
-        """Videos stuck in 'pending' — used by the startup resume path
-        that kicks off downloads orphaned by a server restart."""
+        """Pending cached videos, oldest first (resumed at startup)."""
         rows = self.db.execute(
             "SELECT * FROM videos WHERE download_status = 'pending' "
             "AND storage_mode = 'cache' "
@@ -280,23 +279,17 @@ class VideoRepository(BaseRepository):
         "AND download_status = 'ready' AND cached_at IS NOT NULL"
     )
 
-    def list_expired_cache(self, cache_days: float,
-                           now_iso: str | None = None) -> builtins.list[Video]:
+    def list_expired_cache(self, cache_days: float) -> builtins.list[Video]:
         """Cached videos not played (or, if never played, not downloaded)
-        within the last `cache_days`, oldest first.
-
-        Uploads and keep_forever videos are never eligible, nor is
-        anything mid-download. `cache_days` is a float so tests can pass
-        fractional values; `now_iso` lets tests pin the clock (production
-        uses SQLite's UTC `datetime('now')`).
-        """
+        within the last `cache_days`, oldest first. Uploads, keep_forever
+        videos and anything mid-download are never eligible."""
         if cache_days <= 0:
             return []
         rows = self.db.execute(
             f"SELECT * FROM videos WHERE {self._EVICTABLE} "
-            "AND COALESCE(last_played_at, cached_at) < datetime(?, ?) "
+            "AND COALESCE(last_played_at, cached_at) < datetime('now', ?) "
             "ORDER BY COALESCE(last_played_at, cached_at) ASC",
-            (now_iso or "now", f"-{float(cache_days)} days"),
+            (f"-{float(cache_days)} days",),
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
@@ -319,9 +312,8 @@ class VideoRepository(BaseRepository):
         return cur.rowcount == 1
 
     def mark_evicted(self, video_id: str) -> None:
-        """Transition a ready video to 'evicted' — files gone, row kept.
-        Clears cached_at / cache_expires_at / file_size in the same
-        statement so the row's cache-metadata columns stay consistent."""
+        """Mark a video whose files were deleted as 'evicted', clearing its
+        cache metadata; the row itself is kept."""
         self.db.execute(
             "UPDATE videos "
             "SET download_status = 'evicted', "
@@ -335,10 +327,8 @@ class VideoRepository(BaseRepository):
 
     def list_stuck_pending(self, older_than_hours: float = 1,
                            limit: int = 20) -> builtins.list[Video]:
-        """Pending videos whose added_at is more than `older_than_hours`
-        in the past. Uses SQLite datetime arithmetic so the comparison
-        stays in UTC (videos.added_at defaults to datetime('now'), which
-        is UTC; Python's datetime.now() is local and would drift)."""
+        """Pending cached videos added more than `older_than_hours` ago.
+        Compared with SQLite's clock because added_at is stored in UTC."""
         rows = self.db.execute(
             "SELECT * FROM videos WHERE download_status = 'pending' "
             "AND storage_mode = 'cache' "
