@@ -2,9 +2,23 @@
 
 > **tl;dr** — a permanent install (`install.sh --systemd` or the Pi
 > image) backs up the database and `config.json` every night at 03:00
-> into `/var/lib/curatables-backups`, keeping 14 days. Restore with
-> `scripts/restore.sh <snapshot.db>` after stopping the server. Copy
-> that folder somewhere else now and then (USB stick, another computer).
+> into `/var/lib/curatables-backups`, keeping 14 days. On the Pi image,
+> **Box → Drives & backups** makes a backup now, restores one, and can
+> keep copies on the videos drive. Elsewhere, restore with
+> `scripts/restore.sh <snapshot.db>` after stopping the server.
+
+## From the dashboard (Pi image)
+
+**Box → Drives & backups** has **Back up now**, a **Restore** button for
+each snapshot (it stops the server, runs `restore.sh` as the service
+user and starts it again), and, when the videos are on a USB drive,
+**Also keep backups on the videos drive**. With that on, each nightly
+snapshot is also copied to `<media folder>/backups` on the drive, so the
+library survives the SD card dying (`storage.drive_backups` in
+`config.json`).
+
+The rest of this page explains what is backed up and how to back up and restore from a terminal.
+
 
 ## What's at stake
 
@@ -38,9 +52,9 @@ For a full copy, stop the server and copy the whole data dir (see
 | try-out (`.venv/bin/python run.py`) | `~/curatables-data` | `~/curatables-data/backups` (manual runs) |
 
 `/var/lib/curatables-backups` is on the system disk (the SD card on a
-Pi). With the library on an external drive
-([deployment.md](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)),
-losing either the card or the drive leaves the other copy.
+Pi), next to the database. If the videos are on a USB drive, turn on
+**Also keep backups on the videos drive** (Box → Drives & backups), or
+losing the SD card loses the database and its backups together.
 
 ## Manual backup (one-off)
 
@@ -78,16 +92,6 @@ systemctl list-timers curatables-backup.timer
 journalctl -u curatables-backup -n 20
 ls -l /var/lib/curatables-backups
 ```
-
-## From the dashboard (Pi image)
-
-**Box → Drives & backups** has **Back up now**, a **Restore** button for
-each snapshot (it stops the server, runs `restore.sh` as the service
-user and starts it again), and, when the videos are on a USB drive,
-**Also keep backups on the videos drive**. With that on, each nightly
-snapshot is also copied to `<media folder>/backups` on the drive, so the
-library survives the SD card dying (`storage.drive_backups` in
-`config.json`).
 
 ## Off-device copies (recommended)
 

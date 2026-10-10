@@ -29,6 +29,6 @@ ssh
     An empty file named just "ssh" turns on SSH logins (the remote
     command line) for people who use it.
 
-Each file is used once and then renamed to ...-done.txt.
+Each file except ssh is used once and then renamed to ...-done.txt.
 Whoever holds this card can change anything on the box, so keep it with
 the box, out of reach.

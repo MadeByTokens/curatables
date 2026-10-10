@@ -12,7 +12,7 @@ you're doing.
 | [safety-model.md](safety-model.md) | What a child can and can't reach, what is recorded, and how to lock the tablet. |
 | [faq.md](faq.md) | Everyday questions: can't connect, video stuck, YouTube blocked, disk full, PINs. |
 | [backup.md](backup.md) | Nightly backups, restoring, testing a backup. |
-| [upgrade.md](upgrade.md) | Updating yt-dlp from the dashboard; upgrading Curatables. |
+| [upgrade.md](upgrade.md) | Updating Curatables, the downloader and the system (Box → Updates on the Pi image). |
 
 The dashboard also has a built-in help page (**Help** in the parent menu).
 

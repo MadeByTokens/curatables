@@ -82,8 +82,8 @@ from leaving the browser. On the child's tablet:
   port to it from your router: it has no HTTPS and was not designed to
   face the internet.
 - Until you set the parent password the first time, **anyone on your
-  network** who opens the dashboard can set it. Do that first, right
-  after installing.
+  network** who opens the dashboard within 30 minutes of the box starting
+  can set it. Do that first, right after installing.
 - With only the videos on a USB drive, the settings and password stay on
   the SD card: if the drive is missing, kids see a "videos are resting"
   screen and nothing is stored until it is back. With the whole library
@@ -97,7 +97,8 @@ when, reactions, comments, searches and uploads. You see these under
 **Stats** and on the dashboard. Usage events older than a year are
 deleted automatically (see
 [`events_retention_days`](configuration.md#storage)). Nothing is sent to
-any outside service. The server itself goes online only to fetch a
-video and its thumbnail from the site it came from (when you add it, or
-when it is downloaded again) and to update yt-dlp when you press the
-button.
+any outside service. The server goes online only to download the videos
+and pictures you add; look up titles on Wikipedia, Wikidata, TMDB (with
+your key) or YouTube when you import; search YouTube when a child uses
+**Find new**; and check for updates (Curatables, the downloader, and the
+daily security updates on the Pi image).

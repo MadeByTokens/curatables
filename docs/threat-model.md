@@ -137,17 +137,27 @@ watched this video" (checked server-side on approval) and only while
   out for a few minutes.
 - Changing the password requires the current one and is not
   rate-limited (it already needs a parent session).
-- Forgotten password: shell access to the box (edit `config.json`) is
-  the recovery path; there is no reset over the network.
+- Forgotten password: `curatables-reset.txt` on the SD card's boot
+  partition (Pi image) or shell access to the box (edit `config.json`).
+  There is no reset over the network.
 
 ### Sessions
 
 - Starlette `SessionMiddleware`: signed (not encrypted) cookie, secret
   in `config.json`, `SameSite=Strict`, `HttpOnly`, no `Secure` flag
-  (plain HTTP). Lifetime `parent.session_timeout_hours` (default 24),
-  for kid and parent sessions alike.
-- Logout is a POST with a CSRF token, so another page cannot sign the
-  parent out; a GET of `/parent/logout` just goes to the dashboard.
+  (plain HTTP). The cookie is re-sent on every response, so its expiry
+  (`parent.session_timeout_hours`, default 24) is an idle timeout; a
+  parent sign-in also records its time and ends that many hours after
+  signing in however much it is used.
+- Logout is a POST with a CSRF token, and the token-less sign-in routes
+  refuse posts whose `Origin` names another site, so another page cannot
+  sign the parent out; a GET of `/parent/logout` just goes to the
+  dashboard.
+- The server answers only to its own names (the hostname with `.local`,
+  `.lan`, `.home` and similar, `localhost`, `server.allowed_hosts`) and
+  to IP addresses (`app/middleware/host_check.py`). Anything else gets a
+  400, which stops DNS rebinding: a web page that points its own domain
+  at the box cannot get its requests answered.
 
 ### Kid PIN
 
@@ -158,10 +168,12 @@ PINs are a sibling barrier, not an access-control boundary.
   PBKDF2-HMAC-SHA256 (100,000 iterations, random
   salt; migration 0005 converted existing rows), compared with
   `hmac.compare_digest`. A legacy plaintext value would still verify.
-- **5 attempts per profile per 5 minutes** (in memory). That bounds an
-  automated guesser to about 3.5 days on average for a 4-digit PIN —
-  slow, not impossible. Because the limit is per profile, someone else
-  can also lock a kid out for 5 minutes by mistyping.
+- **5 attempts per device per profile per 5 minutes** (in memory), and
+  **20 per profile per hour from all devices together**, kept in the
+  database so a restart does not reset it. On average that is about
+  18 hours to guess a picture PIN, 10 days for 4 digits and almost three
+  years for 6 digits: slow, not impossible. A sibling mistyping on
+  purpose can lock a profile for up to an hour.
 - The parent profile form never echoes the PIN back.
 - An empty PIN means "no PIN": selecting the profile is one POST, and a
   household with a single PIN-less profile is auto-selected on
@@ -180,9 +192,11 @@ device per child (with device-level locking) rather than the PIN.
   (`session_timeout_hours`). Checked on every `POST/PUT/PATCH/DELETE`
   from the `csrf_token` form field or the `X-CSRF-Token` header
   (`app/middleware/csrf.py`). Rejection is a plain 403.
-- Exempt prefixes (`CSRF_EXEMPT_PREFIXES`):
-  - `/parent/setup`, `/parent/login`, `/profiles/select`,
-    `/profiles/pin` — session-establishment endpoints.
+- Exempt: exactly `/parent/setup` (`CSRF_EXEMPT_EXACT`), and the
+  prefixes in `CSRF_EXEMPT_PREFIXES`:
+  - `/parent/login`, `/profiles/select`, `/profiles/pin` and the setup
+    page are session-establishment endpoints; posts to them whose
+    `Origin` header names another site are refused.
   - `/api/log` — player telemetry; it records only `video_view` /
     `video_play` / `video_complete` from a kid who can see the video.
   - `/parent/upload` — the vendored `tus-js-client` sends no token. This
@@ -190,6 +204,10 @@ device per child (with device-level locking) rather than the PIN.
     a parent session; `SameSite=Strict` is what protects them.
 - `SameSite=Strict` alone defeats cross-site CSRF in current browsers;
   the token is defense in depth.
+- A token in the `X-CSRF-Token` header is checked without reading the
+  body; for a multipart upload only the first 64 KB is read to find the
+  form's token, and the rest streams through after it checks out, so a
+  forged upload is refused before it is held in memory.
 
 ## Child-facing attack surface
 
@@ -437,7 +455,10 @@ audit extractors. For YouTube, yt-dlp hands the site's player
 JavaScript to Deno. `ffmpeg` parses every downloaded and uploaded file.
 All of these parse untrusted remote media and metadata.
 
-Mitigations: only the parent can submit URLs (`/parent/*`); a kid with
+Mitigations: only the parent can submit URLs (`/parent/*`), though the
+lists a parent imports come from other people, so every URL is refused
+before yt-dlp sees it if its host resolves to a home-network, loopback
+or other non-public address (`YtdlpBackend._blocked`); a kid with
 the wishlist switch on can only send a search phrase (`ytsearch` of up
 to 100 characters, rate-limited) and an 11-character YouTube video id,
 from which the server builds the watch URL itself; downloads
@@ -549,8 +570,8 @@ only filter (no SafeSearch, no classifier yet).
 |-----|----------|--------|
 | No TLS; parent cookie sniffable and replayable on the LAN | Medium (LAN-dependent) | Accepted for LAN-only use |
 | First-run setup: anyone on the LAN who gets there first, within 30 minutes of the server starting, sets the parent password | Low | Mitigated by the setup window; set the password right after first boot |
-| PIN is a sibling barrier (4-digit: ~3.5 days average under the rate limit), and a PIN-less single profile is auto-selected for any LAN device | Low | Documented |
-| PIN and comment rate limits are in memory and reset on restart; a flood of wrong parent passwords locks everyone out for 5 minutes | Low | Documented |
+| PIN is a sibling barrier (4-digit: ~10 days average under the per-profile limit, picture PIN under a day), and a PIN-less single profile is auto-selected for any LAN device | Low | Documented |
+| The per-device PIN, comment and event-log limits are in memory and reset on restart; a flood of wrong parent passwords locks everyone out for 5 minutes | Low | Documented |
 | A parent session left open on a shared device is full parent access | Medium | Documented; log out or pick a kid profile |
 | Kid device still has a browser; device lockdown (Guided Access / screen pinning / kiosk) is up to the parent | Medium | Out of scope |
 | `yt-dlp` extractors, Deno and `ffmpeg` parse untrusted media in-process / unsandboxed beyond systemd | Medium | Out of scope (upstream) |
@@ -561,7 +582,7 @@ only filter (no SafeSearch, no classifier yet).
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
 | Wi-Fi PSK on the boot partition between flashing and the first boot | Low (physical access) | Mitigated; blanked once applied |
-| Thumbnail fetch: DNS rebinding between the address check and the connection | Low | Documented |
+| Links in shared lists are checked for home-network addresses before yt-dlp sees them, but yt-dlp follows redirects by itself | Low | Documented |
 
 "Accepted" and "Documented" mean we believe the behaviour is acceptable
 once the operator understands it; "Out of scope" items are explicit

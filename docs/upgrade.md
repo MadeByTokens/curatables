@@ -1,27 +1,26 @@
-# Upgrading Curatables
+# Updating Curatables
 
-There are two separate things to keep up to date:
+## On the Pi image (no terminal)
 
-- **yt-dlp**, the engine that fetches videos. Sites like YouTube change
-  often, so it needs updating every few weeks. One button in the
-  dashboard does it.
-- **Curatables itself**. Upgrade when a new version has something you
-  want. On the Pi image it's one button (**Box → Updates**); elsewhere
-  one command does it. Both take a backup first.
+Everything is on **Box → Updates**:
 
-On the Pi image, the operating system's security updates install by
-themselves every day, and **Box → Updates → Update system packages**
-installs everything else.
+- **Update to …** installs a new Curatables version. Videos, kids and
+  settings are kept; if the new version doesn't start, the box goes back
+  by itself, and **Go back to …** undoes an update.
+- **Update the downloader** when YouTube videos stop downloading (YouTube
+  changes often, so this is needed every few weeks).
+- **Update system packages** installs the operating system's updates.
+  Security updates also install by themselves every day.
 
-> **The database only moves forward.** A new version may change the
-> database layout, and there is no automatic way back. The upgrade
-> command below takes a backup before it changes anything; keep it.
+The rest of this page is for installs you set up yourself, and explains
+how the updates work.
 
 ---
 
 ## Updating yt-dlp from the dashboard
 
-Open **Settings → Updates** and click **Update yt-dlp now**. The server
+Open **Settings → Updates** and click **Update yt-dlp now** (on the Pi
+image, **Box → Updates → Update the downloader** does the same). The server
 restarts itself when the update is done; reload the page to see the old
 → new version.
 

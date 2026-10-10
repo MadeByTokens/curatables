@@ -54,32 +54,11 @@ You'll also need:
 
 ## Step 1 — Put Linux on the box
 
-> ### 🟢 Fastest path: the ready-made Raspberry Pi image
->
-> If you have a Raspberry Pi, there's a pre-built image with Curatables
-> already installed — **no terminal, no install steps**. Flash it and you
-> can skip Steps 2, 3, and 4 entirely.
->
-> 1. Download the `.img.xz` file attached to the newest release on the
->    [Releases page](https://github.com/MadeByTokens/curatables/releases)
->    (or build it yourself with [`pi-gen/build.sh`](../pi-gen/README.md)).
-> 2. In **Raspberry Pi Imager**, choose **"Use custom"** and select that
->    `.img.xz`. Customising the settings is optional: the dashboard asks
->    for the Linux login password on first start. Write the card.
-> 3. *(Wi-Fi alternative)* After writing, the card shows a small **boot**
->    drive on your computer. Open **`curatables-wifi.txt`** on it and fill
->    in `country`, `ssid`, `psk`. Wired Ethernet needs nothing.
-> 4. Put the card in the Pi, power on, wait ~2 minutes, then open
->    **`http://curatables.local/parent/`** (no `:8080` on the image) and
->    set your parent password right away — until you do, anyone on your
->    network could — then a different password for the box's Linux login.
->    The [parents' guide](parents-guide.md) covers all of this without a
->    terminal. Then continue from
->    [Add your first video](#add-your-first-video). Kids use
->    `http://curatables.local/`.
->
-> The manual route below (plain Raspberry Pi OS + installer) still works
-> and is what to use on a laptop/mini-PC or if you prefer to see each step.
+> **Have a Raspberry Pi?** Use the ready-made image and follow the
+> [parents' guide](parents-guide.md) instead: no terminal, and you can
+> skip this whole page. The manual route below (plain Raspberry Pi OS and
+> the installer) is for a laptop or mini-PC, or if you prefer to see each
+> step.
 
 **If you're using a spare laptop or mini-PC that already runs Ubuntu or
 Debian Linux, skip to [Step 2](#step-2--open-a-terminal-on-the-box).**
@@ -314,8 +293,7 @@ sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
 
 The library's videos go into a `curatables-library` folder on the drive,
 and the drive is added to the Import page so you can bring in what is
-already on it. (FAT32 drives are refused: they cannot hold files over
-4 GB.)
+already on it. (FAT32 works, but skips any file of 4 GB or more.)
 
 **Or put the whole library on an ext4 drive:**
 
@@ -324,9 +302,10 @@ sudo mkfs.ext4 -L curatables /dev/sda1              # ERASES the drive
 sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sda1
 ```
 
-Either way the Pi mounts the drive on every boot, and if the drive is ever
-unplugged, Curatables waits for it instead of starting with an empty
-library. Details:
+Either way the Pi mounts the drive on every boot. If it is unplugged, a
+videos-only drive leaves Curatables running with a "videos are resting"
+screen; a whole-library drive keeps Curatables from starting until it is
+back. Details:
 [deployment.md → Media on an external drive](deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk).
 
 ---

@@ -8,17 +8,16 @@ mitigate today.
 
 ## Supported versions
 
-Curatables is pre-1.0 (`pyproject.toml` says 0.5.0). Releases are not
-tagged regularly: the only git tag, `v0.1.0`, is far behind. Security
-fixes land on the **`main` branch** only; the appliance image and
-`scripts/install.sh --systemd` are built from it. There are no LTS
-branches or backports. If you're behind `main`, the fix is "upgrade"
+Curatables is pre-1.0 (`pyproject.toml` says 0.5.0). Security fixes land
+on `main` and ship in the next GitHub release, which Pi boxes install
+from **Box → Updates**; `scripts/install.sh --systemd` installs from a
+checkout. There are no LTS branches or backports: the fix is "update"
 (see [`docs/upgrade.md`](docs/upgrade.md)).
 
 | Version            | Status                          |
 |--------------------|---------------------------------|
-| `main`             | Supported (active development)  |
-| Anything older (incl. `v0.1.0` and older images) | Not supported — upgrade |
+| The newest release and `main` | Supported               |
+| Anything older     | Not supported — update          |
 
 ## Reporting a vulnerability
 
@@ -62,13 +61,15 @@ side-project, not a funded vendor):
 **In scope:**
 
 - The Curatables server code under `app/` and its entry point `run.py`.
-- Shipped scripts: `scripts/install.sh`, `scripts/updater.sh` (runs as
-  root), `scripts/setup-external-drive.sh` (runs as root),
-  `scripts/backup.sh`, `scripts/restore.sh`, `scripts/firstboot.sh`.
-- The systemd units in `systemd/`: `curatables.service`,
-  `curatables-updater.path` / `curatables-updater.service`,
-  `curatables-backup.service` / `curatables-backup.timer`,
-  `curatables-firstboot.service`.
+- The root system helper `syshelper/` (`curatables-helper.service`,
+  `scripts/curatables-helper.py`), which carries out the dashboard's
+  Box pages as root.
+- Shipped scripts: `scripts/install.sh`, `scripts/apply-system.sh`,
+  `scripts/updater.sh`, `scripts/setup-external-drive.sh` and
+  `scripts/setup-media-drive.sh` (all run as root), `scripts/backup.sh`,
+  `scripts/restore.sh`, `scripts/firstboot.sh`, `scripts/nm-wired-only.sh`,
+  `scripts/mdns-unicast.py`.
+- Every systemd unit in `systemd/`.
 - The Raspberry Pi appliance image build (`pi-gen/`): what it installs,
   file ownership, default accounts and services.
 - `tools/curatables-cli.py`, the standalone yt-dlp helper.

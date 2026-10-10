@@ -29,6 +29,7 @@ Unknown keys make startup fail, so check spelling.
 | `mdns_name` | `Curatables` | Name shown in Bonjour/Avahi browsers. |
 | `prometheus_enabled` | `false` | Expose counters at `/metrics` for Prometheus. |
 | `kid_language` | `en` | Language of the "Who's watching?" picker (`en`, `pt-BR`, `es`). Settings → Storage → Kid screen language. |
+| `allowed_hosts` | `[]` | Extra names the server answers to. It always answers to its hostname (with `.local`, `.lan`, `.home` and similar), `localhost` and IP addresses; other names are refused (DNS rebinding). |
 | `helper_socket` | `/run/curatables-helper/helper.sock` | Socket of the root system helper behind the Box pages (Pi image only). Without it, those pages say they only work on the Pi image. |
 
 ### `storage`
@@ -61,7 +62,7 @@ Unknown keys make startup fail, so check spelling.
 |---|---|---|
 | `password_hash` | `null` | PBKDF2 hash of the parent password. `null` = first-run setup is open; see [Forgot the password](getting-started.md#i-forgot-the-parent-password). |
 | `session_secret` | generated | Signs session cookies. Changing it signs everyone out. |
-| `session_timeout_hours` | `24` | How long a parent (or kid) sign-in lasts. |
+| `session_timeout_hours` | `24` | How long a parent sign-in lasts, counted from signing in, and how long an unused kid or parent cookie stays valid. |
 | `session_epoch` | `0` | Bumped on every password change; sessions from an older epoch are signed out. |
 | `setup_window_minutes` | `30` | While no password is set, the setup page only works for this many minutes after the server starts; restart it to reopen. `0` keeps it open. |
 | `system_setup_done` | `false` | First-run step 2 (the Linux login password) is done. Only asked for on the Pi image. `curatables-reset.txt` on the SD card sets it back to `false`. |

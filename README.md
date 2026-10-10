@@ -92,10 +92,11 @@ running Debian/Ubuntu. Converting each new video is the only heavy job: a
 Pi 5 or laptop does it quickly, a Pi 4 takes a few minutes per video.
 
 On a Pi, keep the videos on a **USB hard drive or SSD**: SD cards are
-small and wear out. `scripts/setup-external-drive.sh --media-only` puts
-the videos on any exFAT, NTFS or ext4 drive (without formatting it, so a
-drive that already holds your movies is fine) while the database stays on
-the SD card, and makes Curatables wait for the drive at boot
+small and wear out. On the Pi image, plug it in and press **Use for
+videos** on **Box → Drives & backups**. Any exFAT, NTFS, FAT32 or ext4
+drive works and nothing is erased, so a drive that already holds your
+movies is fine; the database stays on the SD card. If the drive is
+missing, kids see a "videos are resting" screen until it's back
 ([details](docs/deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk)).
 A 2.5" hard drive may need a powered USB hub on a Pi 4.
 
@@ -118,7 +119,7 @@ the server itself runs on Linux.
 ## Roadmap
 
 - **Smarter wishlist filtering.** Kids can already ask for YouTube
-  videos (see below); next is a local classifier for the search results,
+  videos (see above); next is a local classifier for the search results,
   per [docs/design/filtered-search-and-proxy.md](docs/design/filtered-search-and-proxy.md).
 - **AI safety helper (v0.6).** A local model that pre-screens videos
   against per-child criteria and flags or suggests, never decides

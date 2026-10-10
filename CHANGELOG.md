@@ -4,9 +4,9 @@ Shipped feature history by development milestone. The forward-looking
 roadmap (v0.6+) lives in [README.md](README.md#roadmap); the design
 rationale for each area lives under [docs/](docs/README.md).
 
-Milestones are development phases, not released package versions — there
-is no PyPI/Docker release cadence yet (bare-metal Linux is the supported
-install, see [docs/deployment.md](docs/deployment.md)).
+The "Unreleased" sections are development milestones. Tagged GitHub
+releases are what Pi boxes install from **Box → Updates**; there is no
+PyPI or Docker release.
 
 ## Unreleased — Import from a drive
 

@@ -127,8 +127,9 @@ The build runs entirely in Docker (pi-gen's `build-docker.sh`), takes
 pi-gen/.pi-gen/deploy/image_<YYYY-MM-DD>-curatables.img.xz
 ```
 
-Flash that with Raspberry Pi Imager (use "Use custom" → select the
-`.img.xz`), set your login/Wi-Fi in the advanced options, and boot the Pi.
+Flash that with Raspberry Pi Imager ("Use custom" → select the `.img.xz`)
+and boot the Pi. Customising the settings is optional; see the
+[parents' guide](../docs/parents-guide.md).
 
 The image is built from the **current checkout** (an rsync of this repo,
 minus `.git`/`.venv`/data), so it works on unmerged branches without
@@ -153,13 +154,12 @@ gets the `.img.xz` attached).
   - `00-install-packages/00-packages` — written by `build.sh` from
     `scripts/apt-packages.txt`, the list `scripts/install.sh` uses.
   - `01-install/00-run.sh` — copies the source into the rootfs.
-  - `01-install/01-run-chroot.sh` — service user, venv, deno, systemd
-    units (server, updater, backup timer), `run.py --check`, then
-    `chown -R root:root /opt/curatables`.
-  - `02-firstboot/00-run.sh` — puts `curatables-wifi.txt` on the boot
-    partition.
-  - `02-firstboot/01-run-chroot.sh` — installs and enables
-    `curatables-firstboot.service`.
+  - `01-install/01-run-chroot.sh` — service user, venv, deno, then
+    `scripts/apply-system.sh` (every systemd unit, the network hook,
+    automatic security updates), `run.py --check`, and finally
+    `/opt/curatables` root-owned and not group/other-writable.
+  - `02-firstboot/00-run.sh` — puts `curatables-wifi.txt` and
+    `curatables-README.txt` on the boot partition.
   - `EXPORT_IMAGE` — marks the stage for image export.
 
 ## Build gotchas
@@ -179,8 +179,8 @@ gets the `.img.xz` attached).
 - **Package lists belong in a sub-stage directory**
   (`00-install-packages/00-packages`). pi-gen only descends into
   sub-stage directories; a `00-packages` at the stage root is silently
-  ignored. The stage root holds only `prerun.sh`, `EXPORT_IMAGE` and
-  `SKIP_IMAGES`.
+  ignored. The stage root holds only `prerun.sh` and `EXPORT_IMAGE`
+  (`build.sh` puts `SKIP_IMAGES` in `stage2`).
 - `build-docker.sh` **sources** `config`, so quoted values such as
   `STAGE_LIST="stage0 stage1 ..."` are safe.
 - **Boot partition files** go in `${ROOTFS_DIR}/boot/firmware/`; pi-gen

@@ -111,7 +111,7 @@ release; the Pi image's **Box → Updates** downloads them. Bump the version
 in `app/__init__.py` and `pyproject.toml` before tagging `v<version>`: the
 workflow refuses a tag that doesn't match.
 
-Run the test, lint and `mypy app` commands locally before pushing.
+Run the test, lint and `mypy app syshelper` commands locally before pushing.
 
 ### Demo library
 

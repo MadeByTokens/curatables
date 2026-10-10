@@ -1,14 +1,14 @@
 # Deployment
 
 Curatables is designed to run on a small self-hosted box on your home
-LAN (a Raspberry Pi, an old laptop, a VM, a NAS with Docker support,
-etc.) and be reached by family members the way they reach a networked
-printer: open a browser, type a friendly `.local` address, done.
+LAN (a Raspberry Pi, an old laptop or a VM) and be reached by family
+members the way they reach a networked printer: open a browser, type a
+friendly `.local` address, done.
 
 This page covers two things:
 
-1. How to get Curatables to appear at `http://curatables.local/` —
-   no port number, no IP lookup, no QR codes.
+1. How to get Curatables to appear at `http://curatables.local/`, with
+   no port number and no IP lookup.
 2. How to keep it running as a proper system service.
 
 For the full bill of materials (every package, binary, filesystem

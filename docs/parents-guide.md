@@ -1,7 +1,7 @@
 # The Curatables box: a guide for parents
 
 This guide is for setting up and looking after the ready-made Curatables
-box (a Raspberry Pi 4 running the Curatables SD-card image) **from a
+box (a Raspberry Pi 4 or 5 running the Curatables SD-card image) **from a
 Windows PC, a Mac, a phone or a tablet**. You never need a terminal or
 any Linux knowledge: everything is done from the parent dashboard in a
 web browser, and the few things that can't be (because the box isn't on
@@ -22,11 +22,12 @@ ready-made image, follow [getting-started.md](getting-started.md).
 
 ## What you need
 
-- A **Raspberry Pi 4** (2 GB of memory or more) with the **official
+- A **Raspberry Pi 4 or 5** (2 GB of memory or more) with the **official
   Raspberry Pi USB-C power supply**. Phone chargers often can't give
   enough power, and a short supply causes drives to disconnect and files
   to get damaged.
-- A **microSD card**, 16 GB or larger, and a way to put it in your
+- A **microSD card**, 32 GB or larger (16 GB is enough if the videos go
+  on a USB drive), and a way to put it in your
   computer (a card slot or a cheap USB card reader).
 - **Optional:** an Ethernet cable to your router (the simplest way to
   connect), and a USB drive or USB hard disk for more videos. A USB hard
@@ -39,7 +40,7 @@ ready-made image, follow [getting-started.md](getting-started.md).
 2. Install **Raspberry Pi Imager** from
    [raspberrypi.com/software](https://www.raspberrypi.com/software/) and
    open it.
-3. **Device:** Raspberry Pi 4. **Operating system:** scroll down to
+3. **Device:** your Raspberry Pi model. **Operating system:** scroll down to
    **Use custom** and pick the file you downloaded. **Storage:** your SD
    card. Double-check it's the SD card: it will be erased.
 4. When Imager offers to **customise the settings**, you can say **No**.
@@ -99,8 +100,10 @@ recognises them.
 2. **The box's Linux login password.** The box runs Linux, and its
    `admin` account can change anything on it. You'll almost never need
    it, but it has to be different from the dashboard password, so that
-   someone who learns one doesn't get both. Leave **Allow SSH logins**
-   off unless you know you want the remote command line.
+   someone who learns one doesn't get both. If you already set a password
+   in Raspberry Pi Imager, type it to keep it (or replace it). Leave
+   **Allow SSH logins** off unless you know you want the remote command
+   line.
 
 Do this within 30 minutes of turning the box on. After that, setup
 closes for safety; unplug the box for ten seconds and plug it back in to
@@ -113,16 +116,17 @@ walks you through it.
 
 **Box** in the parent menu manages the box itself:
 
-- **Login & network** shows how the box is connected and lets you:
-  - **Switch Wi-Fi.** Press *Look for networks*, pick yours, type its
+- **Login, network & power** shows how the box is connected and lets you:
+  - **Switch Wi-Fi.** Press *Look for networks*, then *Use this* next to
+    yours, type its
     password and press *Switch Wi-Fi*. The box tries the new network
     first and **goes back to the old one if it can't connect**, so a
     typo can't lock you out. If you're on Wi-Fi yourself, the page may
     drop for a moment.
   - **Change the Linux login password** or **turn SSH on or off** (both
     ask for your parent password again).
-  - **Restart** Curatables, the network, or the whole box. Restarting
-    fixes most "it's stuck" moments.
+  - **Restart Curatables**, **Reconnect network** or **Restart the box**.
+    Restarting fixes most "it's stuck" moments.
   - **Shut down** the box. Use it before unplugging, and unplug once the
     green light stops flickering (about 20 seconds). To turn the box on
     again, unplug it for a few seconds and plug it back in.
@@ -210,6 +214,16 @@ See [backup.md](backup.md) for the details.
 
 ## 7. Something's wrong
 
+| If… | Then… |
+|-----|-------|
+| YouTube videos stop downloading | **Box → Updates → Update the downloader**, then **Retry** on the failed videos |
+| Kids see "the videos are resting" | Plug the videos drive in, then **Reconnect** on **Box → Drives & backups** |
+| A kid sees no videos | **Kids → Edit → Visible channels**; check the videos aren't **Hidden** |
+| A new video doesn't show up | It is still downloading: **Content → Downloading** |
+| You forgot the parent password | `curatables-reset.txt` on the SD card (table below) |
+| The dashboard won't open | The list under "The dashboard won't open at all" below |
+| Anything else | **Box → Diagnostics** |
+
 **Start with Box → Diagnostics.** It checks the network, the internet
 and YouTube, the clock, the services, the free space, the videos drive,
 the power supply and the temperature, and puts problems at the top with
@@ -251,8 +265,9 @@ too.
 > `curatables-reset.txt.txt`: turn on **View → File name extensions**
 > first (in Windows 11, **View → Show → File name extensions**).
 
-Each file is used once and then renamed to `…-done.txt`. To use it
-again, rename it back.
+Each file except `ssh` is used once and then renamed to `…-done.txt`;
+to use it again, rename it back. (Raspberry Pi OS deletes the `ssh` file
+once SSH is on.)
 
 ## About the SD card and safety
 
