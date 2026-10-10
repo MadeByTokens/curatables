@@ -160,6 +160,18 @@ def reboot(request: Request,
                     delay_ms=25000)
 
 
+@router.post("/shutdown")
+def shutdown(request: Request,
+             viewer: ViewerContext = Depends(require_parent),
+             helper: SystemHelper = Depends(get_system_helper)):
+    _result, error = _try(helper, "shutdown")
+    if error:
+        return _overview(request, helper, error=error, status_code=400)
+    page: Response = request.app.state.templates.TemplateResponse(
+        request, "parent/system_shutdown.html", {"request": request})
+    return page
+
+
 @router.post("/network-restart")
 def network_restart(request: Request,
                     viewer: ViewerContext = Depends(require_parent),
@@ -181,6 +193,8 @@ def job_json(job_id: str,
              viewer: ViewerContext = Depends(require_parent),
              helper: SystemHelper = Depends(get_system_helper)):
     job, error = _try(helper, "job_status", id=job_id)
+    if error and "not known" in error:
+        return JSONResponse({"state": "gone", "error": error})
     if error:
         return JSONResponse({"state": "unknown", "error": error}, status_code=503)
     return JSONResponse(job)
@@ -191,6 +205,8 @@ def job_page(request: Request, job_id: str, back: str = "/parent/system",
              viewer: ViewerContext = Depends(require_parent),
              helper: SystemHelper = Depends(get_system_helper)):
     job, error = _try(helper, "job_status", id=job_id)
+    if error and "not known" in error:
+        return RedirectResponse(url=_safe_back(back), status_code=303)
     return request.app.state.templates.TemplateResponse(request, "parent/system_job.html", {
         "request": request, "job": job, "error": error, "job_id": job_id, "back": _safe_back(back),
     })
@@ -381,3 +397,55 @@ def diagnostics_report(viewer: ViewerContext = Depends(require_parent),
     name = time.strftime("curatables-diagnostics-%Y%m%d-%H%M.txt")
     return PlainTextResponse(result["text"], headers={
         "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+
+
+# --- updates ------------------------------------------------------------------
+
+UPDATES = "/parent/system/updates"
+
+
+def _updates_page(request: Request, helper: SystemHelper, config: Config, *,
+                  error: str | None = None, status_code: int = 200) -> Response:
+    if not helper.available:
+        return unavailable_page(request)
+    info, load_error = _try(helper, "update_info")
+    page: Response = request.app.state.templates.TemplateResponse(request, "parent/system_updates.html", {
+        "request": request, "info": info or {}, "error": error or load_error,
+        "update_state": updates.update_state(config),
+    }, status_code=status_code)
+    return page
+
+
+@router.get("/updates", response_class=HTMLResponse)
+def updates_page(request: Request,
+                 viewer: ViewerContext = Depends(require_parent),
+                 helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _updates_page(request, helper, config)
+
+
+def _update_job(request: Request, helper: SystemHelper, config: Config, action: str) -> Response:
+    job, error = _try(helper, action)
+    if error:
+        return _updates_page(request, helper, config, error=error, status_code=400)
+    return job_redirect(job, UPDATES)
+
+
+@router.post("/updates/curatables")
+def update_curatables(request: Request,
+                      viewer: ViewerContext = Depends(require_parent),
+                      helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _update_job(request, helper, config, "curatables_update")
+
+
+@router.post("/updates/rollback")
+def rollback_curatables(request: Request,
+                        viewer: ViewerContext = Depends(require_parent),
+                        helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _update_job(request, helper, config, "curatables_rollback")
+
+
+@router.post("/updates/system")
+def update_system(request: Request,
+                  viewer: ViewerContext = Depends(require_parent),
+                  helper: SystemHelper = Depends(get_system_helper), config: Config = Depends(get_config)):
+    return _update_job(request, helper, config, "system_update")

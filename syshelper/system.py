@@ -35,6 +35,14 @@ def reboot(params: dict) -> dict:
     return {"rebooting": True}
 
 
+@action("shutdown")
+def shutdown(params: dict) -> dict:
+    """Power off cleanly: services stop and every drive is unmounted
+    before the power goes, so unplugging afterwards is safe."""
+    later(["systemctl", "poweroff"], delay=2)
+    return {"shutting_down": True}
+
+
 @action("restart_network")
 def restart_network(params: dict) -> dict:
     later(["systemctl", "restart", "NetworkManager.service"])

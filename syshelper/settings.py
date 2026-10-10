@@ -23,6 +23,9 @@ class Settings:
     dropin_dir: Path
     wifi_test_flag: Path
     backup_dir: Path
+    updates_dir: Path
+    repo: str
+    health_url: str
     admin_user: str
 
 
@@ -42,6 +45,9 @@ def from_env() -> Settings:
         dropin_dir=Path(env("CURATABLES_DROPIN_DIR", "/etc/systemd/system/curatables.service.d")),
         wifi_test_flag=Path(env("CURATABLES_WIFI_TEST_FLAG", "/run/curatables-wifi-test")),
         backup_dir=Path(env("CURATABLES_BACKUP_DIR", "/var/lib/curatables-backups")),
+        updates_dir=Path(env("CURATABLES_UPDATES_DIR", "/var/lib/curatables-updates")),
+        repo=env("CURATABLES_REPO", "MadeByTokens/curatables"),
+        health_url=env("CURATABLES_HEALTH_URL", "http://127.0.0.1/healthz"),
         admin_user=env("CURATABLES_ADMIN_USER", ""),
     )
 

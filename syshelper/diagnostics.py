@@ -16,6 +16,7 @@ from syshelper.registry import action
 from syshelper.settings import SETTINGS
 
 OK, WARN, FAIL = "ok", "warn", "fail"
+REBOOT_FLAG = Path("/run/reboot-required")
 GB = 1024 ** 3
 
 
@@ -183,6 +184,9 @@ def diagnostics(params: dict) -> dict:
     checks += check_services()
     checks += check_storage()
     checks += check_power()
+    if REBOOT_FLAG.exists():
+        checks.append(_check("reboot", "System updates", WARN, "Updates were installed that need a restart.",
+                             "Press Restart the box when nobody is watching."))
     return {"checks": checks, "errors": [redact(e, secrets()) for e in recent_errors()]}
 
 

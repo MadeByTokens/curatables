@@ -113,9 +113,10 @@ Leave it off unless you use it.</p>
 </form>
 {% endif %}
 
-<h2 class="mt-40" id="restart">Restart</h2>
+<h2 class="mt-40" id="restart">Restart or turn off</h2>
 <p class="fs-14 mw-500">If something seems stuck, restarting usually fixes it. Kids watching a
-video will see it stop for a moment.</p>
+video will see it stop for a moment. Use <strong>Shut down</strong> before unplugging the box, so
+nothing is cut off halfway through being saved.</p>
 <form method="POST" action="/parent/system/restart" class="inline-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="btn btn-secondary">Restart Curatables</button>
@@ -127,5 +128,9 @@ video will see it stop for a moment.</p>
 <form method="POST" action="/parent/system/reboot" class="inline-form" data-confirm="Restart the whole box? It takes one to two minutes.">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="btn btn-danger">Restart the box</button>
+</form>
+<form method="POST" action="/parent/system/shutdown" class="inline-form" data-confirm="Turn the box off? Kids cannot watch until it is unplugged and plugged back in.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-danger">Shut down</button>
 </form>
 {% endblock %}

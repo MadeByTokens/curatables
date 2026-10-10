@@ -1,5 +1,6 @@
 <nav class="settings-nav" aria-label="Box sections">
   <a href="/parent/system"{% if request.url.path == "/parent/system" %} aria-current="page"{% endif %}>Login &amp; network</a>
   <a href="/parent/system/drives"{% if request.url.path.startswith("/parent/system/drives") %} aria-current="page"{% endif %}>Drives &amp; backups</a>
+  <a href="/parent/system/updates"{% if request.url.path.startswith("/parent/system/updates") %} aria-current="page"{% endif %}>Updates</a>
   <a href="/parent/system/diagnostics"{% if request.url.path.startswith("/parent/system/diagnostics") %} aria-current="page"{% endif %}>Diagnostics</a>
 </nav>

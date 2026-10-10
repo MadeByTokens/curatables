@@ -12,7 +12,7 @@ import struct
 import threading
 from typing import Any
 
-from syshelper import accounts, backups, diagnostics, drives, system, wifi  # noqa: F401  (they register actions)
+from syshelper import accounts, backups, diagnostics, drives, system, upgrade, wifi  # noqa: F401  (they register actions)
 from syshelper.errors import HelperError
 from syshelper.jobs import JOBS
 from syshelper.registry import ACTIONS, text

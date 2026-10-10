@@ -46,6 +46,10 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="btn btn-danger">Restart the box</button>
 </form>
+<form method="POST" action="/parent/system/shutdown" class="inline-form" data-confirm="Turn the box off? Kids cannot watch until it is unplugged and plugged back in.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-danger">Shut down</button>
+</form>
 {% if update_state.result and update_state.result.status != "ok" %}
 <p class="fs-14 flash-error mw-500">Last downloader update failed: {{ update_state.result.message or "see the report" }}</p>
 {% endif %}
