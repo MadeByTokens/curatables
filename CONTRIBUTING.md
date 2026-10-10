@@ -96,7 +96,7 @@ push and PR to `main`:
 |---|---|---|
 | `test` | `pytest -q --cov=app` on Python 3.10, 3.11, 3.12 and 3.13 (the Pi image runs 3.13) | yes |
 | `lint` | `ruff check .` and the `shellcheck` command above | yes |
-| `typecheck` | `mypy app` | yes |
+| `typecheck` | `mypy app syshelper` | yes |
 | `build` | `python -m build` (sdist + wheel), after `test` | yes |
 
 [`.github/workflows/build-image.yml`](.github/workflows/build-image.yml)
@@ -104,6 +104,12 @@ builds the Raspberry Pi image with pi-gen. It is heavy (~30–60 min), so
 it runs only by hand (`workflow_dispatch`) or when a GitHub Release is
 published, which gets the `.img.xz` attached. See
 [`pi-gen/README.md`](pi-gen/README.md).
+
+[`.github/workflows/release-source.yml`](.github/workflows/release-source.yml)
+attaches `curatables-<version>.tar.gz` and `SHA256SUMS` to each published
+release; the Pi image's **Box → Updates** downloads them. Bump the version
+in `app/__init__.py` and `pyproject.toml` before tagging `v<version>`: the
+workflow refuses a tag that doesn't match.
 
 Run the test, lint and `mypy app` commands locally before pushing.
 

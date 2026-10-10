@@ -33,6 +33,12 @@ terminal needed after flashing.
 - mDNS via Avahi → reachable at `curatables.local` on the LAN.
 - A NetworkManager dispatcher hook that keeps Wi-Fi on standby while an
   Ethernet cable is connected.
+- Daily Debian security updates (`unattended-upgrades`, from
+  [`image-packages.txt`](image-packages.txt)).
+- All units, the dispatcher hook and the security-update setting are
+  installed by [`scripts/apply-system.sh`](../scripts/apply-system.sh),
+  which the dashboard's updater runs again after each update, so a new
+  release can add services without re-flashing.
 
 ## Networking (no terminal needed)
 
@@ -82,8 +88,12 @@ explains them. Parents' instructions:
   (exFAT, NTFS, FAT32 and ext4 drives work). Underneath it runs
   `scripts/setup-external-drive.sh --media-only`; see
   [Media on an external drive](../docs/deployment.md#media-on-an-external-drive-raspberry-pi--usb-disk).
-- **Upgrading Curatables.** The image has no `.git`, so clone the repo on
-  the Pi and run the installer, which takes a backup first:
+- **Upgrading Curatables.** **Box → Updates** in the dashboard installs a
+  new GitHub release in place, keeps the library, and rolls back by
+  itself if the new version doesn't start
+  ([`../docs/upgrade.md`](../docs/upgrade.md)). From a terminal instead:
+  the image has no `.git`, so clone the repo on the Pi and run the
+  installer, which takes a backup first:
 
   ```bash
   git clone https://github.com/MadeByTokens/curatables.git ~/curatables

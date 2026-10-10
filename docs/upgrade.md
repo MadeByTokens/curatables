@@ -6,7 +6,12 @@ There are two separate things to keep up to date:
   often, so it needs updating every few weeks. One button in the
   dashboard does it.
 - **Curatables itself**. Upgrade when a new version has something you
-  want. One command does it, with a backup first.
+  want. On the Pi image it's one button (**Box → Updates**); elsewhere
+  one command does it. Both take a backup first.
+
+On the Pi image, the operating system's security updates install by
+themselves every day, and **Box → Updates → Update system packages**
+installs everything else.
 
 > **The database only moves forward.** A new version may change the
 > database layout, and there is no automatic way back. The upgrade
@@ -48,7 +53,45 @@ try-out install (`.venv/bin/python run.py`) there is no helper; run
 
 ---
 
-## Upgrading Curatables
+## Upgrading Curatables from the dashboard (Pi image)
+
+**Box → Updates** shows the installed version and the newest GitHub
+release, with its notes. **Update** keeps every video, kid and setting.
+The system helper ([`syshelper/upgrade.py`](../syshelper/upgrade.py)):
+
+1. downloads `curatables-<version>.tar.gz` from the release over HTTPS
+   and checks it against the release's `SHA256SUMS`;
+2. unpacks it to `/opt/curatables.new` (refusing links that leave the
+   folder, devices and `..` paths), builds its venv there and runs
+   `run.py --check`, while the running version keeps serving;
+3. takes a backup (`curatables-backup.service`);
+4. stops the server, moves `/opt/curatables` to `/opt/curatables.previous`
+   and the new tree into place, runs
+   [`scripts/apply-system.sh`](../scripts/apply-system.sh) (so a release
+   can add or change services) and starts the server;
+5. waits up to three minutes for `/healthz` to report the new version.
+   If it doesn't, it moves the old version back, restores the backup and
+   starts it again; the failed tree stays in `/opt/curatables.failed`.
+
+**Go back to <previous>** swaps the two versions again and restores the
+backup made just before that update. Only the library stays on the SD
+card between versions; the code is replaced entirely, so a separate
+partition is not needed.
+
+Releases need the update file attached: the
+[`release-source.yml`](../.github/workflows/release-source.yml) workflow
+does it when a release is published (the tag must match
+`app/__init__.py` and `pyproject.toml`).
+
+**A new Raspberry Pi OS release** (every couple of years) needs a fresh
+image. To keep the library: put the videos on a USB drive and turn on
+**Also keep backups on the videos drive** (Box → Drives & backups),
+flash the new image, set it up, plug the drive in, press **Use for
+videos** (the drive already holds the library), and restore the newest
+backup from the drive. Downloaded videos come back by themselves;
+uploads come back if they were on the drive.
+
+## Upgrading Curatables from a terminal
 
 On a permanent install (`install.sh --systemd` **or** the Pi image):
 

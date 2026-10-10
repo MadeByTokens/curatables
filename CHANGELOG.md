@@ -49,6 +49,13 @@ install, see [docs/deployment.md](docs/deployment.md)).
 - SD-card recovery files: `curatables-reset.txt` (forgotten parent
   password) and `curatables-diagnose.txt` (a report written to the card),
   next to `curatables-wifi.txt`, explained in `curatables-README.txt`.
+- **Box → Updates**: update Curatables from the newest GitHub release
+  without re-flashing, keeping the library; it is prepared while the old
+  version runs, and the box goes back by itself if the new one does not
+  start (or on **Go back**). Update the downloader and all system
+  packages from the same page; Debian security updates now install by
+  themselves every day.
+- **Shut down** button, so the box can be unplugged safely.
 - New [parents' guide](docs/parents-guide.md) for the Pi image, written
   for Windows, Mac and phone users.
 

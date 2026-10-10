@@ -394,11 +394,23 @@ What bounds it:
 - Diagnostics reports remove Wi-Fi passwords, password hashes, the
   session secret and API keys.
 
+- Updating Curatables only accepts an HTTPS download from the
+  configured GitHub repository's latest release whose SHA-256 matches
+  the release's `SHA256SUMS`; the archive is unpacked with links leaving
+  the folder, devices and `..` paths refused. The new tree is root-owned
+  before anything runs from it.
+
 What remains:
 
+- The update file and its checksum come from the same GitHub release, so
+  the checksum guards against a damaged download, not against someone
+  who can publish releases on the repository: whoever controls the
+  repository controls what the boxes run as root. Release signing would
+  close that.
 - A compromised service process can do anything a parent can do from
   the Box pages: switch Wi-Fi, format a USB drive that does not hold the
-  videos, reboot. It cannot set the Linux password without the parent
+  videos, reboot or shut down, install the latest release or system
+  updates, or go back one version. It cannot set the Linux password without the parent
   password, run commands, or touch the SD card's partitions.
 - The SD card's boot partition is trusted: `curatables-reset.txt` clears
   the parent password. Physical access to the card is treated as full

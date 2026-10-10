@@ -123,7 +123,20 @@ walks you through it.
     ask for your parent password again).
   - **Restart** Curatables, the network, or the whole box. Restarting
     fixes most "it's stuck" moments.
+  - **Shut down** the box. Use it before unplugging, and unplug once the
+    green light stops flickering (about 20 seconds). To turn the box on
+    again, unplug it for a few seconds and plug it back in.
 - **Drives & backups** is described in the next two sections.
+- **Updates** keeps the box current without touching the SD card:
+  - **Update to …** installs a new Curatables version from GitHub. All
+    videos, kids and settings are kept. The new version is prepared while
+    the old one keeps running; kids only lose about a minute. If it
+    doesn't start, the box goes back to the old one by itself, and
+    **Go back to …** undoes an update you don't like.
+  - **Update the downloader** when YouTube videos stop downloading.
+  - **Update system packages** installs the operating system's updates.
+    Security updates also install by themselves every day. If the page
+    says a restart is needed, restart the box when nobody is watching.
 - **Diagnostics** checks everything and says what to do (see
   [Something's wrong](#7-somethings-wrong)).
 
