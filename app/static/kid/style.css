@@ -1,18 +1,12 @@
-/* Kid UI styles — old-browser compatible with CSS custom property
-   progressive enhancement. Old browsers use the hardcoded value on
-   the first line; modern browsers override with var() on the second. */
+/* Kid UI styles. Must work on old tablets (iOS 9 Safari): a property
+   that uses var() is preceded by the same property with a literal value,
+   which browsers without custom properties keep.
 
-/* Base design tokens (default theme). The theme overlay files
-   (theme-calm.css / theme-playful.css) load AFTER this and override
-   :root. iOS 9 ignores custom properties entirely and falls back to the
-   line-1 literals kept throughout this file — that is by design. This
-   :root block is the single canonical definition of the brand accent
-   (#1f7a70); everywhere else uses var(--accent) (with an iOS-9 literal
-   fallback where the property must still render on old Safari). */
+   Default theme tokens. theme-*.css loads after this file and overrides
+   :root. */
 :root {
     --accent: #1f7a70;
     --accent-hover: #19625a;
-    --danger: #d33;
     --bg-color: #f5f5f5;
     --header-bg: #1f7a70;
     --card-bg: #fff;
@@ -25,12 +19,8 @@
     --font-size-title: 15px;
     --font-size-header: 24px;
     --font-size-body: 16px;
-    /* Native system font stack — zero bytes, crisp on every OS, and
-       -apple-system is honoured back to iOS 9 Safari. */
+    /* System fonts; -apple-system works back to iOS 9 Safari. */
     --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    /* Calm neutral palette + spacing rhythm (4px base) used by the
-       refresh; the utility layer below is the constrained value set. */
-    --muted: #666;
 }
 
 * {
@@ -176,10 +166,8 @@ body {
     background: #000;
 }
 
+/* No margin here: it would override the title's .m-0 utility. */
 .player-page h2 {
-    /* margin comes from the title's own class (it carries .m-0 in
-       watch.html); this descendant rule must not re-introduce a top
-       margin or it would override the utility and shift the title. */
     font-size: 20px;
 }
 
@@ -194,19 +182,6 @@ body {
     font-size: 14px;
     line-height: 1.5;
     color: #444;
-}
-
-.back-link {
-    display: inline-block;
-    margin-top: 16px;
-    color: #1f7a70;
-    color: var(--accent, #1f7a70);
-    text-decoration: none;
-    font-size: 16px;
-}
-
-.back-link:hover {
-    text-decoration: underline;
 }
 
 /* Channel navigation */
@@ -255,7 +230,9 @@ body {
 
 .page-link {
     display: inline-block;
-    padding: 10px 20px;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 12px 20px;
     margin: 0 8px;
     background: #1f7a70;
     background: var(--accent, #1f7a70);
@@ -317,9 +294,8 @@ body {
     color: #333;
 }
 
-/* Kid header icon buttons (Home, Search, Upload, Switch, Help).
-   Icon on top, short label underneath so pre-readers still get a cue.
-   Uses inline-block + float-free layout for iOS 9 compatibility. */
+/* Header buttons: icon on top, short label underneath so pre-readers
+   still get a cue. */
 .header-nav {
     margin-top: 6px;
     text-align: center;
@@ -488,8 +464,11 @@ body {
 
 .comment-submit, .comment-reply-btn {
     display: inline-block;
+    min-height: 44px;
+    min-width: 44px;
+    box-sizing: border-box;
     margin-top: 6px;
-    padding: 6px 16px;
+    padding: 10px 18px;
     background: #1f7a70;
     background: var(--accent, #1f7a70);
     color: #fff;
@@ -527,14 +506,6 @@ body {
     font-size: 13px;
     color: #666;
     margin-top: 3px;
-}
-
-/* Loading state */
-.loading {
-    text-align: center;
-    padding: 40px;
-    font-size: 18px;
-    color: #666;
 }
 
 /* Kid upload page */
@@ -686,7 +657,7 @@ body {
 }
 
 
-/* === Phase 2: utilities + extracted inline styles === */
+/* === Utilities === */
 .accent-bg{background:#1f7a70;background:var(--accent)}
 .accent-text{color:#1f7a70;color:var(--accent)}
 .ai-c{align-items:center}
@@ -703,7 +674,6 @@ body {
 .d-ib{display:inline-block}
 .d-inline{display:inline}
 .d-none{display:none}
-.danger-text{color:#d33}
 .ff-sans{font-family:inherit}
 .ff-inherit{font:inherit}
 .flex-1{flex:1}
@@ -712,10 +682,7 @@ body {
 .fs-14{font-size:14px}
 .fs-15{font-size:15px}
 .fs-16{font-size:16px}
-.fs-18{font-size:18px}
-.fs-20{font-size:20px}
 .fs-48{font-size:48px}
-.fs-64{font-size:64px}
 .fw-500{font-weight:500}
 .fw-bold{font-weight:bold}
 .fw-normal{font-weight:normal}
@@ -733,19 +700,15 @@ body {
 .ml-4{margin-left:4px}
 .ml-auto{margin-left:auto}
 .mr-4{margin-right:4px}
-.mr-6{margin-right:6px}
 .mt-0{margin-top:0}
 .mt-10{margin-top:10px}
 .mt-12{margin-top:12px}
 .mt-16{margin-top:16px}
 .mt-2{margin-top:2px}
-.mt-20{margin-top:20px}
 .mt-24{margin-top:24px}
-.mt-32{margin-top:32px}
 .mt-6{margin-top:6px}
 .muted{color:#666}
 .muted-2{color:#666}
-.muted-3{color:#767676}
 .mw-500{max-width:500px}
 .mw-600{max-width:600px}
 .mw-700{max-width:700px}
@@ -753,12 +716,9 @@ body {
 .no-underline{text-decoration:none}
 .of-cover{object-fit:cover}
 .on-dark{color:#fff}
-.p-10{padding:10px}
-.p-12{padding:12px}
 .p-16{padding:16px}
 .p-24{padding:24px}
 .p-8{padding:8px}
-.r-12{border-radius:12px}
 .r-3{border-radius:3px}
 .r-4{border-radius:4px}
 .r-6{border-radius:6px}
@@ -799,9 +759,12 @@ body {
     background-color: var(--ch, #1f7a70);
 }
 
-/* Tag cloud chip — only font-size is dynamic (per-tag scale), inline. */
+/* Tag cloud chip; its font-size is set inline from the tag's count. */
 .tag-chip {
     display: inline-block;
+    min-height: 44px;
+    box-sizing: border-box;
+    line-height: 36px; /* 44px minus the 4px top and bottom padding */
     margin: 4px 6px;
     padding: 4px 12px;
     background: #e6f2f0;
@@ -812,10 +775,9 @@ body {
     color: var(--accent, #1f7a70);
 }
 
-/* === Phase 3: touch targets (AC-Touch — every kid control ≥44×44px) === */
-/* Old hand-me-down tablets are touch-only; sub-44px targets are the #1
-   mis-tap source. min-height + box-sizing keeps existing padding/visuals
-   while guaranteeing the tap area. iOS-9-safe (no flexbox gap needed). */
+/* === Touch targets: every kid control is at least 44x44px === */
+/* Old tablets are touch-only and small targets are the main source of
+   mis-taps. min-height + box-sizing keeps the padding and looks. */
 .reaction-btn,
 .customize-btn,
 .channel-link {
@@ -824,67 +786,8 @@ body {
     box-sizing: border-box;
 }
 
-.comment-submit,
-.comment-reply-btn {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 10px 18px;
-    box-sizing: border-box;
-}
-
-.page-link {
-    min-height: 44px;
-    box-sizing: border-box;
-    padding-top: 12px;
-    padding-bottom: 12px;
-}
-
-/* Text link back to the shelf — give it a thumb-sized tap row. */
-.back-link {
-    min-height: 44px;
-    line-height: 44px;
-}
-
-/* Comment + reply text fields are touch targets too. */
-.comments-section textarea,
-.comments-section input[type=text] {
-    min-height: 44px;
-    box-sizing: border-box;
-}
-
-/* Tag controls on the watch page — add/remove are touch targets too. */
-.tag-add-input,
-.tag-add-btn {
-    min-height: 44px;
-    box-sizing: border-box;
-}
-.tag-add-btn {
-    min-width: 44px;
-    padding: 0 16px;
-}
-.tag-remove {
-    min-width: 44px;
-    min-height: 44px;
-    box-sizing: border-box;
-}
-
-/* Tag links/chips are touch targets — give them a 44px tap row. */
-.tag-link {
-    display: inline-block;
-    min-height: 44px;
-    line-height: 44px;
-    vertical-align: middle;
-}
-.tag-chip {
-    min-height: 44px;
-    box-sizing: border-box;
-    line-height: 36px;   /* 44px box minus the 4px top/bottom padding */
-}
-
-/* Global kid form-control tap sizing — every text field, select,
-   textarea and button on a kid page is at least 44px tall (AC-Touch).
-   Hidden fields and native checkboxes/radios are excluded (the latter
-   are sized by their wrapping label). Scoped to kid CSS only. */
+/* Hidden fields and checkboxes/radios are left out: their wrapping
+   label is the tap target. */
 input:not([type=hidden]):not([type=checkbox]):not([type=radio]),
 select,
 textarea,
@@ -893,18 +796,16 @@ button {
     box-sizing: border-box;
 }
 
-/* Standalone action links that aren't .back-link still need a tap row. */
+/* Standalone action links. */
 .tappable {
     display: inline-block;
     min-height: 44px;
     box-sizing: border-box;
 }
 
-/* === Phase 4: progressive enhancement (modern browsers only) === */
-/* The float grid above is the iOS-9 baseline and always applies. Modern
-   browsers that understand CSS grid get a cleaner gap-based layout with
-   no float clearing and no percentage-margin math. Everything here is
-   additive behind @supports, so old Safari never sees it. */
+/* === CSS grid for browsers that have it === */
+/* The float grid above is the iOS 9 baseline. Everything here is behind
+   @supports, so old Safari never sees it. */
 @supports (display: grid) {
     .video-grid {
         display: grid;
@@ -1025,11 +926,16 @@ video:focus {
     font-size: 15px;
 }
 .tag-link {
+    display: inline-block;
+    min-height: 44px;
+    line-height: 44px;
+    vertical-align: middle;
     color: #1f7a70;
     color: var(--accent, #1f7a70);
     text-decoration: none;
 }
 .tag-remove {
+    min-width: 44px;
     background: none;
     border: none;
     color: #555;
@@ -1046,6 +952,8 @@ video:focus {
     border-radius: 22px;
 }
 .tag-add-btn {
+    min-width: 44px;
+    padding: 0 16px;
     background: #1f7a70;
     background: var(--accent, #1f7a70);
     color: #fff;
@@ -1166,8 +1074,7 @@ noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
     font-size: 18px;
 }
 .wishlist-sent { background: #e6f6ee; color: #145c36; border: 1px solid #9fd8b8; }
-.wishlist-error { background: #fee; color: #900; border: 1px solid #f99; }
-.wishlist-error { text-align: center; }
+.wishlist-error { background: #fee; color: #900; border: 1px solid #f99; text-align: center; }
 .wishlist-error-slow, .wishlist-error-busy, .wishlist-error-resting, .wishlist-error-rules {
     background: #fff8e1; color: #5c4400; border-color: #f0d080;
 }
