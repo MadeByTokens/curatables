@@ -1,8 +1,8 @@
-"""0004_profile_channels_restricted — explicit channel-restriction flag.
+"""0004_profile_channels_restricted: explicit channel-restriction flag.
 
 Adds `profiles.channels_restricted` (INTEGER, 0/1). When 1, the kid
 sees only the channels listed in `profile_channels` (plus channels the
-kid owns) — an empty list then means "nothing", not "everything".
+kid owns); an empty list then means "nothing", not "everything".
 When 0 the profile is unrestricted and `profile_channels` is ignored.
 
 Backfill: any profile that already has `profile_channels` rows was

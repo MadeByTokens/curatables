@@ -1,21 +1,16 @@
-from __future__ import annotations
 """Forward-only schema migration runner.
 
 Every schema change is a numbered file under `app/db/migrations/`:
-  - NNNN_slug.sql  — straight SQL applied via executescript.
-  - NNNN_slug.py   — has `def up(conn): ...` for logic that needs
-                     Python (e.g. idempotent ALTER TABLE ADD COLUMN
-                     on SQLite, which lacks IF NOT EXISTS).
+  - NNNN_slug.sql: plain SQL applied via executescript.
+  - NNNN_slug.py: defines `up(conn)` for changes that need Python
+    (e.g. an idempotent ADD COLUMN, which SQLite cannot express with
+    IF NOT EXISTS).
 
-The tracking table `schema_migrations(version, applied_at, name)` is
-the single source of truth for what's been run. Running the migrator
-against a partially-applied DB re-runs only the missing files, in
-order.
-
-Bootstrap: a DB that predates the migrator (has `videos` but not
-`schema_migrations`) is stamped as already at version 1 and the
-runner picks up from 0002. Fresh DBs run 0001 normally.
+The `schema_migrations` table records which versions have run; each
+startup applies only the missing files, in order.
 """
+
+from __future__ import annotations
 
 import importlib.util
 import logging
@@ -40,18 +35,6 @@ def _ensure_tracking_table(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _db_predates_migrator(conn: sqlite3.Connection) -> bool:
-    """True iff the DB has substantive tables (like `videos`) but no
-    schema_migrations. That means it was created by the pre-migrator
-    code path and should be stamped as already at v1."""
-    row = conn.execute(
-        "SELECT name FROM sqlite_master "
-        "WHERE type='table' AND name IN ('schema_migrations', 'videos')"
-    ).fetchall()
-    names = {r["name"] for r in row}
-    return "videos" in names and "schema_migrations" not in names
-
-
 def _applied_versions(conn: sqlite3.Connection) -> set[int]:
     return {int(r["version"]) for r in
             conn.execute("SELECT version FROM schema_migrations").fetchall()}
@@ -72,12 +55,10 @@ def _load_py_migration(path: Path) -> Callable[[sqlite3.Connection], None]:
 
 def _discover(migrations_dir: Path) -> list[tuple[int, str, Path]]:
     out = []
-    for p in sorted(migrations_dir.iterdir()):
+    for p in migrations_dir.iterdir():
         m = _FILE_RE.match(p.name)
         if m:
-            version = int(m.group(1))
-            name = m.group(2)
-            out.append((version, name, p))
+            out.append((int(m.group(1)), m.group(2), p))
     out.sort(key=lambda t: t[0])
     return out
 
@@ -86,28 +67,11 @@ def apply_pending(conn: sqlite3.Connection,
                   migrations_dir: Path) -> int:
     """Apply every migration whose version isn't already in
     schema_migrations. Returns the number actually applied."""
-    # Detect pre-migrator DBs BEFORE creating the tracking table —
-    # otherwise _ensure_tracking_table makes schema_migrations exist
-    # and the "looks like an old DB" heuristic no longer fires.
-    predates = _db_predates_migrator(conn)
-
     _ensure_tracking_table(conn)
-
-    if predates:
-        conn.execute(
-            "INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
-            (1, "initial_preexisting"),
-        )
-        conn.commit()
-        logger.info(
-            "Stamped pre-existing DB as at migration 0001_initial "
-            "(no rerun — schema already present).")
-
     applied = _applied_versions(conn)
-    migrations = _discover(migrations_dir)
     count = 0
 
-    for version, name, path in migrations:
+    for version, name, path in _discover(migrations_dir):
         if version in applied:
             continue
         logger.info("Applying migration %04d_%s", version, name)

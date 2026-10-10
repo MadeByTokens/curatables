@@ -1,4 +1,4 @@
-"""0006_videos_last_played_at — remember when each video was last played.
+"""0006_videos_last_played_at: remember when each video was last played.
 
 Cache eviction keys on `COALESCE(last_played_at, cached_at)` so videos
 that are watched often stay on disk. Backfilled from the newest

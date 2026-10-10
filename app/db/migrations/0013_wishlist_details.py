@@ -1,4 +1,4 @@
-"""0013_wishlist_details — keep everything YouTube said about a requested
+"""0013_wishlist_details: keep everything YouTube said about a requested
 video (so the parent's review needs no second fetch) and the kid's own
 title, description and channel for it. Idempotent."""
 

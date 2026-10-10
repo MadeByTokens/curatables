@@ -1,4 +1,4 @@
-"""0009_profile_pin_style — a profile's PIN is typed as digits or picked
+"""0009_profile_pin_style: a profile's PIN is typed as digits or picked
 as three pictures. Idempotent."""
 
 import sqlite3

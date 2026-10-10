@@ -1,6 +1,4 @@
--- curatables database schema
--- This is the single source of truth for the database structure.
--- All tables are designed for the full PRD scope.
+-- Initial curatables schema.
 
 CREATE TABLE IF NOT EXISTS channels (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,

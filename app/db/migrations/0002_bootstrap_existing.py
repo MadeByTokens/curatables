@@ -1,29 +1,15 @@
-"""0002_bootstrap_existing — add any columns that a pre-migrator DB
-may be missing.
+"""0002_bootstrap_existing: add columns that databases created before
+the migrator may lack.
 
-Purpose: users who upgrade across the introduction of the migration
-system had their DB created by the old CREATE TABLE IF NOT EXISTS
-path. That path silently skipped adding columns to tables that
-already existed, so a DB from before can be missing any of the
-columns we added during the pre-launch period:
-  - channels.banner_filename
-  - channels.icon_filename
-  - channels.color
-  - profile_video_overrides.description
-  - profile_video_overrides.has_custom_thumb (may exist with wrong default)
-
-SQLite lacks `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we probe
-`PRAGMA table_info` and ADD each missing column. Idempotent.
-
-Fresh installs (stamped at 0001) run this too; it's a no-op because
-0001 already created all the columns.
+SQLite has no ADD COLUMN IF NOT EXISTS, so each column is probed via
+PRAGMA table_info first. On a database built by 0001 this is a no-op.
 """
 
 import sqlite3
 
 
 def up(conn: sqlite3.Connection) -> None:
-    # Pairs of (table, column, DDL-fragment-for-ADD-COLUMN).
+    # (table, column, column declaration)
     expected = [
         ("channels", "banner_filename", "TEXT"),
         ("channels", "icon_filename", "TEXT"),

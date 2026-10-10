@@ -1,4 +1,4 @@
-"""0011_wishlist — kids ask for YouTube videos, a parent approves or
+"""0011_wishlist: kids ask for YouTube videos, a parent approves or
 rejects. Adds the per-profile allow_wishlist switch (off for every
 existing profile) and the wishlist_requests table. Idempotent."""
 

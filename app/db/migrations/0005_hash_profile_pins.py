@@ -1,4 +1,4 @@
-"""0005_hash_profile_pins — replace plaintext kid PINs with PBKDF2 hashes.
+"""0005_hash_profile_pins: replace plaintext kid PINs with PBKDF2 hashes.
 
 Rows whose `profiles.pin` is non-empty and not already in the
 `pbkdf2$<salt>$<hash>` form are rewritten in place. Idempotent.

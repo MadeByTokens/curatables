@@ -1,15 +1,8 @@
-"""0003_keep_forever_and_evicted — add per-video library-mode flag.
+"""0003_keep_forever_and_evicted: add videos.keep_forever, which exempts
+a video from cache eviction.
 
-Adds `videos.keep_forever` (INTEGER, 0/1). When set, the cache
-eviction sweeper in `StorageService.evict_expired` skips the video,
-so parents can pin favourite content permanently on disk regardless
-of `cache_days`.
-
-The new `download_status = 'evicted'` value introduced alongside this
-column is a string value, not a schema constraint (the column has no
-CHECK), so no column change is needed for it.
-
-Idempotent: probes PRAGMA table_info and only ADDs if missing.
+The accompanying download_status value 'evicted' needs no schema change
+because that column has no CHECK constraint. Idempotent.
 """
 
 import sqlite3

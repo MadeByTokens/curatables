@@ -1,4 +1,4 @@
-"""0007_profile_feature_switches — per-kid on/off switches for kid features.
+"""0007_profile_feature_switches: per-kid on/off switches for kid features.
 
 Adds INTEGER 0/1 columns to `profiles`: allow_comments, allow_reactions,
 allow_tags, allow_customize, allow_upload, auto_subtitles. Existing

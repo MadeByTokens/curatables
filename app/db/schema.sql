@@ -1,16 +1,8 @@
--- curatables database schema — SNAPSHOT / REFERENCE ONLY.
+-- curatables database schema: a reference snapshot, never executed.
 --
--- This file is a reference copy of the current schema. It is NOT
--- executed at runtime anymore. The forward-only migrator in
--- app/db/migrator.py applies files from app/db/migrations/ in order;
--- 0001_initial.sql is this file's runtime equivalent.
---
--- If you're adding a column:
---   1. Create app/db/migrations/NNNN_slug.sql with the ALTER TABLE
---      (or a .py migration if you need Python logic).
---   2. Update this file to match the new canonical shape.
---
--- All tables are designed for the full PRD scope.
+-- The runtime schema comes from app/db/migrations/, applied in order by
+-- app/db/migrator.py. When adding a migration, update this file to the
+-- resulting shape (columns in the order the migrations create them).
 
 CREATE TABLE IF NOT EXISTS channels (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,9 +48,9 @@ CREATE TABLE IF NOT EXISTS videos (
     thumbnail_url   TEXT DEFAULT '',
     thumbnail_type  TEXT DEFAULT 'original',
     status          TEXT NOT NULL DEFAULT 'active',
-    -- download_status: 'pending' | 'downloading' | 'ready' | 'error' | 'evicted'
-    -- 'evicted' means the cache sweeper deleted the files; next kid
-    -- view flips it back to 'pending' and re-downloads on demand.
+    -- 'pending' | 'downloading' | 'ready' | 'error' | 'evicted'
+    -- ('evicted': the cache sweeper deleted the files; the row stays so
+    -- the video can be downloaded again on demand).
     download_status TEXT NOT NULL DEFAULT 'pending',
     download_error  TEXT DEFAULT '',
     storage_mode    TEXT DEFAULT 'cache',
@@ -97,9 +89,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     allow_customize INTEGER NOT NULL DEFAULT 1,
     allow_upload    INTEGER NOT NULL DEFAULT 1,
     auto_subtitles  INTEGER NOT NULL DEFAULT 1,
-    allow_wishlist  INTEGER NOT NULL DEFAULT 0,
     pin_style   TEXT NOT NULL DEFAULT 'digits',  -- 'digits' | 'pictures'
-    language    TEXT NOT NULL DEFAULT 'en'       -- kid screens, see app/i18n
+    language    TEXT NOT NULL DEFAULT 'en',      -- kid screens, see app/i18n
+    allow_wishlist  INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (
@@ -173,19 +165,19 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     extractor     TEXT NOT NULL,
     raw_id        TEXT NOT NULL,
     title         TEXT NOT NULL DEFAULT '',   -- the kid's title (YouTube's until changed)
-    original_title TEXT NOT NULL DEFAULT '',
-    description   TEXT NOT NULL DEFAULT '',   -- the kid's description
-    original_description TEXT NOT NULL DEFAULT '',
     channel       TEXT NOT NULL DEFAULT '',   -- the YouTube channel's name
     duration      INTEGER NOT NULL DEFAULT 0,
-    upload_date   TEXT NOT NULL DEFAULT '',
-    view_count    INTEGER NOT NULL DEFAULT 0,
     url           TEXT NOT NULL,
     thumbnail_url TEXT NOT NULL DEFAULT '',
-    target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
     status        TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     decided_at    TEXT,
+    original_title TEXT NOT NULL DEFAULT '',
+    description   TEXT NOT NULL DEFAULT '',   -- the kid's description
+    original_description TEXT NOT NULL DEFAULT '',
+    upload_date   TEXT NOT NULL DEFAULT '',
+    view_count    INTEGER NOT NULL DEFAULT 0,
+    target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
     UNIQUE (profile_id, video_id)
 );
 

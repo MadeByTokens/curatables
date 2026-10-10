@@ -1,26 +1,21 @@
-"""Schema initialization and crash recovery.
-
-The schema is now managed by the forward-only migrator in
-`app/db/migrator.py`. Each change is a numbered file under
-`app/db/migrations/`. `init_schema` is a thin compatibility shim
-that calls the migrator — existing callers (tests, main app)
-don't need to change.
-
-`schema.sql` remains as a snapshot / documentation of the current
-schema but is no longer executed at runtime.
-"""
+"""Schema initialization and crash recovery."""
 
 import logging
 import sqlite3
 from pathlib import Path
 
+from app.db.migrator import apply_pending, migrations_dir
+
 logger = logging.getLogger(__name__)
+
+# At least this many missing files, and at least half of all ready
+# videos, looks like an unmounted drive rather than lost files.
+MASS_MISSING_MIN = 5
+_VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi", ".mpg", ".mpeg")
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
-    """Run any outstanding migrations. Safe to call on every startup —
-    the migrator skips migrations already recorded in schema_migrations."""
-    from app.db.migrator import apply_pending, migrations_dir
+    """Apply any outstanding migrations; safe to call on every startup."""
     count = apply_pending(conn, migrations_dir())
     if count:
         logger.info("Applied %d migration(s).", count)
@@ -32,8 +27,7 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
     Called on every startup. Must be idempotent and safe to run when
     there was no crash.
     """
-    # 1. Reset stuck downloads — any video in "downloading" state was
-    #    interrupted. Reset to "pending" so they retry.
+    # A video still marked "downloading" was interrupted; queue it again.
     stuck = conn.execute(
         "SELECT video_id FROM videos WHERE download_status = 'downloading'"
     ).fetchall()
@@ -51,7 +45,7 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
                        "video files were not checked.", media_dir)
         return
 
-    # 2. Clean up partial video files (.part files left by yt-dlp)
+    # Partial files left behind by yt-dlp.
     videos_dir = media_dir / "videos"
     if videos_dir.exists():
         for vdir in videos_dir.iterdir():
@@ -61,11 +55,9 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
                 if f.suffix == ".part":
                     f.unlink()
 
-    # 3. Verify "ready" videos actually have files on disk.
-    #    Downloaded videos live at videos/<id>/video.<ext>; uploaded
-    #    videos at uploads/<id>/video.<ext>. A missing download goes back
-    #    to "pending" for re-download; a missing upload has no source, so
-    #    it is marked "error" for the parent to deal with.
+    # A "ready" video whose file is gone: a download (videos/<id>/) goes
+    # back to "pending" to be fetched again; an upload (uploads/<id>/)
+    # has no source, so it becomes "error" for the parent to deal with.
     uploads_dir = media_dir / "uploads"
     ready = conn.execute(
         "SELECT video_id, storage_mode FROM videos WHERE download_status = 'ready'"
@@ -111,10 +103,6 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
         if missing_uploads:
             logger.info("Recovery: %d uploaded video(s) missing, marked as error",
                         len(missing_uploads))
-
-
-MASS_MISSING_MIN = 5
-_VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi", ".mpg", ".mpeg")
 
 
 def _has_video_file(vdir: Path) -> bool:

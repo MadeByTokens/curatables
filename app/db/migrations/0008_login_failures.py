@@ -1,4 +1,4 @@
-"""0008_login_failures — failed parent logins, so the login throttle
+"""0008_login_failures: failed parent logins, so the login throttle
 survives a restart. Idempotent."""
 
 import sqlite3

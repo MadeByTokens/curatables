@@ -1,4 +1,4 @@
-"""0010_profile_language — the language of each kid's screens. Idempotent."""
+"""0010_profile_language: the language of each kid's screens. Idempotent."""
 
 import sqlite3
 

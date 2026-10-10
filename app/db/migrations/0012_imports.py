@@ -1,4 +1,4 @@
-"""0012_imports — import video files from a drive.
+"""0012_imports: import video files from a drive.
 
 Adds where a video came from (origin, origin_ref, source_path), an
 episode_key that orders a show's episodes inside its channel, and the
