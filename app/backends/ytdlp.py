@@ -1,29 +1,25 @@
-from __future__ import annotations
 """yt-dlp implementation of the VideoBackend interface.
 
-yt-dlp is the video extraction engine and supports ~1,800 sites. The
-backend takes full URLs (not IDs) so it can pass them straight to
-yt-dlp, and it captures the extractor key + webpage URL on every
-successful fetch so the service layer can remember which platform a
-video came from.
+Every fetch records the extractor key and webpage URL, so the service
+layer knows which platform a video came from.
 """
+
+from __future__ import annotations
 
 import logging
 import re
 import threading
-from typing import Any
 from pathlib import Path
+from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
-from app.services.safe_fetch import BlockedURL, check_url
 from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
+from app.services.safe_fetch import BlockedURL, check_url
 
 logger = logging.getLogger(__name__)
 
 
-# Only accept IDs yt-dlp gives us that are safe to use as filesystem
-# path components. Anything else is a fixture-mode leak or a newly
-# added extractor with weird IDs — skip it rather than crash.
+# Entry IDs become filesystem path components; anything else is skipped.
 _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
 _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _YOUTUBE_CHANNEL_ID = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
@@ -101,27 +97,23 @@ class YtdlpBackend(VideoBackend):
     def _base_opts(self) -> dict:
         """Common yt-dlp options shared across all operations.
 
-        Anti-bot strategy priority:
-        1. Browser impersonation (best — no login needed, works headless)
-        2. Cookie file (for cases where impersonation isn't enough)
-        3. Browser cookies (desktop only — reads from local browser)
+        Anti-bot measures, best first: browser TLS impersonation (no
+        login, works headless), a cookie file, then cookies read from a
+        local browser (desktop only).
         """
         opts: dict[str, Any] = {"quiet": True, "no_warnings": True}
-        # Impersonation — makes yt-dlp's TLS look like a real browser
         if self.impersonate:
             try:
                 from yt_dlp.networking.impersonate import ImpersonateTarget
                 opts["impersonate"] = ImpersonateTarget.from_str(self.impersonate)
             except Exception as e:
                 logger.info("Browser impersonation unavailable (%s); continuing without it", e)
-        # Cookie auth — fallback or supplement
         if self.cookies_file:
             opts["cookiefile"] = self.cookies_file
         elif self.cookies_from_browser:
             opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
-        # YouTube-specific: try every player client. yt-dlp silently
-        # ignores per-extractor args for non-matching extractors, so
-        # leaving this on for all requests is harmless.
+        # Try every YouTube player client. yt-dlp ignores extractor args
+        # meant for other extractors, so this is harmless elsewhere.
         opts["extractor_args"] = {"youtube": {"player_client": ["all"]}}
         return opts
 
@@ -171,36 +163,18 @@ class YtdlpBackend(VideoBackend):
 
     def fetch_channel_videos(self, channel_url: str,
                              max_results: int = 50) -> tuple[str, list[VideoMetadata]]:
-        import yt_dlp
-
         self.last_error = None
-        # Legacy convenience: callers used to be able to pass a bare
-        # "@handle" for a YouTube channel. Keep the convenience, but
-        # anything that already looks like a URL is passed through
-        # untouched so non-YouTube channel URLs aren't clobbered.
+        # A bare "@handle" means a YouTube channel, whose uploads are
+        # listed under /videos; other platforms' URLs are left alone.
         if not channel_url.startswith("http"):
             channel_url = f"https://www.youtube.com/{channel_url}"
         if "youtube.com" in channel_url and "/videos" not in channel_url:
-            # Only the YouTube channel-URL convention needs /videos
-            # appended; other platforms route differently.
             channel_url = channel_url.rstrip("/") + "/videos"
         if self._blocked(channel_url):
             return "Unknown", []
-
-        opts = {
-            **self._base_opts(),
-            "extract_flat": True, "skip_download": True,
-            "playlistend": max_results,
-        }
-
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            try:
-                info = ydl.extract_info(channel_url, download=False)
-            except Exception as e:
-                self.last_error = self.classify_error(e)
-                logger.warning("[%s] %s", self.last_error.error_type.value, self.last_error.message)
-                logger.debug("  Details: %s", self.last_error.details)
-                return "Unknown", []
+        info = self._flat(channel_url, max_results)
+        if info is None:
+            return "Unknown", []
 
         title = (info.get("channel") or info.get("uploader")
                  or info.get("title") or "Unknown")
@@ -210,25 +184,12 @@ class YtdlpBackend(VideoBackend):
 
     def fetch_playlist(self, playlist_url: str,
                        max_results: int = 50) -> tuple[str, list[VideoMetadata]]:
-        import yt_dlp
-
         self.last_error = None
         if self._blocked(playlist_url):
             return "Unknown", []
-        opts = {
-            **self._base_opts(),
-            "extract_flat": True, "skip_download": True,
-            "playlistend": max_results,
-        }
-
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            try:
-                info = ydl.extract_info(playlist_url, download=False)
-            except Exception as e:
-                self.last_error = self.classify_error(e)
-                logger.warning("[%s] %s", self.last_error.error_type.value, self.last_error.message)
-                logger.debug("  Details: %s", self.last_error.details)
-                return "Unknown", []
+        info = self._flat(playlist_url, max_results)
+        if info is None:
+            return "Unknown", []
 
         title = info.get("title") or "Unknown Playlist"
         extractor = (info.get("extractor_key") or info.get("extractor") or "").lower()
@@ -236,6 +197,8 @@ class YtdlpBackend(VideoBackend):
                                            parent_extractor=extractor)
 
     def _flat(self, url: str, limit: int) -> dict | None:
+        """A flat (no per-video requests) listing of up to `limit`
+        entries, or None on error with last_error set."""
         import yt_dlp
 
         self.last_error = None
@@ -247,6 +210,7 @@ class YtdlpBackend(VideoBackend):
             except Exception as e:
                 self.last_error = self.classify_error(e)
                 logger.warning("[%s] %s", self.last_error.error_type.value, self.last_error.message)
+                logger.debug("  Details: %s", self.last_error.details)
                 return None
 
     def search(self, query: str, max_results: int = 12,
@@ -288,11 +252,9 @@ class YtdlpBackend(VideoBackend):
             return None
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Prefer H.264 video (avc1) + AAC audio (mp4a) so the result is in
-        # the client playback baseline straight from the source and needs
-        # no transcode. Modern YouTube serves VP9/AV1+Opus; those fall
-        # through to the last clauses and the ingest-time normalizer
-        # (app/services/normalize.py) transcodes them to H.264/AAC.
+        # Prefer H.264 + AAC, which every client plays without a transcode.
+        # VP9/AV1/Opus fall through to the last clauses and are transcoded
+        # later by app/services/normalize.py.
         fmt = (
             f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio[acodec^=mp4a]/"
             f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio/"
@@ -323,12 +285,10 @@ class YtdlpBackend(VideoBackend):
             logger.exception("Download failed for %s", url)
             return None
 
-        # yt-dlp usually produces video.mp4 (merge_output_format), but a
-        # single-format pull or a failed merge can leave video.webm /
-        # video.mkv. Return whatever real file landed — do NOT rename a
-        # .webm/.mkv to .mp4 (that lies about the codecs inside). The
-        # ingest-time normalizer transcodes non-mp4 / non-baseline files
-        # into a true baseline video.mp4.
+        # A single-format pull or a failed merge can leave video.webm or
+        # video.mkv instead of video.mp4. Return the real file without
+        # renaming it (that would lie about the codecs); the normalizer
+        # turns it into a proper video.mp4.
         expected = output_dir / "video.mp4"
         if expected.exists():
             return expected
@@ -347,8 +307,6 @@ class YtdlpBackend(VideoBackend):
         return None
 
 
-# --- Helpers (private to this module) ---
-
 def _parse_duration(value) -> int:
     if not value:
         return 0
@@ -361,12 +319,7 @@ def _parse_duration(value) -> int:
 
 
 def _info_to_metadata(info: dict) -> VideoMetadata:
-    """Project a yt-dlp info dict onto our VideoMetadata shape.
-
-    Preserves `extractor_key` and `webpage_url` so the service layer
-    can route per-platform decisions (embed URL building, the
-    "original" link) without re-running yt-dlp.
-    """
+    """Convert a yt-dlp info dict to VideoMetadata."""
     extractor = (info.get("extractor_key") or info.get("extractor") or "").lower()
     return VideoMetadata(
         video_id=info.get("id", ""),
@@ -409,14 +362,11 @@ def _thumbnail(info: dict, extractor: str, full: bool = False) -> str:
 def _entries_to_metadata(entries: list,
                          default_channel: str = "Unknown",
                          parent_extractor: str = "") -> list[VideoMetadata]:
-    """Turn a yt-dlp entries list into VideoMetadata objects.
+    """Convert a yt-dlp entries list to VideoMetadata.
 
-    `parent_extractor` is the `extractor_key` of the containing
-    channel/playlist — used as a fallback when individual entries
-    come back without their own extractor field (which happens in
-    flat-extract mode). Entries with IDs that aren't safe to use as
-    filesystem path components are skipped (prevents path traversal
-    if an extractor ever returns a weird ID).
+    Flat extraction can omit an entry's extractor, so the containing
+    channel or playlist's `parent_extractor` is the fallback. Entries
+    whose IDs are unsafe as path components are skipped.
     """
     results = []
     for e in entries:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -12,7 +13,7 @@ class ViewerContext:
     search_mode: str = "disabled"
     theme: str = "base"
     language: str = "en"
-    has_multiple_profiles: bool = False  # drives "Switch profile" affordance visibility
+    has_multiple_profiles: bool = False  # shows the "Switch profile" button
     allow_comments: bool = True
     allow_reactions: bool = True
     allow_tags: bool = True

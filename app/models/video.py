@@ -36,13 +36,10 @@ class Video:
 
     @property
     def raw_id(self) -> str:
-        """Return the extractor-scoped ID (what yt-dlp and embed URLs want).
+        """The platform's own ID, without the `{extractor}_` prefix.
 
-        The stored `video_id` is a composite `{extractor}_{raw}` string
-        — globally unique, filesystem-safe, URL-safe. Most code paths
-        (DB lookups, filesystem paths, `/media/video/<id>` routes) use
-        the composite. But embed URLs, the yt-dlp re-fetch path, and
-        any "open on the source" link need the unprefixed raw ID back.
+        The composite `video_id` is used for storage, paths and routes;
+        embed URLs, yt-dlp and links to the source need the raw ID.
         """
         prefix = f"{self.extractor}_"
         if self.extractor and self.video_id.startswith(prefix):

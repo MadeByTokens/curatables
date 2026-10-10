@@ -10,7 +10,4 @@ class Source:
     url: str
     description: str = ""
     auto_sync: bool = False
-    status: str = "active"
     metadata_json: str = "{}"
-    added_at: str = ""
-    id: int | None = None

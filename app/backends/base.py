@@ -1,20 +1,15 @@
-from __future__ import annotations
 """Abstract interface for video backends.
 
-This defines what curatables needs from a video source. The only
-implementation today is yt-dlp (in ytdlp.py), but this interface
-allows swapping to a fork, a custom scraper, or a different tool
-without changing any service or route code.
-
-To add a new backend:
-1. Create a new file in app/backends/ (e.g. mybackend.py)
-2. Implement VideoBackend with the same methods
-3. Update app/dependencies.py to return your implementation
+The only implementation is yt-dlp (ytdlp.py); another tool can be
+plugged in by implementing VideoBackend and returning it from
+app/dependencies.py.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 
@@ -22,10 +17,9 @@ from pathlib import Path
 class VideoMetadata:
     """Metadata for a single video, as returned by the backend.
 
-    `video_id` here is the raw, extractor-scoped ID that yt-dlp
-    returns (11 chars for YouTube, numeric for Vimeo, etc.). The
-    composite `{extractor}_{raw}` form is assembled higher up, by
-    the service/route layer via `app.services.ids.make_video_id`.
+    `video_id` is the raw platform ID (11 characters on YouTube); the
+    composite `{extractor}_{raw}` ID is built by
+    `app.services.ids.make_video_id`.
     """
     video_id: str
     title: str
@@ -72,11 +66,8 @@ class ChannelHit:
 class VideoBackend(ABC):
     """Interface that any video source backend must implement.
 
-    All four fetch/download methods take a *full URL* (not an ID).
-    The backend is responsible for passing it to whatever underlying
-    tool it wraps; the service layer has already resolved the URL
-    via `VideoSourceService.parse_url` but otherwise doesn't know or
-    care which platform the URL belongs to.
+    The fetch and download methods take a full URL, not an ID, so the
+    service layer does not need to know which platform it belongs to.
     """
 
     last_error: BackendError | None = None

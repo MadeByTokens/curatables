@@ -9,5 +9,5 @@ class Event:
     data_json: str = "{}"
     timestamp: str = ""
     id: int | None = None
-    # Joined fields (not always present)
+    # Filled by joins in some queries only.
     video_title: str | None = None
