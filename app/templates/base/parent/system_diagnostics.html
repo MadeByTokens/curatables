@@ -32,12 +32,16 @@
 {% endif %}
 
 <h2 class="mt-32">Fixes to try</h2>
-<form method="POST" action="/parent/system/diagnostics/update-downloader" class="mb-16">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <input type="hidden" name="back" value="/parent/system/diagnostics">
-  <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
-  <span class="fs-14">When YouTube videos stop downloading.</span>
-</form>
+<ul class="power-list mw-500">
+  <li>
+    <form method="POST" action="/parent/system/diagnostics/update-downloader">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="back" value="/parent/system/diagnostics">
+      <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
+    </form>
+    <span class="fs-14">A minute or two. Use it when YouTube videos stop downloading.</span>
+  </li>
+</ul>
 {% if update_state.result and update_state.result.status != "ok" %}
 <div class="flash flash-error mw-500" role="alert">Last downloader update failed: {{ update_state.result.message or "see the report" }}</div>
 {% endif %}

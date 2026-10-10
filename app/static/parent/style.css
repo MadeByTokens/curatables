@@ -697,9 +697,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 3px solid #f4a261; outline-offset: 2px;
 }
 pre { white-space: pre-wrap; word-break: break-word; max-width: 100%; overflow-x: auto; }
-td { overflow-wrap: anywhere; }
+td { overflow-wrap: break-word; }
+td .btn { white-space: nowrap; }
 @media (max-width: 600px) {
-  .btn { min-height: 44px; }
+  .btn { padding-top: 12px; padding-bottom: 12px; }
 }
 .power-list { list-style: none; padding: 0; }
 .power-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-bottom: 10px; }
