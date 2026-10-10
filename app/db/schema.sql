@@ -172,11 +172,17 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     video_id      TEXT NOT NULL,              -- composite id, as in videos
     extractor     TEXT NOT NULL,
     raw_id        TEXT NOT NULL,
-    title         TEXT NOT NULL DEFAULT '',
-    channel       TEXT NOT NULL DEFAULT '',
+    title         TEXT NOT NULL DEFAULT '',   -- the kid's title (YouTube's until changed)
+    original_title TEXT NOT NULL DEFAULT '',
+    description   TEXT NOT NULL DEFAULT '',   -- the kid's description
+    original_description TEXT NOT NULL DEFAULT '',
+    channel       TEXT NOT NULL DEFAULT '',   -- the YouTube channel's name
     duration      INTEGER NOT NULL DEFAULT 0,
+    upload_date   TEXT NOT NULL DEFAULT '',
+    view_count    INTEGER NOT NULL DEFAULT 0,
     url           TEXT NOT NULL,
     thumbnail_url TEXT NOT NULL DEFAULT '',
+    target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
     status        TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     decided_at    TEXT,

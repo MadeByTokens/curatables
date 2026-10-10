@@ -1,0 +1,29 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="p-16 mw-600 mx-auto">
+  <h2 class="wishlist-title"><span aria-hidden="true">&#127881;</span> {{ _("You asked for it!") }}</h2>
+  <p class="wishlist-intro">{{ _("Make it yours: give it a name, say what it is about and pick a channel. Or just tap Send.") }}</p>
+  <img src="/wishlist/thumb/{{ item.video_id }}" alt="" class="wishlist-ask-thumb">
+  <p class="wishlist-meta">{{ item.channel }}</p>
+  <form method="POST" action="/wishlist/asked/{{ item.id }}" class="wishlist-ask-details">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <label for="ask-title">{{ _("Name") }}</label>
+    <input type="text" id="ask-title" name="title" value="{{ item.title }}" maxlength="{{ title_max }}" autocomplete="off">
+    <label for="ask-desc">{{ _("What is it about?") }}</label>
+    <textarea id="ask-desc" name="description" rows="4" maxlength="{{ description_max }}">{{ description }}</textarea>
+    {% if my_channels %}
+    <fieldset class="wishlist-ask-channels">
+      <legend>{{ _("Where should it go?") }}</legend>
+      <input type="radio" id="ask-ch-none" name="channel_id" value="" class="sr-only"{% if not item.target_channel_id %} checked{% endif %}>
+      <label for="ask-ch-none" class="wishlist-pill"><span aria-hidden="true">&#129309;</span> {{ _("A grown-up picks") }}</label>
+      {% for ch in my_channels %}
+      <input type="radio" id="ask-ch-{{ ch.id }}" name="channel_id" value="{{ ch.id }}" class="sr-only"{% if item.target_channel_id == ch.id %} checked{% endif %}>
+      <label for="ask-ch-{{ ch.id }}" class="wishlist-pill">{{ ch.name }}</label>
+      {% endfor %}
+    </fieldset>
+    {% endif %}
+    <button type="submit" class="wishlist-ask-btn wishlist-send-btn"><span aria-hidden="true">&#9993;&#65039;</span> {{ _("Send") }}</button>
+  </form>
+</div>
+{% endblock %}

@@ -152,6 +152,70 @@ def test_kid_asks_and_parent_sees_the_request(app, client, authed_client, backen
     assert "1 video request from your kids" in authed_client.get("/parent/").text
 
 
+def test_kid_names_the_video_and_parent_reviews_without_youtube(app, client, authed_client, backend):
+    from app.repositories.channel_repo import ChannelRepository
+    channels = ChannelRepository(_conn(app))
+    songs = channels.create("Songs")
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    resp = client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa",
+                                              "back": "/wishlist?q=songs&mode=videos"})
+    assert resp.status_code == 303
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert resp.headers["location"].startswith(f"/wishlist/asked/{item.id}?back=")
+    page = client.get(resp.headers["location"]).text
+    assert 'value="Counting to ten"' in page and "Songs" in page
+
+    resp = client.post(f"/wishlist/asked/{item.id}", data={
+        "title": "  My   counting  song ", "description": "Numbers!",
+        "channel_id": str(songs), "back": "/wishlist?q=songs&mode=videos"})
+    assert resp.headers["location"] == "/wishlist?q=songs&mode=videos&asked=1"
+    item = WishlistRepository(_conn(app)).get(item.id)
+    assert (item.title, item.description, item.target_channel_id) == (
+        "My counting song", "Numbers!", songs)
+    assert item.original_title == "Counting to ten"
+
+    backend.queries.clear()
+    calls = []
+    backend.fetch_video_info = lambda url: calls.append(url)
+    review = authed_client.get(f"/parent/requests/{item.id}/review").text
+    assert calls == [] and backend.queries == []
+    assert 'value="My counting song"' in review and ">Numbers!</textarea>" in review
+    assert f'value="{songs}" selected' in review
+    assert 'name="original_title_aaaaaaaaaaa" value="Counting to ten"' in review
+    assert "On YouTube: Counting to ten" in authed_client.get("/parent/requests").text
+
+
+def test_kid_choices_are_checked(app, client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa", "back": "https://evil.example/"})
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    resp = client.post(f"/wishlist/asked/{item.id}", data={
+        "title": "", "description": "x" * 5000, "channel_id": "99999",
+        "back": "//evil.example/"})
+    assert resp.headers["location"] == "/wishlist?asked=1"
+    item = WishlistRepository(_conn(app)).get(item.id)
+    assert item.title == "Counting to ten" and len(item.description) == 1000
+    assert item.target_channel_id is None
+
+    _kid(app, client, "otto")
+    assert client.get(f"/wishlist/asked/{item.id}").headers["location"] == "/wishlist"
+    client.post(f"/wishlist/asked/{item.id}", data={"title": "Mine now"})
+    assert WishlistRepository(_conn(app)).get(item.id).title == "Counting to ten"
+
+
+def test_a_second_kid_asking_reuses_the_stored_details(app, client, backend):
+    _kid(app, client, "wren")
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    GATE.reset()
+    calls = []
+    backend.fetch_video_info = lambda url: calls.append(url)
+    _kid(app, client, "otto")
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    assert calls == []
+    assert len(WishlistRepository(_conn(app)).list_by_status("pending")) == 2
+
+
 def test_ask_rechecks_the_video_on_the_server(app, client, backend):
     _kid(app, client)
     for raw in ("bbbbbbbbbbb", "zzzzzzzzzzz", "../../etc"):

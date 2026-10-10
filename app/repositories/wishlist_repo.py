@@ -4,6 +4,7 @@ from __future__ import annotations
 import builtins
 from dataclasses import dataclass
 
+from app.backends.base import VideoMetadata
 from app.repositories.base import BaseRepository
 
 
@@ -22,21 +23,56 @@ class WishlistRequest:
     status: str
     created_at: str
     decided_at: str | None = None
+    original_title: str = ""
+    description: str = ""
+    original_description: str = ""
+    upload_date: str = ""
+    view_count: int = 0
+    target_channel_id: int | None = None
     profile_name: str = ""
+
+    def metadata(self) -> VideoMetadata:
+        """What YouTube said about the video, as the backend returned it."""
+        return VideoMetadata(
+            video_id=self.raw_id, title=self.original_title or self.title,
+            channel=self.channel, duration=self.duration, view_count=self.view_count,
+            upload_date=self.upload_date, description=self.original_description,
+            thumbnail_url=self.thumbnail_url, extractor=self.extractor, original_url=self.url)
 
 
 class WishlistRepository(BaseRepository):
 
-    def add(self, profile_id: int, video_id: str, extractor: str, raw_id: str,
-            title: str, channel: str, duration: int, url: str,
-            thumbnail_url: str) -> None:
-        """Record a pending request; asking again for the same video is a no-op."""
+    def add(self, profile_id: int, video_id: str, meta: VideoMetadata, url: str) -> int:
+        """Record a pending request and return its id; asking again for the
+        same video keeps the first request."""
         self.db.execute(
             "INSERT OR IGNORE INTO wishlist_requests (profile_id, video_id, extractor, "
-            "raw_id, title, channel, duration, url, thumbnail_url) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (profile_id, video_id, extractor, raw_id, title, channel, duration, url,
-             thumbnail_url))
+            "raw_id, title, original_title, description, original_description, channel, "
+            "duration, upload_date, view_count, url, thumbnail_url) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (profile_id, video_id, meta.extractor, meta.video_id, meta.title, meta.title,
+             meta.description, meta.description, meta.channel, meta.duration,
+             meta.upload_date, meta.view_count, url, meta.thumbnail_url))
+        self.db.commit()
+        row = self.db.execute(
+            "SELECT id FROM wishlist_requests WHERE profile_id = ? AND video_id = ?",
+            (profile_id, video_id)).fetchone()
+        return int(row["id"])
+
+    def latest_for_video(self, video_id: str) -> WishlistRequest | None:
+        """Any kid's request for this video: its stored details save asking
+        YouTube again."""
+        row = self.db.execute(
+            f"{self._SELECT} WHERE w.video_id = ? ORDER BY w.id DESC LIMIT 1",
+            (video_id,)).fetchone()
+        return self._to_model(row) if row else None
+
+    def choose(self, request_id: int, title: str, description: str,
+               target_channel_id: int | None) -> None:
+        """The kid's own title, description and channel for a request."""
+        self.db.execute(
+            "UPDATE wishlist_requests SET title = ?, description = ?, target_channel_id = ? "
+            "WHERE id = ?", (title, description, target_channel_id, request_id))
         self.db.commit()
 
     def get(self, request_id: int) -> WishlistRequest | None:

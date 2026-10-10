@@ -201,22 +201,24 @@ class WishlistService:
         results, has_more = self._videos(profile_id, found, page, sort)
         return WishlistPage(results=results, page=page, has_more=has_more, title=name)
 
-    def ask(self, profile_id: int, raw_id: str) -> str:
+    def ask(self, profile_id: int, raw_id: str) -> int:
         """Record the kid's request after re-checking the video against the
-        rules. Returns the composite video id."""
+        rules. Returns the request id."""
         if not _YOUTUBE_ID.match(raw_id):
             raise WishlistError("failed")
         video_id = make_video_id("youtube", raw_id)
         if self.repo.statuses_for(profile_id).get(video_id) == "rejected":
             raise WishlistError("rejected")
-        found = self._fetch(profile_id, ("video", raw_id), 1, lambda n: [
-            m for m in [self.backend.fetch_video_info(f"https://www.youtube.com/watch?v={raw_id}")] if m])
-        meta = found[0] if found else None
+        url = f"https://www.youtube.com/watch?v={raw_id}"
+        known = self.repo.latest_for_video(video_id)
+        if known is not None:
+            meta: VideoMetadata | None = known.metadata()
+        else:
+            found = self._fetch(profile_id, ("video", raw_id), 1, lambda n: [
+                m for m in [self.backend.fetch_video_info(url)] if m])
+            meta = found[0] if found else None
         if meta is None or not self.passes(meta):
             raise WishlistError("not_allowed")
-        self.repo.add(profile_id, video_id, meta.extractor, meta.video_id, meta.title,
-                      meta.channel, meta.duration,
-                      meta.original_url or f"https://www.youtube.com/watch?v={raw_id}",
-                      meta.thumbnail_url)
+        request_id = self.repo.add(profile_id, video_id, meta, meta.original_url or url)
         self.thumbnails.download(video_id, meta.thumbnail_url)
-        return video_id
+        return request_id

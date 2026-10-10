@@ -237,6 +237,7 @@ migrations must be idempotent and safe on existing data.
 | `0010_profile_language.py` | `profiles.language` for the kid screens. |
 | `0011_wishlist.py` | `profiles.allow_wishlist` and `wishlist_requests`. |
 | `0012_imports.py` | `videos.origin`, `origin_ref`, `source_path`, `episode_key`; the `import_jobs` table. |
+| `0013_wishlist_details.py` | `wishlist_requests` keeps YouTube's title, description, upload date and views, plus the kid's own title, description and channel (`target_channel_id`). |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),

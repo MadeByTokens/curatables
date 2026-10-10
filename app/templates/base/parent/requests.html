@@ -2,8 +2,8 @@
 {% block content %}
 <h1>Video requests</h1>
 <p class="muted">Videos your kids asked for on their <strong>Find new</strong> page. Nothing is
-downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview, where you
-watch it and pick a channel that kid can see; <strong>Not this one</strong> hides it from that kid's
+downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview with the name,
+description and channel the kid chose; watch it and change anything you like. <strong>Not this one</strong> hides it from that kid's
 searches for good.</p>
 
 {% if pending %}
@@ -12,17 +12,14 @@ searches for good.</p>
     <div class="thumb"><img src="/media/thumb/{{ w.video_id }}" alt=""></div>
     <div class="info">
       <div class="title-line">{{ w.title }}</div>
+      {% if w.title != w.original_title %}<div class="meta">On YouTube: {{ w.original_title }}</div>{% endif %}
       <div class="meta">
         Asked by <strong>{{ w.profile_name }}</strong> &middot; {{ w.created_at|friendly_date }}
         &middot; {{ w.channel }}
         {% if w.duration %}&middot; {{ w.duration // 60 }}:{{ '%02d'|format(w.duration % 60) }}{% endif %}
       </div>
       <div class="actions">
-        <form method="POST" action="/parent/add">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input type="hidden" name="url" value="{{ w.url }}">
-          <button type="submit" class="btn btn-sm">Review &amp; add</button>
-        </form>
+        <a href="/parent/requests/{{ w.id }}/review" class="btn btn-sm">Review &amp; add</a>
         <form method="POST" action="/parent/requests/{{ w.id }}/reject"
               data-confirm="Hide this video from {{ w.profile_name }}'s searches?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

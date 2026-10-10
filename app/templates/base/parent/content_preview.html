@@ -112,7 +112,12 @@
 </style>
 
 <h1>Review &amp; Add</h1>
+{% if wish %}
+<p><strong>{{ wish.profile_name }}</strong> asked for this video{% if wish.title != wish.original_title or wish.description != wish.original_description or wish.target_channel_id %}
+  and chose the name, description{% if wish.target_channel_id %} and channel{% endif %} below. Change anything you like{% endif %}.</p>
+{% else %}
 <p>{{ videos|length }} video(s) from {{ url_type }}: <strong>{{ source_title }}</strong></p>
+{% endif %}
 
 {% set is_multi = videos|length > 1 %}
 
@@ -149,11 +154,12 @@
     <div class="form-group">
       <label for="channel_id">Add to Channel</label>
       <select id="channel_id" name="channel_id">
-        <option value="">(none)</option>
+        <option value="">(none: kids won&rsquo;t see it)</option>
         {% for ch in channels %}
-        <option value="{{ ch.id }}">{{ ch.name }}</option>
+        <option value="{{ ch.id }}"{% if wish and wish.target_channel_id == ch.id %} selected{% endif %}>{{ ch.name }}</option>
         {% endfor %}
       </select>
+      <small class="muted">With no channel, kids can't find this video.</small>
     </div>
 
     <div class="form-group">
@@ -227,12 +233,12 @@
     <div class="info">
       <div class="form-group">
         <label for="title_{{ v.video_id }}">Title</label>
-        <input type="text" id="title_{{ v.video_id }}" name="title_{{ v.video_id }}" value="{{ v.title }}">
+        <input type="text" id="title_{{ v.video_id }}" name="title_{{ v.video_id }}" value="{{ wish.title if wish else v.title }}">
       </div>
 
       <div class="form-group">
         <label for="desc_{{ v.video_id }}">Description</label>
-        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ v.description[:500] if v.description else '' }}</textarea>
+        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ wish.description[:1000] if wish else (v.description[:500] if v.description else '') }}</textarea>
       </div>
 
       <div class="review-watched-row">
@@ -250,7 +256,7 @@
     <button type="submit" id="add-btn" class="btn" disabled>
       Add {{ videos|length }} Video(s)
     </button>
-    <a href="/parent/add" class="ml-12">Cancel</a>
+    <a href="{{ '/parent/requests' if wish else '/parent/add' }}" class="ml-12">Cancel</a>
     <div id="add-btn-hint" class="d-ib ml-12 muted fs-13">
       Tick &ldquo;I have already fully watched this video&rdquo; for each video you want to add.
     </div>
