@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Thumbnail service — download, extract, and manage video thumbnails."""
+
+from __future__ import annotations
 
 import logging
 import subprocess
@@ -19,31 +20,16 @@ class ThumbnailService:
     def get_path(self, video_id: str) -> Path:
         """Canonical thumbnail location. It lives outside videos/<id>/ so
         cache eviction (which deletes that directory) keeps the picture
-        the parent chose. Thumbnails left in the old videos/<id>/thumb.jpg
-        location are moved over on first access."""
-        path = self.media_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
-        if not path.exists():
-            legacy = self._legacy_path(video_id)
-            if legacy.exists():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    legacy.replace(path)
-                except OSError:
-                    return legacy
-        return path
-
-    def _legacy_path(self, video_id: str) -> Path:
-        return self.media_dir / "videos" / video_id / "thumb.jpg"
+        the parent chose."""
+        return self.media_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
 
     def is_cached(self, video_id: str) -> bool:
         return self.get_path(video_id).exists()
 
     def save_uploaded(self, video_id: str, file_data: bytes) -> Path:
-        """Overwrite the canonical thumbnail for a video with uploaded
-        bytes. The on-disk filename stays `thumb.jpg` regardless of the
-        source format — the media route sniffs magic bytes and returns
-        the correct Content-Type. Caller is responsible for having
-        validated the payload."""
+        """Overwrite a video's thumbnail with already-validated bytes. The
+        file is named `.jpg` whatever the format; the media route sniffs
+        the real type for the Content-Type."""
         thumb_path = self.get_path(video_id)
         thumb_path.parent.mkdir(parents=True, exist_ok=True)
         thumb_path.write_bytes(file_data)
@@ -80,13 +66,8 @@ class ThumbnailService:
 
     def extract_frame(self, video_id: str, timestamp: str = "00:00:01",
                       source_path: Path | None = None) -> Path | None:
-        """Extract a frame from a video using ffmpeg.
-
-        By default looks for the downloaded-video path
-        `{media_dir}/videos/{id}/video.mp4` (used for yt-dlp downloads).
-        Pass `source_path` to extract from an arbitrary file (used by
-        the upload ingest path to read from `uploads/{id}/video.<ext>`).
-        """
+        """Extract a frame with ffmpeg as the video's thumbnail. Reads
+        `videos/{id}/video.mp4` unless `source_path` is given."""
         if source_path is None:
             source_path = self.media_dir / "videos" / video_id / "video.mp4"
         if not source_path.exists():
@@ -115,7 +96,7 @@ class ThumbnailService:
     def delete(self, video_id: str) -> None:
         """Remove the canonical thumbnail and every kid's custom thumbnail
         for this video. Silent on missing files."""
-        targets = [self.get_path(video_id), self._legacy_path(video_id)]
+        targets = [self.get_path(video_id)]
         profiles_dir = self.media_dir / "thumbnails" / "profiles"
         if profiles_dir.exists():
             targets.extend(profiles_dir.glob(f"*/{video_id}.*"))
@@ -130,10 +111,6 @@ class ThumbnailService:
         Returns True if a thumbnail exists after this call."""
         if self.is_cached(video_id):
             return True
-        if thumbnail_url:
-            if self.download(video_id, thumbnail_url):
-                return True
-        # Last resort: extract from video file
-        if self.extract_frame(video_id):
+        if thumbnail_url and self.download(video_id, thumbnail_url):
             return True
-        return False
+        return self.extract_frame(video_id) is not None

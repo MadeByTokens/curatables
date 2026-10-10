@@ -79,14 +79,6 @@ class TestLruEviction:
         assert not vdir.exists()
         assert thumbs.is_cached("thumbkeep")
 
-    def test_legacy_thumbnail_is_moved(self, tmp_path):
-        legacy = tmp_path / "videos" / "lv" / "thumb.jpg"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_bytes(b"\xff\xd8\xff")
-        path = ThumbnailService(tmp_path).get_path("lv")
-        assert path == tmp_path / "thumbnails" / "videos" / "lv.jpg"
-        assert path.exists() and not legacy.exists()
-
 
 class TestStorageFiles:
     def test_non_mp4_download_counts_as_cached(self, tmp_path):
