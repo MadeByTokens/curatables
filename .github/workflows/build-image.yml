@@ -13,7 +13,7 @@ concurrency:
   group: build-image-${{ github.ref }}
   cancel-in-progress: true
 
-# Default to read-only; the release-attach step needs write on contents.
+# The release-attach step needs write access to contents.
 permissions:
   contents: write
 

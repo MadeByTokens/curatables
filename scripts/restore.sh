@@ -49,7 +49,7 @@ then
 fi
 
 if pgrep -f "python.*run\.py" >/dev/null 2>&1; then
-    echo "ERROR: a curatables server process appears to be running."
+    echo "ERROR: a curatables server process appears to be running." >&2
     echo "Stop it first (sudo systemctl stop curatables) before restoring." >&2
     exit 3
 fi

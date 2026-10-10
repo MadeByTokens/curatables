@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Curatables privileged updater — the root-side half of the in-app update
-# button. See app/services/updates.py for the full rationale.
+# Curatables privileged updater: the root-side half of the in-app yt-dlp
+# update button (see app/services/updates.py).
 #
 # The sandboxed app process cannot pip-install into its venv or restart
 # itself, so it drops a request flag in the data dir. The
-# curatables-updater.path systemd unit notices the flag and runs THIS
+# curatables-updater.path systemd unit notices the flag and runs this
 # script (as root, via curatables-updater.service). It:
 #   1. reads the request flag
 #   2. pip-upgrades yt-dlp in the venv
@@ -12,9 +12,8 @@
 #   4. removes the request flag (re-arming the path watcher)
 #   5. restarts the curatables service so the new yt-dlp is live
 #
-# It deliberately does ONE narrow thing. The only update kind wired today
-# is "yt-dlp"; anything else is rejected. It never runs arbitrary input
-# from the flag — only the fixed pip command below.
+# The only accepted update kind is "yt-dlp". Nothing from the flag is
+# ever run; only the fixed pip command below.
 #
 # Paths come from the environment (set by the .service unit), with the
 # default-install values as fallbacks:

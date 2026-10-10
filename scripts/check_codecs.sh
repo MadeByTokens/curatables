@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
-# check_codecs.sh — M5 / AC-Plays (codec half) engine.
-#
-# Probe every downloaded video and report whether it meets the client
-# playback baseline (docs/ui-and-playback-plan.md §2):
+# check_codecs.sh — probe every downloaded video and report whether it
+# meets the client playback baseline (metric M5 in
+# docs/history/ui-and-playback-plan.md):
 #   video: h264, height <= 720, fps <= 30
 #   audio: aac (or no audio stream)
 #   container: mp4 with +faststart (moov atom before mdat)
 #
-# REPORT ONLY — never mutates files. Use it to (a) get the true M5
-# baseline against the developer's real library, and (b) confirm 100%
-# after a backfill. Mutating the existing curated library is a human
-# decision (re-encoding is lossy); this script just tells you what would
-# change.
+# Report only: it never changes files (re-encoding is lossy, so fixing
+# the library is the parent's decision).
 #
 # Usage:
 #   scripts/check_codecs.sh [VIDEOS_DIR]

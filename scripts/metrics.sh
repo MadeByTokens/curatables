@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# metrics.sh — print the shell/ffprobe-measurable metrics from
-# docs/ui-and-playback-plan.md §7a (M1–M7) with current value vs target.
+# metrics.sh — print the shell/ffprobe-measurable UI metrics (M1–M7 in
+# docs/history/ui-and-playback-plan.md §7a) with current value vs target.
 #
-# Run before Phase 1 and at each phase end; paste results into §7a.
 # M5 (library codec compliance) is delegated to check_codecs.sh and only
 # runs when --codecs is passed (it ffprobes every file, which is slow and
 # touches the real data dir).

@@ -1,7 +1,7 @@
 #!/bin/bash -e
-# Host-side step: place the Wi-Fi setup template and the help README on the FAT boot partition
-# so users can edit it from Windows/macOS/Linux before first boot. pi-gen
-# copies ${ROOTFS_DIR}/boot/firmware/ onto the boot partition at export.
+# Host-side step: put the Wi-Fi setup template and the help README on the
+# FAT boot partition, which any computer can open before first boot.
+# pi-gen copies ${ROOTFS_DIR}/boot/firmware/ onto it at export.
 
 SRC="$(dirname "$(readlink -f "$0")")/files/curatables-wifi.txt"
 

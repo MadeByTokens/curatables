@@ -83,8 +83,6 @@ asyncio_mode = "strict"
 markers = [
     "smoke: end-to-end smoke test that boots a real uvicorn subprocess (slow; deselected by default — run with `pytest -m smoke`).",
 ]
-# Skip the smoke suite in the default fast unit run. Re-enable explicitly
-# with `pytest -m smoke` (or override addopts) for E2E coverage.
 addopts = "-m 'not smoke'"
 
 [tool.ruff]
