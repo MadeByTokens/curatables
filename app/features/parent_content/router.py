@@ -209,6 +209,8 @@ async def add_confirm(request: Request,
     msg = f"Added {added} video(s). Downloading in the background — check the Content tab for progress."
     if skipped:
         msg += f" {skipped} already existed (skipped)."
+    if added and channel_id is None:
+        msg += " They have no channel, so kids can't find them: pick one with Edit on the Content tab."
     if unreviewed:
         msg += (f" {unreviewed} skipped because the \"I have already fully watched this video\" "
                 f"box was not ticked.")
@@ -244,13 +246,12 @@ async def edit_save(request: Request, video_id: str,
     new_channel_name = form_str(form, "new_channel_name").strip()
     resolution = form_str(form, "resolution").strip()
 
-    try:
-        ch_id = content.resolve_channel(channel_id, new_channel_name)
-    except ContentError:
-        ch_id = None
     fields: dict[str, Any] = {"title": title, "description": description}
-    if ch_id is not None:
-        fields["channel_id"] = ch_id
+    channel_error = ""
+    try:
+        fields["channel_id"] = content.resolve_channel(channel_id, new_channel_name)
+    except ContentError as e:
+        channel_error = f" The channel was not changed: {e}"
     if resolution:
         fields["resolution"] = resolution
     # Unchecked checkboxes don't appear in the form body at all —
@@ -273,6 +274,9 @@ async def edit_save(request: Request, video_id: str,
             except ValueError as e:
                 success_msg = f"Saved, but the thumbnail was not changed: {e}"
 
+    success_msg += channel_error
+    if video.channel_id is None:
+        success_msg += " This video has no channel, so kids can't see it."
     channels = content.list_channels()
     return request.app.state.templates.TemplateResponse(request,
         "parent/content_edit.html", {

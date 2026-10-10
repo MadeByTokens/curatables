@@ -44,11 +44,12 @@
   <div class="form-group">
     <label for="channel_id">Channel</label>
     <select id="channel_id" name="channel_id">
-      <option value="">(none)</option>
+      <option value="">(none: kids won&rsquo;t see it)</option>
       {% for ch in channels %}
       <option value="{{ ch.id }}" {% if video.channel_id == ch.id %}selected{% endif %}>{{ ch.name }}</option>
       {% endfor %}
     </select>
+    <small class="muted">With no channel, kids can't find this video.</small>
   </div>
 
   <div class="form-group">
