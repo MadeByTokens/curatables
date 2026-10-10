@@ -34,7 +34,8 @@ is [threat-model.md](threat-model.md).
   pictures of the results before you do, and YouTube's own SafeSearch
   is not applied, so for a younger child keep the word list strict or
   allow only channels you trust.
-- **Re-downloaded videos are checked.** To save disk space, a video
+- **Re-downloaded videos are checked.** Every video is kept unless you
+  turn on **Freeing up space** in Settings. Then a video
   nobody watched for a while is removed and downloaded again the next
   time someone taps it. If the length of the new copy is clearly
   different from the one you approved, it goes back to "waiting for

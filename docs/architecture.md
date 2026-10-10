@@ -287,14 +287,17 @@ stored as `[type] message`; the parent UI turns the type into plain advice.
 
 ### Cache eviction
 
-Cache-mode videos (`storage_mode='cache'`, `keep_forever=0`) are evicted
-**least recently watched first**. Every play sets `videos.last_played_at`;
-age is `COALESCE(last_played_at, cached_at)`.
+Every video is kept unless the parent turns on **Freeing up space**
+(`storage.cache_days > 0`, off by default). Then downloaded videos
+(`storage_mode='cache'`, `keep_forever=0`) nobody watched for that many
+days are evicted. Every play sets `videos.last_played_at`; age is
+`COALESCE(last_played_at, cached_at)`.
 
-- The maintenance loop evicts videos older than `storage.cache_days`
-  (no-op when `cache_days <= 0`).
-- When the disk is below the free-space floor before a download, the job
-  first evicts the least recently watched videos until it fits.
+- The maintenance loop runs the eviction; nothing else deletes videos,
+  and a full disk never does. Instead `storage_report.disk_level` turns
+  `warning` at `storage.low_space_percent` free (15) and `blocked` below
+  `min_free_disk_bytes`, and the dashboard lists the ways out
+  (`parent/_low_space.html`).
 - Eviction re-checks eligibility under the per-video lock, deletes the
   files and sets `download_status='evicted'`. Uploads
   (`storage_mode='uploaded'`) and `keep_forever` videos are never evicted.

@@ -216,24 +216,6 @@ def test_mounted_drives_are_import_folders(tmp_path, monkeypatch):
     config.storage.drive_mounts_dir = str(drives)
     monkeypatch.setattr("app.services.import_scan.os.path.ismount", lambda p: Path(p).name == "Movies")
     assert ImportRoots(config).roots() == [(drives / "Movies").resolve()]
-
-
-def test_a_missing_drive_never_evicts_cached_videos(tmp_path):
-    class Repo:
-        def list_evictable_lru(self):
-            raise AssertionError("eviction must not run")
-    report = StorageService(tmp_path / "gone").evict_for_space(Repo(), 10)
-    assert report.evicted_count == 0
-
-
-def test_too_big_for_fat_never_evicts(tmp_path, monkeypatch):
-    class Repo:
-        def list_evictable_lru(self):
-            raise AssertionError("eviction must not run")
-    monkeypatch.setattr("app.services.storage.file_size_limit", lambda p: media_fs.FAT_FILE_LIMIT)
-    assert StorageService(tmp_path).evict_for_space(Repo(), 5 * GB).evicted_count == 0
-
-
 def test_crash_recovery_leaves_videos_alone_while_the_drive_is_missing(tmp_path, db):
     from app.db.schema import recover_from_crash
     db.execute("INSERT INTO videos (video_id, title, original_title, download_status, storage_mode) "

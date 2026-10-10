@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 
@@ -35,8 +35,12 @@ class ServerConfig:
 @dataclass
 class StorageConfig:
     path: str = ""
-    default_mode: str = "cache"   # "library" = new videos are kept forever
-    cache_days: int = 30
+    # Free up space: remove the files of videos nobody watched for this
+    # many days (they stay listed and download again when tapped). 0, the
+    # default, keeps every video.
+    cache_days: int = 0
+    # The dashboard warns when the videos drive has this much free or less.
+    low_space_percent: int = 15
     default_resolution: str = "720p"
     subtitle_langs: str = "en"    # comma-separated codes, "all", or "" for none
     impersonate: str = "chrome"     # browser to impersonate: "chrome", "firefox", etc. or "" for none
@@ -47,8 +51,8 @@ class StorageConfig:
     max_kid_upload_bytes: int = 524_288_000   # per-upload ceiling for kid uploads (500 MB default)
     max_download_bytes: int = 4_294_967_296   # yt-dlp refuses source files larger than this (4 GB default)
     max_concurrent_downloads: int = 1         # download + transcode jobs run at once (1 suits a Raspberry Pi)
-    # Maintenance sweep (app/lifecycle.py) every N minutes: cache eviction
-    # and event pruning. 0 disables it; cache_days<=0 keeps every video.
+    # Maintenance sweep (app/lifecycle.py) every N minutes: freeing up
+    # space (see cache_days) and event pruning. 0 disables it.
     cache_cleanup_interval_minutes: int = 60
     # Usage events (plays, views, searches) older than this are deleted
     # by the same background sweep. 0 keeps them forever.
@@ -171,15 +175,22 @@ def load_config(data_dir: str | None = None) -> Config:
                     "there (is the drive mounted?). Refusing to start.")
             with open(moved_to) as f:
                 data = json.load(f)
-        config.server = ServerConfig(**data.get("server", {}))
-        config.storage = StorageConfig(**data.get("storage", {}))
-        config.parent = ParentConfig(**data.get("parent", {}))
-        config.wishlist = WishlistConfig(**data.get("wishlist", {}))
-        config.imports = ImportConfig(**data.get("imports", {}))
+        config.server = _section(ServerConfig, data.get("server"))
+        config.storage = _section(StorageConfig, data.get("storage"))
+        config.parent = _section(ParentConfig, data.get("parent"))
+        config.wishlist = _section(WishlistConfig, data.get("wishlist"))
+        config.imports = _section(ImportConfig, data.get("imports"))
         if data_dir:
             config.storage.path = data_dir
 
     return config
+
+
+def _section(cls, data):
+    """A config section from config.json; settings that no longer exist
+    are dropped."""
+    known = {f.name for f in fields(cls)}
+    return cls(**{k: v for k, v in (data or {}).items() if k in known})
 
 
 def _relocation_target(data: dict, config_path: Path) -> Path | None:

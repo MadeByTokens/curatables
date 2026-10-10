@@ -99,24 +99,26 @@ class TestStorageReportService:
         service = StorageReportService(
             media_dir=Path("/tmp"),
             min_free_bytes=min_free,
+            low_percent=15,
             video_repo=video_repo,
         )
         patcher = patch("app.services.storage_report.shutil.disk_usage",
                         return_value=_Usage(100 * _GB, 100 * _GB - free_bytes, free_bytes))
         return service, patcher
 
-    def test_status_ok_when_free_above_twice_threshold(self):
-        svc, patcher = self._make(free_bytes=10 * _GB)
+    def test_status_ok_above_the_low_space_percent(self):
+        svc, patcher = self._make(free_bytes=16 * _GB)
         with patcher:
             report = svc.get_report()
         assert report.status == "ok"
-        assert report.free_bytes == 10 * _GB
+        assert report.free_bytes == 16 * _GB
 
-    def test_status_warning_when_free_between_threshold_and_double(self):
-        svc, patcher = self._make(free_bytes=3 * _GB)
-        with patcher:
-            report = svc.get_report()
-        assert report.status == "warning"
+    def test_status_warning_at_15_percent_free_or_less(self):
+        for free in (15, 3):
+            svc, patcher = self._make(free_bytes=free * _GB)
+            with patcher:
+                report = svc.get_report()
+            assert report.status == "warning"
 
     def test_status_blocked_when_free_below_threshold(self):
         svc, patcher = self._make(free_bytes=1 * _GB)
@@ -227,7 +229,18 @@ class TestStorageRoute:
                    return_value=_Usage(100 * _GB, 99 * _GB, 1 * _GB)):
             resp = authed_client.get("/parent/storage")
         assert resp.status_code == 200
-        assert b"Free space is below the configured minimum" in resp.content
+        assert b"Free space is below the minimum" in resp.content
+        assert b"Use for videos" in resp.content
+
+    def test_dashboard_warns_at_15_percent_and_offers_the_ways_out(self, authed_client):
+        with patch("app.services.storage_report.shutil.disk_usage",
+                   return_value=_Usage(100 * _GB, 86 * _GB, 14 * _GB)):
+            page = authed_client.get("/parent/").text
+        assert "The videos drive is getting full" in page and "14% free" in page
+        assert "/parent/system/drives#usb-drives" in page and "/parent/settings#cache_days" in page
+        with patch("app.services.storage_report.shutil.disk_usage",
+                   return_value=_Usage(100 * _GB, 80 * _GB, 20 * _GB)):
+            assert "getting full" not in authed_client.get("/parent/").text
 
 
 # ---------------------------------------------------------------------------
@@ -266,3 +279,12 @@ class TestSettingsAdvanced:
         assert resp.status_code == 200
         assert b"cannot be negative" in resp.content
         assert app.state.config.storage.min_free_disk_bytes == original
+
+
+def test_videos_are_kept_by_default_and_old_settings_are_dropped(tmp_path):
+    import json
+    from app.config import Config, load_config
+    assert Config().storage.cache_days == 0
+    (tmp_path / "config.json").write_text(json.dumps(
+        {"storage": {"path": str(tmp_path), "default_mode": "library", "cache_days": 7}}))
+    assert load_config(str(tmp_path)).storage.cache_days == 7

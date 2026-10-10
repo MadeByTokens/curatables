@@ -61,10 +61,14 @@ ticked below" is on with nothing ticked, that kid sees only their own
 channels. Also check the videos are not **Hidden**.
 
 **The disk is full.**
-The dashboard says so. Curatables first removes the least recently
-watched cached videos; uploads and keep-forever videos are never
-removed. **Storage** shows what uses the space. On the Pi image, move the
-videos to a USB drive with **Box → Drives & backups → Use for videos**.
+Curatables keeps every video and never deletes one on its own. The
+dashboard warns when the videos drive has 15% free or less, and lists the
+ways out: move the videos to a bigger USB drive (**Box → Drives & backups →
+Use for videos**), turn on **Settings → Freeing up space** so videos nobody
+watched for a number of days you pick lose their files (they stay listed and
+download again when tapped; uploads and keep-forever videos are never
+touched), or delete what you don't need (**Storage** shows what uses the
+space). Below the hard minimum (2 GB) new downloads and uploads stop.
 
 **I already have a drive full of movies.**
 Don't format it. Plug it in, open **Box → Drives & backups** and press

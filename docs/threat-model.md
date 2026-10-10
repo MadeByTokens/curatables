@@ -256,7 +256,7 @@ keep the system patched.
 
 ### Re-downloads after eviction
 
-Cache-mode videos are evicted (least recently watched first) and
+With **Freeing up space** on, videos nobody watched for a while are evicted and
 downloaded again from the approved URL when a kid taps them. The URL may
 now serve something else. When the re-downloaded file's length differs
 from the approved length by more than 10 s **and** 5 %, the video goes

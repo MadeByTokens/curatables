@@ -224,8 +224,7 @@ sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1
 The script:
 
 - accepts FAT32 with a warning: curatables then refuses any file of
-  4 GB or more (the most FAT32 can hold) with a clear message, and never
-  evicts videos to make room for one.
+  4 GB or more (the most FAT32 can hold) with a clear message.
 - stops curatables.
 - makes the empty mount point `/mnt/curatables-media` immutable
   (`chattr +i`), so nothing can be written to the SD card through it

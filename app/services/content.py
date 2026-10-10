@@ -291,9 +291,6 @@ class ContentService:
             download_status="pending",
         )
         self.video_repo.insert(video)
-        if self.config.storage.default_mode == "library":
-            self.video_repo.update(stored_id, keep_forever=1)
-            video.keep_forever = True
         self._start_download(stored_id, info.original_url, res)
         return video
 
@@ -333,11 +330,6 @@ class ContentService:
             if approved is None:
                 return
             repo.update(video_id, download_status="downloading")
-            if not storage.check_can_write()[0]:
-                freed = storage.evict_for_space(repo)
-                if freed.evicted_count:
-                    logger.info("Evicted %d video(s) to make room for %s",
-                                freed.evicted_count, video_id)
             path = storage.download(
                 video_id, original_url, resolution,
                 subtitle_langs=self.config.storage.subtitle_langs)

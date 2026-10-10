@@ -28,16 +28,13 @@
   </div>
 
   <fieldset class="form-group">
-    <legend>Removing videos to save space</legend>
-    <label for="cache_days">Remove a video nobody has watched for (days)</label>
+    <legend>Freeing up space</legend>
+    <label for="cache_days">Remove the file of a video nobody has watched for (days)</label>
     <input type="number" id="cache_days" name="cache_days" value="{{ config.storage.cache_days }}" min="0" max="365">
-    <small class="muted d-block">It downloads again the next time someone taps it. 0 = never remove. When the disk gets full, the least recently watched videos go first. Uploads and videos set to <strong>Keep forever</strong> are never removed.</small>
-    <label class="fw-normal mt-6">
-      <input type="checkbox" name="keep_forever_default" value="1"
-             {% if config.storage.default_mode == 'library' %}checked{% endif %}>
-      Set newly added videos to <strong>Keep forever</strong>
-    </label>
-    <small class="muted d-block">You can change it for each video on its edit page.</small>
+    <small class="muted d-block">0, the default, keeps every video. Otherwise the video stays listed and
+      downloads again the next time someone taps it. Uploads, imported files and videos set to
+      <strong>Keep forever</strong> on their edit page are never removed. The dashboard tells you when
+      the drive is getting full.</small>
   </fieldset>
 
   <div class="form-group">

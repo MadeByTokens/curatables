@@ -173,6 +173,7 @@ def get_storage_report_service(
     return StorageReportService(
         media_dir=config.media_dir,
         min_free_bytes=config.storage.min_free_disk_bytes,
+        low_percent=config.storage.low_space_percent,
         video_repo=video_repo,
     )
 

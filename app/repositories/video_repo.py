@@ -300,15 +300,6 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def list_evictable_lru(self, limit: int = 200) -> builtins.list[Video]:
-        """Every evictable cached video, least recently watched first."""
-        rows = self.db.execute(
-            f"SELECT * FROM videos WHERE {self._EVICTABLE} "
-            "ORDER BY COALESCE(last_played_at, cached_at) ASC LIMIT ?",
-            (limit,),
-        ).fetchall()
-        return [self._to_model(r) for r in rows]
-
     def touch_played(self, video_id: str) -> None:
         self.db.execute(
             "UPDATE videos SET last_played_at = datetime('now') WHERE video_id = ?",

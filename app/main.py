@@ -125,7 +125,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app.state.templates.env.globals["box_notices"] = BOX_NOTICES
     app.state.templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
     app.state.templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
-        config.media_dir, config.storage.min_free_disk_bytes
+        config.media_dir, config.storage.min_free_disk_bytes, config.storage.low_space_percent
     )
 
     # Jinja global: iframe-safe embed URL for a given extractor +

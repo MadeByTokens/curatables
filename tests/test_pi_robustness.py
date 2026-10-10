@@ -67,20 +67,6 @@ class TestLruEviction:
         expired = VideoRepository(db).list_expired_cache(cache_days=30)
         assert [v.video_id for v in expired] == ["old_unplayed"]
 
-    def test_evict_for_space_frees_least_recently_watched_first(self, db, tmp_path):
-        _ready(db, "watched_yesterday", cached_days_ago=10, played_days_ago=1)
-        _ready(db, "watched_long_ago", cached_days_ago=10, played_days_ago=9)
-        storage = StorageService(tmp_path, backend=None)
-        calls = {"n": 0}
-
-        def fake_check(required_bytes=0):
-            calls["n"] += 1
-            return (calls["n"] > 1, "full")
-
-        with patch.object(storage, "check_can_write", side_effect=fake_check):
-            report = storage.evict_for_space(VideoRepository(db))
-        assert report.video_ids == ["watched_long_ago"]
-
     def test_eviction_keeps_thumbnail(self, db, tmp_path):
         _ready(db, "thumbkeep", cached_days_ago=40)
         thumbs = ThumbnailService(tmp_path)

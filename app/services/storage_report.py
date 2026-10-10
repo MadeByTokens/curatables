@@ -19,24 +19,29 @@ _GB = 1_073_741_824
 Status = Literal["ok", "warning", "blocked", "unknown"]
 
 
-def get_disk_status_brief(media_dir: Path, min_free_bytes: int) -> dict:
-    """Small read-only helper for the topnav status chip.
+def disk_level(free: int, total: int, min_free_bytes: int, low_percent: int) -> Status:
+    """'blocked' below the hard minimum (downloads and uploads stop),
+    'warning' at low_percent free or less."""
+    if free < min_free_bytes:
+        return "blocked"
+    if total > 0 and free * 100 <= total * low_percent:
+        return "warning"
+    return "ok"
 
-    Returns {"free_gb": float, "status": str} without database access,
-    safe to call on every template render. On filesystem error the
-    status is "unknown" rather than raising.
+
+def get_disk_status_brief(media_dir: Path, min_free_bytes: int, low_percent: int) -> dict:
+    """Small read-only helper for the topnav status chip and the
+    dashboard. No database access, safe to call on every template
+    render. On filesystem error the status is "unknown" rather than
+    raising.
     """
     try:
-        free = shutil.disk_usage(media_dir).free
+        usage = shutil.disk_usage(media_dir)
     except OSError:
-        return {"free_gb": 0.0, "status": "unknown"}
-    if free < min_free_bytes:
-        status: Status = "blocked"
-    elif free < min_free_bytes * 2:
-        status = "warning"
-    else:
-        status = "ok"
-    return {"free_gb": free / _GB, "status": status}
+        return {"free_gb": 0.0, "free_percent": 0, "status": "unknown"}
+    return {"free_gb": usage.free / _GB,
+            "free_percent": round(usage.free * 100 / usage.total) if usage.total else 0,
+            "status": disk_level(usage.free, usage.total, min_free_bytes, low_percent)}
 
 
 @dataclass
@@ -58,16 +63,17 @@ class ChannelSize:
 
 
 class StorageReportService:
-    def __init__(self, media_dir: Path, min_free_bytes: int,
+    def __init__(self, media_dir: Path, min_free_bytes: int, low_percent: int,
                  video_repo: VideoRepository):
         self.media_dir = media_dir
         self.min_free_bytes = min_free_bytes
+        self.low_percent = low_percent
         self.video_repo = video_repo
 
     def get_report(self) -> DiskReport:
         usage = shutil.disk_usage(self.media_dir)
         used_by_curatables = self.video_repo.sum_file_size()
-        status = self._status(usage.free)
+        status = disk_level(usage.free, usage.total, self.min_free_bytes, self.low_percent)
         return DiskReport(
             total_bytes=usage.total,
             free_bytes=usage.free,
@@ -84,10 +90,3 @@ class StorageReportService:
                         video_count=count, total_bytes=total)
             for (cid, name, count, total) in rows
         ]
-
-    def _status(self, free_bytes: int) -> Status:
-        if free_bytes < self.min_free_bytes:
-            return "blocked"
-        if free_bytes < self.min_free_bytes * 2:
-            return "warning"
-        return "ok"

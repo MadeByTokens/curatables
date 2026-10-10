@@ -9,17 +9,15 @@
 {% set used_gb = (report.used_bytes / gb) %}
 {% set threshold_gb = (report.min_free_bytes / gb) %}
 
-{% if report.status == "blocked" %}
-<div class="flash flash-error">
-  Free space is below the configured minimum of {{ "%.1f"|format(threshold_gb) }} GB.
-  New downloads and uploads will be refused until space is freed or the threshold is lowered in
-  <a href="/parent/settings">Settings</a>.
-</div>
-{% elif report.status == "warning" %}
-<div class="flash warn-bg warn-text">
-  Free space is getting close to the configured minimum of {{ "%.1f"|format(threshold_gb) }} GB.
-  Consider freeing up space or adjusting the threshold in
-  <a href="/parent/settings">Settings</a>.
+{% if report.status in ("blocked", "warning") %}
+<div class="flash {{ 'flash-error' if report.status == 'blocked' else 'warn-bg warn-text' }}">
+  {% if report.status == "blocked" %}
+  Free space is below the minimum of {{ "%.1f"|format(threshold_gb) }} GB, so new downloads and uploads
+  are refused.
+  {% else %}
+  The videos drive is getting full: {{ "%.0f"|format(report.free_bytes * 100 / report.total_bytes) }}% free.
+  {% endif %}
+  {% include "parent/_low_space.html" %}
 </div>
 {% endif %}
 

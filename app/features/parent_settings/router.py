@@ -73,7 +73,6 @@ def settings_save(request: Request,
                   cache_days: int = Form(...),
                   default_resolution: str = Form(...),
                   subtitle_langs: str = Form("en"),
-                  keep_forever_default: str = Form(""),
                   kid_language: str = Form(""),
                   viewer: ViewerContext = Depends(require_parent),
                   config: Config = Depends(get_config)):
@@ -84,7 +83,6 @@ def settings_save(request: Request,
     if default_resolution in RESOLUTION_MAP:
         config.storage.default_resolution = default_resolution
     config.storage.subtitle_langs = subtitle_langs.strip()
-    config.storage.default_mode = "library" if keep_forever_default == "1" else "cache"
     if kid_language in LANGUAGE_CODES:
         config.server.kid_language = kid_language
     config.save()

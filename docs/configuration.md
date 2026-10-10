@@ -41,11 +41,11 @@ Unknown keys make startup fail, so check spelling.
 | `import_roots` | `[]` | Import from a drive | Folders the [Import](getting-started.md#import-videos-already-on-a-drive) page may list video files from. The library's own folders are never listed. |
 | `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives | USB drives opened with *Import videos from it* are mounted in folders here; each mounted one is an import folder too. |
 | `drive_backups` | `false` | Box → Drives | Also copy each nightly backup to `<media_path>/backups` on the videos drive. |
-| `cache_days` | `30` | Storage | A downloaded video nobody watched for this many days is removed from disk and downloads again when next tapped. `0` keeps everything. |
-| `default_mode` | `cache` | Storage → "Keep newly added videos forever" | `library` marks new videos keep-forever. |
+| `cache_days` | `0` | Settings → Freeing up space | A downloaded video nobody watched for this many days is removed from disk and downloads again when next tapped. `0` keeps everything. |
+| `low_space_percent` | `15` | — | The dashboard and the storage page warn when the videos drive has this much free or less. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
 | `subtitle_langs` | `en` | Storage | Comma-separated language codes, `all`, or empty for none. |
-| `min_free_disk_bytes` | 2 GB | Advanced | Downloads and uploads stop when free space would drop below this; first the least recently watched cached videos are removed to make room. |
+| `min_free_disk_bytes` | 2 GB | Advanced | Downloads and uploads stop when free space would drop below this. Nothing is removed to make room. |
 | `max_download_bytes` | 4 GB | Advanced | Source files bigger than this are not downloaded. |
 | `max_concurrent_downloads` | `1` | Advanced | Downloads + conversions running at once. Keep `1` on a Raspberry Pi. |
 | `max_upload_bytes` | 10 GB | Advanced | Largest file a parent can upload. |

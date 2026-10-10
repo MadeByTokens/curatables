@@ -1,0 +1,13 @@
+{# What a parent can do when the videos drive is filling up. #}
+{% set days = request.app.state.config.storage.cache_days %}
+<ul class="low-space-options">
+  <li><strong>Use a bigger drive.</strong> Plug in a USB drive and press <strong>Use for videos</strong> in
+    <a href="/parent/system/drives#usb-drives">Box → Drives</a>; the videos are copied to it.</li>
+  <li><strong>Free up space.</strong>
+    {% if days %}Videos nobody watched for {{ days }} days already lose their files; a shorter time frees more.
+    {% else %}Remove the files of videos nobody watched for a while: they stay listed and download again when a kid taps them.
+    {% endif %}
+    <a href="/parent/settings#cache_days">Settings → Freeing up space</a></li>
+  <li><strong>Delete what you no longer need.</strong> The <a href="/parent/storage">storage report</a> shows which
+    channels take the most space.</li>
+</ul>

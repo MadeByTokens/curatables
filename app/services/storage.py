@@ -302,20 +302,3 @@ class StorageService:
         for video in video_repo.list_expired_cache(cache_days):
             self._evict(video_repo, video.video_id, report)
         return report
-
-    def evict_for_space(self, video_repo, required_bytes: int = 0) -> EvictionReport:
-        """Evict least-recently-watched cached videos until a write of
-        `required_bytes` fits above the free-space floor. Nothing is
-        evicted when space is not the problem (drive missing, or a file
-        too big for FAT32)."""
-        report = EvictionReport()
-        cap = file_size_limit(self.media_dir) if self.media_dir.is_dir() else None
-        if not self.media_dir.is_dir() or (cap and required_bytes > cap):
-            return report
-        if self.check_can_write(required_bytes)[0]:
-            return report
-        for video in video_repo.list_evictable_lru():
-            self._evict(video_repo, video.video_id, report)
-            if self.check_can_write(required_bytes)[0]:
-                break
-        return report

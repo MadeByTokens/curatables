@@ -35,21 +35,21 @@
 {% set ds = disk_status() %}
 
 {# ============ 1. NEEDS ATTENTION ============ #}
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status != 'ok' %}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
   <ul>
-    {% if ds.status != 'ok' %}
+    {% if ds.status in ('blocked', 'warning') %}
     <li>
       {% if ds.status == 'blocked' %}
-        <strong>Disk space blocked</strong> — only {{ "%.1f"|format(ds.free_gb) }} GB free.
-        New downloads/uploads are paused.
-        <a href="/parent/storage">Open storage report →</a>
+        <strong>The videos drive is full</strong> — only {{ "%.1f"|format(ds.free_gb) }} GB free.
+        New downloads and uploads are paused.
       {% else %}
-        <strong>Low disk space</strong> — {{ "%.1f"|format(ds.free_gb) }} GB free.
-        <a href="/parent/storage">Open storage report →</a>
+        <strong>The videos drive is getting full</strong> — {{ ds.free_percent }}% free
+        ({{ "%.1f"|format(ds.free_gb) }} GB). Nothing is removed on its own; you can:
       {% endif %}
+      {% include "parent/_low_space.html" %}
     </li>
     {% endif %}
 
