@@ -16,11 +16,10 @@
 #   PIGEN_DIR   where to clone pi-gen      (default: pi-gen/.pi-gen)
 #   PIGEN_REF   pi-gen branch to build     (default: arm64)
 #
-# NOTE: 64-bit images come from pi-gen's dedicated `arm64` BRANCH, not from
-# ARCH=arm64 in config. pi-gen's build.sh hard-sets `export ARCH=armhf`
-# after sourcing config, so the config var is ignored — the branch is what
-# selects the architecture. The default branch (bookworm) builds 32-bit
-# armhf, for which our deps (e.g. curl_cffi) may lack prebuilt wheels.
+# 64-bit images come from pi-gen's `arm64` branch, not from ARCH in
+# config: pi-gen's build.sh hard-sets ARCH after sourcing config. Its
+# default branch builds 32-bit armhf, for which dependencies such as
+# curl_cffi may lack prebuilt wheels.
 
 set -euo pipefail
 
@@ -75,6 +74,9 @@ rsync -a \
 	--exclude '.venv' \
 	--exclude '__pycache__' \
 	--exclude '.pytest_cache' \
+	--exclude '.mypy_cache' \
+	--exclude '.ruff_cache' \
+	--exclude '.claude' \
 	--exclude '.coverage' \
 	--exclude 'curatables-data' \
 	--exclude 'pi-gen' \

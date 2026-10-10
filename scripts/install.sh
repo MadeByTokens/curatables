@@ -161,7 +161,7 @@ if [[ "$REPO_ROOT" != "$INSTALL_ROOT" ]]; then
     as_root install -d -m 0755 "$INSTALL_ROOT"
     as_root rsync -a --delete \
         --exclude .git --exclude .venv --exclude __pycache__ \
-        --exclude .pytest_cache --exclude .mypy_cache --exclude .ruff_cache \
+        --exclude .pytest_cache --exclude .mypy_cache --exclude .ruff_cache --exclude .claude \
         "$REPO_ROOT"/ "$INSTALL_ROOT"/
 fi
 as_root chown -R root:root "$INSTALL_ROOT"
