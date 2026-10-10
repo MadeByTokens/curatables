@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Import video files from a drive into the library.
 
 A batch starts as draft rows in import_jobs (one per file). The parent
@@ -10,6 +9,8 @@ commit nothing outside that folder is written, and a cancel, a failure
 or a crash only has to delete it. The source file is never modified
 before the commit; with "move" it is removed after the row is in.
 """
+
+from __future__ import annotations
 
 import logging
 import os
@@ -36,7 +37,9 @@ from app.services.import_scan import (
 from app.services.ingest import HASH_CHUNK, IngestService, VideoDetails, upload_video_id
 from app.services.media_probe import MediaProbeService, ProbeError, ProbeResult, UnsupportedCodec
 from app.services.normalize import MediaNormalizer, plan_for
-from app.services.subtitles import decode_text, language_code, to_vtt
+from app.services.storage import StorageService
+from app.services.subtitles import language_code, to_vtt
+from app.services.thumbnails import ThumbnailService
 
 logger = logging.getLogger(__name__)
 
@@ -590,7 +593,6 @@ class ImportRunner:
                     continue
                 try:
                     data = path.read_bytes()
-                    decode_text(data)
                     target(sub.get("lang", "")).write_text(to_vtt(data, path.suffix),
                                                            encoding="utf-8")
                 except OSError as e:
@@ -734,9 +736,6 @@ class ImportWorker:
 def build_worker(config: Config, connect: Callable[[], sqlite3.Connection],
                  submit: Callable[[str, Callable[[], None]], bool] | None = None
                  ) -> ImportWorker:
-    from app.services.storage import StorageService
-    from app.services.thumbnails import ThumbnailService
-
     probe = MediaProbeService()
     normalizer = MediaNormalizer(probe)
 

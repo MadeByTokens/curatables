@@ -1,5 +1,6 @@
+"""Event service — usage event logging."""
+
 from __future__ import annotations
-"""Event service — usage logging and statistics."""
 
 import json
 
@@ -12,9 +13,6 @@ class EventService:
     def __init__(self, event_repo: EventRepository,
                  metrics: MetricsService | None = None):
         self.event_repo = event_repo
-        # Default to a disabled MetricsService so unit tests that wire
-        # the service directly (without going through FastAPI DI) can
-        # call .log() without a metrics arg.
         self.metrics = metrics or MetricsService(enabled=False)
 
     def log(self, event_type: str, video_id: str | None = None,
@@ -28,7 +26,3 @@ class EventService:
         self.event_repo.insert(event)
         if event_type == "video_play":
             self.metrics.record_kid_play()
-
-    def list_recent(self, limit: int = 50,
-                    profile_id: int | None = None) -> list[Event]:
-        return self.event_repo.list_recent(limit, profile_id)

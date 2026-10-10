@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Comment service — family comments with channel-scoped visibility."""
+
+from __future__ import annotations
 
 import json
 from app.models.comment import Comment
@@ -10,10 +11,8 @@ from app.services.rate_limit import RateLimiter, RateLimitExceeded
 
 MAX_COMMENT_LENGTH = 500
 
-# Module-level singletons so the rate-limit state survives across
-# request-scoped CommentService instances. Kids get 10 comments per
-# minute; the parent uses a separate limiter with a higher ceiling
-# for legitimate moderation bursts.
+# Module-level so the state outlives the request-scoped CommentService.
+# The parent gets a higher ceiling for moderation bursts.
 _KID_RATE_LIMITER = RateLimiter(max_events=10, window_seconds=60)
 _PARENT_RATE_LIMITER = RateLimiter(max_events=30, window_seconds=60)
 
@@ -64,8 +63,6 @@ class CommentService:
         if not body or len(body) > MAX_COMMENT_LENGTH:
             return None
 
-        # Rate-limit keyed on poster identity. Parents get a separate,
-        # more generous limiter so moderation-style bursts don't trip it.
         key: object
         if viewer.is_parent:
             key = "parent"
@@ -109,15 +106,9 @@ class CommentService:
         return comment_id
 
     def get(self, comment_id: int) -> Comment | None:
-        """Fetch a single comment (with author info) by id. Used by the
-        watch page to render a just-posted comment/reply for its XHR
-        response so it can be inserted without a full reload."""
+        """Fetch a single comment (with author info) by id."""
         return self.comment_repo.get_by_id(comment_id)
 
     def delete(self, comment_id: int) -> None:
         """Delete a comment and its replies."""
         self.comment_repo.delete(comment_id)
-
-    def list_recent(self, limit: int = 50) -> list[Comment]:
-        """Get recent comments for parent moderation."""
-        return self.comment_repo.list_recent(limit)

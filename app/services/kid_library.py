@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Kid library service — per-kid video overrides, tags, and channel bookmarks."""
+
+from __future__ import annotations
 
 import dataclasses
 from pathlib import Path
@@ -21,6 +22,9 @@ class KidLibraryService:
         self.tag_repo = tag_repo
         self.channel_video_repo = channel_video_repo
         self.media_dir = media_dir
+
+    def _thumb_dir(self, profile_id: int) -> Path:
+        return self.media_dir / "thumbnails" / "profiles" / str(profile_id)
 
     # --- Video title/thumbnail overrides ---
 
@@ -51,7 +55,7 @@ class KidLibraryService:
     def upload_thumbnail(self, profile_id: int, video_id: str,
                          file_data: bytes, filename: str) -> None:
         ext = validate_image(file_data)
-        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self._thumb_dir(profile_id)
         thumb_dir.mkdir(parents=True, exist_ok=True)
         for old in thumb_dir.glob(f"{video_id}.*"):
             old.unlink(missing_ok=True)
@@ -59,7 +63,7 @@ class KidLibraryService:
         self.override_repo.upsert(profile_id, video_id, has_custom_thumb=1)
 
     def clear_thumbnail(self, profile_id: int, video_id: str) -> None:
-        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self._thumb_dir(profile_id)
         for old in thumb_dir.glob(f"{video_id}.*"):
             old.unlink(missing_ok=True)
         self.override_repo.upsert(profile_id, video_id, has_custom_thumb=0)
@@ -70,12 +74,9 @@ class KidLibraryService:
 
     def apply_overrides(self, profile_id: int,
                         videos: list[Video]) -> list[Video]:
-        """Return a new list of Video instances with this kid's title /
-        description overrides applied. The input list is NOT mutated —
-        callers that hand in shared/cached Video objects are safe. Uses
-        dataclasses.replace to build patched copies only for videos with
-        an actual override; unmodified videos are passed through by
-        reference to avoid useless allocations."""
+        """Return the videos with this kid's title/description overrides
+        applied. Input Video objects are never mutated: overridden ones
+        are copied, the rest passed through."""
         if not videos:
             return videos
         ids = [v.video_id for v in videos]
@@ -94,22 +95,16 @@ class KidLibraryService:
 
     def get_custom_thumb_path(self, profile_id: int,
                               video_id: str) -> Path | None:
-        thumb_dir = self.media_dir / "thumbnails" / "profiles" / str(profile_id)
+        thumb_dir = self._thumb_dir(profile_id)
         matches = list(thumb_dir.glob(f"{video_id}.*"))
         return matches[0] if matches else None
-
-    def has_custom_thumb(self, profile_id: int,
-                         video_id: str) -> bool:
-        ov = self.override_repo.get(profile_id, video_id)
-        return bool(ov and ov.get("has_custom_thumb"))
 
     # --- Tags ---
 
     def add_tag(self, profile_id: int, video_id: str,
                 tag_name: str) -> int | None:
         """Attach a tag (creating it if new). Returns the tag id, or
-        None when the name is blank — the id lets the watch page render
-        the new chip from its XHR response without a full reload."""
+        None when the name is blank."""
         tag_name = tag_name.strip()
         if not tag_name:
             return None

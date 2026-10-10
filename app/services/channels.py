@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Channel service — internal channel management."""
+
+from __future__ import annotations
 
 import builtins
 import re
@@ -94,9 +95,6 @@ class ChannelService:
         self.channel_repo.delete(channel_id, reassign_to=reassign_to)
         if self.media_dir is not None:
             shutil.rmtree(self.asset_dir(channel_id), ignore_errors=True)
-
-    def count_videos(self, channel_id: int) -> int:
-        return self.channel_repo.count_videos(channel_id)
 
     def list_with_counts(self) -> builtins.list[tuple[Channel, int]]:
         """Return channels with their video counts."""

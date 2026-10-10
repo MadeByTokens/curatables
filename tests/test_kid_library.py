@@ -221,17 +221,17 @@ class TestThumbnailOverrides:
         assert path is not None
         assert path.exists()
         assert path.suffix == ".jpg"
-        assert svc.has_custom_thumb(alice, "v1") is True
+        assert svc.get_overrides(alice, "v1")["has_custom_thumb"] == 1
 
     def test_clear_thumbnail_removes_file_and_flag(self, db, tmp_path):
         alice = _mk_kid(db, "alice")
         _mk_video(db, "v1")
         svc = _mk_service(db, tmp_path)
         svc.upload_thumbnail(alice, "v1", b"\x89PNG\r\n\x1a\nPNG", "pic.png")
-        assert svc.has_custom_thumb(alice, "v1") is True
+        assert svc.get_overrides(alice, "v1")["has_custom_thumb"] == 1
 
         svc.clear_thumbnail(alice, "v1")
-        assert svc.has_custom_thumb(alice, "v1") is False
+        assert svc.get_overrides(alice, "v1")["has_custom_thumb"] == 0
         assert svc.get_custom_thumb_path(alice, "v1") is None
 
     def test_upload_replaces_previous_file(self, db, tmp_path):
@@ -254,7 +254,7 @@ class TestThumbnailOverrides:
         svc = _mk_service(db, tmp_path)
         with pytest.raises(ValueError):
             svc.upload_thumbnail(alice, "v1", b"<html><script>", "evil.html")
-        assert svc.has_custom_thumb(alice, "v1") is False
+        assert svc.get_overrides(alice, "v1") is None
 
 
 # ---------------------------------------------------------------------------
@@ -558,9 +558,9 @@ class TestConcurrency:
         ))
         # Seed a canonical thumbnail file so the route doesn't fall
         # through to the placeholder SVG (which caches differently).
-        video_dir = Path(app.state.config.data_dir) / "videos" / "vidchtest01"
-        video_dir.mkdir(parents=True, exist_ok=True)
-        (video_dir / "thumb.jpg").write_bytes(b"\xff\xd8\xffxx")
+        thumb_dir = Path(app.state.config.data_dir) / "thumbnails" / "videos"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        (thumb_dir / "vidchtest01.jpg").write_bytes(b"\xff\xd8\xffxx")
 
         resp = authed_client.get("/media/thumb/vidchtest01")
         assert resp.status_code == 200

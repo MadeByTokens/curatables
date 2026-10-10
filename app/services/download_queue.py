@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Process-wide download queue.
 
 Every download (new video, startup resume, re-download after eviction)
@@ -7,6 +6,8 @@ becomes 50 queued jobs instead of 50 concurrent yt-dlp + ffmpeg runs.
 Rows waiting in the queue stay `download_status='pending'`; the job
 flips them to `downloading` when it actually starts.
 """
+
+from __future__ import annotations
 
 import logging
 import threading
@@ -42,10 +43,6 @@ class DownloadQueue:
         finally:
             with self._lock:
                 self._active.pop(video_id, None)
-
-    def is_active(self, video_id: str) -> bool:
-        with self._lock:
-            return video_id in self._active
 
     def pending_count(self) -> int:
         with self._lock:
