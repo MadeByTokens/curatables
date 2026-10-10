@@ -543,10 +543,14 @@ approved; a rejected video never reappears in that kid's results.
 
 Every YouTube call from these pages goes through
 `app/services/search_gate.py`, so a kid tapping fast can't get the
-box's address flagged: a 15-minute shared cache, one call at a time,
-per-kid tap and call limits, a box-wide budget, and a 30-minute pause
-after a bot check or HTTP 429 (shown on the parent dashboard). The
-limits live in memory, so a restart clears them.
+box's address flagged: a shared cache that survives restarts
+(`db/cache.db`: a video's details for 7 days, searches and channel
+listings for 6 hours; the parent's Add preview of a YouTube video uses
+it too), one call at a time, per-kid tap and call limits, a box-wide
+budget, and a 30-minute pause after a bot check or HTTP 429 (shown on
+the parent dashboard). The limits live in memory, so a restart clears
+them. A video request stores what YouTube said about the video, so the
+parent's review asks YouTube nothing.
 
 Residual: titles and thumbnails from an unfiltered search reach the
 kid before any human sees them; the word list and allowlist are the

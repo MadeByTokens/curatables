@@ -172,6 +172,7 @@ rest is created on demand.
 |---|---|---|
 | `config.json` | Settings, PBKDF2 parent password hash, session secret and epoch. Read by `app/config.py:load_config`, written atomically. After a dashboard relocation the old location keeps a pointer `config.json` holding only the new `storage.path`. | Yes. |
 | `db/curatables.db` (+ `-wal`, `-shm`) | SQLite database, WAL mode. Schema from `app/db/migrations/` (snapshot in `app/db/schema.sql`). | Yes. |
+| `db/cache.db` (+ `-wal`, `-shm`) | What YouTube answered to searches and video lookups (`app/services/search_gate.py`), so they aren't asked twice. | No — safe to delete; it refills. |
 | `videos/<id>/` | Downloaded video (`video.mp4`, or the original `.webm`/`.mkv` if it could not be normalized) and subtitle tracks. Deleted when a cache video is evicted. | Yes — big and expensive to re-download. |
 | `uploads/<id>/` | Parent- and kid-uploaded videos, normalized on finalize like downloads. Never evicted. | Yes — user-generated content. |
 | `uploads/.tmp/` | In-progress resumable (tus) uploads. Files older than 24 h are swept at startup (`app/lifecycle.py:startup_jobs`). | Yes — interrupted uploads can resume across restarts. |

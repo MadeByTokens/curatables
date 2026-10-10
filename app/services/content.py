@@ -16,6 +16,7 @@ from app.services.thumbnails import ThumbnailService
 from app.services.storage import StorageService, InsufficientDiskSpace
 from app.services.download_queue import get_download_queue
 from app.services.ids import make_video_id
+from app.services.search_gate import GATE
 from app.db.connection import get_db_path
 
 
@@ -214,7 +215,11 @@ class ContentService:
         straight to the backend.
         """
         if parsed.url_type == "video":
-            info = self.source.fetch_video_info(parsed.clean_url)
+            if parsed.clean_url == f"https://www.youtube.com/watch?v={parsed.resource_id}":
+                info = GATE.video(parsed.resource_id,
+                                  lambda: self.source.fetch_video_info(parsed.clean_url))
+            else:
+                info = self.source.fetch_video_info(parsed.clean_url)
             if not info:
                 err = self.get_last_backend_error()
                 if err:

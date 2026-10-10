@@ -47,6 +47,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     setup_logging(effective_log_level, log_dir)
 
     prepare_data_dir(config)
+    from app.services.search_gate import GATE
+    GATE.use_file(get_db_path(config.data_dir).with_name("cache.db"))
     metrics = MetricsService(enabled=config.server.prometheus_enabled)
     startup_jobs(config, metrics)
 

@@ -2,8 +2,10 @@
 child tapping fast, or several children at once, can't make the box look
 like a bot.
 
-- Results are cached for CACHE_SECONDS: refresh, Back, sorting and the
-  next page reuse them.
+- Answers are cached in their own small database (cache.db, safe to
+  delete): a video's details for a week, searches and channel listings
+  for CACHE_SECONDS. Refresh, Back, sorting, the next page, a restart,
+  another kid and the parent's Add preview all reuse them.
 - One YouTube call at a time for the whole box.
 - Each kid has a tap limit (every search page, cached or not) and a
   YouTube-call limit; the box has its own call budget.
@@ -12,17 +14,20 @@ like a bot.
 """
 from __future__ import annotations
 
+import json
+import sqlite3
 import threading
 import time
-from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any, Callable
 
-from app.backends.base import BackendError, BackendErrorType
+from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoMetadata
 from app.services.rate_limit import RateLimiter
 
-CACHE_SECONDS = 15 * 60
-CACHE_ENTRIES = 128
+CACHE_SECONDS = 6 * 3600
+VIDEO_CACHE_SECONDS = 7 * 86400
+CACHE_ENTRIES = 5000
 REST_SECONDS = 30 * 60
 LOCK_WAIT_SECONDS = 25
 FAILURE_WINDOW_SECONDS = 3600
@@ -39,11 +44,42 @@ class SearchRefused(Exception):
         self.kind = kind
 
 
-@dataclass
-class _Entry:
-    expires: float
-    asked: int
-    items: list
+_TYPES: dict[str, type] = {"video": VideoMetadata, "channel": ChannelHit}
+
+
+class _Cache:
+    """(key → items) with an expiry, in SQLite: a file that survives
+    restarts, or memory when there is none (tests)."""
+
+    def __init__(self, path: Path | None = None):
+        if path is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        self._db = sqlite3.connect(str(path) if path else ":memory:", check_same_thread=False)
+        self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS answers (key TEXT PRIMARY KEY, expires REAL NOT NULL,"
+            " asked INTEGER NOT NULL, items TEXT NOT NULL)")
+        self._lock = threading.Lock()
+
+    def get(self, key: tuple) -> tuple[int, list] | None:
+        with self._lock:
+            row = self._db.execute("SELECT asked, items FROM answers WHERE key = ? AND expires > ?",
+                                   (json.dumps(key), time.time())).fetchone()
+        if row is None:
+            return None
+        return row[0], [_TYPES[t](**d) for t, d in json.loads(row[1])]
+
+    def put(self, key: tuple, asked: int, items: list) -> None:
+        ttl = VIDEO_CACHE_SECONDS if key[0] == "video" else CACHE_SECONDS
+        packed = json.dumps([["video" if isinstance(i, VideoMetadata) else "channel", asdict(i)]
+                             for i in items])
+        with self._lock, self._db:
+            self._db.execute("INSERT OR REPLACE INTO answers VALUES (?, ?, ?, ?)",
+                             (json.dumps(key), time.time() + ttl, asked, packed))
+            self._db.execute("DELETE FROM answers WHERE expires <= ?", (time.time(),))
+            self._db.execute(
+                "DELETE FROM answers WHERE key NOT IN "
+                "(SELECT key FROM answers ORDER BY expires DESC LIMIT ?)", (CACHE_ENTRIES,))
 
 
 @dataclass
@@ -54,12 +90,11 @@ class GateStatus:
 
 
 class SearchGate:
-    def __init__(self) -> None:
+    def __init__(self, cache_path: Path | None = None) -> None:
         self.taps = RateLimiter(max_events=8, window_seconds=30)
         self.kid_calls = RateLimiter(max_events=12, window_seconds=300)
         self.box_calls = RateLimiter(max_events=30, window_seconds=600)
-        self._cache: OrderedDict[tuple, _Entry] = OrderedDict()
-        self._cache_lock = threading.Lock()
+        self._cache = _Cache(cache_path)
         self._youtube = threading.Lock()
         self.resting_until = 0.0
         self._failures: list[tuple[float, str]] = []
@@ -67,6 +102,9 @@ class SearchGate:
     def tap(self, kid: int) -> None:
         if not self.taps.check(kid):
             raise SearchRefused("slow")
+
+    def use_file(self, path: Path) -> None:
+        self._cache = _Cache(path)
 
     def fetch(self, key: tuple, want: int, kid: int,
               call: Callable[[int], tuple[list[Any], BackendError | None]]) -> list[Any]:
@@ -93,28 +131,37 @@ class SearchGate:
             items, error = call(want)
             if error is not None and not items:
                 self._failed(error)
-            self._store(key, want, items)
+            self._cache.put(key, want, items)
             return items
         finally:
             self._youtube.release()
 
-    def _cached(self, key: tuple, want: int) -> list[Any] | None:
-        with self._cache_lock:
-            entry = self._cache.get(key)
-            if entry is None or entry.expires < time.time():
-                return None
-            # Fewer items than asked for means YouTube has no more.
-            if entry.asked >= want or len(entry.items) < entry.asked:
-                self._cache.move_to_end(key)
-                return entry.items
-            return None
+    def video(self, raw_id: str, call: Callable[[], VideoMetadata | None]) -> VideoMetadata | None:
+        """A YouTube video's details for the parent: from the cache when a
+        kid or the parent looked at it this week, else from YouTube (one
+        call at a time, no kid limits). A failure is the caller's to show."""
+        key = ("video", raw_id)
+        hit = self._cached(key, 1)
+        if hit and isinstance(hit[0], VideoMetadata):
+            return hit[0]
+        with self._youtube:
+            hit = self._cached(key, 1)
+            if hit and isinstance(hit[0], VideoMetadata):
+                return hit[0]
+            meta = call()
+            if meta is not None:
+                self._cache.put(key, 1, [meta])
+            return meta
 
-    def _store(self, key: tuple, asked: int, items: list[Any]) -> None:
-        with self._cache_lock:
-            self._cache[key] = _Entry(time.time() + CACHE_SECONDS, asked, list(items))
-            self._cache.move_to_end(key)
-            while len(self._cache) > CACHE_ENTRIES:
-                self._cache.popitem(last=False)
+    def _cached(self, key: tuple, want: int) -> list[Any] | None:
+        found = self._cache.get(key)
+        if found is None:
+            return None
+        asked, items = found
+        # Fewer items than asked for means YouTube has no more.
+        if asked >= want or len(items) < asked:
+            return items
+        return None
 
     def _failed(self, error: BackendError) -> None:
         now = time.time()

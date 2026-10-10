@@ -399,9 +399,13 @@ def test_a_blocked_channel_cannot_be_opened_by_url(app, client, backend):
     assert "be shown. Try another one" in client.get("/wishlist/channel/not-a-channel").text
 
 
+def _videos(n):
+    return [_meta(f"{i:011d}", f"Video {i}") for i in range(n)]
+
+
 def test_gate_budgets():
     gate = SearchGate()
-    call = lambda n: (["x"], None)  # noqa: E731
+    call = lambda n: (_videos(1), None)  # noqa: E731
     for i in range(12):
         gate.fetch(("q", i), 1, kid=1, call=call)
     with pytest.raises(SearchRefused) as e:
@@ -412,7 +416,7 @@ def test_gate_budgets():
     with pytest.raises(SearchRefused) as e:
         gate.fetch(("q", 999), 1, kid=50, call=call)
     assert e.value.kind == "busy"
-    assert gate.fetch(("q", 0), 1, kid=50, call=call) == ["x"]
+    assert gate.fetch(("q", 0), 1, kid=50, call=call) == _videos(1)
 
 
 def test_gate_asks_again_only_for_more_than_it_has():
@@ -421,14 +425,39 @@ def test_gate_asks_again_only_for_more_than_it_has():
 
     def call(n):
         asked.append(n)
-        return list(range(n)), None
+        return _videos(n), None
     gate.fetch(("q",), 24, kid=1, call=call)
     gate.fetch(("q",), 10, kid=1, call=call)
     gate.fetch(("q",), 48, kid=1, call=call)
     assert asked == [24, 48]
     short = SearchGate()
-    short.fetch(("q",), 24, kid=1, call=lambda n: ([1, 2], None))
-    assert short.fetch(("q",), 48, kid=1, call=lambda n: pytest.fail("asked again")) == [1, 2]
+    short.fetch(("q",), 24, kid=1, call=lambda n: (_videos(2), None))
+    assert short.fetch(("q",), 48, kid=1, call=lambda n: pytest.fail("asked again")) == _videos(2)
+
+
+def test_the_cache_survives_a_restart_and_serves_the_parent(tmp_path):
+    path = tmp_path / "cache.db"
+    SearchGate(path).fetch(("video", "aaaaaaaaaaa"), 1, kid=1,
+                           call=lambda n: ([RESULTS[0]], None))
+    SearchGate(path).fetch(("channels", "kids"), 1, kid=1, call=lambda n: (CHANNELS[:1], None))
+    again = SearchGate(path)
+    assert again.video("aaaaaaaaaaa", lambda: pytest.fail("asked YouTube")) == RESULTS[0]
+    assert again.fetch(("channels", "kids"), 1, kid=1,
+                       call=lambda n: pytest.fail("asked YouTube")) == CHANNELS[:1]
+    asked = []
+    assert again.video("bbbbbbbbbbb", lambda: asked.append(1) or RESULTS[1]) == RESULTS[1]
+    assert again.video("bbbbbbbbbbb", lambda: asked.append(1) or RESULTS[1]) == RESULTS[1]
+    assert asked == [1]
+
+
+def test_parent_add_preview_reuses_what_the_kid_looked_up(app, client, authed_client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    calls = []
+    backend.fetch_video_info = lambda url: calls.append(url)
+    page = authed_client.post("/parent/add",
+                              data={"url": "https://youtu.be/aaaaaaaaaaa"}).text
+    assert calls == [] and "Counting to ten" in page
 
 
 def test_channel_listing_videos_get_youtube_ids():
