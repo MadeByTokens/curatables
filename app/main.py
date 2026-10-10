@@ -281,7 +281,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
 
     def _wants_html(request: Request) -> bool:
         path = request.url.path
-        if path.startswith(("/api/", "/media/", "/healthz", "/metrics", "/parent/uploads/tus")):
+        if path.startswith(("/api/", "/media/", "/healthz", "/metrics", "/parent/upload/tus")):
             return False
         return "text/html" in request.headers.get("accept", "") or request.method == "GET"
 

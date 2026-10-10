@@ -748,3 +748,10 @@ class TestTusErrorContentType:
         content_type = resp.headers.get("content-type", "")
         assert "text/plain" in content_type
         assert b"0.1 GB free" in resp.content
+
+
+class TestTusErrorsAreNotPages:
+    def test_wrong_method_on_tus_url_gets_json_not_html(self, authed_client):
+        resp = authed_client.get("/parent/upload/tus/no-such-token")
+        assert resp.status_code == 405
+        assert resp.headers["content-type"].startswith("application/json")
