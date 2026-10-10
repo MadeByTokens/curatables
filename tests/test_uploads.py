@@ -166,7 +166,7 @@ def _make_services(tmp_path, db):
     channel_repo = ChannelRepository(db)
     from app.services.thumbnails import ThumbnailService
     thumbnails = ThumbnailService(tmp_path)
-    uploads = UploadService(storage, probe, video_repo, channel_repo, thumbnails)
+    uploads = UploadService(storage, probe, video_repo, thumbnails)
     return uploads, video_repo, channel_repo
 
 

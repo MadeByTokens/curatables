@@ -21,7 +21,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 
 from app.models import Video
-from app.repositories import VideoRepository, ChannelRepository
+from app.repositories import VideoRepository
 from app.services.ingest import IngestService, VideoDetails, upload_video_id
 from app.services.storage import StorageService
 from app.services.media_probe import MediaProbeService, UnsupportedCodec, ProbeError
@@ -68,12 +68,10 @@ class UploadService:
                  storage: StorageService,
                  probe: MediaProbeService,
                  video_repo: VideoRepository,
-                 channel_repo: ChannelRepository,
                  thumbnails: ThumbnailService):
         self.storage = storage
         self.probe = probe
         self.video_repo = video_repo
-        self.channel_repo = channel_repo
         self.thumbnails = thumbnails
         self.ingest = IngestService(storage, probe, video_repo, thumbnails)
 

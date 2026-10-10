@@ -33,9 +33,9 @@ _TRANSPARENT_PIXEL = (
 
 
 def _sniff_image_mime(path) -> str:
-    # The cache filename is always `thumb.jpg`, but yt-dlp / YouTube may
-    # hand us WebP, PNG, or GIF bytes. `<img>` sniffs, but `<video poster>`
-    # honors the declared type — so we must return the real one.
+    # A thumbnail file may hold WebP, PNG or GIF bytes whatever its name.
+    # `<img>` sniffs, but `<video poster>` honors the declared type, so
+    # return the real one.
     try:
         with open(path, "rb") as f:
             head = f.read(12)

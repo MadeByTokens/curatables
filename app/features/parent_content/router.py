@@ -251,9 +251,8 @@ async def edit_save(request: Request, video_id: str,
     fields["keep_forever"] = 1 if form.get("keep_forever") else 0
     video = content.update_video(video_id, **fields)
 
-    # Optional thumbnail replacement. Overwrites the canonical
-    # videos/{id}/thumb.jpg so every viewer (including kids without
-    # their own per-profile override) picks it up on the next load.
+    # A new thumbnail replaces the video's own, so every viewer without a
+    # per-profile override sees it on the next load.
     thumbnail = form.get("thumbnail")
     success_msg = "Saved."
     if thumbnail and hasattr(thumbnail, "read"):

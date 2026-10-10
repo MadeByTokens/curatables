@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
 
 from app.models import Event
 from app.repositories.base import BaseRepository
@@ -27,25 +26,6 @@ class EventRepository(BaseRepository):
             (event_type, video_id, profile_id, data_json),
         )
         self.db.commit()
-
-    def list_recent(self, limit: int = 50,
-                    profile_id: int | None = None) -> list[Event]:
-        if profile_id is not None:
-            rows = self.db.execute(
-                "SELECT e.*, v.title as video_title FROM events e "
-                "LEFT JOIN videos v ON e.video_id = v.video_id "
-                "WHERE e.profile_id = ? "
-                "ORDER BY e.timestamp DESC LIMIT ?",
-                (profile_id, limit),
-            ).fetchall()
-        else:
-            rows = self.db.execute(
-                "SELECT e.*, v.title as video_title FROM events e "
-                "LEFT JOIN videos v ON e.video_id = v.video_id "
-                "ORDER BY e.timestamp DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
-        return [self._to_model(r) for r in rows]
 
     def count_events(self, event_type: str,
                      profile_id: int | None = None,
@@ -143,18 +123,6 @@ class EventRepository(BaseRepository):
             sql += " AND timestamp >= ?"
             params.append(since)
         return dict(self.db.execute(sql, params).fetchone())
-
-    def _to_model(self, row: sqlite3.Row) -> Event:
-        d = dict(row)
-        return Event(
-            id=d["id"],
-            profile_id=d.get("profile_id"),
-            event_type=d["event_type"],
-            video_id=d.get("video_id"),
-            timestamp=d.get("timestamp", ""),
-            data_json=d.get("data_json", "{}"),
-            video_title=d.get("video_title"),
-        )
 
     def delete_older_than(self, days: float) -> int:
         cur = self.db.execute(

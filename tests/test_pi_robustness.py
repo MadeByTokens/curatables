@@ -247,7 +247,7 @@ def test_tus_append_cannot_exceed_declared_length(tmp_path):
     import pytest
     from app.services.uploads import UploadOffsetMismatch, UploadService
     storage = StorageService(tmp_path, backend=None)
-    uploads = UploadService(storage, None, None, None, None)
+    uploads = UploadService(storage, None, None, None)
     session = uploads.create("a.mp4", total_size=4, channel_id=1, title="")
     assert uploads.append(session.token, 0, b"abcd") == 4
     with pytest.raises(UploadOffsetMismatch):

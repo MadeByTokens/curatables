@@ -10,4 +10,3 @@ class Event:
     timestamp: str = ""
     id: int | None = None
     # Filled by joins in some queries only.
-    video_title: str | None = None

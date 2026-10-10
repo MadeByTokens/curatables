@@ -179,10 +179,9 @@ def get_upload_service(
     storage=Depends(get_storage_service),
     probe=Depends(get_probe_service),
     video_repo=Depends(get_video_repo),
-    channel_repo=Depends(get_channel_repo),
     thumbnails=Depends(get_thumbnail_service),
 ) -> UploadService:
-    return UploadService(storage, probe, video_repo, channel_repo, thumbnails)
+    return UploadService(storage, probe, video_repo, thumbnails)
 
 
 def get_relocation_service(
