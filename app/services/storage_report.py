@@ -1,10 +1,9 @@
-from __future__ import annotations
-"""Storage report service — read-only disk usage reporting.
+"""Read-only disk usage reporting for the parent UI.
 
-Separate from StorageService (which owns the write path) so the
-report logic can be reused by the parent dashboard and future
-file-management UIs without pulling in backend dependencies.
+Kept apart from StorageService (the write path) so it needs no backend.
 """
+
+from __future__ import annotations
 
 import shutil
 from dataclasses import dataclass
@@ -30,11 +29,9 @@ def disk_level(free: int, total: int, min_free_bytes: int, low_percent: int) -> 
 
 
 def get_disk_status_brief(media_dir: Path, min_free_bytes: int, low_percent: int) -> dict:
-    """Small read-only helper for the topnav status chip and the
-    dashboard. No database access, safe to call on every template
-    render. On filesystem error the status is "unknown" rather than
-    raising.
-    """
+    """Free space for the topnav chip and the dashboard. No database
+    access, so it is cheap enough for every render. Status "unknown" on
+    a filesystem error."""
     try:
         usage = shutil.disk_usage(media_dir)
     except OSError:

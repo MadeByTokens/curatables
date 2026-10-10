@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Shared-curation service — encode / decode / render channel exports.
 
 Three formats:
@@ -9,12 +8,14 @@ Three formats:
           callers surface a clean error. The .ytc and text paths keep
           working.
 
-Security posture: the importer RE-FETCHES metadata from the source
-(yt-dlp) — hints in the file are only used if the re-fetch fails.
-This closes the attack surface where a malicious .ytc injects fake
-titles/descriptions into the parent's preview page.
+Only URLs are imported: titles and descriptions are always re-fetched
+from the source, so a crafted file cannot inject fake metadata into the
+parent's preview page.
 """
 
+from __future__ import annotations
+
+import io
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -37,15 +38,8 @@ class SharingUnavailable(SharingError):
 
 @dataclass
 class ImportEntry:
-    """One row from a decoded .ytc / text file.
-
-    `url` is the only field required by downstream importers; the
-    hints are ignored unless the re-fetch fails (future work — today
-    we always re-fetch).
-    """
+    """One video URL from a decoded .ytc / text file."""
     url: str
-    title_hint: str = ""
-    description_hint: str = ""
 
 
 @dataclass
@@ -63,11 +57,9 @@ class ImportPayload:
 # ---------------------------------------------------------------------------
 
 def encode_ytc(channel: Channel, videos: Iterable[Video]) -> dict:
-    """Build the JSON-serialisable dict for a .ytc v1 export.
+    """Build the JSON-serialisable dict for a .ytc export.
 
-    Deliberately emits only URLs + lightweight hints. No thumbnails,
-    no file bytes, no cached metadata — keeps files tiny and forces
-    the importer to re-fetch current source metadata.
+    Holds URLs plus human-readable titles only; no thumbnails or media.
     """
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
@@ -103,10 +95,8 @@ def encode_ytc_bytes(channel: Channel, videos: Iterable[Video]) -> bytes:
 def decode_ytc(raw: bytes | str) -> ImportPayload:
     """Parse a .ytc v1 byte string or str into an ImportPayload.
 
-    Strict on schema version (rejects anything but SCHEMA_ID) so a
-    future v2 can't be silently mis-imported as v1. Lenient on
-    unknown keys within v1 so we can add fields in a v1.x update
-    without breaking older importers.
+    Rejects any schema other than SCHEMA_ID; ignores unknown keys and
+    malformed rows.
     """
     if isinstance(raw, bytes):
         try:
@@ -141,15 +131,11 @@ def decode_ytc(raw: bytes | str) -> ImportPayload:
     entries: list[ImportEntry] = []
     for row in videos:
         if not isinstance(row, dict):
-            continue  # forward-compat: silently skip malformed rows
+            continue
         url = (row.get("url") or "").strip()
         if not url:
             continue
-        entries.append(ImportEntry(
-            url=url,
-            title_hint=str(row.get("title") or "")[:500],
-            description_hint=str(row.get("description") or "")[:2000],
-        ))
+        entries.append(ImportEntry(url=url))
 
     return ImportPayload(
         channel_name=str(ch.get("name") or "").strip(),
@@ -265,7 +251,6 @@ def render_pdf(channel: Channel, videos: Iterable[Video]) -> bytes:
             "pip install 'reportlab>=4.0,<5.0'"
         ) from e
 
-    import io
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=LETTER,

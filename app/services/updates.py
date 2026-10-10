@@ -1,43 +1,31 @@
-"""yt-dlp update orchestration via a privileged systemd helper.
+"""yt-dlp updates through a privileged systemd helper.
 
-The Curatables server runs sandboxed (see ``systemd/curatables.service``:
-``ProtectSystem=strict``, ``NoNewPrivileges=true``, with the data
-directory as the *only* writable path). That hardening means the running
-process **cannot** ``pip install`` into its own venv, and **cannot**
-restart itself. So an "update yt-dlp from the dashboard" button cannot do
-the work directly without tearing the sandbox down.
+The service is sandboxed (``ProtectSystem=strict``, ``NoNewPrivileges``;
+only the data directory is writable), so it can neither ``pip install``
+into its venv nor restart itself. Instead it drops a request flag in the
+data dir; the root-owned ``curatables-updater.path`` unit runs
+``scripts/updater.sh`` (upgrade yt-dlp, restart the service), writes a
+result file and removes the request.
 
-Instead the app drops a small request flag into the data directory — the
-one place it is allowed to write (it already writes ``config.json``
-there). A separate, root-owned systemd path-unit
-(``systemd/curatables-updater.path``) notices the flag, runs the
-privileged work in ``scripts/updater.sh`` (pip-upgrade yt-dlp, restart
-the service), writes a result file back into the data dir, and removes
-the request. The dashboard reads the result file on its next render.
-
-This module is the app-side half: it reports the installed yt-dlp
-version, writes the request flag atomically, and reads back the pending
-request and last result. It never shells out and never needs privileges.
-
-File contract (all live directly under the data dir):
+This module is the unprivileged half. Files, directly under the data dir:
   - ``update-request.json``  written by the app, removed by the helper.
   - ``update-result.json``   written by the helper, read by the app.
 """
 
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 from app.config import Config
+from app.services import safe_fetch
 
 REQUEST_FILENAME = "update-request.json"
 RESULT_FILENAME = "update-result.json"
 
-# The only update kind wired today. The flag schema carries `kind` so a
-# future "app" self-update (git pull + backup + migrate) can reuse the
-# same helper without changing the file contract.
+# updater.sh rejects any other kind.
 KIND_YTDLP = "yt-dlp"
 VALID_KINDS = (KIND_YTDLP,)
 
@@ -53,8 +41,7 @@ def result_path(config: Config) -> Path:
 def ytdlp_version() -> Optional[str]:
     """Installed yt-dlp version string, or None if it can't be read."""
     try:
-        import yt_dlp  # noqa: WPS433 (local import: keep module import-cheap)
-
+        import yt_dlp  # local: keeps importing this module cheap
         return getattr(yt_dlp.version, "__version__", None)
     except Exception:
         return None
@@ -131,16 +118,14 @@ _latest_cache: dict = {}
 def latest_ytdlp_version(ttl: float = 3600) -> Optional[str]:
     """The newest yt-dlp release tag, or None if it cannot be checked.
     Cached for an hour so the diagnostics page stays quick."""
-    import time
-    from app.services.safe_fetch import fetch_public
     now = time.monotonic()
     if _latest_cache and now - _latest_cache["at"] < ttl:
         cached: Optional[str] = _latest_cache["version"]
         return cached
     version = None
     try:
-        body = fetch_public(_LATEST_URL, max_bytes=1024 * 1024, timeout=6,
-                            headers={"Accept": "application/vnd.github+json"})
+        body = safe_fetch.fetch_public(_LATEST_URL, max_bytes=1024 * 1024, timeout=6,
+                                       headers={"Accept": "application/vnd.github+json"})
         tag = json.loads(body).get("tag_name")
         version = str(tag) if tag else None
     except Exception:

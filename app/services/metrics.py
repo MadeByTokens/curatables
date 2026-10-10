@@ -1,19 +1,12 @@
-"""Prometheus metrics collection (opt-in).
+"""Prometheus metrics, opt-in via ``config.server.prometheus_enabled``.
 
-Curatables ships ``prometheus_client`` as a hard dependency but
-keeps the metrics surface gated behind ``config.server.prometheus_enabled``.
-Vanilla self-hosters don't get a counter surface; operators who
-wire Curatables into Prometheus flip the flag and the /metrics
-route starts answering.
-
-The service is *always* instantiated so call-site code can call
-``app.state.metrics.record_*`` unconditionally. When disabled, every
-recorder is a no-op and the registry is ``None``.
+The service is always instantiated so call sites can call
+``record_*`` unconditionally; when disabled every recorder is a no-op
+and the registry is ``None``.
 """
 
 from __future__ import annotations
 
-import logging
 from typing import Optional
 
 from prometheus_client import (
@@ -26,24 +19,17 @@ from prometheus_client import (
 )
 
 
-logger = logging.getLogger(__name__)
-
-
-# Histogram bucket boundaries in seconds. Tuned for a self-hosted LAN
-# server where a 5-second response is already pathological — the long
-# tail past 10s is a single +Inf bucket so we don't spend label
-# cardinality on requests that should never happen.
+# Seconds. On a LAN server anything past a few seconds is pathological,
+# so everything above 10 s shares the +Inf bucket.
 _HTTP_DURATION_BUCKETS = (0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 
 
 class MetricsService:
-    """Owns the Prometheus collector registry + counters.
+    """Owns the Prometheus collector registry and counters.
 
-    The same instance lives on ``app.state.metrics`` for the whole
-    process; callers (middleware, route handlers) capture a reference
-    once at startup. ``enable()`` mutates the instance in place so
-    tests and (some day) a runtime toggle can flip the surface on
-    without rewiring middleware bindings.
+    One instance lives on ``app.state.metrics`` for the whole process and
+    middleware captures it at startup, so ``enable()`` mutates it in place
+    rather than replacing it.
     """
 
     def __init__(self, enabled: bool):
@@ -78,9 +64,6 @@ class MetricsService:
             ["outcome"],
             registry=self.registry,
         )
-        # Reserved for call-site wiring. The counters exist so consumers
-        # of the service can always call ``metrics.downloads.labels(...).inc()``
-        # without first checking that the registry is built.
         self.downloads = Counter(
             "curatables_downloads_total",
             "Video download attempts and outcomes.",
@@ -103,10 +86,7 @@ class MetricsService:
             registry=self.registry,
         )
 
-    # ------------------------------------------------------------------
-    # Recording helpers — every method is a no-op when ``enabled`` is
-    # False so call sites don't need conditional branches.
-    # ------------------------------------------------------------------
+    # Recorders: all no-ops while disabled.
 
     def record_http(self, method: str, status_code: int,
                     duration_seconds: float) -> None:

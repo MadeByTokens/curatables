@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Turn a local video file into a library video.
 
 Shared by parent uploads and drive imports. Every step before commit()
@@ -6,6 +5,8 @@ works inside one work folder under uploads/.tmp/, so a failure or a
 cancel is cleaned up by deleting that folder. commit() is short: it
 moves the finished files into uploads/<id>/ and inserts the row.
 """
+
+from __future__ import annotations
 
 import hashlib
 import logging

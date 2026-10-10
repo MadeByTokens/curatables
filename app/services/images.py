@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Small helpers for user-supplied image files."""
+
+from __future__ import annotations
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 

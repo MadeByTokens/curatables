@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Upload service — tus.io-backed parent video uploads.
 
 Handles the lifecycle of a single uploaded video file:
@@ -10,6 +9,8 @@ On finalize we hash the file, compute the upload video_id, move the
 bytes into `{media_dir}/uploads/up_<hash[:16]>/video.<ext>`, run
 ffprobe validation, extract a thumbnail, and insert the videos row.
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -92,8 +93,6 @@ class UploadService:
             title=title or "",
             started_at=time.time(),
         )
-        # Create the empty bytes file and the sidecar atomically enough
-        # that a partial create is easy to sweep later.
         (tmp_dir / token).touch()
         sidecar = tmp_dir / f"{token}.json"
         sidecar.write_text(json.dumps(asdict(session)))
@@ -157,8 +156,7 @@ class UploadService:
 
         ext = self._pick_extension(session.filename)
 
-        # Probe and validate first, while the file is still in .tmp —
-        # this way a bad upload never contaminates the uploads/ tree.
+        # Validate while still in .tmp so a bad upload never reaches uploads/.
         try:
             probe = self.probe.validate(tmp_path, original_filename=session.filename)
         except (UnsupportedCodec, ProbeError):
@@ -167,8 +165,7 @@ class UploadService:
 
         video_id = upload_video_id(self.ingest.hash_file(tmp_path))
 
-        # Dedup: if this exact file was already uploaded, drop the new
-        # bytes and return the existing video.
+        # Same bytes already uploaded: keep the existing video.
         existing = self.video_repo.get(video_id)
         if existing is not None:
             self.cancel(token)
@@ -176,10 +173,8 @@ class UploadService:
                 raise DuplicateUpload(existing)
             return existing
 
-        # Bring the upload into the client playback baseline inside a
-        # work folder, exactly as downloaded videos are normalized:
-        # 1080p, H.265, VP9, Opus, non-faststart uploads become
-        # H.264/AAC ≤720p30 +faststart so they play on old devices.
+        # Normalize to the playback baseline inside a work folder, as
+        # downloads are.
         work = self.ingest.work_dir(f"{token}.work")
         staged = work / f"video.{ext}"
         tmp_path.replace(staged)

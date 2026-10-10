@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Data directory relocation service.
 
 Moves the entire `~/curatables-data/` tree (or whatever the configured
@@ -7,6 +6,8 @@ saves config.json at the new location. Runs a series of preflight
 checks before doing anything and raises RelocationError with a clear
 message on any refusal.
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -129,13 +130,11 @@ class RelocationService:
                 f"target disk first."
             )
 
-        # All checks passed — do the move.
         logger.info("Relocating data directory from %s to %s", old_path, new_path)
         shutil.move(str(old_path), str(new_path))
 
-        # Update the in-memory config. New requests use get_db() which
-        # reads config.data_dir fresh, so they pick up the new path
-        # automatically. Then persist config.json at the new location.
+        # get_db() reads config.data_dir per request, so updating the
+        # in-memory config is enough to switch live requests over.
         self.config.storage.path = str(new_path)
         self.config.save()
         # Leave a pointer behind so a restart without --data-dir, which

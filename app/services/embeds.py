@@ -1,31 +1,22 @@
-"""Per-extractor embed URL builder for the parent Review & Add page.
+"""Iframe embed URLs for the parent Review & Add preview.
 
-`embed_url_for()` returns an iframe-safe URL for the five platforms
-in the Tier 1 allow-list, or `None` for everything else. Callers
-(currently `parent/content_preview.html` via a Jinja global) use
-`None` as the "show the open-in-new-tab fallback" signal.
+`embed_url_for()` returns an embeddable player URL for the allow-listed
+platforms below, or None, which tells the template to fall back to an
+open-in-new-tab link.
 
-Tier 1 iframe allow-list (ships in v1):
   - youtube      -> youtube-nocookie.com/embed/{id}
   - vimeo        -> player.vimeo.com/video/{id}
   - dailymotion  -> dailymotion.com/embed/video/{id}
   - peertube     -> {instance}/videos/embed/{uuid}
   - ted          -> embed.ted.com/talks/{slug}
 
-Deliberately NOT in Tier 1 (link-out is the better UX for these):
-  - TikTok    - full-branded card, not a pure player, rots fast
-  - Twitch    - clips need a `parent` query param matching the
-                serving host; VODs/livestreams have no simple
-                iframe path at all
-  - X/Twitter - no iframe, only a JS widget that injects a
-                branded tweet card and tracks the reader
-  - Instagram - /p/{id}/embed needs Facebook Graph API auth for
-                Reels and rate-limits aggressively
-  - Facebook / Reddit - same family, no clean iframe
-
-Every platform in the allow-list is a thing we have to keep
-working; embed URLs drift over time. Promoting a sixth later is
-a 5-line edit in this file plus one test in tests/test_embeds.py.
+Deliberately not embedded (link-out is the better UX):
+  - TikTok    - full-branded card, not a pure player
+  - Twitch    - clips need a `parent` param matching the serving host;
+                VODs/livestreams have no simple iframe path
+  - X/Twitter - JS widget only, tracks the reader
+  - Instagram - embeds need Facebook Graph API auth for Reels
+  - Facebook / Reddit - no clean iframe
 """
 
 from __future__ import annotations

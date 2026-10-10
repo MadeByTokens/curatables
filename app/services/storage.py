@@ -1,9 +1,10 @@
-from __future__ import annotations
 """Storage service — video file management, caching, and cleanup.
 
 Downloads are delegated to a VideoBackend. This service handles file
 paths, locking, subtitle listing, and cache management.
 """
+
+from __future__ import annotations
 
 import logging
 import shutil
@@ -14,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.backends.base import VideoBackend
+from app.models import Video
 from app.services.media_fs import DRIVE_MISSING, TOO_BIG_FOR_FAT, file_size_limit
 from app.services.normalize import MediaNormalizer
 
@@ -49,7 +51,6 @@ class EvictionReport:
     video_ids: list[str] = field(default_factory=list)
 
 
-
 class StorageService:
     def __init__(self, media_dir: Path, backend: VideoBackend | None = None,
                  min_free_bytes: int = 0,
@@ -59,10 +60,7 @@ class StorageService:
         self.backend = backend
         self.min_free_bytes = min_free_bytes
         self.max_download_bytes = max_download_bytes
-        # When set, every freshly downloaded file is brought to the
-        # client playback baseline (H.264/AAC ≤720p30 +faststart) before
-        # download() returns. Optional so unit tests can construct a bare
-        # StorageService without ffmpeg wiring.
+        # Brings each download to the playback baseline; None skips it.
         self.normalizer = normalizer
 
     def get_free_space(self) -> int:
@@ -147,16 +145,10 @@ class StorageService:
     def upload_video_dir(self, video_id: str) -> Path:
         return self.uploads_dir() / video_id
 
-    def video_file_path(self, video) -> Path:
-        """Return the on-disk file for a Video, branching on storage_mode.
-
-        Uploaded videos are stored at `uploads/{id}/video.<ext>` where
-        the extension depends on the original container. We glob
-        `video.*` and return the first match. yt-dlp downloads live
-        at `videos/{id}/video.mp4` (always .mp4 since the backend
-        requests that container explicitly).
-        """
-        if getattr(video, "storage_mode", "") == "uploaded":
+    def video_file_path(self, video: Video) -> Path:
+        """Return the on-disk file for a Video: `uploads/{id}/video.<ext>`
+        for uploads, see downloaded_file() for downloads."""
+        if video.storage_mode == "uploaded":
             vdir = self.upload_video_dir(video.video_id)
             if vdir.exists():
                 for entry in vdir.iterdir():
@@ -166,7 +158,7 @@ class StorageService:
             return vdir / "video.missing"
         return self.downloaded_file(video.video_id) or self.video_path(video.video_id)
 
-    def delete_video_files(self, video) -> None:
+    def delete_video_files(self, video: Video) -> None:
         """Remove the on-disk directory backing a video.
 
         Works for both downloaded (`videos/<id>/`) and uploaded
@@ -175,7 +167,7 @@ class StorageService:
         row be removed.
         """
         targets = [self.video_dir(video.video_id)]
-        if getattr(video, "storage_mode", "") == "uploaded":
+        if video.storage_mode == "uploaded":
             targets.append(self.upload_video_dir(video.video_id))
         for target in targets:
             if target.exists():
@@ -188,13 +180,13 @@ class StorageService:
         path = self.downloaded_file(video_id)
         return path.stat().st_size if path else 0
 
-    def subtitle_dir(self, video) -> Path:
+    def subtitle_dir(self, video: Video) -> Path:
         """Where a video's subtitle files live: next to its video file."""
-        if getattr(video, "storage_mode", "") == "uploaded":
+        if video.storage_mode == "uploaded":
             return self.upload_video_dir(video.video_id)
         return self.video_dir(video.video_id)
 
-    def list_subtitles(self, video) -> list[dict]:
+    def list_subtitles(self, video: Video) -> list[dict]:
         """Subtitle files for a video, named ``video.<lang>.vtt`` (or .srt)."""
         vdir = self.subtitle_dir(video)
         subs = []
@@ -247,9 +239,6 @@ class StorageService:
                 max_filesize=self.max_download_bytes,
             )
             if path and self.normalizer is not None:
-                # Bring the pulled stream into the client playback
-                # baseline. normalize() never raises on media problems —
-                # a file it can't read/transcode is left untouched.
                 path = self.normalizer.normalize(path).path
             return path
         finally:

@@ -1,33 +1,11 @@
-"""mDNS / Zeroconf advertisement.
+"""mDNS / Zeroconf advertisement of the server as ``_http._tcp.local.``.
 
-Publishes the server as an `_http._tcp.local.` service so users on the
-same LAN can discover it the way they discover a networked printer —
-type `http://curatables.local/` in a browser and it just works.
-
-Design rules:
-
-1. **Never crash the app.** If `zeroconf` isn't installed, or LAN IP
-   detection fails, or the Zeroconf daemon can't start, the rest of
-   the server must still boot. Log a warning and carry on.
-
-2. **Async-safe.** The advertiser runs inside the FastAPI lifespan,
-   which lives on the uvicorn asyncio event loop. We use
-   `zeroconf.asyncio.AsyncZeroconf` because the sync `Zeroconf` class
-   refuses to run from inside a running event loop — recent versions
-   raise `EventLoopBlocked` instead of silently freezing the loop.
-   `start()` and `stop()` are therefore coroutines and must be
-   awaited.
-
-3. **Injectable for tests.** `AsyncZeroconf` talks to the network, so
-   unit tests inject fake factories via the `azc_factory` /
-   `service_info_factory` constructor arguments. Passing the literal
-   `None` means "pretend the library isn't installed" and is how the
-   library-missing branch is exercised in CI.
-
-4. **Idempotent start/stop.** `stop()` must be safe to call multiple
-   times (FastAPI lifespan can fire shutdown on SIGINT *and* on the
-   normal exit path) and safe to call when `start()` was never called
-   or failed.
+Rules:
+- Never crash the app: a missing library, failed IP detection or a
+  daemon error is logged and the server boots anyway.
+- Async only: the sync ``Zeroconf`` class refuses to run inside the
+  uvicorn event loop, so ``start()``/``stop()`` use ``AsyncZeroconf``.
+- ``stop()`` is idempotent and safe after a failed or missing ``start()``.
 """
 
 from __future__ import annotations
@@ -50,20 +28,16 @@ except Exception:  # pragma: no cover - import guard
 
 SERVICE_TYPE = "_http._tcp.local."
 
-# Sentinel that means "caller didn't override this factory, use the
-# library default". Passing the literal `None` still works and means
-# "pretend the library is unavailable" — used by unit tests to cover
-# the install-missing branch without uninstalling zeroconf in CI.
+# Factory sentinel: "use the real zeroconf class". Passing None instead
+# means "pretend the library isn't installed" (used by tests).
 _USE_DEFAULT = object()
 
 
 def detect_lan_ip() -> str:
     """Return the host's primary LAN IPv4 address, or ``127.0.0.1``.
 
-    Uses the classic UDP-connect trick: the kernel picks the source
-    address it would use to reach a public address, without actually
-    sending any packet. Works on hosts with multiple interfaces, falls
-    back cleanly on hosts with no network.
+    Connecting a UDP socket sends nothing; it just makes the kernel pick
+    the source address it would use to reach a public host.
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -76,13 +50,8 @@ def detect_lan_ip() -> str:
 
 
 def _slugify(name: str) -> str:
-    """Lower-case, strip dots and whitespace, keep alnum + dash.
-
-    Used to build the hostname portion (`<slug>.local.`) of the mDNS
-    service record. Runs of non-alphanumerics collapse into a single
-    dash so `Weird___Name` becomes `weird-name`, not `weird---name`.
-    The user-visible friendly name stays untouched.
-    """
+    """Hostname label for ``<slug>.local.``: lower-case alphanumerics,
+    with each run of anything else collapsed to one dash."""
     out = []
     prev_dash = False
     for ch in name.lower().strip():
@@ -119,10 +88,6 @@ class ZeroconfAdvertiser:
         self.port = int(port)
         self.service_type = service_type
         self._ip_detector = ip_detector
-        # Resolve factories. _USE_DEFAULT means "pick up whatever the
-        # real zeroconf library exposes, or None if it isn't installed".
-        # Passing the literal None means "explicitly disable" and is
-        # what unit tests use to exercise the library-missing branch.
         if azc_factory is _USE_DEFAULT:
             azc_factory = AsyncZeroconf if _HAVE_ZEROCONF else None
         if service_info_factory is _USE_DEFAULT:
@@ -169,14 +134,11 @@ class ZeroconfAdvertiser:
                 properties={"path": "/"},
             )
             azc = self._azc_factory()
-            # Store the daemon on self before anything that can raise
-            # touches it, so the except-branch can close it via
-            # _safe_close() instead of leaking a hanging listener.
+            # Stored before anything can raise so _safe_close() can
+            # shut it down instead of leaking the listener.
             self._azc = azc
-            # allow_name_change=True lets zeroconf auto-suffix the service
-            # name (e.g. "Curatables (2)") if another instance already
-            # holds ours on the LAN. Prefer collision survival over
-            # crashing on a duplicate.
+            # Auto-suffix ("Curatables (2)") on a LAN name collision
+            # rather than failing.
             await azc.async_register_service(info, allow_name_change=True)
             self._info = info
             self._started = True
@@ -189,7 +151,6 @@ class ZeroconfAdvertiser:
             logger.warning("mDNS advertisement failed (%s: %s); server will "
                            "still run, but clients will need to know the IP "
                            "or hostname directly.", type(e).__name__, e)
-            # Clean up a half-initialized AsyncZeroconf instance
             await self._safe_close()
             return False
 

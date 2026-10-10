@@ -1,10 +1,11 @@
-from __future__ import annotations
 """Media probe service — ffprobe wrapper and ffmpeg decoder allow-list.
 
 Runs `ffmpeg -decoders` once at startup to learn what this installed
 ffmpeg can actually decode, then uses `ffprobe` to inspect uploads and
 reject unsupported codecs with a clear conversion hint.
 """
+
+from __future__ import annotations
 
 import json
 import logging

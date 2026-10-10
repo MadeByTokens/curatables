@@ -1,10 +1,10 @@
-from __future__ import annotations
 """Content service — business logic for managing approved content."""
+
+from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-
-logger = logging.getLogger(__name__)
+from typing import NoReturn
 
 from app.config import Config
 from app.models import Channel, Video, ViewerContext
@@ -17,12 +17,14 @@ from app.services.storage import StorageService, InsufficientDiskSpace
 from app.services.download_queue import get_download_queue
 from app.services.ids import make_video_id
 from app.services.search_gate import GATE
-from app.db.connection import get_db_path
+from app.db.connection import create_connection, get_db_path
+from app.services.metrics import MetricsService
+
+logger = logging.getLogger(__name__)
 
 
 class ContentError(Exception):
     """Raised when a content operation fails."""
-    pass
 
 
 class VideoNotFound(ContentError):
@@ -39,7 +41,7 @@ class ContentService:
         thumbnails: ThumbnailService,
         storage: StorageService,
         config: Config,
-        metrics=None,
+        metrics: MetricsService | None = None,
     ):
         self.video_repo = video_repo
         self.source_repo = source_repo
@@ -48,13 +50,7 @@ class ContentService:
         self.thumbnails = thumbnails
         self.storage = storage
         self.config = config
-        # Default to a disabled MetricsService so unit tests that build
-        # ContentService directly (without going through FastAPI DI) do
-        # not need to pass a metrics arg.
-        if metrics is None:
-            from app.services.metrics import MetricsService
-            metrics = MetricsService(enabled=False)
-        self.metrics = metrics
+        self.metrics = metrics or MetricsService(enabled=False)
 
     # --- Reading ---
 
@@ -136,24 +132,13 @@ class ContentService:
             limit=per_page, offset=offset)
 
     def fetch_previews_for_urls(self, urls: list[str]) -> tuple[list[VideoMetadata], list[str]]:
-        """Fetch metadata previews for a batch of URLs (used by the
-        shared-curation import flow).
+        """Fetch metadata previews for a shared-curation import.
 
-        Returns (videos, failed_urls). URLs that parse_url can't
-        recognise or that the backend can't resolve are silently
-        skipped and reported in failed_urls; the rest flow into a
-        single VideoMetadata list that the /parent/add preview page
-        already knows how to render.
-
-        Playlist / channel URLs are expanded — their contents are
-        flattened into the same list — so an import can mix single
-        videos with playlists in one file.
+        Returns (videos, failed_urls). Playlist and channel URLs are
+        expanded into the same flat list; duplicate URLs are fetched once.
         """
         videos: list[VideoMetadata] = []
         failed: list[str] = []
-        # Dedup URLs within the batch so a repeat line doesn't
-        # double-preview (the /confirm step enforces uniqueness at
-        # the DB layer, but pre-empting is cheaper).
         seen: set[str] = set()
         for raw in urls:
             url = (raw or "").strip()
@@ -221,10 +206,7 @@ class ContentService:
             else:
                 info = self.source.fetch_video_info(parsed.clean_url)
             if not info:
-                err = self.get_last_backend_error()
-                if err:
-                    raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
-                raise ContentError("Could not fetch video info")
+                self._raise_backend_error("Could not fetch video info")
             self.thumbnails.download(
                 make_video_id(info.extractor, info.video_id),
                 info.thumbnail_url,
@@ -235,10 +217,7 @@ class ContentService:
             title, videos = GATE.listing(("channel-listing", parsed.clean_url),
                                          lambda: self.source.fetch_channel_videos(parsed.clean_url))
             if not videos:
-                err = self.get_last_backend_error()
-                if err:
-                    raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
-                raise ContentError("Could not fetch channel videos")
+                self._raise_backend_error("Could not fetch channel videos")
             self._download_thumbnails(videos)
             return title, videos
 
@@ -246,14 +225,17 @@ class ContentService:
             title, videos = GATE.listing(("playlist-listing", parsed.clean_url),
                                          lambda: self.source.fetch_playlist(parsed.clean_url))
             if not videos:
-                err = self.get_last_backend_error()
-                if err:
-                    raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
-                raise ContentError("Could not fetch playlist")
+                self._raise_backend_error("Could not fetch playlist")
             self._download_thumbnails(videos)
             return title, videos
 
         raise ContentError(f"Unknown URL type: {parsed.url_type}")
+
+    def _raise_backend_error(self, fallback: str) -> NoReturn:
+        err = self.get_last_backend_error()
+        if err is None:
+            raise ContentError(fallback)
+        raise ContentError(f"{err.message}\n{err.suggestion}" if err.suggestion else err.message)
 
     def _download_thumbnails(self, videos: list[VideoMetadata]) -> None:
         self.thumbnails.download_many([
@@ -328,7 +310,6 @@ class ContentService:
                       resolution: str, recheck: bool = False) -> None:
         """Download job body. Runs on a queue worker with its own SQLite
         connection; the request that queued it is long gone."""
-        from app.db.connection import create_connection
         conn = create_connection(get_db_path(self.config.data_dir))
         repo = VideoRepository(conn)
         storage = self.storage
@@ -405,11 +386,8 @@ class ContentService:
         return self.source_repo.create(source)
 
     def resume_pending_downloads(self) -> int:
-        """Kick off background downloads for any videos stuck in 'pending'.
-        Called once at server startup, after recover_from_crash has moved
-        any interrupted 'downloading' rows back to 'pending'. Idempotent;
-        safe to call when there are no pending rows. Returns the count
-        of downloads queued."""
+        """Queue every 'pending' video (startup, after recover_from_crash
+        has reset interrupted downloads). Returns how many were queued."""
         pending = self.video_repo.list_pending()
         for v in pending:
             self._start_download(v.video_id, v.original_url, v.resolution)

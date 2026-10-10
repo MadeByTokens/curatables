@@ -1,10 +1,11 @@
-from __future__ import annotations
 """Client for the root system helper (syshelper/, curatables-helper.service).
 
 On the Raspberry Pi image the helper changes the Linux password, Wi-Fi,
 drives and services for the dashboard. Elsewhere (a laptop install, the
 tests) its socket does not exist and the pages that need it say so.
 """
+
+from __future__ import annotations
 
 import json
 import os

@@ -1,36 +1,21 @@
-from __future__ import annotations
-"""Media normalization — bring an ingested file to the client playback baseline.
+"""Media normalization: bring an ingested file to the client playback baseline.
 
-Why this exists
----------------
-Modern sources (YouTube especially) serve **VP9/AV1 video + Opus audio**.
-Re-containering those streams into ``.mp4`` (what ``merge_output_format``
-does) changes the extension but not the codecs — Safari and old devices
-still can't decode them, so the kid gets a black screen or audio-only.
+Sources often serve VP9/AV1 video with Opus audio; putting those in an
+``.mp4`` container does not make them playable on Safari or old devices.
+Every downloaded or uploaded file is probed and, if needed, remuxed
+(cheap) or transcoded so it meets the baseline:
 
-The fix is to *probe* every ingested file and, when it falls outside the
-baseline, either **remux** it (cheap: faststart fix, no re-encode) or
-**transcode** it (expensive: re-encode video and/or audio) so the result
-satisfies the contract in ``docs/history/ui-and-playback-plan.md`` §2:
+- Container: MP4 with ``+faststart`` (moov atom first, plays while downloading)
+- Video: H.264, <= 720p, <= 30 fps
+- Audio: AAC-LC, or no audio at all
 
-- Container: MP4 with ``+faststart`` (moov atom first → plays before full download)
-- Video: H.264, ≤ 720p, ≤ 30 fps
-- Audio: AAC-LC (or no audio at all)
-
-This is deliberately a plain synchronous function called from the
-background download thread (and the upload finalize path) — it is
-queue-driven / bursty by construction (one transcode per ingest), which
-fits the idle-box / thermal envelope of the target hardware. No
-always-on worker.
-
-Design note (probe gate is the throttle)
-----------------------------------------
-There is no config flag. Tightening the yt-dlp format string to prefer
-``avc1``+``mp4a`` means H.264 is the common case, so most ingests only
-need the cheap faststart remux (or nothing). Only genuinely non-baseline
-files pay for a full transcode. A file ffprobe cannot read (e.g. the
-4-byte placeholder the hermetic test stub writes) is left untouched.
+It runs synchronously in the job that ingests the file, one file at a
+time, which suits the Pi's thermal envelope. The yt-dlp format string
+already prefers H.264/AAC, so most files need at most a remux. Files
+ffprobe cannot read are left untouched.
 """
+
+from __future__ import annotations
 
 import logging
 import time

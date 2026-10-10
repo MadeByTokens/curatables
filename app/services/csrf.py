@@ -1,4 +1,3 @@
-from __future__ import annotations
 """CSRF token minting and validation.
 
 Defense-in-depth on top of SameSite=Strict on the session cookie. A
@@ -7,6 +6,8 @@ accompany every state-mutating request. An attacker who can somehow
 get a POST through the SameSite guard still cannot forge the token
 without both the signing secret and the victim's session cookie.
 """
+
+from __future__ import annotations
 
 import secrets
 

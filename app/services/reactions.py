@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Reaction service — emoji reactions on videos."""
+
+from __future__ import annotations
 
 import json
 from app.repositories.reaction_repo import ReactionRepository

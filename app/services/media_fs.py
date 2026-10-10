@@ -1,10 +1,11 @@
-from __future__ import annotations
 """Facts about the filesystem that holds the videos.
 
 When the videos live on a USB drive (storage.media_path), the drive can
 be missing (unplugged, or not mounted after a power cut), and a FAT32
 drive cannot hold a file of 4 GB or more.
 """
+
+from __future__ import annotations
 
 import os
 import time

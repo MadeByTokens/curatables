@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Profile service — child profile management."""
+
+from __future__ import annotations
 
 import builtins
 import re

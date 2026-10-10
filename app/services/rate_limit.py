@@ -1,10 +1,9 @@
-from __future__ import annotations
-"""Simple in-memory sliding-window rate limiter.
+"""In-memory sliding-window rate limiter.
 
-One module-level instance is enough for a single-tenant family server.
-If we ever scale horizontally, this has to move to a shared store
-(Redis, a DB table with an index), but that's premature for now.
+State is per process, which is enough for a single-process family server.
 """
+
+from __future__ import annotations
 
 import threading
 import time

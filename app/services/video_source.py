@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Video source service — platform-agnostic URL parsing + fetching.
 
 Wraps a VideoBackend (currently only yt-dlp) and adds a lightweight
@@ -21,6 +20,8 @@ string starting with `http://` or `https://`, and not a bare YouTube
 `@handle` (which we still accept as a convenience). Everything else
 gets a chance at the backend.
 """
+
+from __future__ import annotations
 
 import re
 from dataclasses import dataclass
@@ -91,17 +92,8 @@ class VideoSourceService:
             )
 
         # --- Catch-all: any other http(s) URL ---
-        #
-        # The backend's extract_info call will tell us the real type
-        # (single video vs. playlist vs. channel). For now we label
-        # it "video" because that's the dominant case; the
-        # ContentService.fetch_preview path then decides whether to
-        # call fetch_video_info / fetch_playlist / fetch_channel_videos
-        # based on the url_type here. A non-video URL (e.g. a
-        # Vimeo showcase) will fall through to fetch_video_info,
-        # which yt-dlp still handles gracefully — it returns
-        # playlist entries in a `_type: "playlist"` info dict and
-        # the service layer can decide to promote it.
+        # Labelled "video", the common case; yt-dlp works out what the
+        # URL really is when it fetches it.
         if url.startswith("http://") or url.startswith("https://"):
             return ParsedURL(
                 url_type="video",

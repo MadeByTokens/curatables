@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Run ffmpeg as a job that can be watched and cancelled.
 
 ffmpeg is started in its own process group with ``-progress pipe:1``.
@@ -9,6 +8,8 @@ and reaps it. ffmpeg's stderr goes to a file, never a pipe, so a chatty
 encoder can neither block on a full pipe nor grow this process's
 memory.
 """
+
+from __future__ import annotations
 
 import os
 import signal

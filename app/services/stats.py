@@ -1,5 +1,6 @@
-from __future__ import annotations
 """Stats service — aggregated usage statistics for the parent dashboard."""
+
+from __future__ import annotations
 
 from datetime import date, timedelta
 
@@ -8,6 +9,7 @@ from app.repositories.comment_repo import CommentRepository
 from app.repositories.reaction_repo import ReactionRepository
 from app.repositories.profile_repo import ProfileRepository
 from app.repositories.video_repo import VideoRepository
+from app.models.viewer import ViewerContext
 from app.services.comments import CommentService
 
 
@@ -17,7 +19,7 @@ class StatsService:
                  reaction_repo: ReactionRepository,
                  profile_repo: ProfileRepository,
                  comment_service: CommentService,
-                 video_repo: VideoRepository | None = None):
+                 video_repo: VideoRepository):
         self.event_repo = event_repo
         self.comment_repo = comment_repo
         self.reaction_repo = reaction_repo
@@ -34,28 +36,19 @@ class StatsService:
         return None
 
     def dashboard_overview(self) -> dict:
-        """One-stop fetch for the parent home dashboard. Composes KPIs,
-        per-kid snapshots, recent videos/comments, and a 'needs attention'
-        bucket. All lists are bounded. Meant to be called once per
-        dashboard render — ~10 small queries total."""
-        failed = (self.video_repo.list_failed_downloads(limit=10)
-                  if self.video_repo else [])
-        stuck = (self.video_repo.list_stuck_pending(older_than_hours=1,
-                                                    limit=10)
-                 if self.video_repo else [])
-        recent_videos = (self.video_repo.list_recent(limit=5)
-                         if self.video_repo else [])
-        awaiting_review = (self.video_repo.list_awaiting_review(limit=10)
-                           if self.video_repo else [])
+        """Everything the parent home dashboard renders: today's KPIs,
+        per-kid snapshots, recent videos/comments and a 'needs attention'
+        bucket. All lists are bounded."""
+        failed = self.video_repo.list_failed_downloads(limit=10)
+        stuck = self.video_repo.list_stuck_pending(older_than_hours=1, limit=10)
+        recent_videos = self.video_repo.list_recent(limit=5)
+        awaiting_review = self.video_repo.list_awaiting_review(limit=10)
 
         yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
         new_comments_count = self.comment_repo.count_since(since=yesterday_iso)
 
         kpis_today = self.dashboard_kpis("today")
 
-        # Per-kid summary. For each profile, attach last-watched video
-        # and last comment so the dashboard can show a "what they're
-        # doing" line without extra round-trips on the template side.
         profiles = self.profile_repo.list()
         today_iso = date.today().isoformat()
         per_kid = []
@@ -64,7 +57,7 @@ class StatsService:
                 continue
             last_watched_id = self.event_repo.last_watched_video_id(p.id)
             last_watched = (self.video_repo.get(last_watched_id)
-                            if last_watched_id and self.video_repo else None)
+                            if last_watched_id else None)
             last_comments = self.comment_repo.list_recent_by_profile(
                 p.id, limit=1)
             per_kid.append({
@@ -127,7 +120,7 @@ class StatsService:
                 pid, since=since)
         return rows
 
-    def video_detail(self, video_id: str, viewer=None,
+    def video_detail(self, video_id: str, viewer: ViewerContext,
                      comments_page: int = 1,
                      comments_per_page: int = 20) -> dict:
         stats = self.event_repo.video_stats(video_id)
@@ -136,11 +129,6 @@ class StatsService:
         reactions_with_names = self.reaction_repo.list_for_video_with_profiles(
             video_id)
         reaction_counts = self.reaction_repo.counts_for_video(video_id)
-        # Parent moderation view — use a parent ViewerContext if none
-        # was supplied so we see every comment (not channel-scoped).
-        if viewer is None:
-            from app.models.viewer import ViewerContext
-            viewer = ViewerContext(viewer_type="parent")
         comments, comments_total = self.comment_service.list_for_video(
             video_id, viewer, page=comments_page, per_page=comments_per_page)
         comments_total_pages = max(
