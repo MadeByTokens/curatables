@@ -31,14 +31,15 @@ def _setup_closed(request: Request, config: Config) -> Response | None:
 
 
 @router.get("/setup", response_class=HTMLResponse)
-def setup_page(request: Request, config: Config = Depends(get_config)):
+def setup_page(request: Request, config: Config = Depends(get_config),
+               helper: SystemHelper = Depends(get_system_helper)):
     if not config.is_first_run:
         return RedirectResponse(url="/parent/login", status_code=302)
     closed = _setup_closed(request, config)
     if closed:
         return closed
     return request.app.state.templates.TemplateResponse(request, "parent/setup.html", {
-        "request": request, "error": None,
+        "request": request, "error": None, "two_steps": helper.available,
     })
 
 

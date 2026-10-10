@@ -1,0 +1,34 @@
+{# Restart / power buttons. Set `back` to the page to return to. #}
+<ul class="power-list mw-500">
+  <li>
+    <form method="POST" action="/parent/system/restart" data-confirm="Restart Curatables? Videos stop for about half a minute.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      <button type="submit" class="btn btn-secondary">Restart Curatables</button>
+    </form>
+    <span class="fs-14">About 30 seconds. Fixes a stuck dashboard or kids' screen.</span>
+  </li>
+  <li>
+    <form method="POST" action="/parent/system/network-restart" data-confirm="Reconnect the network? The connection drops for a few seconds.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      <button type="submit" class="btn btn-secondary">Reconnect network</button>
+    </form>
+    <span class="fs-14">A few seconds. Try it when downloads say there is no internet.</span>
+  </li>
+  <li>
+    <form method="POST" action="/parent/system/reboot" data-confirm="Restart the whole box? It takes one to two minutes.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      <button type="submit" class="btn btn-secondary">Restart the box</button>
+    </form>
+    <span class="fs-14">One to two minutes. Finishes system updates; fixes most other problems.</span>
+  </li>
+  <li>
+    <form method="POST" action="/parent/system/shutdown" data-confirm="Turn the box off? Kids cannot watch until it is unplugged and plugged back in.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-danger">Shut down</button>
+    </form>
+    <span class="fs-14">Use before unplugging the box. To turn it on again, unplug it and plug it back in.</span>
+  </li>
+</ul>

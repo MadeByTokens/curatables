@@ -1,4 +1,5 @@
 {% extends "parent/base.html" %}
+{% block title %}{{ job.title if job else "Task" }} · curatables{% endblock %}
 {% block content %}
 <h1>{{ job.title if job else "Task" }}</h1>
 {% if error %}
@@ -7,17 +8,21 @@
 <div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="unknown"></div>
 {% else %}
   {% if job.state == "running" %}
-  <div class="flash flash-info mw-500" role="status">Working&hellip; leave this page open, it updates by itself.
+  <div class="flash flash-info mw-500" role="status">Working&hellip; this page updates by itself.
     The box keeps going even if you close it.</div>
   {% elif job.state == "done" %}
-  <div class="flash mw-500" role="status">Done.</div>
+  <div class="flash mw-500" role="status"><strong>Finished.</strong>
+    {% if job.messages %}{{ job.messages[-1] }}{% endif %}</div>
   {% else %}
-  <div class="flash flash-error mw-500" role="alert">{{ job.error }}</div>
+  <div class="flash flash-error mw-500" role="alert"><strong>It didn't work.</strong> {{ job.error }}</div>
   {% endif %}
   {% if job.messages %}
-  <ol class="fs-14 mw-500">
-    {% for m in job.messages %}<li>{{ m }}</li>{% endfor %}
-  </ol>
+  <details class="mw-500"{% if job.state == "running" %} open{% endif %}>
+    <summary>Steps ({{ job.messages|length }})</summary>
+    <ol class="fs-14">
+      {% for m in job.messages %}<li>{{ m }}</li>{% endfor %}
+    </ol>
+  </details>
   {% endif %}
   {% if job.state == "running" %}
   <div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="running"
@@ -25,5 +30,5 @@
   <noscript><p><a href="">Refresh</a> to see progress.</p></noscript>
   {% endif %}
 {% endif %}
-<p class="mt-24"><a href="{{ back }}">&larr; Back</a></p>
+<p class="mt-24"><a href="{{ back }}" class="btn btn-secondary">{{ back_label }}</a></p>
 {% endblock %}

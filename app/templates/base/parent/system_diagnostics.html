@@ -1,11 +1,13 @@
 {% extends "parent/base.html" %}
+{% block title %}Diagnostics · Box · curatables{% endblock %}
 {% block content %}
-<h1>Box</h1>
+<h1>Box: diagnostics</h1>
 {% include "parent/_system_nav.html" %}
 {% if error %}<div class="flash flash-error mw-500" role="alert">Some checks could not run: {{ error }}</div>{% endif %}
 
 <h2>Health checks</h2>
 <table class="mw-500">
+  <thead><tr><th><span class="visually-hidden">Status</span></th><th>Check</th></tr></thead>
   <tbody>
   {% for c in checks %}
     <tr>
@@ -30,29 +32,17 @@
 {% endif %}
 
 <h2 class="mt-32">Fixes to try</h2>
-<form method="POST" action="/parent/system/diagnostics/update-downloader" class="inline-form">
+<form method="POST" action="/parent/system/diagnostics/update-downloader" class="mb-16">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="back" value="/parent/system/diagnostics">
   <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
-</form>
-<form method="POST" action="/parent/system/restart" class="inline-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-secondary">Restart Curatables</button>
-</form>
-<form method="POST" action="/parent/system/network-restart" class="inline-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-secondary">Reconnect network</button>
-</form>
-<form method="POST" action="/parent/system/reboot" class="inline-form" data-confirm="Restart the whole box? It takes one to two minutes.">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-danger">Restart the box</button>
-</form>
-<form method="POST" action="/parent/system/shutdown" class="inline-form" data-confirm="Turn the box off? Kids cannot watch until it is unplugged and plugged back in.">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-danger">Shut down</button>
+  <span class="fs-14">When YouTube videos stop downloading.</span>
 </form>
 {% if update_state.result and update_state.result.status != "ok" %}
-<p class="fs-14 flash-error mw-500">Last downloader update failed: {{ update_state.result.message or "see the report" }}</p>
+<div class="flash flash-error mw-500" role="alert">Last downloader update failed: {{ update_state.result.message or "see the report" }}</div>
 {% endif %}
+{% set back = "/parent/system/diagnostics" %}
+{% include "parent/_power_buttons.html" %}
 
 <h2 class="mt-32">Getting help</h2>
 <p class="mw-500">The diagnostics report is a text file describing the box: the checks above, network and

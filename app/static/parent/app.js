@@ -74,11 +74,22 @@
   if (wait) {
     var health = wait.getAttribute('data-wait-healthy');
     var back = wait.getAttribute('data-wait-back');
+    var mustGoDown = wait.getAttribute('data-wait-down') === '1';
+    var slow = document.querySelector('[data-wait-slow]');
+    var started = Date.now();
+    var wentDown = false;
     var check = function () {
       get(health, function (status) {
-        if (status === 200) { location.href = back; } else { setTimeout(check, 2000); }
+        var elapsed = Date.now() - started;
+        if (status !== 200) { wentDown = true; }
+        if (status === 200 && (wentDown || !mustGoDown || elapsed > 90000)) {
+          location.href = back;
+          return;
+        }
+        if (slow && elapsed > 240000) { slow.hidden = false; }
+        setTimeout(check, 2000);
       });
     };
-    setTimeout(check, parseInt(wait.getAttribute('data-wait-delay') || '6000', 10));
+    setTimeout(check, parseInt(wait.getAttribute('data-wait-delay') || '4000', 10));
   }
 })();

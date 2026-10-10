@@ -42,7 +42,7 @@ def helper(app):
 def test_lists_a_plugged_in_drive_with_its_actions(authed_client, helper):
     page = authed_client.get("/parent/system/drives").text
     assert "Acme Thumb" in page and "exFAT" in page
-    assert "Use for videos" in page and "Import videos from it" in page and "Format this drive" in page
+    assert "Use for videos" in page and "Import from it" in page and "Format this drive" in page
     assert "videos are on the <strong>SD card</strong>" in page
 
 
@@ -68,6 +68,16 @@ def test_missing_videos_drive_offers_reconnect(authed_client, helper):
     helper.responses["drives_list"] = _state([], media={"configured": True, "present": False})
     page = authed_client.get("/parent/system/drives").text
     assert "not plugged in" in page and "Reconnect" in page
+
+
+def test_an_unopened_videos_drive_offers_only_repair(authed_client, helper):
+    helper.responses["drives_list"] = _state([_part(is_videos_drive=True)],
+                                             media={"configured": True, "present": True})
+    page = authed_client.get("/parent/system/drives").text
+    card = page[page.index("USB drives"):page.index("Backups")]
+    assert "holds the videos (not opened" in card and "Check &amp; repair" in card
+    assert "Use for videos" not in card and "Import from it" not in card and "Eject" not in card
+    assert "Format this drive" not in card
 
 
 def test_under_voltage_warning(authed_client, helper):
@@ -99,7 +109,7 @@ def test_opening_a_drive_for_import_returns_to_the_import_page(authed_client, he
     resp = authed_client.post("/parent/system/drives/open", data={"device": "/dev/sda1"})
     assert resp.headers["location"] == "/parent/system/jobs/t2?back=/parent/import"
     page = authed_client.get(resp.headers["location"]).text
-    assert 'href="/parent/import">&larr; Back' in page
+    assert 'href="/parent/import" class="btn btn-secondary">Go to Import' in page
 
 
 def test_refused_task_shows_the_reason_on_the_drives_page(authed_client, helper):

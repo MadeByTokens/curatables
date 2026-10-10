@@ -20,7 +20,7 @@ def test_needs_a_parent(client, helper):
 
 def test_without_the_helper_the_page_explains(authed_client, app):
     resp = authed_client.get("/parent/system")
-    assert resp.status_code == 200 and "only work on the Raspberry Pi image" in resp.text
+    assert resp.status_code == 200 and "only work on the ready-made Raspberry Pi image" in resp.text
 
 
 def test_overview_shows_network_and_login(authed_client, helper):
@@ -100,7 +100,7 @@ def test_task_json_for_the_progress_poller(authed_client, helper):
 
 def test_task_page_back_link_stays_on_the_dashboard(authed_client, helper):
     page = authed_client.get("/parent/system/jobs/j1?back=https://evil.example/").text
-    assert 'href="/parent/system">&larr; Back' in page
+    assert 'href="/parent/system" class="btn btn-secondary">Back to Login, network &amp; power' in page
 
 
 @pytest.mark.parametrize("path,action", [
@@ -113,3 +113,28 @@ def test_restart_buttons_show_a_page_that_waits_for_the_box(authed_client, helpe
     page = authed_client.post(path).text
     assert action in helper.actions()
     assert 'data-wait-healthy="/healthz"' in page
+
+
+def test_restart_from_diagnostics_returns_there_with_a_note(authed_client, helper):
+    helper.responses["restart_curatables"] = {"restarting": True}
+    page = authed_client.post("/parent/system/restart", data={"back": "/parent/system/diagnostics"}).text
+    assert 'data-wait-back="/parent/system/diagnostics?notice=restarted"' in page
+    assert 'data-wait-down="1"' in page
+
+
+def test_restart_refuses_to_return_off_the_box_pages(authed_client, helper):
+    helper.responses["restart_curatables"] = {"restarting": True}
+    page = authed_client.post("/parent/system/restart", data={"back": "https://evil.example/"}).text
+    assert 'data-wait-back="/parent/system?notice=restarted"' in page
+
+
+def test_unknown_notices_are_ignored(authed_client, helper):
+    page = authed_client.get("/parent/system?notice=<script>").text
+    assert "<script>" not in page.split("<body>", 1)[1].split("</nav>", 1)[0]
+
+
+def test_power_buttons_explain_themselves(authed_client, helper):
+    page = authed_client.get("/parent/system").text
+    for label in ("Restart Curatables", "Reconnect network", "Restart the box", "Shut down"):
+        assert label in page
+    assert "Use before unplugging the box" in page

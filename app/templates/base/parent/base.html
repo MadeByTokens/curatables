@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>curatables - Parent Dashboard</title>
+<title>{% block title %}curatables - Parent Dashboard{% endblock %}</title>
 <link rel="stylesheet" href="/static/parent/style.css?v={{ asset_v }}">
 <script src="/static/parent/app.js?v={{ asset_v }}" defer></script>
 {% block head %}{% endblock %}
@@ -42,6 +42,8 @@
   "videos are resting" screen and nothing new can be stored.
   <a href="/parent/system/drives">Reconnect it on the Drives page</a>.</div>
 {% endif %}
+{% set box_notice = box_notices.get(request.query_params.get("notice", "")) %}
+{% if box_notice %}<div class="flash mw-500" role="status">{{ box_notice }}</div>{% endif %}
 {% block content %}{% endblock %}
 </div>
 </body>

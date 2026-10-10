@@ -64,13 +64,15 @@ def test_refused_update_shows_why(authed_client, helper):
 
 def test_reboot_needed_notice(authed_client, helper):
     helper.responses["update_info"] = {**helper.responses["update_info"], "reboot_required": True}
-    assert "need a\nrestart" in authed_client.get("/parent/system/updates").text
+    page = authed_client.get("/parent/system/updates").text
+    assert "need a restart" in page.replace("\n", " ") and 'action="/parent/system/reboot"' in page
 
 
 def test_task_that_vanished_with_a_helper_restart_returns_to_its_page(authed_client, helper):
     helper.responses["job_status"] = HelperFailed("That task is not known (the helper may have restarted).")
     resp = authed_client.get("/parent/system/jobs/u1?back=/parent/system/updates")
-    assert resp.status_code == 303 and resp.headers["location"] == "/parent/system/updates"
+    assert resp.status_code == 303 and resp.headers["location"] == "/parent/system/updates?notice=task-gone"
+    assert "helper restarted" in authed_client.get(resp.headers["location"]).text
     assert authed_client.get("/parent/system/jobs/u1.json").json()["state"] == "gone"
 
 

@@ -3,10 +3,35 @@
 {% block content %}
 <p><strong>Step 2 of 2: the box's own login.</strong></p>
 <p class="fs-14">The box runs Linux, and its <strong>{{ account.user }}</strong> account can change
-anything on it. Give it a password <strong>different from the parent dashboard password</strong>
-and keep it in your password manager. You will rarely need it: everything is done from this
-dashboard.</p>
+anything on it. Its password must be <strong>different from the parent dashboard password</strong>;
+keep it in your password manager. You will rarely need it: everything is done from this dashboard.</p>
 {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+
+{% macro ssh_box() %}
+  <div class="form-group">
+    <label class="fw-normal fs-14"><input type="checkbox" name="ssh" value="1"{% if account.ssh_enabled %} checked{% endif %}>
+      Allow SSH logins (remote command line). Leave this off unless you use SSH.</label>
+  </div>
+{% endmacro %}
+
+{% if account.has_password %}
+<h2 class="fs-16">Keep the password you already set</h2>
+<p class="fs-14">A password was set when the SD card was prepared (for example in Raspberry Pi
+Imager). Type it to keep it.</p>
+<form method="POST" action="/parent/setup/system">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="mode" value="keep">
+  <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
+  <div class="form-group">
+    <label for="linux_current">Current password for {{ account.user }}</label>
+    <input type="password" id="linux_current" name="password" required autocomplete="current-password" autofocus>
+  </div>
+  {{ ssh_box() }}
+  <button type="submit" class="btn">Keep it &amp; finish</button>
+</form>
+<details class="mt-24"{% if not needs_current %} open{% endif %}>
+  <summary>Or choose a new password</summary>
+{% endif %}
 <form method="POST" action="/parent/setup/system">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="mode" value="new">
@@ -15,12 +40,11 @@ dashboard.</p>
   <div class="form-group">
     <label for="linux_old">Current password for {{ account.user }}</label>
     <input type="password" id="linux_old" name="current_password" required autocomplete="current-password">
-    <small class="muted d-block">It was set when the SD card was prepared. To keep it instead, use the form below.</small>
   </div>
   {% endif %}
   <div class="form-group">
     <label for="linux_password">New password for {{ account.user }}</label>
-    <input type="password" id="linux_password" name="password" required minlength="8" autocomplete="new-password" autofocus>
+    <input type="password" id="linux_password" name="password" required minlength="8" autocomplete="new-password"{% if not account.has_password %} autofocus{% endif %}>
     <small class="muted d-block">At least 8 characters. Let your password manager suggest one.</small>
   </div>
   <div class="form-group">
@@ -28,29 +52,8 @@ dashboard.</p>
     <input type="password" id="linux_password2" name="password2" required autocomplete="new-password">
     <label class="fw-normal fs-14 mt-6"><input type="checkbox" data-show-password="linux_password linux_password2"> Show password</label>
   </div>
-  <div class="form-group">
-    <label class="fw-normal fs-14"><input type="checkbox" name="ssh" value="1"{% if account.ssh_enabled %} checked{% endif %}>
-      Allow SSH logins (remote command line). Leave this off unless you use SSH.</label>
-  </div>
-  <button type="submit" class="btn">Set password &amp; finish</button>
+  {{ ssh_box() }}
+  <button type="submit" class="btn{% if account.has_password %} btn-secondary{% endif %}">Set password &amp; finish</button>
 </form>
-{% if account.has_password %}
-<hr class="mt-24">
-<p class="fs-14 mt-16">A password was already set when the SD card was prepared (for example in
-Raspberry Pi Imager). To keep it, type it here.</p>
-<form method="POST" action="/parent/setup/system">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <input type="hidden" name="mode" value="keep">
-  <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
-  <div class="form-group">
-    <label for="linux_current">Current password for {{ account.user }}</label>
-    <input type="password" id="linux_current" name="password" required autocomplete="current-password">
-  </div>
-  <div class="form-group">
-    <label class="fw-normal fs-14"><input type="checkbox" name="ssh" value="1"{% if account.ssh_enabled %} checked{% endif %}>
-      Allow SSH logins</label>
-  </div>
-  <button type="submit" class="btn btn-secondary">Keep it &amp; finish</button>
-</form>
-{% endif %}
+{% if account.has_password %}</details>{% endif %}
 {% endblock %}

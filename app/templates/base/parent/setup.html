@@ -1,6 +1,7 @@
 {% extends "parent/_auth.html" %}
 {% block title %}Set up · curatables{% endblock %}
 {% block content %}
+{% if two_steps %}<p><strong>Step 1 of 2: the parent dashboard password.</strong></p>{% endif %}
 <p>Welcome! Choose a password for the parent dashboard.</p>
 {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 <form method="POST" action="/parent/setup">

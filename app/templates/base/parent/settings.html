@@ -3,10 +3,10 @@
 <h1>Settings</h1>
 
 {% if success %}
-<div class="flash">{{ success }}</div>
+<div class="flash" role="status">{{ success }}</div>
 {% endif %}
 {% if error %}
-<div class="flash flash-error">{{ error }}</div>
+<div class="flash flash-error" role="alert">{{ error }}</div>
 {% endif %}
 
 <nav class="settings-nav" aria-label="Settings sections">

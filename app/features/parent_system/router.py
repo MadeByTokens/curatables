@@ -21,6 +21,28 @@ router = APIRouter(prefix="/parent/system", tags=["parent-system"])
 
 SAFE_BACK = ("/parent/system", "/parent/import")
 
+BACK_LABELS = {
+    "/parent/system": "Back to Login, network & power",
+    "/parent/system/drives": "Back to Drives & backups",
+    "/parent/system/updates": "Back to Updates",
+    "/parent/system/diagnostics": "Back to Diagnostics",
+    "/parent/import": "Go to Import",
+}
+
+# Fixed messages a page can show after returning with ?notice=<key>.
+BOX_NOTICES = {
+    "restarted": "Curatables restarted.",
+    "rebooted": "The box restarted.",
+    "network": "The network reconnected.",
+    "downloader": "The downloader update ran. Its result is shown on this page.",
+    "task-gone": "That task ended while the box's helper restarted (this is normal at the end of an "
+                 "update). Its result is shown on this page.",
+}
+
+
+def back_label(back: str) -> str:
+    return BACK_LABELS.get(back.split("?", 1)[0].split("#", 1)[0], "Back")
+
 
 def _try(helper: SystemHelper, action: str, **params):
     """(result, error message)"""
@@ -131,33 +153,51 @@ def set_wifi(request: Request,
     return job_redirect(job, "/parent/system")
 
 
-def _waiting(request: Request, title: str, message: str, back: str, delay_ms: int = 6000) -> Response:
+def _safe_back(back: str) -> str:
+    return back if back.startswith(SAFE_BACK) and "//" not in back else "/parent/system"
+
+
+def _with_notice(back: str, notice: str) -> str:
+    path, _, anchor = back.partition("#")
+    joined = f"{path}{'&' if '?' in path else '?'}notice={notice}"
+    return f"{joined}#{anchor}" if anchor else joined
+
+
+def _waiting(request: Request, title: str, message: str, back: str, *, notice: str,
+             expect_down: bool, delay_ms: int = 4000) -> Response:
+    """A page that waits for the box to answer again, then returns to back.
+    With expect_down, it first waits for the server to go away, so it
+    cannot return before a restart has even begun."""
+    back = _safe_back(back)
     page: Response = request.app.state.templates.TemplateResponse(request, "parent/system_wait.html", {
-        "request": request, "title": title, "message": message, "back": back, "delay_ms": delay_ms})
+        "request": request, "title": title, "message": message, "back": back,
+        "back_label": back_label(back), "return_to": _with_notice(back, notice),
+        "expect_down": expect_down, "delay_ms": delay_ms})
     return page
 
 
 @router.post("/restart")
-def restart(request: Request,
+def restart(request: Request, back: str = Form("/parent/system"),
             viewer: ViewerContext = Depends(require_parent),
             helper: SystemHelper = Depends(get_system_helper)):
     _result, error = _try(helper, "restart_curatables")
     if error:
         return _overview(request, helper, error=error, status_code=400)
     return _waiting(request, "Restarting Curatables",
-                    "This takes about half a minute. The page comes back by itself.", "/parent/system")
+                    "This takes about half a minute. The page comes back by itself.", back,
+                    notice="restarted", expect_down=True)
 
 
 @router.post("/reboot")
-def reboot(request: Request,
+def reboot(request: Request, back: str = Form("/parent/system"),
            viewer: ViewerContext = Depends(require_parent),
            helper: SystemHelper = Depends(get_system_helper)):
     _result, error = _try(helper, "reboot")
     if error:
         return _overview(request, helper, error=error, status_code=400)
     return _waiting(request, "Restarting the box",
-                    "This takes one to two minutes. The page comes back by itself.", "/parent/system",
-                    delay_ms=25000)
+                    "This takes one to two minutes. The page comes back by itself.", back,
+                    notice="rebooted", expect_down=True)
 
 
 @router.post("/shutdown")
@@ -173,19 +213,15 @@ def shutdown(request: Request,
 
 
 @router.post("/network-restart")
-def network_restart(request: Request,
+def network_restart(request: Request, back: str = Form("/parent/system"),
                     viewer: ViewerContext = Depends(require_parent),
                     helper: SystemHelper = Depends(get_system_helper)):
     _result, error = _try(helper, "restart_network")
     if error:
         return _overview(request, helper, error=error, status_code=400)
     return _waiting(request, "Reconnecting to the network",
-                    "The connection drops for a few seconds. The page comes back by itself.",
-                    "/parent/system")
-
-
-def _safe_back(back: str) -> str:
-    return back if back.startswith(SAFE_BACK) and "//" not in back else "/parent/system"
+                    "The connection drops for a few seconds. The page comes back by itself.", back,
+                    notice="network", expect_down=False, delay_ms=8000)
 
 
 @router.get("/jobs/{job_id}.json")
@@ -204,11 +240,13 @@ def job_json(job_id: str,
 def job_page(request: Request, job_id: str, back: str = "/parent/system",
              viewer: ViewerContext = Depends(require_parent),
              helper: SystemHelper = Depends(get_system_helper)):
+    back = _safe_back(back)
     job, error = _try(helper, "job_status", id=job_id)
     if error and "not known" in error:
-        return RedirectResponse(url=_safe_back(back), status_code=303)
+        return RedirectResponse(url=_with_notice(back, "task-gone"), status_code=303)
     return request.app.state.templates.TemplateResponse(request, "parent/system_job.html", {
-        "request": request, "job": job, "error": error, "job_id": job_id, "back": _safe_back(back),
+        "request": request, "job": job, "error": error, "job_id": job_id, "back": back,
+        "back_label": back_label(back),
     })
 
 
@@ -376,16 +414,18 @@ def diagnostics_page(request: Request,
 
 
 @router.post("/diagnostics/update-downloader")
-def update_downloader(request: Request,
+def update_downloader(request: Request, back: str = Form("/parent/system/updates"),
                       viewer: ViewerContext = Depends(require_parent),
+                      helper: SystemHelper = Depends(get_system_helper),
                       config: Config = Depends(get_config)):
     try:
         updates.request_update(config, kind=updates.KIND_YTDLP)
     except OSError as e:
-        return PlainTextResponse(f"Could not request the update: {e}", status_code=500)
+        return _updates_page(request, helper, config, status_code=500,
+                             error=f"The downloader update could not be started: {e}")
     return _waiting(request, "Updating the downloader",
                     "This takes a minute or two, then Curatables restarts. The page comes back by itself.",
-                    "/parent/system/diagnostics", delay_ms=20000)
+                    back, notice="downloader", expect_down=True)
 
 
 @router.get("/diagnostics/report.txt")

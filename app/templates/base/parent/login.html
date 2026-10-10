@@ -1,7 +1,7 @@
 {% extends "parent/_auth.html" %}
 {% block title %}Parent sign in · curatables{% endblock %}
 {% block content %}
-<p>Parent dashboard</p>
+<h2>Parent sign in</h2>
 {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 <form method="POST" action="/parent/login">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

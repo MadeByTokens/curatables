@@ -4,8 +4,9 @@
 <p><strong>Step 2 of 2: the box's own login.</strong></p>
 <div class="flash flash-error" role="alert">{{ error }}</div>
 <p class="fs-14">The box's system helper did not answer, so the Linux password cannot be set right
-now. Restart the box (unplug it for ten seconds) and open this page again. You can also skip this
-for now and do it later in Settings &rarr; Box.</p>
+now. Skip this for now and set it later in <strong>Box &rarr; Login, network &amp; power</strong>.
+If the Box pages don't work either, use <strong>Restart the box</strong> there, or unplug the box for
+ten seconds as a last resort.</p>
 <form method="POST" action="/parent/setup/system">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="mode" value="later">

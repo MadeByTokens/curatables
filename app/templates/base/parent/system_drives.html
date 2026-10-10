@@ -1,7 +1,8 @@
 {% extends "parent/base.html" %}
 {% macro gb(n) %}{{ "%.1f"|format((n or 0) / 1073741824) }} GB{% endmacro %}
+{% block title %}Drives &amp; backups · Box · curatables{% endblock %}
 {% block content %}
-<h1>Box</h1>
+<h1>Box: drives &amp; backups</h1>
 {% include "parent/_system_nav.html" %}
 
 {% if success %}<div class="flash mw-500" role="status">{{ success }}</div>{% endif %}
@@ -72,14 +73,15 @@ when they moved to this drive.</p>
   <div class="info">
     <div class="title-line"><strong>{{ disk.name }}</strong> <span class="muted">{{ gb(disk.size) }}</span></div>
     {% for part in disk.partitions %}
+    {% set is_videos = part.role == "videos" or part.is_videos_drive %}
     <div class="meta mt-6">
       {{ part.label or "No name" }} &middot; {{ part.fs_name }}{% if part.size %} &middot; {{ gb(part.size) }}{% endif %}{% if part.free %}, {{ gb(part.free) }} free{% endif %}
-      {% if part.role == "videos" %}<strong>&middot; holds the videos</strong>{% elif part.role == "import" %}&middot; open for importing{% elif part.role == "system" or part.role == "library" %}&middot; used by the system{% endif %}
+      {% if part.role == "videos" %}<strong>&middot; holds the videos</strong>{% elif part.is_videos_drive %}<strong>&middot; holds the videos (not opened: press Reconnect above)</strong>{% elif part.role == "import" %}&middot; open for importing{% elif part.role == "system" or part.role == "library" %}&middot; used by the system{% endif %}
     </div>
     {% if part.warning %}<div class="fs-13 warn-text">{{ part.warning }}</div>{% endif %}
     {% if part.role not in ("system", "library") %}
     <div class="actions">
-      {% if part.usable and part.role != "videos" %}
+      {% if part.usable and not is_videos %}
       <form method="POST" action="/parent/system/drives/use" data-confirm="Copy the videos to this drive and use it from now on? Other files on it are left alone.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="device" value="{{ part.path }}">
@@ -88,26 +90,26 @@ when they moved to this drive.</p>
       {% endif %}
       {% if part.role == "import" %}
       <a href="/parent/import" class="btn btn-secondary">Import from it</a>
-      {% elif part.usable and part.role != "videos" %}
+      {% elif part.usable and not is_videos %}
       <form method="POST" action="/parent/system/drives/open">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="device" value="{{ part.path }}">
-        <button type="submit" class="btn btn-secondary">Import videos from it</button>
+        <button type="submit" class="btn btn-secondary">Import from it</button>
       </form>
       {% endif %}
-      {% if part.role != "videos" %}
+      {% if not is_videos %}
       <form method="POST" action="/parent/system/drives/eject">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="device" value="{{ part.path }}">
-        <button type="submit" class="btn btn-secondary">Eject</button>
+        <button type="submit" class="btn btn-secondary">Eject safely</button>
       </form>
-      {% if part.fstype in ("exfat", "vfat", "ntfs", "ext4") %}
-      <form method="POST" action="/parent/system/drives/repair">
+      {% endif %}
+      {% if part.role != "videos" and part.fstype in ("exfat", "vfat", "ntfs", "ext4") %}
+      <form method="POST" action="/parent/system/drives/repair" data-confirm="Check this drive for problems? It is closed while the check runs.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="device" value="{{ part.path }}">
         <button type="submit" class="btn btn-secondary">Check &amp; repair</button>
       </form>
-      {% endif %}
       {% endif %}
     </div>
     {% endif %}
@@ -161,7 +163,7 @@ Restoring one puts the settings, kids' profiles and video list back as they were
 </form>
 {% if backups %}
 <table class="mw-500 mt-16">
-  <thead><tr><th>When</th><th>Where</th><th></th></tr></thead>
+  <thead><tr><th>When</th><th>Where</th><th><span class="visually-hidden">Action</span></th></tr></thead>
   <tbody>
   {% for b in backups[:20] %}
     <tr><td>{{ b.when }}</td><td>{{ "SD card" if b.where == "sd" else "Videos drive" }}</td>
@@ -169,7 +171,7 @@ Restoring one puts the settings, kids' profiles and video list back as they were
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="where" value="{{ b.where }}">
         <input type="hidden" name="name" value="{{ b.name }}">
-        <button type="submit" class="btn btn-secondary">Restore</button>
+        <button type="submit" class="btn btn-danger btn-sm">Restore</button>
       </form></td></tr>
   {% endfor %}
   </tbody>

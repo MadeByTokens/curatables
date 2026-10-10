@@ -1,9 +1,14 @@
 {% extends "parent/base.html" %}
+{% block title %}Box · curatables{% endblock %}
 {% block content %}
 <h1>Box</h1>
 <div class="flash flash-info mw-500">
-  These pages manage the Curatables box itself: its Linux login, Wi-Fi, USB drives and
-  diagnostics. They only work on the Raspberry Pi image, where the system helper
-  (<code>curatables-helper.service</code>) runs. On this computer, use its own settings instead.
+  These pages manage the Curatables box itself: its Linux login, Wi-Fi, USB drives, updates and
+  diagnostics. They only work on the ready-made Raspberry Pi image. On this computer, use its own
+  settings instead.
 </div>
+<details class="mw-500 fs-14"><summary>For technical users</summary>
+<p>The pages talk to the root system helper, <code>curatables-helper.service</code>, over
+<code>/run/curatables-helper/helper.sock</code>. It is installed by the Pi image
+(<code>scripts/apply-system.sh</code>).</p></details>
 {% endblock %}

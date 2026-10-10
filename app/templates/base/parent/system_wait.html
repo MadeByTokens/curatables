@@ -1,9 +1,13 @@
 {% extends "parent/base.html" %}
+{% block title %}{{ title }} · curatables{% endblock %}
 {% block content %}
 <h1>{{ title }}</h1>
 <div class="flash flash-info mw-500" role="status">{{ message }}</div>
-<div data-wait-healthy="/healthz" data-wait-back="{{ back }}" data-wait-delay="{{ delay_ms }}"></div>
-<p class="fs-14 mw-500">If nothing happens after a few minutes, open
-<a href="{{ back }}">the Box page</a> again. On Wi-Fi the box may have a new address; try
-<a href="http://curatables.local/">curatables.local</a>.</p>
+<div data-wait-healthy="/healthz" data-wait-back="{{ return_to }}" data-wait-delay="{{ delay_ms }}"
+     data-wait-down="{{ '1' if expect_down else '' }}"></div>
+<div class="flash flash-error mw-500" role="alert" data-wait-slow hidden>This is taking longer than
+  usual. Try <a href="{{ back }}">{{ back_label }}</a>. If the page does not open, the box may have a new
+  address: try <a href="http://curatables.local/parent/">curatables.local</a>, or unplug the box for ten
+  seconds and plug it back in.</div>
+<noscript><p><a href="{{ back }}">{{ back_label }}</a></p></noscript>
 {% endblock %}

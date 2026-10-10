@@ -1,16 +1,17 @@
 {% extends "parent/base.html" %}
+{% block title %}Updates · Box · curatables{% endblock %}
 {% block content %}
-<h1>Box</h1>
+<h1>Box: updates</h1>
 {% include "parent/_system_nav.html" %}
 {% if error %}<div class="flash flash-error mw-500" role="alert">{{ error }}</div>{% endif %}
 
 <h2>Curatables</h2>
 <p class="mw-500">This box runs Curatables <strong>{{ info.installed or "?" }}</strong>.
-{% if info.check_error %}<br><span class="fs-14 warn-text">{{ info.check_error }}</span>
+{% if info.check_error %}<br><span class="fs-14 warn-text" role="alert">{{ info.check_error }}</span>
 {% elif info.available %}Version <strong>{{ info.latest }}</strong>{% if info.published %} ({{ info.published }}){% endif %} is available.
 {% elif info.latest %}That is the newest version.{% endif %}</p>
 {% if info.last %}
-<p class="fs-14 mw-500 {{ 'flash-error' if info.last.state == 'failed' else '' }}">Last update ({{ info.last.at }}): {{ info.last.message }}</p>
+<div class="flash mw-500 {{ 'flash-error' if info.last.state == 'failed' }}" role="status">Last update ({{ info.last.at }}): {{ info.last.message }}</div>
 {% endif %}
 {% if info.available %}
 {% if info.notes %}<details class="mw-500"><summary>What's new in {{ info.latest }}</summary><pre class="fs-13">{{ info.notes }}</pre></details>{% endif %}
@@ -37,14 +38,20 @@ before the update come back (a backup of today's is made first).</p>
 Curatables. Installed: <code>{{ update_state.current_version or "unknown" }}</code>.</p>
 <form method="POST" action="/parent/system/diagnostics/update-downloader">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="back" value="/parent/system/updates">
   <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
 </form>
 
 <h2 class="mt-40">System</h2>
 <p class="fs-14 mw-500">Security updates for the box's operating system install by themselves every day.
 This button installs every available update now.</p>
-{% if info.reboot_required %}<div class="flash warn-bg warn-text mw-500">Updates were installed that need a
-restart. Press <strong>Restart the box</strong> on the Login &amp; network page when nobody is watching.</div>{% endif %}
+{% if info.reboot_required %}<div class="flash warn-bg warn-text mw-500" role="status">Updates were installed that
+need a restart. Restart the box when nobody is watching.
+<form method="POST" action="/parent/system/reboot" class="mt-6" data-confirm="Restart the whole box? It takes one to two minutes.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="back" value="/parent/system/updates">
+  <button type="submit" class="btn btn-secondary">Restart the box</button>
+</form></div>{% endif %}
 <form method="POST" action="/parent/system/updates/system" data-confirm="Install all system updates now? It can take a while.">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="btn btn-secondary">Update system packages</button>

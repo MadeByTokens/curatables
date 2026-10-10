@@ -1,6 +1,7 @@
 {% extends "parent/base.html" %}
+{% block title %}Login, network &amp; power · Box · curatables{% endblock %}
 {% block content %}
-<h1>Box</h1>
+<h1>Box: login, network &amp; power</h1>
 {% include "parent/_system_nav.html" %}
 
 {% if success %}<div class="flash mw-500" role="status">{{ success }}</div>{% endif %}
@@ -33,7 +34,7 @@ If you are on Wi-Fi yourself, this page may disconnect for a moment.</p>
 {% if networks is not none %}
   {% if networks %}
   <table class="mw-500">
-    <thead><tr><th>Network</th><th>Signal</th><th></th></tr></thead>
+    <thead><tr><th>Network</th><th>Signal</th><th><span class="visually-hidden">Action</span></th></tr></thead>
     <tbody>
     {% for n in networks %}
       <tr><td>{{ n.ssid }}{% if not n.secured %} <small class="muted">(open)</small>{% endif %}</td>
@@ -81,11 +82,11 @@ If you are on Wi-Fi yourself, this page may disconnect for a moment.</p>
 Its password must be different from the parent dashboard password.</p>
 <form method="POST" action="/parent/system/linux-password" class="mw-500">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
   <div class="form-group">
     <label for="lp_parent">Your parent dashboard password</label>
-    <input type="password" id="lp_parent" name="parent_password" required autocomplete="off">
+    <input type="password" id="lp_parent" name="parent_password" required autocomplete="current-password">
   </div>
+  <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
   <div class="form-group">
     <label for="lp_new">New password for {{ account.user }}</label>
     <input type="password" id="lp_new" name="password" required minlength="8" autocomplete="new-password">
@@ -107,30 +108,15 @@ Leave it off unless you use it.</p>
   <input type="hidden" name="enabled" value="{{ '' if account.ssh_enabled else '1' }}">
   <div class="form-group">
     <label for="ssh_parent">Your parent dashboard password</label>
-    <input type="password" id="ssh_parent" name="parent_password" required autocomplete="off">
+    <input type="password" id="ssh_parent" name="parent_password" required autocomplete="current-password">
   </div>
   <button type="submit" class="btn btn-secondary">{{ "Turn SSH off" if account.ssh_enabled else "Turn SSH on" }}</button>
 </form>
 {% endif %}
 
 <h2 class="mt-40" id="restart">Restart or turn off</h2>
-<p class="fs-14 mw-500">If something seems stuck, restarting usually fixes it. Kids watching a
-video will see it stop for a moment. Use <strong>Shut down</strong> before unplugging the box, so
-nothing is cut off halfway through being saved.</p>
-<form method="POST" action="/parent/system/restart" class="inline-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-secondary">Restart Curatables</button>
-</form>
-<form method="POST" action="/parent/system/network-restart" class="inline-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-secondary">Reconnect network</button>
-</form>
-<form method="POST" action="/parent/system/reboot" class="inline-form" data-confirm="Restart the whole box? It takes one to two minutes.">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-danger">Restart the box</button>
-</form>
-<form method="POST" action="/parent/system/shutdown" class="inline-form" data-confirm="Turn the box off? Kids cannot watch until it is unplugged and plugged back in.">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="btn btn-danger">Shut down</button>
-</form>
+<p class="fs-14 mw-500">If something seems stuck, restarting usually fixes it. Kids watching a video see
+it stop for a moment.</p>
+{% set back = "/parent/system" %}
+{% include "parent/_power_buttons.html" %}
 {% endblock %}
