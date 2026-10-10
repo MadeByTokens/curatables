@@ -6,6 +6,8 @@ logic only; every action (add video, edit, moderate) still lives in
 its own feature.
 """
 
+import time
+
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, Response
 
@@ -20,6 +22,7 @@ from app.services.content import ContentService
 from app.services.stats import StatsService
 from app.models import ViewerContext
 from app.services.qr import qr_svg
+from app.services.search_gate import GATE
 from app.web import kid_address
 
 router = APIRouter(prefix="/parent", tags=["parent-dashboard"])
@@ -48,8 +51,19 @@ def dashboard(request: Request,
             "kid_url": kid_address(request),
             "wishlist_pending": wishlist.count_pending(),
             "imports_active": imports.count_active(),
+            "search": _search_notice(),
             **overview,
         })
+
+
+def _search_notice() -> dict | None:
+    """Kid video search paused by YouTube, or failing again and again."""
+    status = GATE.status()
+    if status.resting_until:
+        return {"paused_until": time.strftime("%H:%M", time.localtime(status.resting_until))}
+    if status.failures >= 2:
+        return {"failures": status.failures, "reason": status.last_failure}
+    return None
 
 
 @router.get("/kid-qr.svg")

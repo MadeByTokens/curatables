@@ -372,3 +372,15 @@ def test_channel_listing_videos_get_youtube_ids():
     metas = _entries_to_metadata([{"id": "aaaaaaaaaaa", "ie_key": "Youtube", "title": "A"}],
                                  "Kids TV", parent_extractor="youtubetab")
     assert metas[0].extractor == "youtube" and metas[0].channel == "Kids TV"
+
+
+def test_the_dashboard_says_when_search_is_paused_or_failing(app, client, authed_client, backend):
+    _kid(app, client)
+    assert "video search" not in authed_client.get("/parent/").text
+    backend.fail = BackendErrorType.NETWORK
+    client.get("/wishlist", params={"q": "one"})
+    client.get("/wishlist", params={"q": "two"})
+    assert "video search failed 2 times" in authed_client.get("/parent/").text
+    backend.fail = BackendErrorType.BOT_BLOCKED
+    client.get("/wishlist", params={"q": "three"})
+    assert "video search is paused until" in authed_client.get("/parent/").text

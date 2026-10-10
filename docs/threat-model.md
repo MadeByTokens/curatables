@@ -460,7 +460,8 @@ lists a parent imports come from other people, so every URL is refused
 before yt-dlp sees it if its host resolves to a home-network, loopback
 or other non-public address (`YtdlpBackend._blocked`); a kid with
 the wishlist switch on can only send a search phrase (`ytsearch` of up
-to 100 characters, rate-limited) and an 11-character YouTube video id,
+to 100 characters, through the search gate below) and an 11-character
+YouTube video id or 24-character channel id,
 from which the server builds the watch URL itself; downloads
 use `noplaylist` and `storage.max_download_bytes` (default 4 GB); the
 service unit confines a compromise to the service user (data dir,
@@ -524,9 +525,12 @@ Settings is refused in this mode (Box, Drives moves the videos instead).
 ### Kid wishlist (YouTube search)
 
 Off per profile (`allow_wishlist`, migration 0011) until the parent
-switches it on. `/wishlist` runs `ytsearchN:` on the server and filters
-results by `config.wishlist`: blocked words (query, title, channel;
-a query with one is refused before any request to YouTube), an
+switches it on. `/wishlist` runs `ytsearchN:` (or `ytsearchdate`, or a
+channel search) on the server, and `/wishlist/channel/<UC…>` lists a
+channel's videos; both filter by `config.wishlist`: blocked words
+(query, title, channel, description snippet; a query with one is
+refused before any request to YouTube, a blocked channel can't be
+opened by URL), an
 optional channel allowlist, a maximum duration, no live or upcoming
 streams, YouTube ids only. Thumbnails are fetched by the server
 (`safe_fetch`) and served from `/wishlist/thumb/<id>` only for ids this
@@ -536,6 +540,13 @@ metadata and re-applies the rules before storing a pending
 `wishlist_requests` row. Nothing is downloaded or playable until the
 parent adds it through the normal preview, which marks the request
 approved; a rejected video never reappears in that kid's results.
+
+Every YouTube call from these pages goes through
+`app/services/search_gate.py`, so a kid tapping fast can't get the
+box's address flagged: a 15-minute shared cache, one call at a time,
+per-kid tap and call limits, a box-wide budget, and a 30-minute pause
+after a bot check or HTTP 429 (shown on the parent dashboard). The
+limits live in memory, so a restart clears them.
 
 Residual: titles and thumbnails from an unfiltered search reach the
 kid before any human sees them; the word list and allowlist are the

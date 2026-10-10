@@ -35,7 +35,7 @@
 {% set ds = disk_status() %}
 
 {# ============ 1. NEEDS ATTENTION ============ #}
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or ds.status != 'ok' %}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status != 'ok' %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
@@ -57,6 +57,18 @@
     <li>
       <strong>{{ imports_active }} import{% if imports_active != 1 %}s{% endif %} waiting or running</strong> —
       <a href="/parent/import">follow them</a>
+    </li>
+    {% endif %}
+    {% if search and search.paused_until %}
+    <li>
+      <strong>Kids' video search is paused until {{ search.paused_until }}</strong> — YouTube asked
+      the box to slow down. It starts again on its own. If this keeps happening, turn on
+      <a href="/parent/settings#settings-advanced">browser impersonation</a>.
+    </li>
+    {% elif search %}
+    <li>
+      <strong>Kids' video search failed {{ search.failures }} times in the last hour</strong> —
+      {{ search.reason }} <a href="/parent/system/diagnostics">Check the connection →</a>
     </li>
     {% endif %}
     {% if wishlist_pending %}
