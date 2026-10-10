@@ -83,6 +83,7 @@ def _link_layout() -> None:
         return
     dest = code.with_name(f"{code.name}-{version_of(code) or 'original'}-original")
     os.rename(code, dest)
+    runner.run(["chmod", "-R", "go-w", str(dest)], timeout=600)
     _point(code, dest)
 
 
@@ -253,6 +254,7 @@ def _switch(job: Job, incoming: Path) -> Path:
     _link_layout()
     outgoing = _real(SETTINGS.code_dir)
     runner.run(["chown", "-R", "root:root", str(incoming)], timeout=600)
+    runner.run(["chmod", "-R", "go-w", str(incoming)], timeout=600)
     _point(SETTINGS.code_dir, incoming)
     _point(_previous_dir(), outgoing)
     _apply_system(job)

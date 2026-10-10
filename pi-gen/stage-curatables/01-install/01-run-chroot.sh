@@ -43,3 +43,4 @@ python3 -m venv "${ROOT}/.venv"
 # Code and venv stay root-owned: the service only needs to read them, and
 # the root-run updater must never execute files the service user can edit.
 chown -R root:root "${ROOT}"
+chmod -R go-w "${ROOT}"
