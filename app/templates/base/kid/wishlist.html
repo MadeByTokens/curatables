@@ -2,34 +2,69 @@
 {% macro duration(seconds) -%}
 {% if seconds %}{{ seconds // 60 }}:{{ '%02d'|format(seconds % 60) }}{% endif %}
 {%- endmacro %}
+{% set sort_labels = {"best": _("Best match"), "newest": _("Newest"), "az": _("A to Z"), "za": _("Z to A")} %}
+{% set error_icons = {"rules": "&#128584;", "slow": "&#128034;", "busy": "&#9203;", "resting": "&#128564;", "broken": "&#128268;", "gone": "&#128566;"} %}
 {% block content %}
 <div class="p-16 mw-600 mx-auto">
   <h2 class="wishlist-title"><span aria-hidden="true">&#128301;</span> {{ _("Find new videos") }}</h2>
   <p class="wishlist-intro">{{ _("Tap Ask on a video you like. A grown-up looks at it first.") }}</p>
-  <form method="GET" action="/wishlist" role="search" class="search-form">
+  <form method="GET" action="/wishlist" role="search" class="search-form wishlist-form" data-looking>
     <label for="wq" class="sr-only">{{ _("What do you want to watch?") }}</label>
     <input type="search" id="wq" name="q" value="{{ query }}" autocomplete="off"
            maxlength="100" placeholder="{{ _('What do you want to watch?') }}" class="search-input">
     <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> {{ _("Search") }}</button>
+    <fieldset class="wishlist-modes">
+      <legend class="sr-only">{{ _("Look for") }}</legend>
+      <input type="radio" id="mode-videos" name="mode" value="videos" class="sr-only"{% if mode != "channels" %} checked{% endif %}>
+      <label for="mode-videos" class="wishlist-pill"><span aria-hidden="true">&#127916;</span> {{ _("Videos") }}</label>
+      <input type="radio" id="mode-channels" name="mode" value="channels" class="sr-only"{% if mode == "channels" %} checked{% endif %}>
+      <label for="mode-channels" class="wishlist-pill"><span aria-hidden="true">&#128250;</span> {{ _("Channels") }}</label>
+    </fieldset>
   </form>
+  <div class="wishlist-looking" id="wishlist-looking" role="status" aria-live="polite">
+    <span class="wishlist-looking-icon" aria-hidden="true">&#128301;</span>
+    <span class="wishlist-looking-text">{{ _("Looking…") }}</span>
+  </div>
   {% if asked %}
   <div class="wishlist-sent" role="status"><span aria-hidden="true">&#128236;</span> {{ _("Asked! A grown-up will look at it.") }}</div>
   {% endif %}
   {% if error %}
-  <div class="wishlist-error" role="alert">{{ error }}</div>
+  <div class="wishlist-error wishlist-error-{{ error_kind }}" role="alert">
+    <span class="wishlist-error-icon" aria-hidden="true">{{ error_icons.get(error_kind, "&#128566;")|safe }}</span>
+    <span>{{ error }}</span>
+  </div>
+  {% endif %}
+  {% if channel_id %}
+  <h3 class="wishlist-channel-title"><span aria-hidden="true">&#128250;</span> {{ channel_title or _("Channel") }}</h3>
+  {% if query %}<a class="wishlist-back" href="/wishlist?q={{ query|urlencode }}&amp;mode=channels" data-looking><span aria-hidden="true">&#9664;</span> {{ _("Back to the channels") }}</a>{% endif %}
+  {% endif %}
+  {% if (query or channel_id) and not error and (results or channels) %}
+  <nav class="wishlist-sorts" aria-label="{{ _('Order') }}">
+    {% for s in sorts %}
+    <a class="wishlist-pill{% if s == sort %} is-on{% endif %}" href="{{ base }}&amp;sort={{ s }}" data-looking{% if s == sort %} aria-current="true"{% endif %}>{{ sort_labels[s] }}</a>
+    {% endfor %}
+  </nav>
   {% endif %}
 </div>
 
-{% if query and not error %}
+{% if (query or channel_id) and not error %}
 <div class="video-grid wishlist-grid">
-{% if results %}
+{% if channels %}
+  {% for c in channels %}
+  <a class="video-card wishlist-card wishlist-channel" href="/wishlist/channel/{{ c.hit.channel_id }}?q={{ query|urlencode }}" data-looking>
+    <span class="wishlist-avatar"><img src="/wishlist/thumb/{{ c.thumb_id }}" alt=""></span>
+    <span class="video-title">{{ c.hit.name }}</span>
+  </a>
+  {% endfor %}
+  <div class="clear"></div>
+{% elif results %}
   {% for r in results %}
   <div class="video-card wishlist-card">
     <span class="thumb"><img src="/wishlist/thumb/{{ r.video_id }}" alt=""></span>
     <span class="video-title">{{ r.meta.title }}</span>
     <span class="wishlist-meta">{{ r.meta.channel }}{% if r.meta.duration %} &middot; {{ duration(r.meta.duration) }}{% endif %}</span>
     {% if r.status == "new" %}
-    <form method="POST" action="/wishlist/ask" class="wishlist-ask-form">
+    <form method="POST" action="/wishlist/ask" class="wishlist-ask-form" data-looking>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="raw_id" value="{{ r.meta.video_id }}">
       <button type="submit" class="wishlist-ask-btn"><span aria-hidden="true">&#128075;</span> {{ _("Ask") }}</button>
@@ -44,17 +79,17 @@
   </div>
   {% endfor %}
   <div class="clear"></div>
-  {% if page > 1 or has_more %}
-  <nav class="wishlist-pages" aria-label="{{ _('More videos') }}">
-    {% if page > 1 %}<a class="wishlist-page-btn" href="/wishlist?q={{ query|urlencode }}&amp;page={{ page - 1 }}"><span aria-hidden="true">&#9664;</span> {{ _("Back") }}</a>{% endif %}
-    {% if has_more %}<a class="wishlist-page-btn" href="/wishlist?q={{ query|urlencode }}&amp;page={{ page + 1 }}">{{ _("More videos") }} <span aria-hidden="true">&#9654;</span></a>{% endif %}
-  </nav>
-  {% endif %}
 {% else %}
   <div class="empty-state">
     <div class="empty-icon" aria-hidden="true">&#129300;</div>
-    <p>{{ _("Nothing found. Try another word!") }}</p>
+    <p>{% if channel_id %}{{ _("No videos to show here. Try another channel!") }}{% else %}{{ _("Nothing found. Try another word!") }}{% endif %}</p>
   </div>
+{% endif %}
+{% if page > 1 or has_more %}
+  <nav class="wishlist-pages" aria-label="{{ _('More videos') }}">
+    {% if page > 1 %}<a class="wishlist-page-btn" href="{{ base }}&amp;sort={{ sort }}&amp;page={{ page - 1 }}" data-looking><span aria-hidden="true">&#9664;</span> {{ _("Back") }}</a>{% endif %}
+    {% if has_more %}<a class="wishlist-page-btn" href="{{ base }}&amp;sort={{ sort }}&amp;page={{ page + 1 }}" data-looking>{{ _("More") }} <span aria-hidden="true">&#9654;</span></a>{% endif %}
+  </nav>
 {% endif %}
 </div>
 {% endif %}
@@ -79,4 +114,5 @@
   </ul>
 </div>
 {% endif %}
+<script src="/static/kid/wishlist.js?v={{ asset_v }}"></script>
 {% endblock %}

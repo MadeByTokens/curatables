@@ -1,13 +1,13 @@
 """Kid wishlist: server-side YouTube search, filtered, approved by a parent."""
 import pytest
 
-from app.backends.base import VideoMetadata
+from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoMetadata
 from app.dependencies import get_backend, get_db, get_thumbnail_service
 from app.repositories import ProfileRepository, VideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.profiles import ProfileService
 from app.services.thumbnails import ThumbnailService
-from app.services.wishlist import SEARCH_LIMITER
+from app.services.search_gate import GATE, SearchGate, SearchRefused
 
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 
@@ -30,15 +30,41 @@ RESULTS = [
 ]
 
 
+CHANNELS = [
+    ChannelHit("UC" + "a" * 22, "Kids TV", "https://yt3.ggpht.com/a=s176"),
+    ChannelHit("UC" + "b" * 22, "Scary Stories", "https://yt3.ggpht.com/b=s176"),
+    ChannelHit("UC" + "c" * 22, "Art Club", "https://yt3.ggpht.com/c=s176"),
+]
+
+
 class FakeBackend:
     last_error = None
 
     def __init__(self):
         self.queries = []
+        self.fail = None
 
-    def search(self, query, max_results=12):
-        self.queries.append(query)
-        return list(RESULTS)
+    def _result(self, items):
+        self.last_error = None
+        if self.fail:
+            self.last_error = BackendError(self.fail, "it broke", "details")
+            return []
+        return items
+
+    def search(self, query, max_results=12, newest_first=False):
+        self.queries.append((query, newest_first) if newest_first else query)
+        return self._result(list(RESULTS))
+
+    def search_channels(self, query, max_results=12):
+        self.queries.append(("channels", query))
+        return self._result(list(CHANNELS))
+
+    def fetch_channel_videos(self, url, max_results=50):
+        self.queries.append(("channel", url))
+        cid = url.split("/channel/")[1].split("/")[0]
+        name = next(c.name for c in CHANNELS if c.channel_id == cid)
+        return name, self._result([m for m in RESULTS if m.channel == name] if name == "Kids TV"
+                                  else [_meta("fffffffffff", "Spooky", channel=name)])
 
     def fetch_video_info(self, url):
         raw = url.rsplit("=", 1)[-1]
@@ -58,7 +84,7 @@ def backend(app):
     fake = FakeBackend()
     app.dependency_overrides[get_backend] = lambda: fake
     app.dependency_overrides[get_thumbnail_service] = lambda: FakeThumbnails(app.state.config.data_dir)
-    SEARCH_LIMITER.reset()
+    GATE.reset()
     yield fake
     app.dependency_overrides.pop(get_backend, None)
     app.dependency_overrides.pop(get_thumbnail_service, None)
@@ -235,3 +261,114 @@ def test_more_videos_shows_the_next_page(app, client, backend):
         assert client.get("/wishlist/thumb/youtube_eeeeeeeeeee").status_code == 200
     finally:
         app.state.config.wishlist.max_results = 12
+
+
+def test_the_same_search_asks_youtube_once(app, client, backend):
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    client.get("/wishlist", params={"q": "Songs "})
+    client.get("/wishlist", params={"q": "songs", "sort": "az"})
+    assert backend.queries == ["songs"]
+    client.get("/wishlist", params={"q": "songs", "sort": "newest"})
+    assert backend.queries == ["songs", ("songs", True)]
+
+
+def test_a_to_z_and_z_to_a(app, client, backend):
+    _kid(app, client)
+    az = client.get("/wishlist", params={"q": "songs", "sort": "az"}).text
+    za = client.get("/wishlist", params={"q": "songs", "sort": "za"}).text
+    assert az.index("Counting to ten") < az.index("Shapes song")
+    assert za.index("Shapes song") < za.index("Counting to ten")
+    assert 'aria-current="true">A to Z' in az
+
+
+def test_tapping_too_fast_says_slow_down(app, client, backend):
+    _kid(app, client)
+    pages = [client.get("/wishlist", params={"q": "songs"}).text for _ in range(9)]
+    assert "so many taps" not in pages[7]
+    assert "so many taps" in pages[8] and "wishlist-error-slow" in pages[8]
+
+
+def test_a_failed_search_is_not_nothing_found(app, client, backend):
+    _kid(app, client)
+    backend.fail = BackendErrorType.NETWORK
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "working right now" in page and "Nothing found" not in page
+    backend.fail = None
+    assert "Counting to ten" in client.get("/wishlist", params={"q": "songs"}).text
+
+
+def test_nothing_found_when_the_rules_hide_everything(app, client, backend):
+    app.state.config.wishlist.allowed_channels = ["Nobody"]
+    try:
+        _kid(app, client)
+        page = client.get("/wishlist", params={"q": "songs"}).text
+        assert "Nothing found" in page and "working right now" not in page
+    finally:
+        app.state.config.wishlist.allowed_channels = []
+
+
+def test_a_bot_check_rests_searching_for_everyone(app, client, backend):
+    _kid(app, client)
+    backend.fail = BackendErrorType.BOT_BLOCKED
+    assert "taking a nap" in client.get("/wishlist", params={"q": "songs"}).text
+    backend.fail = None
+    assert "taking a nap" in client.get("/wishlist", params={"q": "other"}).text
+    assert backend.queries == ["songs"]
+    assert GATE.status().resting_until > 0
+
+
+def test_channels_search_applies_the_rules_and_opens_a_channel(app, client, backend):
+    _kid(app, client)
+    page = client.get("/wishlist", params={"q": "kids", "mode": "channels"}).text
+    assert "Kids TV" in page and "Art Club" in page and "Scary Stories" not in page
+    assert client.get(f"/wishlist/thumb/ytchannel_UC{'a' * 22}").status_code == 200
+    channel = client.get(f"/wishlist/channel/UC{'a' * 22}", params={"q": "kids"}).text
+    assert "Counting to ten" in channel and "Back to the channels" in channel
+    assert "Shapes song" not in channel
+
+
+def test_a_blocked_channel_cannot_be_opened_by_url(app, client, backend):
+    _kid(app, client)
+    page = client.get(f"/wishlist/channel/UC{'b' * 22}").text
+    assert "be shown. Try another one" in page and "Spooky" not in page
+    assert "be shown. Try another one" in client.get("/wishlist/channel/not-a-channel").text
+
+
+def test_gate_budgets():
+    gate = SearchGate()
+    call = lambda n: (["x"], None)  # noqa: E731
+    for i in range(12):
+        gate.fetch(("q", i), 1, kid=1, call=call)
+    with pytest.raises(SearchRefused) as e:
+        gate.fetch(("q", 99), 1, kid=1, call=call)
+    assert e.value.kind == "slow"
+    for i in range(18):
+        gate.fetch(("q", 100 + i), 1, kid=2 + i, call=call)
+    with pytest.raises(SearchRefused) as e:
+        gate.fetch(("q", 999), 1, kid=50, call=call)
+    assert e.value.kind == "busy"
+    assert gate.fetch(("q", 0), 1, kid=50, call=call) == ["x"]
+
+
+def test_gate_asks_again_only_for_more_than_it_has():
+    gate = SearchGate()
+    asked = []
+
+    def call(n):
+        asked.append(n)
+        return list(range(n)), None
+    gate.fetch(("q",), 24, kid=1, call=call)
+    gate.fetch(("q",), 10, kid=1, call=call)
+    gate.fetch(("q",), 48, kid=1, call=call)
+    assert asked == [24, 48]
+    short = SearchGate()
+    short.fetch(("q",), 24, kid=1, call=lambda n: ([1, 2], None))
+    assert short.fetch(("q",), 48, kid=1, call=lambda n: pytest.fail("asked again")) == [1, 2]
+
+
+def test_channel_listing_videos_get_youtube_ids():
+    from app.backends.ytdlp import _entries_to_metadata
+    metas = _entries_to_metadata([{"id": "aaaaaaaaaaa", "ie_key": "Youtube", "title": "A"}],
+                                 "Kids TV", parent_extractor="youtubetab")
+    assert metas[0].extractor == "youtube" and metas[0].channel == "Kids TV"

@@ -60,6 +60,15 @@ class BackendError:
     suggestion: str = ""   # actionable suggestion for the user
 
 
+@dataclass
+class ChannelHit:
+    """A channel in search results."""
+    channel_id: str
+    name: str
+    thumbnail_url: str = ""
+    followers: int = 0
+
+
 class VideoBackend(ABC):
     """Interface that any video source backend must implement.
 
@@ -91,8 +100,13 @@ class VideoBackend(ABC):
         Returns (playlist_title, list_of_videos)."""
         ...
 
-    def search(self, query: str, max_results: int = 12) -> list[VideoMetadata]:
+    def search(self, query: str, max_results: int = 12,
+               newest_first: bool = False) -> list[VideoMetadata]:
         """YouTube search results for `query` (metadata only)."""
+        raise NotImplementedError
+
+    def search_channels(self, query: str, max_results: int = 12) -> list[ChannelHit]:
+        """YouTube channels matching `query`."""
         raise NotImplementedError
 
     @abstractmethod

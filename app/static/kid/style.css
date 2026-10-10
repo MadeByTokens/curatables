@@ -1166,6 +1166,56 @@ noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
 }
 .wishlist-sent { background: #e6f6ee; color: #145c36; border: 1px solid #9fd8b8; }
 .wishlist-error { background: #fee; color: #900; border: 1px solid #f99; }
+.wishlist-error { text-align: center; }
+.wishlist-error-slow, .wishlist-error-busy, .wishlist-error-resting, .wishlist-error-rules {
+    background: #fff8e1; color: #5c4400; border-color: #f0d080;
+}
+.wishlist-error-icon { display: block; font-size: 44px; margin-bottom: 4px; }
+.wishlist-modes { border: 0; margin: 10px 0 0; padding: 0; }
+.wishlist-pill {
+    display: inline-block;
+    min-height: 44px;
+    line-height: 44px;
+    margin: 4px 4px 0 0;
+    padding: 0 16px;
+    font-size: 17px;
+    font-weight: bold;
+    color: #333;
+    background: #eee;
+    border-radius: 22px;
+    text-decoration: none;
+    cursor: pointer;
+}
+input:checked + .wishlist-pill, .wishlist-pill.is-on {
+    color: #fff;
+    background: #1f7a70;
+    background: var(--accent, #1f7a70);
+}
+input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; }
+.wishlist-sorts { margin-top: 14px; }
+.wishlist-looking { display: none; padding: 24px 0 8px; text-align: center; font-size: 22px; font-weight: bold; }
+.wishlist-looking.is-on { display: block; }
+.wishlist-looking-icon {
+    display: block;
+    font-size: 56px;
+    -webkit-animation: wishlist-bob 0.8s ease-in-out infinite alternate;
+    animation: wishlist-bob 0.8s ease-in-out infinite alternate;
+}
+@-webkit-keyframes wishlist-bob {
+    from { -webkit-transform: translateY(0) rotate(-12deg); }
+    to { -webkit-transform: translateY(-12px) rotate(12deg); }
+}
+@keyframes wishlist-bob {
+    from { transform: translateY(0) rotate(-12deg); }
+    to { transform: translateY(-12px) rotate(12deg); }
+}
+.wishlist-busy .wishlist-grid, .wishlist-busy .wishlist-sorts { opacity: 0.35; }
+.wishlist-busy .search-btn, .wishlist-busy .wishlist-page-btn { opacity: 0.6; }
+.wishlist-channel { color: inherit; text-align: center; text-decoration: none; }
+.wishlist-avatar { display: block; padding: 16px 16px 4px; }
+.wishlist-avatar img { width: 120px; height: 120px; border-radius: 60px; background: #ddd; }
+.wishlist-channel-title { margin: 18px 0 4px; }
+.wishlist-back { display: inline-block; min-height: 44px; line-height: 44px; font-weight: bold; }
 .wishlist-meta {
     display: block;
     padding: 0 10px 8px;

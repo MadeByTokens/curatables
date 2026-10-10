@@ -13,10 +13,10 @@ import re
 import threading
 from typing import Any
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote_plus, urlsplit
 
 from app.services.safe_fetch import BlockedURL, check_url
-from app.backends.base import VideoBackend, VideoMetadata, BackendError, BackendErrorType
+from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # added extractor with weird IDs — skip it rather than crash.
 _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
 _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+_YOUTUBE_CHANNEL_ID = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
 
 
 class YtdlpBackend(VideoBackend):
@@ -53,7 +54,8 @@ class YtdlpBackend(VideoBackend):
         msg = str(error)
         details = msg
 
-        if "Sign in to confirm" in msg or re.search(r"\bbots?\b", msg.lower()):
+        if ("Sign in to confirm" in msg or re.search(r"\bbots?\b", msg.lower())
+                or "429" in msg or "too many requests" in msg.lower()):
             return BackendError(
                 error_type=BackendErrorType.BOT_BLOCKED,
                 message="The source blocked the request (bot detection).",
@@ -233,19 +235,42 @@ class YtdlpBackend(VideoBackend):
         return title, _entries_to_metadata(info.get("entries", []),
                                            parent_extractor=extractor)
 
-    def search(self, query: str, max_results: int = 12) -> list[VideoMetadata]:
+    def _flat(self, url: str, limit: int) -> dict | None:
         import yt_dlp
 
         self.last_error = None
-        opts = {**self._base_opts(), "extract_flat": True, "skip_download": True}
+        opts = {**self._base_opts(), "extract_flat": True, "skip_download": True,
+                "playlistend": limit}
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
-                info = ydl.extract_info(f"ytsearch{int(max_results)}:{query}", download=False)
+                return ydl.extract_info(url, download=False) or {}
             except Exception as e:
                 self.last_error = self.classify_error(e)
                 logger.warning("[%s] %s", self.last_error.error_type.value, self.last_error.message)
-                return []
+                return None
+
+    def search(self, query: str, max_results: int = 12,
+               newest_first: bool = False) -> list[VideoMetadata]:
+        prefix = "ytsearchdate" if newest_first else "ytsearch"
+        info = self._flat(f"{prefix}{int(max_results)}:{query}", int(max_results))
         return _entries_to_metadata((info or {}).get("entries", []), parent_extractor="youtube")
+
+    def search_channels(self, query: str, max_results: int = 12) -> list[ChannelHit]:
+        url = ("https://www.youtube.com/results?sp=EgIQAg%3D%3D&search_query="
+               + quote_plus(query))
+        info = self._flat(url, int(max_results))
+        hits = []
+        for e in (info or {}).get("entries") or []:
+            cid = str((e or {}).get("channel_id") or e.get("id") or "")
+            if not _YOUTUBE_CHANNEL_ID.match(cid):
+                continue
+            thumbs = [t for t in e.get("thumbnails") or [] if isinstance(t, dict) and t.get("url")]
+            thumb = str(thumbs[-1]["url"]) if thumbs else ""
+            if thumb.startswith("//"):
+                thumb = "https:" + thumb
+            hits.append(ChannelHit(cid, str(e.get("channel") or e.get("title") or ""),
+                                   thumb, int(e.get("channel_follower_count") or 0)))
+        return hits
 
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
@@ -395,7 +420,9 @@ def _entries_to_metadata(entries: list,
         vid_id = e.get("id", "")
         if not vid_id or not _SAFE_ENTRY_ID.match(vid_id):
             continue
-        extractor = (e.get("extractor_key") or e.get("extractor")
+        # ie_key names the video's own extractor; a channel listing's
+        # extractor is "youtubetab", which must not end up in video ids.
+        extractor = (e.get("extractor_key") or e.get("extractor") or e.get("ie_key")
                      or parent_extractor or "").lower()
         results.append(VideoMetadata(
             video_id=vid_id,
