@@ -251,8 +251,13 @@ class YtdlpBackend(VideoBackend):
 
     def search(self, query: str, max_results: int = 12,
                newest_first: bool = False) -> list[VideoMetadata]:
-        prefix = "ytsearchdate" if newest_first else "ytsearch"
-        info = self._flat(f"{prefix}{int(max_results)}:{query}", int(max_results))
+        if newest_first:
+            # Videos only, by upload date (yt-dlp has no search prefix for it).
+            url = ("https://www.youtube.com/results?sp=CAISAhAB&search_query="
+                   + quote_plus(query))
+        else:
+            url = f"ytsearch{int(max_results)}:{query}"
+        info = self._flat(url, int(max_results))
         return _entries_to_metadata((info or {}).get("entries", []), parent_extractor="youtube")
 
     def search_channels(self, query: str, max_results: int = 12) -> list[ChannelHit]:
