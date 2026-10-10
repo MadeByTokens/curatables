@@ -64,10 +64,10 @@
     <span class="video-title">{{ r.meta.title }}</span>
     <span class="wishlist-meta">{{ r.meta.channel }}{% if r.meta.duration %} &middot; {{ duration(r.meta.duration) }}{% endif %}</span>
     {% if r.status == "new" %}
-    <form method="POST" action="/wishlist/ask" class="wishlist-ask-form" data-looking>
+    <form method="POST" action="/wishlist/ask" class="wishlist-ask-form" data-asking>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="raw_id" value="{{ r.meta.video_id }}">
-      <button type="submit" class="wishlist-ask-btn"><span aria-hidden="true">&#128075;</span> {{ _("Ask") }}</button>
+      <button type="submit" class="wishlist-ask-btn" data-busy="{{ _('Asking…') }}"><span aria-hidden="true">&#128075;</span> {{ _("Ask") }}</button>
     </form>
     {% elif r.status == "pending" %}
     <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Asked") }}</span>

@@ -1193,7 +1193,25 @@ input:checked + .wishlist-pill, .wishlist-pill.is-on {
 }
 input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; }
 .wishlist-sorts { margin-top: 14px; }
-.wishlist-looking { display: none; padding: 24px 0 8px; text-align: center; font-size: 22px; font-weight: bold; }
+/* Fixed in the middle of the screen, so it shows wherever the kid
+   scrolled to before tapping More or a channel. */
+.wishlist-looking {
+    display: none;
+    position: fixed;
+    z-index: 50;
+    top: 35%;
+    left: 50%;
+    width: 220px;
+    margin-left: -110px;
+    padding: 20px 0 16px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #222;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.25);
+}
 .wishlist-looking.is-on { display: block; }
 .wishlist-looking-icon {
     display: block;
@@ -1210,6 +1228,12 @@ input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; 
     to { transform: translateY(-12px) rotate(12deg); }
 }
 .wishlist-busy .wishlist-grid, .wishlist-busy .wishlist-sorts { opacity: 0.35; }
+.wishlist-ask-btn.is-busy {
+    -webkit-animation: wishlist-pulse 0.7s ease-in-out infinite alternate;
+    animation: wishlist-pulse 0.7s ease-in-out infinite alternate;
+}
+@-webkit-keyframes wishlist-pulse { from { opacity: 1; } to { opacity: 0.55; } }
+@keyframes wishlist-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .wishlist-busy .search-btn, .wishlist-busy .wishlist-page-btn { opacity: 0.6; }
 .wishlist-channel { color: inherit; text-align: center; text-decoration: none; }
 .wishlist-avatar { display: block; padding: 16px 16px 4px; }
