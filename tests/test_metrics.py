@@ -29,9 +29,8 @@ class TestMetricsRouteEnabled:
         _enable_metrics(app)
         resp = client.get("/metrics")
         assert resp.status_code == 200
-        # Prometheus exposition format. The exact `version=...` token
-        # has changed across prometheus_client releases (0.0.4 in older
-        # builds, 1.0.0 in 0.25+); just assert the marker is present.
+        # The `version=...` value differs between prometheus_client
+        # releases, so only its presence is checked.
         ct = resp.headers["content-type"]
         assert ct.startswith("text/plain")
         assert "version=" in ct
@@ -43,8 +42,6 @@ class TestMetricsRouteEnabled:
 
     def test_http_request_counter_increments(self, client, app):
         _enable_metrics(app)
-        # First scrape — counter should be present at zero or at the
-        # initial value.
         client.get("/parent/login")
         client.get("/parent/login")
         client.get("/parent/login")

@@ -1,9 +1,9 @@
-"""Regression guard: no `TemplateResponse(` call in app/ may omit the
-explicit `request` as first positional argument.
+"""Guard: every `TemplateResponse(` call in app/ passes `request` as its
+first positional argument.
 
-Background: Starlette 1.0 removed the deprecated
-`TemplateResponse(name, context)` signature. Every call site must use
-`TemplateResponse(request, name, context)`. The old form silently 500s
+Starlette 1.0 removed the `TemplateResponse(name, context)` signature, so
+every call site must use `TemplateResponse(request, name, context)`. The
+two-argument form 500s
 on Starlette >= 1.0 (Jinja2 cache trips on `TypeError: unhashable type:
 'dict'` because the context dict ends up in the cache-key position).
 
@@ -81,10 +81,8 @@ def test_no_old_templateresponse_signature():
 
 
 def test_guard_detects_bad_signature(tmp_path):
-    """Sanity: the guard test above must actually catch the old form.
-
-    Otherwise it would silently pass even after a regression.
-    """
+    """The detector flags the two-argument form and accepts the
+    request-first form."""
     bad = tmp_path / "bad.py"
     bad.write_text(
         "from fastapi.templating import Jinja2Templates\n"
@@ -111,15 +109,12 @@ def test_guard_detects_bad_signature(tmp_path):
 
 
 def test_starlette_version_supports_new_signature():
-    """If starlette drops below 0.29, the new signature raises. Prefer
-    failing in unit tests to debugging 500s in production.
-    """
+    """Starlette older than 0.29 rejects the request-first signature."""
     import starlette
     # Parse "major.minor" only; dev builds may suffix with ".postN".
     m = re.match(r"^(\d+)\.(\d+)", starlette.__version__)
     assert m, f"unrecognised starlette version: {starlette.__version__}"
     major, minor = int(m.group(1)), int(m.group(2))
-    # 0.29 introduced TemplateResponse(request, name, ...); 1.0 removed the old form.
     assert (major, minor) >= (0, 29), (
         f"starlette {starlette.__version__} predates the "
         "TemplateResponse(request, name, context) signature. "

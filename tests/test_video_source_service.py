@@ -22,7 +22,7 @@ def _svc():
 
 
 class TestYouTubeFastPath:
-    """Known YouTube URL shapes must still classify correctly — we
+    """Known YouTube URL shapes must classify correctly — we
     rely on this fast path to avoid a network round-trip in the
     common case."""
 

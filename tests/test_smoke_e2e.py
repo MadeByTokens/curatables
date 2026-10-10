@@ -14,8 +14,7 @@ below. The fake returns deterministic metadata for any URL and
 writes a 4-byte placeholder file on download, which is enough surface
 for the add → preview → confirm → ready path to run end-to-end.
 
-Why a real server, given we already have 400+ in-process tests?
-TestClient skips the actual ASGI lifespan unless wrapped in a
+Why a real server? TestClient skips the actual ASGI lifespan unless wrapped in a
 context manager, never binds a real socket, and gives no signal on
 template-cache / DI-wiring / migrator failures that only appear at
 process boot. Booting via ``run.py`` exercises that whole path.
@@ -160,10 +159,7 @@ def _csrf_from_html(html: bytes) -> str:
 @pytest.mark.smoke
 class TestSmokeBoot:
     def test_healthz_reports_ok(self, server):
-        """The fixture only returned the server URL once /healthz was
-        green, so this assertion is fast — but it also pins the JSON
-        contract so a future refactor can't silently change the
-        operational shape."""
+        """Pins the /healthz JSON contract on a real server."""
         r = httpx.get(f"{server}/healthz")
         assert r.status_code == 200
         body = r.json()
@@ -195,9 +191,8 @@ class TestSmokeBoot:
         r = client.get("/parent/")
         assert r.status_code == 200
 
-        # 3. /parent/content (the canonical content page) renders for
-        # an empty library. 200 (page) or 3xx (slash-canonicalisation
-        # / redirect to a default) both prove the route is wired.
+        # 3. /parent/content renders for an empty library (following
+        # any slash-canonicalisation redirect).
         r = client.get("/parent/content/", follow_redirects=True)
         assert r.status_code == 200
 
@@ -267,10 +262,9 @@ class TestSmokeMetadataFetch:
 
     def test_video_url_renders_preview_with_fake_metadata(self, server):
         """Submit a single-video URL and assert the preview page
-        shows the fake yt-dlp's deterministic title and channel.
-        This is the load-bearing test: a regression that broke
-        metadata fetch (template loading, DI wiring on the
-        backend, info-dict projection) shows up here."""
+        shows the fake yt-dlp's deterministic title and channel. This
+        covers metadata fetch end to end: template loading, backend DI
+        wiring and info-dict projection."""
         client = httpx.Client(base_url=server, follow_redirects=False,
                               timeout=15.0)
         self._setup(client)

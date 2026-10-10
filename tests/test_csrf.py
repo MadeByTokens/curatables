@@ -132,10 +132,10 @@ class TestCSRFMiddleware:
 
 
 class TestMultipartTokenExtraction:
-    """Regression: the kid /upload posts multipart/form-data, and CSRF
-    tokens (itsdangerous URLSafeTimedSerializer) contain '-', '_' and
-    '.'. The extractor's regex used to stop at the first '-', truncating
-    the token so every kid upload failed CSRF with a 403."""
+    """The kid /upload posts multipart/form-data, and CSRF tokens
+    (itsdangerous URLSafeTimedSerializer) contain '-', '_' and '.'. The
+    extractor must return the whole token, or every kid upload fails
+    CSRF with a 403."""
 
     def test_token_with_dashes_extracted_whole(self):
         token = "abc-def_ghi.jkl-MNO-pqr"

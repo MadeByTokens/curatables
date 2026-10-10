@@ -728,7 +728,7 @@ def test_recovery_units_only_run_when_their_file_is_there():
     assert "ConditionPathExists=/boot/firmware/curatables-diagnose.txt" in diag
 
 
-# --- review fixes -------------------------------------------------------------
+# --- drive and network edge cases --------------------------------------------
 
 def test_format_refuses_the_videos_drive_even_when_it_is_not_mounted(fake):
     SETTINGS.fstab_path.write_text(f"UUID=AAAA-1111 {SETTINGS.media_mount} exfat nofail 0 0\n")

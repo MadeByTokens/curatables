@@ -92,15 +92,14 @@ class TestSetupSubmit:
         assert resp.status_code == 302
         assert resp.headers["location"] == "/parent/"
 
-        # The new credentials are persisted and the session is now a
-        # parent session — a follow-up parent request should not bounce.
+        # The session is a parent session: a follow-up parent request
+        # does not bounce.
         resp2 = client.get("/parent/")
         assert resp2.status_code == 200
 
     def test_clears_kid_profile_from_session(self, client, app):
-        """Mirror of the login-side regression test: completing setup
-        while a kid profile is selected in the session must drop the
-        profile so get_viewer resolves as parent."""
+        """Completing setup while a kid profile is selected in the
+        session drops the profile so get_viewer resolves as parent."""
         from app.dependencies import get_db
         from app.repositories import ProfileRepository
         from app.models import Profile
@@ -119,8 +118,7 @@ class TestSetupSubmit:
         )
         assert resp.status_code == 302
 
-        # The parent landing page resolves successfully (we are a
-        # parent now, not a kid).
+        # The parent landing page resolves as parent, not kid.
         resp2 = client.get("/parent/")
         assert resp2.status_code == 200
 

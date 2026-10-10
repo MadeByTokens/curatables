@@ -89,10 +89,9 @@ class TestTitleOverrides:
         assert patched.title == "Original Title"
 
     def test_apply_overrides_does_not_mutate_input(self, db, tmp_path):
-        """Regression guard: apply_overrides must return patched copies,
-        not mutate the input Video objects. Any future cache layer in
-        front of the video repo would silently poison shared instances
-        if this invariant broke."""
+        """apply_overrides returns patched copies and leaves the input
+        Video objects untouched, so shared instances are never
+        poisoned with one kid's overrides."""
         alice = _mk_kid(db, "alice")
         _mk_video(db, "v1", "Original Title")
         svc = _mk_service(db, tmp_path)

@@ -42,7 +42,7 @@ class TestRequest:
 
     def test_unknown_kind_rejected(self, config):
         with pytest.raises(ValueError):
-            updates.request_update(config, kind="app")  # not wired yet
+            updates.request_update(config, kind="app")
         assert updates.pending_request(config) is None
 
 

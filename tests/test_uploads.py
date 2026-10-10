@@ -1,10 +1,10 @@
-"""Tests for Phase 2 parent uploads.
+"""Parent uploads.
 
 Covers MediaProbeService parsing and validation, UploadService
 lifecycle (create/append/finalize/dedup/sweep/unsupported-codec),
 StorageService.video_file_path mode-aware routing, the tus.io
-protocol routes end-to-end via TestClient, and the new
-max_upload_gb advanced settings field.
+protocol routes end-to-end via TestClient, and the max_upload_gb
+advanced settings field.
 """
 
 import base64
@@ -563,7 +563,6 @@ class TestTusRoutes:
         location = resp.headers["location"]
         resp = authed_client.delete(location)
         assert resp.status_code == 204
-        # HEAD should now 404
         resp = authed_client.head(location)
         assert resp.status_code == 404
 
@@ -649,7 +648,7 @@ class TestSettingsMaxUpload:
 
 
 # ---------------------------------------------------------------------------
-# Upload page polish (tus-js-client best-practices fixes)
+# Upload page client-side structure
 # ---------------------------------------------------------------------------
 
 def _upload_page_with_script(client):
@@ -662,18 +661,15 @@ def _upload_page_with_script(client):
 
 
 class TestUploadPagePolish:
-    """Structural regressions for the upload page (upload.html and
-    static/parent/upload.js) fixes from
-    docs/tus-js-client-best-practices.md. These are grep-the-HTML
-    assertions that catch accidental deletion of critical client-side
-    structures — they do not verify JS runtime behavior, which requires
-    manual testing per the doc's section 9.
+    """The upload page (upload.html and static/parent/upload.js) keeps
+    the tus-js-client structures it depends on. These are grep-the-source
+    assertions; they do not verify JS runtime behaviour.
     """
 
     def test_page_contains_build_metadata_helper(self, authed_client):
         resp = _upload_page_with_script(authed_client)
-        # The must-fix: a buildMetadata helper that filters empty values
-        # so Safari doesn't reject the Upload-Metadata header.
+        # buildMetadata filters empty values so Safari doesn't reject
+        # the Upload-Metadata header.
         assert b"buildMetadata" in resp.content
         # And it must only conditionally set filetype/title.
         assert b"if (file.type)" in resp.content

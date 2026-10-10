@@ -1,5 +1,5 @@
-"""Phase 1 playback guard — prove the ingest-time normalizer actually
-produces files in the client playback baseline.
+"""The ingest-time normalizer produces files in the client playback
+baseline.
 
 The hermetic yt-dlp stub writes a 4-byte placeholder, which ffprobe
 cannot read, so the smoke suite can't prove the normalizer. These tests
@@ -68,13 +68,13 @@ def normalizer(probe):
 
 
 def test_transcodes_vp9_opus_1080p60_to_baseline(tmp_path, probe, normalizer):
-    """The core bug: VP9/Opus, oversized, high-fps → H.264/AAC ≤720p30."""
+    """VP9/Opus, oversized, high-fps → H.264/AAC ≤720p30."""
     src = _make(tmp_path / "video.webm", size="1920x1080", rate=60,
                 vcodec="libvpx-vp9", acodec="libopus", faststart=False)
     res = normalizer.normalize(src)
     assert res.action == "transcode"
     _assert_baseline(probe, res.path)
-    # The misleading .webm must be gone — only the baseline mp4 remains.
+    # Only the baseline mp4 remains; the source .webm is removed.
     assert not src.exists()
 
 

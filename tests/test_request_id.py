@@ -27,7 +27,7 @@ class TestRequestIDHeader:
         resp = client.get("/parent/login",
                           headers={"X-Request-ID": "testcorrid12"})
         assert resp.status_code == 200
-        # The access logger fires on every request and now carries the RID.
+        # The access logger fires on every request and carries the RID.
         access_records = [r for r in caplog.records
                           if r.name == "curatables.access"]
         assert access_records
