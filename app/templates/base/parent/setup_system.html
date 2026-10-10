@@ -11,6 +11,13 @@ dashboard.</p>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="mode" value="new">
   <input type="text" name="username" value="{{ account.user }}" autocomplete="username" hidden>
+  {% if needs_current %}
+  <div class="form-group">
+    <label for="linux_old">Current password for {{ account.user }}</label>
+    <input type="password" id="linux_old" name="current_password" required autocomplete="current-password">
+    <small class="muted d-block">It was set when the SD card was prepared. To keep it instead, use the form below.</small>
+  </div>
+  {% endif %}
   <div class="form-group">
     <label for="linux_password">New password for {{ account.user }}</label>
     <input type="password" id="linux_password" name="password" required minlength="8" autocomplete="new-password" autofocus>

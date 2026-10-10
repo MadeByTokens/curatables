@@ -22,8 +22,11 @@ logger = logging.getLogger(__name__)
 
 # Paths exempt from CSRF enforcement. Must be complete path matches
 # (startswith) — keep the list short and audited.
+# Exact paths: the first-run password page only. Step 2
+# (/parent/setup/system) runs inside a parent session and is checked.
+CSRF_EXEMPT_EXACT: frozenset[str] = frozenset({"/parent/setup"})  # first-run, no session yet
+
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
-    "/parent/setup",   # first-run, no session yet
     "/parent/login",   # login creates the session; caller can't have
                        # a token bound to it before submitting
     "/profiles/select",  # same: establishes the kid session
@@ -56,7 +59,7 @@ class CSRFMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if any(path.startswith(p) for p in CSRF_EXEMPT_PREFIXES):
+        if path in CSRF_EXEMPT_EXACT or any(path.startswith(p) for p in CSRF_EXEMPT_PREFIXES):
             await self.app(scope, receive, send)
             return
 

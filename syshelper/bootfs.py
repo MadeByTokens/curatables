@@ -64,6 +64,7 @@ def reset_from_boot() -> int:
     parent = cfg.setdefault("parent", {})
     parent["password_hash"] = None
     parent["system_setup_done"] = False
+    parent["linux_password_reset"] = True
     parent["session_epoch"] = int(parent.get("session_epoch") or 0) + 1
     safefs.write_owned(path, json.dumps(cfg, indent=2), svc.pw_uid, svc.pw_gid)
     _log("reset: the parent password was cleared; open the dashboard to set a new one")

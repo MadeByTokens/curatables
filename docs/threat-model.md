@@ -383,7 +383,11 @@ What bounds it:
   the system or the videos; formatting needs the literal word `ERASE`.
 - The Linux password and SSH pages ask for the parent password again,
   and the two passwords must differ, so a stolen parent session or a
-  cracked parent hash does not give `sudo`.
+  cracked parent hash does not give `sudo`. In first-run setup, a Linux
+  password set before (Raspberry Pi Imager, `userconf.txt`) can only be
+  replaced by typing it, unless the parent reset the box from its SD
+  card. Checking a Linux password over the socket takes at least a
+  second, one at a time.
 - Files in the service user's data dir are opened without following
   symlinks and only when owned by that user; `config.json` is replaced
   through a freshly created file handed over by its descriptor; copying
@@ -407,11 +411,19 @@ What remains:
   who can publish releases on the repository: whoever controls the
   repository controls what the boxes run as root. Release signing would
   close that.
-- A compromised service process can do anything a parent can do from
-  the Box pages: switch Wi-Fi, format a USB drive that does not hold the
-  videos, reboot or shut down, install the latest release or system
-  updates, or go back one version. It cannot set the Linux password without the parent
-  password, run commands, or touch the SD card's partitions.
+- **A compromised service process is effectively root.** The parent
+  password checks above happen inside the web app, which is the process
+  in question; the helper only checks that the caller is the service
+  user. Code running as `curatables` (a bug in the app, or in yt-dlp or
+  ffmpeg handling a hostile video) can ask the helper to set the Linux
+  password and turn SSH on, then log in with `sudo`. It can also switch
+  Wi-Fi, format a USB drive that does not hold the videos, reboot or
+  shut down, and install the latest release. It still cannot run
+  arbitrary commands through the helper or touch the SD card's
+  partitions. Closing this would need a secret the app cannot read, such
+  as a confirmation on the box itself; until then the sandbox around the
+  service (`ProtectSystem=strict`, `NoNewPrivileges`, the unprivileged
+  user) is what keeps such code from running in the first place.
 - The SD card's boot partition is trusted: `curatables-reset.txt` clears
   the parent password. Physical access to the card is treated as full
   access, as it is anyway (the card can simply be reflashed).

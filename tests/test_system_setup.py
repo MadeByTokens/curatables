@@ -187,3 +187,38 @@ def test_a_failing_ssh_switch_does_not_trap_the_parent_in_setup(authed_client, a
     assert resp.status_code == 302 and resp.headers["location"] == "/parent/system?notice=ssh-failed#ssh"
     assert app.state.config.parent.system_setup_done
     assert helper.linux_password == "linuxpass99"
+
+
+def test_an_existing_linux_password_needs_the_current_one_to_replace(authed_client, app, helper):
+    helper.has_password = True
+    helper.linux_password = "imagerpass1"
+    page = authed_client.get("/parent/setup/system").text
+    assert 'name="current_password"' in page
+    bad = authed_client.post("/parent/setup/system", data={
+        "mode": "new", "password": "linuxpass99", "password2": "linuxpass99", "current_password": "guess12345"})
+    assert bad.status_code == 400 and "current Linux password is not right" in bad.text
+    assert helper.linux_password == "imagerpass1"
+    ok = authed_client.post("/parent/setup/system", data={
+        "mode": "new", "password": "linuxpass99", "password2": "linuxpass99", "current_password": "imagerpass1"})
+    assert ok.status_code == 302 and helper.linux_password == "linuxpass99"
+
+
+def test_after_an_sd_card_reset_a_new_linux_password_needs_no_old_one(authed_client, app, helper):
+    helper.has_password = True
+    helper.linux_password = "forgotten99"
+    app.state.config.parent.linux_password_reset = True
+    assert 'name="current_password"' not in authed_client.get("/parent/setup/system").text
+    resp = authed_client.post("/parent/setup/system", data={
+        "mode": "new", "password": "linuxpass99", "password2": "linuxpass99"})
+    assert resp.status_code == 302 and helper.linux_password == "linuxpass99"
+    assert not app.state.config.parent.linux_password_reset
+
+
+def test_step_two_is_csrf_protected(app, helper):
+    del app.state.csrf.validate
+    c = TestClient(app, follow_redirects=False)
+    c.post("/parent/login", data={"password": "testpass"})
+    resp = c.post("/parent/setup/system", data={"mode": "new", "password": "linuxpass99",
+                                                "password2": "linuxpass99"})
+    assert resp.status_code == 403
+    assert "account_set_password" not in helper.actions()

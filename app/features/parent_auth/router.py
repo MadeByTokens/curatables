@@ -79,8 +79,16 @@ def setup_submit(request: Request,
     return RedirectResponse(url="/parent/", status_code=302)
 
 
+def _needs_current(account: dict, config: Config) -> bool:
+    """A Linux password set before (Imager, userconf.txt) can only be
+    replaced by someone who knows it, unless the parent reset the box
+    from its SD card."""
+    return bool(account.get("has_password")) and not config.parent.linux_password_reset
+
+
 def _system_page(request: Request, helper: SystemHelper, error: str | None = None):
     templates = request.app.state.templates
+    config = request.app.state.config
     try:
         account = helper.call("account_status")
     except (HelperUnavailable, HelperFailed) as e:
@@ -88,6 +96,7 @@ def _system_page(request: Request, helper: SystemHelper, error: str | None = Non
             "request": request, "error": str(e)}, status_code=503)
     return templates.TemplateResponse(request, "parent/setup_system.html", {
         "request": request, "account": account, "error": error,
+        "needs_current": _needs_current(account, config),
     }, status_code=400 if error else 200)
 
 
@@ -106,6 +115,7 @@ def setup_system_submit(request: Request,
                         mode: str = Form("new"),
                         password: str = Form(""),
                         password2: str = Form(""),
+                        current_password: str = Form(""),
                         ssh: str = Form(""),
                         viewer: ViewerContext = Depends(require_parent),
                         auth: AuthService = Depends(get_auth_service),
@@ -131,6 +141,10 @@ def setup_system_submit(request: Request,
             if not helper.linux_password_matches(password):
                 return _system_page(request, helper, "That is not the current password.")
         else:
+            if _needs_current(account, config) and not helper.linux_password_matches(current_password):
+                return _system_page(request, helper, "The current Linux password is not right. "
+                                    "Forgot it? See \"Forgot the parent password\" on the sign-in page: "
+                                    "the SD-card reset lets you choose a new one.")
             if len(password) < MIN_PASSWORD_LENGTH:
                 return _system_page(request, helper,
                                     f"The password must be at least {MIN_PASSWORD_LENGTH} characters.")
@@ -141,6 +155,7 @@ def setup_system_submit(request: Request,
         return _system_page(request, helper, str(e))
 
     config.parent.system_setup_done = True
+    config.parent.linux_password_reset = False
     config.save()
     want_ssh = ssh == "1"
     if want_ssh != bool(account.get("ssh_enabled")):

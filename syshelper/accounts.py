@@ -6,6 +6,7 @@ import ctypes
 import ctypes.util
 import hmac
 import threading
+import time
 
 from syshelper import runner
 from syshelper.errors import HelperError
@@ -94,10 +95,19 @@ def account_status(params: dict) -> dict:
     return {"user": user, "has_password": usable(_shadow_hash(user)), "ssh_enabled": ssh_enabled()}
 
 
+_check_lock = threading.Lock()
+
+
 @action("account_password_matches")
 def account_password_matches(params: dict) -> dict:
+    """One check at a time, each taking at least a second, so the socket
+    cannot be used to guess the password quickly."""
     password = text(params, "password", max_len=MAX_PASSWORD)
-    return {"matches": password_matches(password, _shadow_hash(admin_user()))}
+    with _check_lock:
+        started = time.monotonic()
+        matches = password_matches(password, _shadow_hash(admin_user()))
+        time.sleep(max(0.0, 1.0 - (time.monotonic() - started)))
+    return {"matches": matches}
 
 
 @action("account_set_password")

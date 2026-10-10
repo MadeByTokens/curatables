@@ -77,6 +77,9 @@ class ParentConfig:
     # First-run step 2 (the Linux login password) is done. Only asked
     # for when the system helper is present.
     system_setup_done: bool = False
+    # Set by curatables-reset.txt on the SD card: step 2 may then choose
+    # a new Linux password without knowing the old one.
+    linux_password_reset: bool = False
 
 
 DEFAULT_WISHLIST_BLOCKED_WORDS = [
