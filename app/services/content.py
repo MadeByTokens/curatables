@@ -232,7 +232,8 @@ class ContentService:
             return info.title, [info]
 
         elif parsed.url_type == "channel":
-            title, videos = self.source.fetch_channel_videos(parsed.clean_url)
+            title, videos = GATE.listing(("channel-listing", parsed.clean_url),
+                                         lambda: self.source.fetch_channel_videos(parsed.clean_url))
             if not videos:
                 err = self.get_last_backend_error()
                 if err:
@@ -242,7 +243,8 @@ class ContentService:
             return title, videos
 
         elif parsed.url_type == "playlist":
-            title, videos = self.source.fetch_playlist(parsed.clean_url)
+            title, videos = GATE.listing(("playlist-listing", parsed.clean_url),
+                                         lambda: self.source.fetch_playlist(parsed.clean_url))
             if not videos:
                 err = self.get_last_backend_error()
                 if err:

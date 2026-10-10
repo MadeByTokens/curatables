@@ -477,3 +477,38 @@ def test_the_dashboard_says_when_search_is_paused_or_failing(app, client, authed
     backend.fail = BackendErrorType.BOT_BLOCKED
     client.get("/wishlist", params={"q": "three"})
     assert "video search is paused until" in authed_client.get("/parent/").text
+
+
+def test_parent_channel_and_playlist_previews_are_cached(app, authed_client, backend):
+    calls = []
+
+    def channel(url, max_results=50):
+        calls.append(url)
+        return "Kids TV", list(RESULTS[:2])
+    backend.fetch_channel_videos = channel
+    backend.fetch_playlist = lambda url, *a, **k: calls.append(url) or ("Songs", list(RESULTS[:1]))
+    for _ in range(2):
+        page = authed_client.post("/parent/add", data={"url": "https://www.youtube.com/@kidstv"}).text
+        assert "Kids TV" in page and "Scary monster night" in page
+        page = authed_client.post("/parent/add", data={
+            "url": "https://www.youtube.com/playlist?list=PL" + "a" * 32}).text
+        assert "Songs" in page and "Counting to ten" in page
+    assert len(calls) == 2
+
+
+def test_an_unreadable_cache_row_is_a_miss(tmp_path):
+    import sqlite3
+    path = tmp_path / "cache.db"
+    SearchGate(path)
+    db = sqlite3.connect(path)
+    db.execute("INSERT INTO answers VALUES (?, 9e12, 1, '[]')", ('["video", "aaaaaaaaaaa"]',))
+    db.commit()
+    assert SearchGate(path).video("aaaaaaaaaaa", lambda: RESULTS[0]) == RESULTS[0]
+
+
+def test_a_parent_lookup_never_waits_forever(monkeypatch):
+    import app.services.search_gate as sg
+    monkeypatch.setattr(sg, "LOCK_WAIT_SECONDS", 0.1)
+    gate = SearchGate()
+    gate._youtube.acquire()
+    assert gate.video("aaaaaaaaaaa", lambda: RESULTS[0]) == RESULTS[0]

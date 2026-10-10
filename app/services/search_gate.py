@@ -48,8 +48,9 @@ _TYPES: dict[str, type] = {"video": VideoMetadata, "channel": ChannelHit}
 
 
 class _Cache:
-    """(key → items) with an expiry, in SQLite: a file that survives
-    restarts, or memory when there is none (tests)."""
+    """(key → title and items) with an expiry, in SQLite: a file that
+    survives restarts, or memory when there is none (tests). A row it
+    can't read is a miss."""
 
     def __init__(self, path: Path | None = None):
         if path is not None:
@@ -61,18 +62,22 @@ class _Cache:
             " asked INTEGER NOT NULL, items TEXT NOT NULL)")
         self._lock = threading.Lock()
 
-    def get(self, key: tuple) -> tuple[int, list] | None:
+    def get(self, key: tuple) -> tuple[int, str, list] | None:
         with self._lock:
             row = self._db.execute("SELECT asked, items FROM answers WHERE key = ? AND expires > ?",
                                    (json.dumps(key), time.time())).fetchone()
         if row is None:
             return None
-        return row[0], [_TYPES[t](**d) for t, d in json.loads(row[1])]
+        try:
+            packed = json.loads(row[1])
+            return row[0], packed["title"], [_TYPES[t](**d) for t, d in packed["items"]]
+        except (KeyError, TypeError, ValueError):
+            return None
 
-    def put(self, key: tuple, asked: int, items: list) -> None:
+    def put(self, key: tuple, asked: int, items: list, title: str = "") -> None:
         ttl = VIDEO_CACHE_SECONDS if key[0] == "video" else CACHE_SECONDS
-        packed = json.dumps([["video" if isinstance(i, VideoMetadata) else "channel", asdict(i)]
-                             for i in items])
+        packed = json.dumps({"title": title, "items": [
+            ["video" if isinstance(i, VideoMetadata) else "channel", asdict(i)] for i in items]})
         with self._lock, self._db:
             self._db.execute("INSERT OR REPLACE INTO answers VALUES (?, ?, ?, ?)",
                              (json.dumps(key), time.time() + ttl, asked, packed))
@@ -138,26 +143,37 @@ class SearchGate:
 
     def video(self, raw_id: str, call: Callable[[], VideoMetadata | None]) -> VideoMetadata | None:
         """A YouTube video's details for the parent: from the cache when a
-        kid or the parent looked at it this week, else from YouTube (one
-        call at a time, no kid limits). A failure is the caller's to show."""
-        key = ("video", raw_id)
-        hit = self._cached(key, 1)
-        if hit and isinstance(hit[0], VideoMetadata):
-            return hit[0]
-        with self._youtube:
-            hit = self._cached(key, 1)
-            if hit and isinstance(hit[0], VideoMetadata):
-                return hit[0]
-            meta = call()
-            if meta is not None:
-                self._cache.put(key, 1, [meta])
-            return meta
+        kid or the parent looked at it this week, else from YouTube."""
+        _title, items = self.listing(("video", raw_id), lambda: ("", [m for m in [call()] if m]))
+        return items[0] if items and isinstance(items[0], VideoMetadata) else None
+
+    def listing(self, key: tuple, call: Callable[[], tuple[str, list[Any]]]) -> tuple[str, list[Any]]:
+        """A (title, items) lookup for the parent: from the cache, else
+        from YouTube (one call at a time, no kid limits). An empty answer
+        is not cached; the failure is the caller's to show."""
+        found = self._cache.get(key)
+        if found and found[2]:
+            return found[1], found[2]
+        # The parent is never turned away: after LOCK_WAIT_SECONDS the
+        # call goes ahead anyway.
+        locked = self._youtube.acquire(timeout=LOCK_WAIT_SECONDS)
+        try:
+            found = self._cache.get(key)
+            if found and found[2]:
+                return found[1], found[2]
+            title, items = call()
+            if items:
+                self._cache.put(key, len(items), items, title)
+            return title, items
+        finally:
+            if locked:
+                self._youtube.release()
 
     def _cached(self, key: tuple, want: int) -> list[Any] | None:
         found = self._cache.get(key)
         if found is None:
             return None
-        asked, items = found
+        asked, _title, items = found
         # Fewer items than asked for means YouTube has no more.
         if asked >= want or len(items) < asked:
             return items
