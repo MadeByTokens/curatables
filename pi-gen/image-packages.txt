@@ -1,0 +1,5 @@
+# Debian packages only the Raspberry Pi image gets, on top of
+# scripts/apt-packages.txt (which scripts/install.sh also uses).
+# unattended-upgrades: daily Debian security updates (enabled by
+# scripts/apply-system.sh).
+unattended-upgrades

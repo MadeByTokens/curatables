@@ -17,11 +17,10 @@ Environment=CURATABLES_USER=curatables
 ExecStart=/usr/bin/python3 -I /opt/curatables/scripts/curatables-helper.py
 Restart=on-failure
 RestartSec=3
+# No ProtectKernelModules=: mounting a drive can load its filesystem
+# module, and system updates install kernel modules.
 PrivateTmp=true
-ProtectKernelModules=true
-ProtectControlGroups=true
 LockPersonality=true
-RestrictNamespaces=true
 
 [Install]
 WantedBy=multi-user.target
