@@ -56,7 +56,7 @@ Directory-level only; open the directory for the current file list.
 | `app/config.py` | `Config` dataclasses, loaded from and atomically saved to `<data dir>/config.json`. |
 | `app/dependencies.py` | Every FastAPI `Depends()` provider: DB connection, repositories, services, `get_viewer`, `require_parent`, `require_child`, `require_kid_feature`. The only place the layers are wired together. |
 | `app/web.py`, `app/template_utils.py` | Small shared request helpers (`is_xhr`) and template helpers (kid rendering, Jinja filters, asset fingerprint). |
-| `app/middleware/` | ASGI middleware: body size limit, CSRF, request ID, Prometheus. |
+| `app/middleware/` | ASGI middleware: host check, body size limit, CSRF, request ID, Prometheus. |
 | `app/db/` | Connection setup, forward-only migrator, `migrations/`, the `schema.sql` reference snapshot, and `recover_from_crash`. |
 | `app/models/` | Plain dataclasses (`Video`, `Channel`, `Profile`, `ViewerContext`, ...). No logic, no imports from other layers. |
 | `app/repositories/` | SQL, and only SQL. One repository per table or small cluster of tables. |
@@ -66,8 +66,9 @@ Directory-level only; open the directory for the current file list.
 | `app/templates/base/` | Jinja templates: `kid/` and `parent/`. Files starting with `_` are partials. |
 | `app/static/` | CSS/JS: `kid/` (old-browser-safe), `parent/`, `js/` (vendored tus client). |
 | `tests/` | Flat: one `test_*.py` per area, `conftest.py` fixtures, `fixtures/` (incl. a fake yt-dlp for the smoke suite). |
-| `scripts/` | `install.sh`, backup/restore, the root-side `updater.sh`, `setup-external-drive.sh`, Pi `firstboot.sh`, `seed_demo.py`. |
-| `systemd/` | Units for the server, the yt-dlp updater (path + service), the nightly backup (service + timer) and the Pi Wi-Fi first boot. |
+| `syshelper/` | The root system helper for the Pi image: standard library only, one module per area (accounts, Wi-Fi, drives, backups, diagnostics, updates). See [System helper](#system-helper). |
+| `scripts/` | `install.sh`, `apply-system.sh` (installs units and system files; used by the image build and by updates), backup/restore, the root-side `updater.sh`, drive setup, `curatables-helper.py`, Pi `firstboot.sh`, `nm-wired-only.sh`, `mdns-unicast.py`, `seed_demo.py`. |
+| `systemd/` | Units for the server, the system helper, the yt-dlp updater (path + service), the nightly backup (service + timer), and the Pi's first boot, SD-card recovery, SD-card diagnostics and unicast mDNS. |
 | `pi-gen/` | Raspberry Pi appliance image build ([`pi-gen/README.md`](../pi-gen/README.md)). |
 | `tools/` | `curatables-cli.py`, a standalone yt-dlp helper; not part of the server. |
 | `docs/` | User and contributor docs; `docs/design/` holds designs for unbuilt features, `docs/history/` superseded plans and research. |
@@ -393,6 +394,14 @@ database, config, logs and update flag files stay in the data dir. A test
 fails if code joins `videos`/`uploads`/`thumbnails`/`channels` onto the
 data dir again.
 
+When `storage.media_path` is set but the drive is not mounted
+(`media_fs.media_missing`), the app runs degraded: kid pages show
+`kid/resting.html` with a 503, the parent dashboard shows a banner and
+keeps working so the drive can be reconnected, and startup jobs, crash
+recovery and cache eviction skip all media work. Nothing is ever
+written to the empty mount point. On a FAT32 drive,
+`media_fs.capped` limits upload and download sizes to 4 GB.
+
 ---
 
 ## Startup and background work
@@ -425,27 +434,42 @@ Everything in this module opens its own SQLite connection.
 Starlette makes the **last** `add_middleware` call the outermost layer.
 From outermost to innermost:
 
-1. **`BodySizeLimitMiddleware`** — rejects oversized bodies by
+1. **`HostCheckMiddleware`** — answers only when the `Host` header is
+   an IP address or one of the box's own names (hostname with `.local`,
+   `.lan`, `.home` and similar suffixes, `localhost`,
+   `server.allowed_hosts`, `CURATABLES_ALLOWED_HOSTS`); anything else
+   gets a 400. This stops DNS rebinding.
+2. **`BodySizeLimitMiddleware`** — rejects oversized bodies by
    `Content-Length` and while streaming. It must be outermost because
    anything that reads the body before it (CSRF parses form bodies)
    would buffer an oversized request into memory first. Limits are per
    route and read from config on each request: parent tus uploads →
    `max_upload_bytes`; kid `POST /upload` → `max_kid_upload_bytes`;
    picture edits and curation-list imports → 6 MB; everything else → 1 MB.
-2. **`PrometheusMiddleware`** — sees the final status code (no-op unless
+3. **`PrometheusMiddleware`** — sees the final status code (no-op unless
    `server.prometheus_enabled`).
-3. **`SessionMiddleware`** — signed cookie, `SameSite=Strict`.
-4. **`CSRFMiddleware`** — validates the per-session token on POST/PUT/
+4. **`SessionMiddleware`** — signed cookie, `SameSite=Strict`.
+5. **`CSRFMiddleware`** — validates the per-session token on POST/PUT/
    PATCH/DELETE, except a short audited list in `app/middleware/csrf.py`
-   (setup, login, profile select/PIN, `/api/log`, parent tus uploads).
-   Tokens live as long as the session.
-5. `anonymous_kid_redirect` — logged-out visitors on kid pages go to
+   (exactly `/parent/setup`; login, profile select/PIN, `/api/log` and
+   parent tus uploads by prefix). Exempt requests must not carry a
+   cross-site `Origin`. A token in a header is checked without reading
+   the body; otherwise a plain form is read whole (the body limit keeps
+   it small), a multipart upload only until its token field (at most
+   64 KB), and what was read is replayed to the route. Tokens live as long as the session.
+6. `media_missing_screen` — the "videos are resting" page while the
+   videos drive is missing (see [Media folder](#media-folder)).
+7. `anonymous_kid_redirect` — logged-out visitors on kid pages go to
    `/profiles`.
-6. `first_run_redirect` — everything except setup, static and
+8. `system_setup_redirect` — on the Pi image, parent pages go to setup
+   step 2 (`/parent/setup/system`) until the Linux password is chosen.
+9. `first_run_redirect` — everything except setup, static and
    `/healthz` goes to `/parent/setup` until a password exists.
-7. **`RequestIDMiddleware`** — per-request correlation ID, injected into
-   every log record.
-8. `RequestLoggingMiddleware` — access log line.
+10. `security_headers` — CSP, `X-Frame-Options`, `nosniff`, referrer
+    policy.
+11. **`RequestIDMiddleware`** — per-request correlation ID, injected into
+    every log record.
+12. `RequestLoggingMiddleware` — access log line.
 
 ### Errors
 
@@ -498,11 +522,77 @@ dashboard's "Update yt-dlp" button cannot pip-install directly. Instead:
    Then it removes the request and `systemctl restart curatables`.
 4. The dashboard reads the result file on its next render.
 
-Don't weaken the sandbox to add self-update; reuse this helper. The request
-carries a `kind` field (only `yt-dlp` is accepted today). yt-dlp is
-high-churn and low-risk to bump; Curatables itself has forward-only
-migrations, so any future app self-update must take a backup first, as
-`install.sh --systemd` does. User-facing flow: [`upgrade.md`](upgrade.md).
+Don't weaken the sandbox to add self-update. The request carries a
+`kind` field (only `yt-dlp` is accepted). Updating Curatables itself
+goes through the system helper instead (next section). User-facing
+flow: [`upgrade.md`](upgrade.md).
+
+---
+
+## System helper
+
+On the Pi image the dashboard's Box pages (Linux password, SSH, Wi-Fi,
+drives, backups, diagnostics, updates, restart and shut down) need root.
+The web app never gets it. `syshelper/` is a separate root daemon
+(`curatables-helper.service`, run by `scripts/curatables-helper.py` on
+the system Python, standard library only).
+
+- **Socket.** `/run/curatables-helper/helper.sock`, `root:curatables`
+  0660, and `SO_PEERCRED` must name the service user or root. One JSON
+  request and one JSON reply per connection. The app side is
+  `app/services/system_helper.py` (`SystemHelper.call`); when the socket
+  is absent (own installs, tests) `available` is false and the Box pages
+  explain that they need the Pi image.
+- **Actions.** A fixed list, each registered with
+  `@action("name")` in its module (`syshelper/registry.py`). Parameters
+  are validated with `registry.text`/`flag` and passed to programs as
+  separate arguments (`runner.run`); nothing goes through a shell.
+  Anything slow (Wi-Fi switch, drive work, backup restore, updates) is a
+  `job=True` action: it returns a job id at once, runs on a thread, one
+  at a time, and the page polls `job_status` through
+  `/parent/system/jobs/<id>.json`.
+- **Service-owned files.** The data dir belongs to the service user, so
+  root must not follow paths there. `syshelper/safefs.py` reads and
+  writes with `O_NOFOLLOW` and an ownership check; copies into those
+  folders run as the service user via `runuser`.
+- **Wi-Fi.** `wifi_set` creates a trial NetworkManager profile and tries
+  it twice; if the box doesn't connect, it goes back to the previous
+  connection. `/run/curatables-wifi-test` tells `nm-wired-only.sh` to
+  stay out of the way meanwhile.
+- **SD-card recovery.** `curatables-recovery.service` and
+  `curatables-diagnose.service` run `curatables-helper.py --reset-from-boot`
+  and `--report-from-boot` at boot when `curatables-reset.txt` or
+  `curatables-diagnose.txt` is on the boot partition.
+
+Rules for new actions: validate every parameter, never build a shell
+string, never act as root on a path the service user can change, and add
+a test to `tests/test_syshelper*.py`. The helper is root, so a
+compromised app can do whatever the actions allow, and no more; see
+[`threat-model.md`](threat-model.md).
+
+### Updating Curatables
+
+`syshelper/upgrade.py` (`curatables_update`, `curatables_rollback`):
+
+1. Fetch the latest GitHub release, its `curatables-<version>.tar.gz`
+   and `SHA256SUMS` (HTTPS only, `syshelper/fetch.py`), and check the
+   hash.
+2. Unpack it safely into `/opt/curatables-<version>-<stamp>`, build its
+   venv there and run `run.py --check`.
+3. Take a backup, then point the `/opt/curatables` symlink at the new
+   folder (`/opt/curatables.previous` points at the old one) and run
+   `scripts/apply-system.sh` so new units and system files are
+   installed.
+4. Wait up to 180 s for `/healthz` to report the new version. If it
+   doesn't, switch back; the database backup is restored only when the
+   new version added migrations.
+
+A `pending-update.json` marker in a root-only folder lets the helper
+finish or undo an update interrupted by a power cut when it next starts.
+`system_update` runs `apt` for Debian packages; unattended-upgrades
+installs security updates on its own. Releases come from
+`.github/workflows/release-source.yml`, which refuses a tag that doesn't
+match the version in the code.
 
 ---
 
@@ -611,6 +701,10 @@ Example: a "favorites" feature where kids can star videos.
   is stubbed in the fixture and exercised for real in `tests/test_csrf.py`.
 - **Guard tests** pin cross-cutting rules: ES3 kid JS, the
   `TemplateResponse(request, ...)` signature, the yt-dlp codec preference.
+- **System helper.** `tests/test_syshelper*.py` call the actions
+  directly with `SETTINGS` pointed at temporary files and programs
+  stubbed out. Route tests for the Box pages replace
+  `app.state.system_helper` with `tests/fake_helper.py`.
 - **Smoke suite** (`tests/test_smoke_e2e.py`, `pytest -m smoke`, excluded
   by default) boots a real uvicorn subprocess against a fake yt-dlp and
   walks setup → kid grid → add flow.

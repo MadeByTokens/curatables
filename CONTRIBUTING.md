@@ -53,6 +53,16 @@ in `tests/conftest.py`.
   test-only stub; the production app has no bypass. CSRF itself is
   tested end to end in `tests/test_csrf.py`, which builds an app
   without the stub.
+- **Host check in tests.** `HostCheckMiddleware` answers only to the
+  box's own names, so `conftest.py` sets
+  `CURATABLES_ALLOWED_HOSTS=testserver` for `TestClient`. Set it too
+  when you run the server behind a name of your own.
+- **System helper.** The Box pages talk to the root helper through
+  `app.state.system_helper`; route tests swap in
+  `tests/fake_helper.py` (canned replies per action, and a record of
+  what was called). The helper itself is tested in
+  `tests/test_syshelper*.py` with its programs stubbed, so nothing
+  touches the real system. A new action needs both kinds of test.
 - **Guard tests** scan the source for project rules:
   `tests/test_template_response_signature.py` (the
   `TemplateResponse(request, name, context)` signature) and

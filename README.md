@@ -83,7 +83,10 @@ _A demo library (generated test clips, no real data)._
 - **Looks after itself** — videos nobody watched for a while are removed
   to save space and come back when tapped (favourites can be kept
   forever); downloads queue one at a time; nightly backups; yt-dlp
-  updates with one button; works with the library on a USB drive.
+  updates with one button; works with the library on a USB drive. On
+  the Pi image, Curatables updates itself from the dashboard without
+  re-flashing (and goes back if the new version doesn't start), and
+  security updates install on their own.
 
 ## Hardware
 

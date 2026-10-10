@@ -52,6 +52,15 @@ Install-time and host tools (not probed by `run.py`): `python3-venv`
 or upgrade by cloning; the Pi image ships it so an appliance can be
 upgraded with `git clone` + `install.sh --systemd`.
 
+**Pi image only** (the system helper, `syshelper/`, runs these as root
+for the Box pages): `nmcli` (NetworkManager: Wi-Fi), `chpasswd`,
+`systemctl`, `runuser`, `apt-get` (system updates), `lsblk`, `findmnt`,
+`udisksctl` (power off a drive), `wipefs`, `sfdisk`, `mkfs.exfat`,
+`mkfs.ext4`, and `fsck.exfat`, `fsck.vfat`, `e2fsck`, `ntfsfix` for
+Check & repair. NTFS drives mount with the kernel's `ntfs3` driver. All
+of these are in Raspberry Pi OS Lite; `pi-gen/image-packages.txt` adds
+`unattended-upgrades` and keeps `exfatprogs`.
+
 **Not needed:** the `sqlite3` CLI. `scripts/backup.sh` and `restore.sh`
 use Python's built-in `sqlite3` module (online backup API).
 
