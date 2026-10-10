@@ -1,30 +1,68 @@
 """FastAPI application factory."""
 
+import json
 import logging
 import os
+import time
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import (
+    http_exception_handler, request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from app.config import load_config, ensure_directories
 from app.db.connection import create_connection, get_db_path
 from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
+from app.features.api.router import router as api_router
+from app.features.healthz.router import router as healthz_router
+from app.features.kid_browse.router import router as browse_router
+from app.features.kid_comments.router import router as kid_comments_router
+from app.features.kid_profiles.router import router as kid_profiles_router
+from app.features.kid_search.router import router as kid_search_router
+from app.features.kid_uploads.router import router as kid_uploads_router
+from app.features.kid_watch.router import router as watch_router
+from app.features.kid_wishlist.router import router as kid_wishlist_router
+from app.features.media.router import router as media_router
+from app.features.parent_auth.router import router as auth_router
+from app.features.parent_channels.router import router as parent_channels_router
+from app.features.parent_content.router import router as content_router
+from app.features.parent_dashboard.router import router as dashboard_router
+from app.features.parent_import.router import router as parent_import_router
+from app.features.parent_profiles.router import router as parent_profiles_router
+from app.features.parent_requests.router import router as parent_requests_router
+from app.features.parent_settings.router import router as settings_router
+from app.features.parent_sharing.router import router as parent_sharing_router
+from app.features.parent_stats.router import router as stats_router
+from app.features.parent_storage.router import router as parent_storage_router
+from app.features.parent_system.router import BOX_NOTICES, router as parent_system_router
+from app.features.parent_uploads.router import router as parent_uploads_router
 from app.lifecycle import make_lifespan, prepare_data_dir, startup_jobs
 from app.logging_config import setup_logging
 from app.middleware import (
-    RequestLoggingMiddleware, BodySizeLimitMiddleware, RequestIDMiddleware,
-    CSRFMiddleware, PrometheusMiddleware,
+    BodySizeLimitMiddleware, CSRFMiddleware, HostCheckMiddleware, PrometheusMiddleware,
+    RequestIDMiddleware, RequestLoggingMiddleware,
 )
-from app.middleware.host_check import HostCheckMiddleware
 from app.services.auth import AuthService
 from app.services.csrf import CSRFService
-from app.services.metrics import MetricsService
+from app.services.embeds import embed_url_for
+from app.services.ids import make_video_id
 from app.services.media_fs import capped, media_missing
+from app.services.metrics import MetricsService
+from app.services.qr import qr_available
+from app.services.search_gate import GATE
+from app.services.storage_report import get_disk_status_brief
 from app.services.system_helper import SystemHelper
+from app.template_utils import register_filters
+from app.web import kid_address
 
+_APP_DIR = os.path.dirname(__file__)
+_KID_ERROR_PAGE = os.path.join(_APP_DIR, "templates", "base", "kid", "error.html")
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
@@ -37,17 +75,22 @@ allowed (templates set per-channel colours); frames are https only, for
 the video-site embeds in the parent preview (PeerTube can be any host)."""
 
 
+def _fromjson(raw):
+    """Jinja filter: an event's data_json as a dict, {} when unreadable."""
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+
 def create_app(data_dir: str | None = None, log_level: str | None = None) -> FastAPI:
     config = load_config(data_dir)
     ensure_directories(config)
-
-    # Initialize logging — CLI log_level overrides config
-    effective_log_level = log_level or config.server.log_level
-    log_dir = config.data_dir / "logs"
-    setup_logging(effective_log_level, log_dir)
+    setup_logging(log_level or config.server.log_level, config.data_dir / "logs")
 
     prepare_data_dir(config)
-    from app.services.search_gate import GATE
     GATE.use_file(get_db_path(config.data_dir).with_name("cache.db"))
     metrics = MetricsService(enabled=config.server.prometheus_enabled)
     startup_jobs(config, metrics)
@@ -55,45 +98,19 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app = FastAPI(title="curatables", docs_url=None, redoc_url=None,
                   lifespan=make_lifespan(config))
 
-    app.add_middleware(RequestLoggingMiddleware)
-    # RequestIDMiddleware stamps each request with a correlation ID in a
-    # contextvar. The logging filter injects it into every log record so
-    # a grep of the logs can follow a single request across modules.
-    # Added OUTSIDE RequestLoggingMiddleware (via later add_middleware
-    # ordering) so the logging middleware itself sees the set ID.
-    app.add_middleware(RequestIDMiddleware)
-    # SessionMiddleware is added below, AFTER the @app.middleware("http")
-    # decorators. Starlette builds the middleware stack by inserting each
-    # new add_middleware at index 0 and then wrapping outside-in in
-    # reversed order, so the LAST add_middleware call becomes the
-    # outermost wrapper and runs first on an incoming request. We need
-    # SessionMiddleware to run before the @middleware decorators so that
-    # request.session is populated when the anonymous_kid_redirect
-    # middleware reads it.
-
     app.state.config = config
     app.state.data_dir_pinned = data_dir is not None
     # Background threads (imports) open their own connections through this.
     app.state.db_connect = lambda: create_connection(get_db_path(config.data_dir))
     app.state.import_worker = None
-
-    # Process start time used by /healthz to report uptime. monotonic()
-    # is immune to wall-clock jumps, which matters for an appliance that
-    # stays up for months at a time.
-    import time as _time
-    app.state.start_time = _time.monotonic()
-
-    # Prometheus metrics service. Always instantiated; the recorders
-    # no-op when prometheus_enabled=False so call sites don't branch.
-    # /metrics returns 404 when disabled.
+    # monotonic(): the /healthz uptime must not jump with the wall clock.
+    app.state.start_time = time.monotonic()
     app.state.metrics = metrics
 
-    # CSRF service — shared between CSRFMiddleware (validates) and the
-    # Jinja csrf_token context processor (mints). Created here, ahead
-    # of the Jinja2Templates constructor that closes over it.
     session_secret = config.parent.session_secret
     if not session_secret:
         raise RuntimeError("prepare_data_dir() did not set a session secret")
+    # Shared by CSRFMiddleware (validates) and the template context (mints).
     csrf_service = CSRFService(
         secret_key=session_secret,
         max_age_seconds=config.parent.session_timeout_hours * 3600,
@@ -101,70 +118,41 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     app.state.csrf = csrf_service
     app.state.system_helper = SystemHelper(config.server.helper_socket)
 
-    # Templates — base directory, themes can overlay later
-    templates_dir = os.path.join(os.path.dirname(__file__), "templates", "base")
-
     def _csrf_context(request):
-        """Injects a fresh csrf_token into every TemplateResponse so
-        forms can render <input name="csrf_token" value="{{ csrf_token }}">
-        without the route handler threading it through manually."""
+        """Every template gets a csrf_token for its forms."""
         if hasattr(request, "session"):
             return {"csrf_token": csrf_service.mint_token(request.session)}
         return {"csrf_token": ""}
 
-    app.state.templates = Jinja2Templates(
-        directory=templates_dir,
+    templates = Jinja2Templates(
+        directory=os.path.join(_APP_DIR, "templates", "base"),
         context_processors=[_csrf_context],
     )
-    from app.template_utils import register_filters
-    register_filters(app.state.templates)
-
-    # Jinja global: live disk status chip used by parent/base.html topnav.
-    # Reads free space fresh on every render so the chip is always current.
-    from app.services.storage_report import get_disk_status_brief
-
-    from app.features.parent_system.router import BOX_NOTICES
-    app.state.templates.env.globals["box_notices"] = BOX_NOTICES
-    app.state.templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
-    app.state.templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
+    app.state.templates = templates
+    register_filters(templates)
+    templates.env.globals["box_notices"] = BOX_NOTICES
+    templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
+    # Read on every render, so the free-space chip in the parent topnav is current.
+    templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
         config.media_dir, config.storage.min_free_disk_bytes, config.storage.low_space_percent
     )
+    templates.env.globals["embed_url_for"] = embed_url_for
+    templates.env.globals["qr_available"] = qr_available
+    templates.env.globals["kid_address"] = kid_address
+    templates.env.globals["make_video_id"] = make_video_id
+    templates.env.filters["fromjson"] = _fromjson
 
-    # Jinja global: iframe-safe embed URL for a given extractor +
-    # raw video ID. Returns None for platforms that don't have a
-    # clean embed, which the parent content_preview.html template
-    # uses as the "show link-out fallback" signal.
-    from app.services.embeds import embed_url_for
-    app.state.templates.env.globals["embed_url_for"] = embed_url_for
-    from app.services.qr import qr_available
-    app.state.templates.env.globals["qr_available"] = qr_available
-    from app.web import kid_address
-    app.state.templates.env.globals["kid_address"] = kid_address
+    app.mount("/static", StaticFiles(directory=os.path.join(_APP_DIR, "static")), name="static")
 
-    # Jinja global: build the composite "{extractor}_{raw}" storage
-    # key from a raw yt-dlp ID. Used by content_preview.html to
-    # point at /media/thumb/<composite> without re-implementing the
-    # sanitisation rules in Jinja.
-    from app.services.ids import make_video_id
-    app.state.templates.env.globals["make_video_id"] = make_video_id
-
-    # Jinja filter: parse a data_json string safely. Used by parent stats
-    # to render friendly labels for events like channel_created.
-    import json as _json
-
-    def _fromjson(raw):
-        if not raw:
-            return {}
-        try:
-            return _json.loads(raw)
-        except Exception:
-            return {}
-
-    app.state.templates.env.filters["fromjson"] = _fromjson
-
-    # Static files
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    # Middleware order: each add_middleware() (and @app.middleware) wraps
+    # everything added before it, so the one added last sees a request
+    # first. From the outside in:
+    #   HostCheck, BodySizeLimit, Prometheus, Session, CSRF,
+    #   the @app.middleware functions, RequestID, RequestLogging.
+    # BodySizeLimit must stay outside CSRF (which reads form bodies) and
+    # Session outside everything that reads request.session.
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(RequestIDMiddleware)
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -176,16 +164,13 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response
 
-    # First-run redirect
     @app.middleware("http")
     async def first_run_redirect(request: Request, call_next):
         path = request.url.path
         if (config.is_first_run
                 and not path.startswith("/parent/setup")
                 and not path.startswith("/static")
-                # Operational endpoints must answer even before setup;
-                # they exist precisely so an operator can confirm the
-                # process is alive on a fresh install.
+                # An operator must be able to check that a fresh install is up.
                 and not path.startswith("/healthz")):
             return RedirectResponse(url="/parent/setup", status_code=302)
         return await call_next(request)
@@ -204,13 +189,9 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             return RedirectResponse(url="/parent/setup/system", status_code=302)
         return await call_next(request)
 
-    # Anonymous-kid redirect: when a logged-out visitor lands on any
-    # kid-facing page (home, watch, channel, search, upload), bounce
-    # them to /profiles so they can pick a kid profile. Single-profile
-    # households get auto-selected there and land back on /; multi
-    # profile or PIN-protected households get the picker. This makes
-    # the "log out from parent, test as kid" flow work without the
-    # user having to know about /profiles.
+    # A visitor with neither a kid profile nor a parent login who opens a
+    # kid page goes to /profiles, which auto-selects the only profile of a
+    # single-kid household or shows the picker.
     _KID_PATH_PREFIXES = ("/watch/", "/channel/", "/search", "/upload")
 
     @app.middleware("http")
@@ -218,12 +199,9 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         if request.method != "GET":
             return await call_next(request)
         path = request.url.path
-        # Only redirect truly anonymous sessions — parent or kid
-        # logged in skip through.
         session = request.session
         if session.get("profile_id") or AuthService(app.state.config).is_parent_session(session):
             return await call_next(request)
-        # Kid home is exactly "/". Everything else is matched by prefix.
         is_kid_page = path == "/" or any(path.startswith(p) for p in _KID_PATH_PREFIXES)
         if not is_kid_page:
             return await call_next(request)
@@ -244,32 +222,22 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                 request, "kid/resting.html", {"request": request}, status_code=503)
         return await call_next(request)
 
-    # SessionMiddleware must wrap the @middleware decorators above so
-    # request.session is populated before they run. See the comment
-    # near RequestLoggingMiddleware above for the Starlette ordering
-    # rules that force this late registration.
     app.add_middleware(CSRFMiddleware, csrf_service=csrf_service)
 
     app.add_middleware(
         SessionMiddleware,
         secret_key=session_secret,
         max_age=config.parent.session_timeout_hours * 3600,
-        # same_site='strict' defeats nearly all CSRF vectors on its
-        # own: a malicious cross-origin POST cannot include the session
-        # cookie. Curatables is a LAN-only app with no legitimate
-        # cross-site POSTs, so strict is safe. CSRFMiddleware above
-        # layers on defense-in-depth.
+        # A cross-site POST cannot carry the session cookie at all, and the
+        # app has no legitimate cross-site requests. CSRFMiddleware is
+        # defence in depth.
         same_site="strict",
     )
 
-    # Prometheus instrumentation goes outermost so the counter
-    # observes the final status code returned to the client (after
-    # exception handlers and middleware short-circuits). When
-    # prometheus_enabled=False the middleware skips its work in O(1).
-    app.add_middleware(PrometheusMiddleware, metrics=app.state.metrics)
+    # Wraps the session, CSRF and app layers, so it counts the status
+    # code they finally return. A no-op while prometheus_enabled is off.
+    app.add_middleware(PrometheusMiddleware, metrics=metrics)
 
-    # Reject oversized bodies before any other layer (CSRF parses form
-    # bodies) can read them into memory.
     app.add_middleware(
         BodySizeLimitMiddleware,
         upload_limit=lambda: capped(config.media_dir, config.storage.max_upload_bytes),
@@ -277,8 +245,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                                                               config.storage.max_kid_upload_bytes)),
     )
 
-    # Outermost of all: answer only to the box's own names and IP
-    # addresses (DNS rebinding).
+    # Answer only to the box's own names and IP addresses (DNS rebinding).
     app.add_middleware(HostCheckMiddleware, extra_hosts=lambda: config.server.allowed_hosts)
 
     # --- Exception handlers ---
@@ -298,13 +265,6 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             return RedirectResponse(url="/", status_code=302)
         return PlainTextResponse("", status_code=403)
 
-    from fastapi.exceptions import RequestValidationError
-    from fastapi.exception_handlers import (
-        http_exception_handler, request_validation_exception_handler,
-    )
-    from starlette.exceptions import HTTPException as StarletteHTTPException
-    from starlette.responses import HTMLResponse
-
     def _error_page(request: Request, status_code: int, heading: str | None = None):
         if request.url.path.startswith("/parent/"):
             try:
@@ -314,8 +274,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             except Exception:
                 _error_logger.exception("Parent error page failed to render")
         try:
-            tpl_path = os.path.join(os.path.dirname(__file__), "templates", "base", "kid", "error.html")
-            with open(tpl_path) as f:
+            with open(_KID_ERROR_PAGE) as f:
                 return HTMLResponse(content=f.read(), status_code=status_code)
         except Exception:
             return HTMLResponse(content="<h1>Something went wrong</h1>", status_code=status_code)
@@ -343,58 +302,14 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         _error_logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         return _error_page(request, 500)
 
-    # --- Wire feature routers ---
-    from app.features.parent_auth.router import router as auth_router
-    from app.features.parent_dashboard.router import router as dashboard_router
-    from app.features.parent_content.router import router as content_router
-    from app.features.parent_settings.router import router as settings_router
-    from app.features.parent_stats.router import router as stats_router
-    from app.features.parent_storage.router import router as parent_storage_router
-    from app.features.parent_system.router import router as parent_system_router
-    from app.features.parent_uploads.router import router as parent_uploads_router
-    from app.features.kid_uploads.router import router as kid_uploads_router
-    from app.features.parent_channels.router import router as parent_channels_router
-    from app.features.parent_sharing.router import router as parent_sharing_router
-    from app.features.parent_profiles.router import router as parent_profiles_router
-    from app.features.parent_requests.router import router as parent_requests_router
-    from app.features.parent_import.router import router as parent_import_router
-    from app.features.kid_profiles.router import router as kid_profiles_router
-    from app.features.kid_browse.router import router as browse_router
-    from app.features.kid_watch.router import router as watch_router
-    from app.features.kid_search.router import router as kid_search_router
-    from app.features.kid_wishlist.router import router as kid_wishlist_router
-    from app.features.kid_comments.router import router as kid_comments_router
-    from app.features.media.router import router as media_router
-    from app.features.api.router import router as api_router
-    from app.features.healthz.router import router as healthz_router
-
-    app.include_router(healthz_router)
-    app.include_router(auth_router)
-    app.include_router(dashboard_router)
-    app.include_router(content_router)
-    app.include_router(settings_router)
-    app.include_router(stats_router)
-    app.include_router(parent_storage_router)
-    app.include_router(parent_system_router)
-    app.include_router(parent_uploads_router)
-    # parent_sharing must be included BEFORE parent_channels because
-    # both routers mount under /parent/channels/; the sharing router
-    # defines /import + /{id}/export, while parent_channels has a
-    # catch-all /{channel_id}/edit that would otherwise swallow
-    # "/import" as a channel_id=42 lookup.
-    app.include_router(parent_sharing_router)
-    app.include_router(parent_channels_router)
-    app.include_router(parent_profiles_router)
-    app.include_router(parent_requests_router)
-    app.include_router(parent_import_router)
-    app.include_router(kid_profiles_router)
-    app.include_router(browse_router)
-    app.include_router(watch_router)
-    app.include_router(kid_search_router)
-    app.include_router(kid_wishlist_router)
-    app.include_router(kid_comments_router)
-    app.include_router(kid_uploads_router)
-    app.include_router(media_router)
-    app.include_router(api_router)
+    for router in (
+        healthz_router, auth_router, dashboard_router, content_router, settings_router,
+        stats_router, parent_storage_router, parent_system_router, parent_uploads_router,
+        parent_sharing_router, parent_channels_router, parent_profiles_router,
+        parent_requests_router, parent_import_router, kid_profiles_router, browse_router,
+        watch_router, kid_search_router, kid_wishlist_router, kid_comments_router,
+        kid_uploads_router, media_router, api_router,
+    ):
+        app.include_router(router)
 
     return app

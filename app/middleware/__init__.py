@@ -8,10 +8,9 @@ from starlette.requests import Request
 
 from app.middleware.body_size import BodySizeLimitMiddleware
 from app.middleware.csrf import CSRFMiddleware
+from app.middleware.host_check import HostCheckMiddleware
 from app.middleware.prometheus import PrometheusMiddleware
-from app.middleware.request_id import (
-    RequestIDMiddleware, RequestIDLogFilter, current_request_id,
-)
+from app.middleware.request_id import RequestIDMiddleware
 
 access_logger = logging.getLogger("curatables.access")
 
@@ -38,8 +37,7 @@ __all__ = [
     "RequestLoggingMiddleware",
     "BodySizeLimitMiddleware",
     "CSRFMiddleware",
+    "HostCheckMiddleware",
     "PrometheusMiddleware",
     "RequestIDMiddleware",
-    "RequestIDLogFilter",
-    "current_request_id",
 ]

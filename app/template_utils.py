@@ -7,7 +7,6 @@ from datetime import date, datetime
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
-
 from jinja2 import pass_context
 
 from app.constants import THEME_CHOICES
@@ -111,9 +110,7 @@ def render_kid_template(request: Request, viewer: ViewerContext,
     templates = getattr(request.app.state, "templates", None) or _get_templates()
     context["request"] = request
     context["viewer"] = viewer
-    # The kid Jinja2Templates instance doesn't share the main app's
-    # context_processors list, so csrf_token is injected here. Falls back to empty string if the app state somehow
-    # doesn't have a CSRF service (tests that bypass create_app).
+    # The fallback environment has no csrf context processor.
     csrf_svc = getattr(request.app.state, "csrf", None)
     if csrf_svc is not None and hasattr(request, "session"):
         context.setdefault("csrf_token",

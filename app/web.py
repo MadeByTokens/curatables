@@ -3,6 +3,8 @@
 from fastapi import Request
 from starlette.datastructures import FormData
 
+from app.services.mdns import _slugify, detect_lan_ip
+
 
 def is_xhr(request: Request) -> bool:
     """True for requests made by the pages' XMLHttpRequest code, which
@@ -20,7 +22,6 @@ def form_str(form: FormData, key: str, default: str = "") -> str:
 def kid_address(request: Request) -> str:
     """The kid address for a tablet: the host the parent's browser used,
     except that a loopback host becomes the server's LAN name."""
-    from app.services.mdns import _slugify, detect_lan_ip
     url = request.url
     host = url.hostname or ""
     if host in ("localhost", "::1") or host.startswith("127."):

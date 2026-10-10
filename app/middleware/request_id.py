@@ -1,10 +1,10 @@
-from __future__ import annotations
 """Per-request correlation ID — stored in a contextvar so log records
 anywhere in the request lifecycle can emit it alongside their message.
 
 Respects a pre-existing X-Request-ID header (set by a reverse proxy)
 so the ID propagates across hops; otherwise mints a fresh short UUID.
 """
+from __future__ import annotations
 
 import contextvars
 import uuid
@@ -12,8 +12,7 @@ import uuid
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
-# The contextvar is shared across the app. `log_request_id_filter` below
-# reads it when formatting every log record.
+# Read by RequestIDLogFilter for every log record.
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "request_id", default="-"
 )

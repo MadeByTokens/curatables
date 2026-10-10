@@ -21,6 +21,8 @@ import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from app.middleware.request_id import RequestIDLogFilter
+
 LOG_FORMAT = "%(asctime)s [%(request_id)s] %(levelname)s %(name)s: %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -101,8 +103,6 @@ def setup_logging(log_level: str = "info",
                  to the ``LOG_FORMAT`` environment variable, then to
                  ``"plain"``.
     """
-    from app.middleware.request_id import RequestIDLogFilter
-
     level = getattr(logging, log_level.upper(), logging.INFO)
 
     root = logging.getLogger()
@@ -115,14 +115,12 @@ def setup_logging(log_level: str = "info",
     formatter = _build_formatter(fmt)
     rid_filter = RequestIDLogFilter()
 
-    # Console handler
     console = logging.StreamHandler()
     console.setLevel(level)
     console.setFormatter(formatter)
     console.addFilter(rid_filter)
     root.addHandler(console)
 
-    # File handler (if log_dir provided)
     if log_dir:
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "curatables.log"

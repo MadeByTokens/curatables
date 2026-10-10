@@ -1,8 +1,12 @@
-from __future__ import annotations
 """FastAPI dependency injection — the only place where layers connect."""
+from __future__ import annotations
 
 from fastapi import Depends, Request
 
+from app.services.import_scan import ProbeCache
+from app.services.imports import ImportService
+from app.services.ingest import IngestService
+from app.services.lookup import LookupService
 from app.services.media_fs import capped
 from app.config import Config
 from app.db.connection import create_connection, get_db_path
@@ -67,14 +71,7 @@ def get_system_helper(request: Request) -> SystemHelper:
 
 
 def get_metrics(request: Request):
-    """Pull the live MetricsService off app.state.
-
-    Always returns the singleton instance (enabled or not). Service
-    constructors that take ``metrics=...`` should default to None and
-    fall back to a disabled MetricsService when the dependency is not
-    available — that path is exercised by unit tests that wire
-    services directly without going through FastAPI's DI.
-    """
+    """The app's MetricsService (its recorders no-op when disabled)."""
     return request.app.state.metrics
 
 
@@ -337,12 +334,10 @@ def get_viewer(
 
 class NotAuthenticated(Exception):
     """Raised when a parent-only route is accessed without auth."""
-    pass
 
 
 class NotAChild(Exception):
     """Raised when a kid-only route is accessed by a non-child viewer."""
-    pass
 
 
 def require_parent(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext:
@@ -384,7 +379,8 @@ def require_child(viewer: ViewerContext = Depends(get_viewer)) -> ViewerContext:
 
 # --- Imports from a drive ---
 
-_probe_cache = None
+# Process-wide, like the probe service: files already probed stay cached.
+_probe_cache: ProbeCache | None = None
 
 
 def get_import_job_repo(db=Depends(get_db)) -> ImportJobRepository:
@@ -395,10 +391,7 @@ def get_import_service(config=Depends(get_config),
                        db=Depends(get_db),
                        storage=Depends(get_storage_service),
                        probe=Depends(get_probe_service),
-                       thumbnails=Depends(get_thumbnail_service)):
-    from app.services.import_scan import ProbeCache
-    from app.services.imports import ImportService
-    from app.services.ingest import IngestService
+                       thumbnails=Depends(get_thumbnail_service)) -> ImportService:
     global _probe_cache
     if _probe_cache is None:
         _probe_cache = ProbeCache(probe)
@@ -407,7 +400,7 @@ def get_import_service(config=Depends(get_config),
                          IngestService(storage, probe, video_repo, thumbnails), _probe_cache)
 
 
-def get_lookup_service(config=Depends(get_config), backend=Depends(get_backend)):
-    from app.services.lookup import LookupService
+def get_lookup_service(config=Depends(get_config),
+                       backend=Depends(get_backend)) -> LookupService:
     return LookupService(config, backend)
 

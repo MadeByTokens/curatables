@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""curatables server entry point."""
+"""curatables server entry point.
+
+Third-party packages are imported only after check_dependencies() has
+had a chance to report the missing ones.
+"""
 
 import argparse
+import logging
+import os
 import shutil
+import subprocess
 import sys
+from importlib.metadata import version as package_version
 
 
 def _tool_version(cmd, args=("--version",)):
     """Best-effort short version string for a system binary. Returns '' on failure."""
-    import subprocess
     path = shutil.which(cmd)
     if not path:
         return ""
@@ -16,8 +23,8 @@ def _tool_version(cmd, args=("--version",)):
         out = subprocess.run(
             [path, *args], capture_output=True, text=True, timeout=5
         )
-        first = (out.stdout or out.stderr).splitlines()[0].strip() if (out.stdout or out.stderr) else ""
-        return first
+        lines = (out.stdout or out.stderr).splitlines()
+        return lines[0].strip() if lines else ""
     except Exception:
         return ""
 
@@ -56,8 +63,7 @@ def check_dependencies(verbose=False):
                     v = getattr(getattr(m, "version", None), "__version__", None)
                 if v is None:
                     try:
-                        from importlib.metadata import version as _pkg_version
-                        v = _pkg_version(mod.replace("_", "-"))
+                        v = package_version(mod.replace("_", "-"))
                     except Exception:
                         v = "?"
                 print(f"{mod+':':<17}{v}")
@@ -128,11 +134,8 @@ def check_dependencies(verbose=False):
     except ImportError:
         warnings.append("segno is not installed. The tablet-setup QR code will not be shown. Install with: pip install 'segno>=1.6,<2.0'")
 
-    # prometheus_client is imported unconditionally by app.services.metrics
-    # (cheap, ~64 KB wheel, no transitive deps), so it is a hard runtime
-    # requirement even when config.server.prometheus_enabled=False — the
-    # /metrics route exists and the recorders are constructed regardless;
-    # only the registry contents are gated.
+    # Required even with prometheus_enabled off: app.services.metrics
+    # always imports it.
     try:
         import prometheus_client  # noqa: F401
     except ImportError:
@@ -166,7 +169,6 @@ def check_data_mount(data_dir):
     leaves an empty directory on the SD card: the app would start fresh,
     offer first-run setup to anyone on the network, and download new
     videos onto the SD card."""
-    import os
     if os.environ.get("CURATABLES_REQUIRE_MOUNT") != "1":
         return
     path = os.path.abspath(data_dir or os.path.expanduser("~/curatables-data"))
@@ -217,8 +219,6 @@ def main():
     from app.main import create_app
 
     app = create_app(data_dir=args.data_dir, log_level=args.log_level)
-
-    import logging
     logger = logging.getLogger("curatables")
 
     config = app.state.config

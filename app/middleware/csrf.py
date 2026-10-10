@@ -1,18 +1,15 @@
-from __future__ import annotations
 """CSRF enforcement middleware.
 
-Checks every state-mutating (POST/PUT/PATCH/DELETE) request for a
-valid CSRF token. Allow-lists a small set of paths that legitimately
-cannot send a token: first-run setup (no session exists yet), the
-/api/log beacon from the kid watch page (fire-and-forget telemetry,
-low value target).
-
-The kid UI targets iOS 9 Safari (no fetch, no modern JS), so XHR-sent
-tokens go in form-data rather than an Authorization header.
+Every POST/PUT/PATCH/DELETE must carry a valid CSRF token, either in an
+X-CSRF-Token header (the pages' XHR code) or as a `csrf_token` form
+field. A short, audited list of paths that cannot have a token yet is
+exempt; those only refuse requests another site's page sent.
 """
+from __future__ import annotations
 
 import logging
-from urllib.parse import urlsplit
+import re
+from urllib.parse import parse_qs, urlsplit
 
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
@@ -21,11 +18,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 logger = logging.getLogger(__name__)
 
 
-# Paths exempt from CSRF enforcement. Must be complete path matches
-# (startswith) — keep the list short and audited.
-# Exact paths: the first-run password page only. Step 2
+# The first-run password page has no session yet. Step 2
 # (/parent/setup/system) runs inside a parent session and is checked.
-CSRF_EXEMPT_EXACT: frozenset[str] = frozenset({"/parent/setup"})  # first-run, no session yet
+CSRF_EXEMPT_EXACT: frozenset[str] = frozenset({"/parent/setup"})
 
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
     "/parent/login",   # login creates the session; caller can't have
@@ -94,8 +89,9 @@ class CSRFMiddleware:
                 return
             prefix += message.get("body", b"")
             more = message.get("more_body", False)
-            if multipart and (len(prefix) >= _MULTIPART_PREFIX or _TOKEN_FIELD in prefix
-                              and b"\n" in prefix.split(_TOKEN_FIELD, 1)[1].lstrip(b"\r\n")):
+            if multipart and (len(prefix) >= _MULTIPART_PREFIX or (
+                    _TOKEN_FIELD in prefix
+                    and b"\n" in prefix.split(_TOKEN_FIELD, 1)[1].lstrip(b"\r\n"))):
                 break
 
         token = _extract_token(request, prefix)
@@ -138,39 +134,22 @@ _MULTIPART_PREFIX = 64 * 1024
 _TOKEN_FIELD = b'name="csrf_token"'
 
 
-def _extract_token(request: Request, body: bytes) -> str:
-    """CSRF token may arrive as a form field (default HTML form POSTs)
-    or an X-CSRF-Token header (XHR). Header wins if both are present."""
-    header = request.headers.get("x-csrf-token")
-    if header:
-        return header
+# The field's value is the whole line after the part headers. Tokens
+# contain '-', '_' and '.', so nothing but the line end may stop it.
+_MULTIPART_TOKEN_RE = re.compile(br'name="csrf_token"\r?\n\r?\n([^\r\n]+)')
 
+
+def _extract_token(request: Request, body: bytes) -> str:
+    """The csrf_token form field from a (start of a) form body."""
     content_type = request.headers.get("content-type", "").lower()
     if "application/x-www-form-urlencoded" in content_type:
-        from urllib.parse import parse_qs
-        try:
-            decoded = body.decode("utf-8", errors="replace")
-        except Exception:
-            return ""
-        parsed = parse_qs(decoded, keep_blank_values=True)
+        parsed = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
         vals = parsed.get("csrf_token") or []
         return vals[0] if vals else ""
 
     if "multipart/form-data" in content_type:
-        # Parsing multipart just to extract one field is expensive;
-        # simpler approach: scan for the boundary-delimited field. For
-        # our tiny forms this is adequate. The multipart parser in
-        # starlette consumes the body which we've already buffered.
-        import re
-        # The value sits on its own line, terminated by the CRLF before
-        # the next boundary — capture up to that CRLF. Do NOT exclude
-        # '-': itsdangerous URLSafeTimedSerializer tokens contain '-',
-        # '_' and '.', and excluding '-' truncated the token, making
-        # every kid multipart /upload fail CSRF with a 403.
-        m = re.search(
-            br'name="csrf_token"\r?\n\r?\n([^\r\n]+)',
-            body,
-        )
+        # A scan instead of a multipart parse: only one field is needed.
+        m = _MULTIPART_TOKEN_RE.search(body)
         if m:
             return m.group(1).decode("utf-8", errors="replace").strip()
         return ""

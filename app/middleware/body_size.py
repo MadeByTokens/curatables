@@ -1,11 +1,10 @@
-from __future__ import annotations
 """Reject requests with oversized bodies before Starlette tries to parse
 them.
 
 Without this, a `curl -d @500MB_file /watch/X/comment` would force the
-full body into memory to run the service-layer 500-char check. On a
-16 GB mini-PC, a handful of such requests is an OOM. The middleware
-drops them at the Content-Length check — no body is read.
+full body into memory to run the service-layer 500-char check; a
+handful of such requests exhausts a small box's memory. Requests that
+declare a too-large Content-Length are refused before any body is read.
 
 Each route class gets its own ceiling:
 - parent video uploads (tus, under /parent/upload): `upload_limit`;
@@ -16,10 +15,10 @@ Each route class gets its own ceiling:
 - everything else: 1 MB.
 Limits are callables so a change in Settings applies without a restart.
 
-This middleware must be the outermost one: anything that reads the body
-before it (CSRF reads form bodies) would buffer an oversized request
-into memory first.
+This middleware must wrap everything that reads the body (CSRF reads
+form bodies), or an oversized request is buffered into memory first.
 """
+from __future__ import annotations
 
 from typing import Callable, Union
 
@@ -68,9 +67,6 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Check the Content-Length header up front. This catches the
-        # common case where a malicious client declares the size
-        # honestly (or a broken client sends a too-large body).
         limit = self._limit_for(scope["path"])
         for name, value in scope.get("headers", []):
             if name == b"content-length":
@@ -84,10 +80,9 @@ class BodySizeLimitMiddleware:
                     return
                 break
 
-        # Chunked transfer / missing Content-Length: wrap receive to
-        # count bytes and abort if the running total exceeds the limit.
+        # A body without Content-Length (chunked), or longer than declared:
+        # count the bytes as they arrive and cut the request off at the limit.
         total = 0
-        limit_ref = limit
 
         async def _wrapped_receive():
             nonlocal total
@@ -95,7 +90,7 @@ class BodySizeLimitMiddleware:
             if message.get("type") == "http.request":
                 body = message.get("body", b"")
                 total += len(body)
-                if total > limit_ref:
+                if total > limit:
                     return {"type": "http.disconnect"}
             return message
 

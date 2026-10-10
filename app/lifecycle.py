@@ -1,10 +1,10 @@
-from __future__ import annotations
 """Startup work and long-running background tasks.
 
 create_app() calls prepare_data_dir() and startup_jobs() once, and wires
 lifespan() into FastAPI. Everything here opens its own SQLite
 connection: none of it runs inside a request.
 """
+from __future__ import annotations
 
 import asyncio
 import contextlib
@@ -15,10 +15,23 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.services.media_fs import capped, media_missing
+from app.backends.ytdlp import YtdlpBackend
 from app.config import Config
 from app.db.connection import create_connection, get_db_path
 from app.db.schema import init_schema, recover_from_crash
+from app.repositories import (
+    ChannelRepository, EventRepository, SourceRepository, VideoRepository,
+)
+from app.services import mdns
+from app.services.content import ContentService
+from app.services.download_queue import get_download_queue
+from app.services.imports import build_worker
+from app.services.media_fs import capped, media_missing
+from app.services.media_probe import MediaProbeService
+from app.services.normalize import MediaNormalizer
+from app.services.storage import StorageService
+from app.services.thumbnails import ThumbnailService
+from app.services.video_source import VideoSourceService
 
 logger = logging.getLogger("curatables")
 
@@ -38,15 +51,6 @@ def prepare_data_dir(config: Config) -> None:
 
 def build_content_service(conn: sqlite3.Connection, config: Config, metrics=None):
     """A ContentService outside the request cycle (startup resume)."""
-    from app.backends.ytdlp import YtdlpBackend
-    from app.repositories import ChannelRepository, SourceRepository, VideoRepository
-    from app.services.content import ContentService
-    from app.services.media_probe import MediaProbeService
-    from app.services.normalize import MediaNormalizer
-    from app.services.storage import StorageService
-    from app.services.thumbnails import ThumbnailService
-    from app.services.video_source import VideoSourceService
-
     backend = YtdlpBackend(
         impersonate=config.storage.impersonate,
         cookies_from_browser=config.storage.cookies_from_browser,
@@ -84,7 +88,6 @@ def startup_jobs(config: Config, metrics=None) -> None:
                        exc_info=True)
 
     try:
-        from app.services.storage import StorageService
         storage = StorageService(config.media_dir,
                                  min_free_bytes=config.storage.min_free_disk_bytes)
         swept = storage.sweep_upload_tmp(ttl_hours=24)
@@ -97,9 +100,6 @@ def startup_jobs(config: Config, metrics=None) -> None:
 def _maintenance_pass(config: Config):
     """One sweep: evict cache videos nobody watched for cache_days and
     drop usage events older than events_retention_days."""
-    from app.repositories import EventRepository, VideoRepository
-    from app.services.storage import StorageService
-
     conn = create_connection(get_db_path(config.data_dir))
     try:
         report = None
@@ -143,17 +143,12 @@ async def maintenance_loop(app: FastAPI, config: Config) -> None:
 def make_lifespan(config: Config):
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        from app.services import mdns
-
         advertiser = None
         if config.server.mdns_enabled:
             advertiser = mdns.ZeroconfAdvertiser(
                 name=config.server.mdns_name, port=config.server.port)
             await advertiser.start()
         app.state.mdns = advertiser
-
-        from app.services.download_queue import get_download_queue
-        from app.services.imports import build_worker
 
         importer = build_worker(
             config, app.state.db_connect,
