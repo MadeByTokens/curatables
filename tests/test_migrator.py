@@ -3,15 +3,10 @@
 import sqlite3
 import threading
 
-
 from app.db.migrator import apply_pending, migrations_dir
 
 
-def _conn() -> sqlite3.Connection:
-    # File-backed (tempfile) so we can open multiple connections from
-    # threads. :memory: won't do for the concurrency test.
-    import tempfile
-    path = tempfile.NamedTemporaryFile(suffix=".db", delete=False).name
+def _conn(path) -> sqlite3.Connection:
     c = sqlite3.connect(path, check_same_thread=False)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")
@@ -25,8 +20,8 @@ def _has_column(conn, table, col) -> bool:
 
 
 class TestMigratorFreshDB:
-    def test_applies_all_migrations(self):
-        conn = _conn()
+    def test_applies_all_migrations(self, tmp_path):
+        conn = _conn(tmp_path / "fresh.db")
         n = apply_pending(conn, migrations_dir())
         # 0001_initial + 0002_bootstrap_existing at minimum
         assert n >= 2
@@ -51,8 +46,8 @@ class TestMigratorFreshDB:
         assert 2 in versions
         conn.close()
 
-    def test_second_run_is_noop(self):
-        conn = _conn()
+    def test_second_run_is_noop(self, tmp_path):
+        conn = _conn(tmp_path / "fresh.db")
         apply_pending(conn, migrations_dir())
         n2 = apply_pending(conn, migrations_dir())
         assert n2 == 0
@@ -60,10 +55,9 @@ class TestMigratorFreshDB:
 
 
 class TestMigratorMultiVersionLeap:
-    """Pins the contract that a self-hoster on v0.3 can upgrade
-    straight to a later version (e.g. v0.5) without booting any
-    intermediate releases. The migrator simply walks every pending
-    file in order — no per-version manual steps required."""
+    """A database several versions behind upgrades in one run: the
+    migrator walks every pending file in order, with no per-version
+    manual steps and no need to boot intermediate releases."""
 
     def test_db_stamped_at_v1_leaps_to_latest(self, tmp_path):
         db_path = tmp_path / "old.db"
@@ -93,7 +87,7 @@ class TestMigratorMultiVersionLeap:
         assert applied == latest - 1, (
             f"expected to apply {latest - 1} migrations, applied {applied}"
         )
-        # And the tracking table now records every version.
+        # The tracking table records every version.
         recorded = {r["version"] for r in conn.execute(
             "SELECT version FROM schema_migrations").fetchall()}
         for v, _, _ in migs:
@@ -102,14 +96,12 @@ class TestMigratorMultiVersionLeap:
 
 
 class TestMigratorConcurrency:
-    def test_two_processes_dont_double_apply(self):
+    def test_two_processes_dont_double_apply(self, tmp_path):
         """Two racing startups should not both think they applied
         migration 0001. INSERT into schema_migrations has a PRIMARY KEY
         on version, so the second INSERT fails and the migrator
         rolls back. Simulate via threads sharing a file-backed DB."""
-        import tempfile
-        path = tempfile.NamedTemporaryFile(suffix=".db", delete=False).name
-        # Initialize once
+        path = str(tmp_path / "race.db")
         sqlite3.connect(path).close()
 
         errors = []

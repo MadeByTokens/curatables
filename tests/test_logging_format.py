@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 
-
 from app.logging_config import (
     JsonFormatter, _resolve_format, _build_formatter, setup_logging,
 )

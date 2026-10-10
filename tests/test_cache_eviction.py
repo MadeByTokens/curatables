@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 
-
 from app.models import Video
 from app.repositories import VideoRepository
 from app.services.storage import StorageService
@@ -25,7 +24,7 @@ def _insert_ready(db, video_id, *, cached_days_ago=None,
         storage_mode=storage_mode,
         download_status="pending",  # insert defaults
     ))
-    # Now backfill cache fields + keep_forever directly.
+    # Backfill cache fields + keep_forever directly.
     cached_at = None
     if cached_days_ago is not None:
         cached_at = _iso(datetime.utcnow() - timedelta(days=cached_days_ago))

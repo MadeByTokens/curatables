@@ -1,7 +1,5 @@
 """Route-level tests — HTTP status codes, auth enforcement, redirects."""
 
-import pytest
-
 
 class TestParentAuth:
     def test_login_page_returns_200(self, client):
@@ -31,11 +29,9 @@ class TestParentAuth:
         assert "/parent/login" in resp.headers["location"]
 
     def test_parent_login_clears_child_profile(self, client, app):
-        """Regression: logging in as parent while a kid profile is
-        active in the session must clear the profile so get_viewer
-        resolves as parent. Previously the viewer lookup preferred
-        profile_id and the parent would be bounced out of every
-        /parent/ route immediately after successful auth."""
+        """Logging in as parent while a kid profile is active in the
+        session clears the profile, so get_viewer resolves as parent and
+        /parent/ routes don't bounce back to login."""
         from app.services.auth import AuthService
         from app.dependencies import get_db
         from app.repositories import ProfileRepository
@@ -89,9 +85,6 @@ class TestParentChannels:
 class TestAnonymousKidRedirect:
     """Anonymous visitors landing on kid-facing URLs get bounced to
     /profiles so they can pick a kid (or auto-select the only one).
-    Previously the kid flow just rendered as anonymous with no
-    comment form, no reactions, and no login link, which left users
-    stuck with no obvious way to proceed.
     """
 
     def _setup_app(self, app):
@@ -176,11 +169,9 @@ class TestKidRoutes:
         auth = AuthService(app.state.config)
         auth.set_password("testpass")
         resp = client.get("/profiles")
-        # With no profiles, the picker now renders a helpful
-        # empty-state page with a link to /parent/login so the parent
-        # can sign in and create a kid profile. (It used to redirect
-        # to /, which caused an infinite loop with the
-        # anonymous_kid_redirect middleware.)
+        # With no profiles, the picker renders an empty state linking to
+        # /parent/login. Redirecting to / instead would loop with the
+        # anonymous_kid_redirect middleware.
         assert resp.status_code == 200
         assert b"No kid profiles yet" in resp.content
         assert b"/parent/login" in resp.content
@@ -304,9 +295,9 @@ class TestWatchPagePlayer:
 
 
 class TestMultiSourceAddConfirm:
-    """The parent add/confirm route is platform-agnostic after the
-    multi-source refactor. Video IDs that aren't YouTube-shaped (11
-    chars from [A-Za-z0-9_-]) must still land in the DB, and the
+    """The parent add/confirm route is platform-agnostic. Video IDs
+    that aren't YouTube-shaped (11
+    chars from [A-Za-z0-9_-]) must land in the DB, and the
     stored video_id must be the composite `{extractor}_{raw_id}`
     form so filesystem paths stay safe across platforms.
     """
@@ -335,9 +326,8 @@ class TestMultiSourceAddConfirm:
         }
 
     def test_vimeo_id_accepted(self, authed_client, app, monkeypatch):
-        """A Vimeo-shaped numeric ID (not 11 chars, not [A-Za-z0-9_-])
-        must NOT be dropped by the form-level regex any more.
-        """
+        """A Vimeo-shaped numeric ID (not 11 chars) is not dropped by
+        the form-level validation."""
         # Stop the background download thread from actually trying
         # to fetch Vimeo — replace it with a no-op.
         from app.services import content as content_mod
@@ -361,7 +351,7 @@ class TestMultiSourceAddConfirm:
         assert v.original_url == "https://vimeo.com/123456789"
 
     def test_youtube_id_still_accepted(self, authed_client, app, monkeypatch):
-        """The YouTube path still works end-to-end (regression check)."""
+        """A YouTube ID is accepted end-to-end."""
         from app.services import content as content_mod
         monkeypatch.setattr(
             content_mod.ContentService, "_start_download",
@@ -415,8 +405,7 @@ class TestTagInlineEditXHR:
     """The watch-page tag editor posts via XHR (X-Requested-With) so the
     chips update in place — a full redirect/reload would re-create the
     <video> element and restart playback. A plain <form> submit (JS off)
-    still gets the PRG redirect. Regression for the tag-add-restarts-the-
-    video bug."""
+    still gets the PRG redirect."""
 
     def _kid_with_video(self, client, app):
         from app.dependencies import get_db
@@ -466,20 +455,7 @@ class TestTagInlineEditXHR:
 class TestCommentInlineEditXHR:
     """Posting a comment/reply via XHR returns the rendered node (so the
     watch page inserts it in place instead of reloading and restarting
-    the video). Plain form posts still redirect. Regression for the
-    comment-post-restarts-the-video issue."""
-
-    @pytest.fixture(autouse=True)
-    def _reset_rate_limiters(self):
-        # The comment rate limiter is module-level state keyed on
-        # profile_id; profile ids repeat across fresh test DBs, so clear
-        # it before each test (mirrors tests/test_comments.py).
-        from app.services.comments import (
-            _KID_RATE_LIMITER, _PARENT_RATE_LIMITER,
-        )
-        _KID_RATE_LIMITER.reset()
-        _PARENT_RATE_LIMITER.reset()
-        yield
+    the video). Plain form posts still redirect."""
 
     def _kid_with_video(self, client, app):
         from app.dependencies import get_db

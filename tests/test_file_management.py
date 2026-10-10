@@ -1,4 +1,4 @@
-"""Tests for Phase 4: web file management.
+"""Web file management.
 
 Covers file-clean video deletion, bulk content operations, channel
 delete-with-reassignment, adopt/reassign kid-owned channels, and the
@@ -12,9 +12,6 @@ from unittest.mock import patch
 
 import pytest
 
-
-_Usage = namedtuple("Usage", ["total", "used", "free"])
-
 from app.config import Config
 from app.models import Profile, Video
 from app.repositories import (
@@ -26,6 +23,7 @@ from app.services.storage import StorageService
 from app.services.thumbnails import ThumbnailService
 
 
+_Usage = namedtuple("Usage", ["total", "used", "free"])
 _GB = 1_073_741_824
 
 
@@ -80,7 +78,7 @@ class TestFileCleanDelete:
         vdir = tmp_path / "uploads" / vid
         vdir.mkdir(parents=True)
         (vdir / "video.mkv").write_bytes(b"fake video")
-        # And the thumbnail still goes to videos/<id>/thumb.jpg (Phase 2 quirk)
+        # The thumbnail of an uploaded video lives under videos/<id>/.
         thumb_dir = tmp_path / "videos" / vid
         thumb_dir.mkdir(parents=True)
         (thumb_dir / "thumb.jpg").write_bytes(b"fake thumb")
@@ -283,7 +281,7 @@ class TestChannelDeleteReassign:
         assert by_id["videstay0001"] == dest
 
     def test_delete_without_reassignment_orphans_videos(self, db):
-        """Regression: existing behavior must still work."""
+        """Without a reassignment target the videos lose their channel."""
         ch_repo = ChannelRepository(db)
         vid_repo = VideoRepository(db)
         source = ch_repo.create("Source")

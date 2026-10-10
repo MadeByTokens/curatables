@@ -23,7 +23,7 @@ _GB = 1_073_741_824
 _Usage = namedtuple("Usage", ["total", "used", "free"])
 
 
-def _make_video(video_id, title="Test", channel_id=None, file_size=0,
+def _make_video(video_id, title="Test", channel_id=None,
                 status="active", download_status="ready"):
     return Video(
         video_id=video_id, title=title, original_title=title,

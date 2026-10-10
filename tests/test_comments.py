@@ -1,25 +1,12 @@
 """Tests for comment pagination, reply-threading, and rate-limiting."""
 
-import pytest
 
 from app.models import Profile, Video
 from app.models.viewer import ViewerContext
 from app.repositories import ChannelRepository, ProfileRepository, VideoRepository
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.event_repo import EventRepository
-from app.services.comments import (
-    CommentService, _KID_RATE_LIMITER, _PARENT_RATE_LIMITER,
-)
-
-
-@pytest.fixture(autouse=True)
-def _reset_rate_limiters():
-    """Clear both limiters before each test so fixtures don't leak
-    counters between tests (25 comments in one test can overflow the
-    30-per-minute parent limit of the next)."""
-    _KID_RATE_LIMITER.reset()
-    _PARENT_RATE_LIMITER.reset()
-    yield
+from app.services.comments import CommentService
 
 
 def _mk_video(db, video_id="v1"):

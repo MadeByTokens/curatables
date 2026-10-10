@@ -13,21 +13,14 @@ class TestSanitizeIdComponent:
         ("abc/def", "abc-def"),
         ("abc..def", "abc-def"),
         ("abc//def//ghi", "abc-def-ghi"),
-        ("   whitespace  ", "-whitespace-"[:96]),  # spaces collapse
+        ("   whitespace  ", "whitespace"),  # spaces collapse, edges stripped
         ("", "x"),
         ("---", "x"),
         ("!!!", "x"),
         ("a" * 200, "a" * 96),  # length cap
     ])
     def test_sanitize_id_component(self, raw, expected):
-        # The whitespace case is simpler than it looks: " " -> "-",
-        # so "   whitespace   " -> "---whitespace---" -> collapsed to
-        # "-whitespace-" -> stripped of trailing "-" on both ends to
-        # "whitespace".
-        if raw == "   whitespace  ":
-            assert sanitize_id_component(raw) == "whitespace"
-        else:
-            assert sanitize_id_component(raw) == expected
+        assert sanitize_id_component(raw) == expected
 
     def test_none_input(self):
         assert sanitize_id_component(None) == "x"
@@ -62,7 +55,5 @@ class TestMakeVideoId:
         assert result.endswith("_abc")
 
     def test_extractor_case_is_preserved(self):
-        # sanitize_id_component does not lowercase — the caller
-        # (ContentService / VideoMetadata) is responsible for lowering.
-        # Confirm that so readers aren't surprised.
+        # Lowercasing is the caller's job (ContentService / VideoMetadata).
         assert make_video_id("YouTube", "abc") == "YouTube_abc"

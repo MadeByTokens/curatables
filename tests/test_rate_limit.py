@@ -11,17 +11,8 @@ from app.models.viewer import ViewerContext
 from app.repositories import ProfileRepository, VideoRepository
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.event_repo import EventRepository
-from app.services.comments import (
-    CommentService, _KID_RATE_LIMITER, _PARENT_RATE_LIMITER,
-)
+from app.services.comments import CommentService
 from app.services.rate_limit import RateLimiter, RateLimitExceeded
-
-
-@pytest.fixture(autouse=True)
-def _reset_module_limiters():
-    _KID_RATE_LIMITER.reset()
-    _PARENT_RATE_LIMITER.reset()
-    yield
 
 
 class TestRateLimiter:

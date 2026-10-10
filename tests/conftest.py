@@ -19,9 +19,14 @@ def _test_client_host(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _reset_auth_limiters():
+def _reset_rate_limiters():
+    """The limiters are module-level and keyed on ids that repeat across
+    fresh test DBs, so counts would otherwise leak between tests."""
     from app.services.auth import PIN_LIMITER
+    from app.services.comments import _KID_RATE_LIMITER, _PARENT_RATE_LIMITER
     PIN_LIMITER.reset()
+    _KID_RATE_LIMITER.reset()
+    _PARENT_RATE_LIMITER.reset()
     yield
 
 
@@ -47,8 +52,10 @@ def config(tmp_path):
 
 
 def _make_test_db():
-    """Create an in-memory SQLite connection with schema for testing.
-    check_same_thread=False needed because TestClient runs routes in a worker thread."""
+    """In-memory SQLite connection with schema applied.
+
+    check_same_thread=False because TestClient runs routes in a worker
+    thread."""
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
@@ -58,24 +65,19 @@ def _make_test_db():
 
 @pytest.fixture
 def app(tmp_path):
-    """Full FastAPI app with in-memory DB for route testing.
-    Password is pre-set so first-run redirect doesn't fire.
-    CSRF validation is disabled so existing tests can POST without
-    having to fetch + attach a token first. Route-level auth is still
+    """Full FastAPI app with an in-memory DB for route testing.
+
+    A parent password is pre-set so the first-run redirect doesn't fire.
+    CSRF validation is short-circuited so tests can POST without fetching
+    a token; tests/test_csrf.py exercises real tokens. Route-level auth is
     enforced as in production."""
     app = create_app(data_dir=str(tmp_path))
 
-    # Set a password so the app isn't in first-run mode
     auth = AuthService(app.state.config)
     auth.set_password("testpass")
 
-    # CSRF is exercised in dedicated tests (tests/test_csrf.py) where
-    # we validate real tokens end-to-end. Everywhere else we short-
-    # circuit validation so the existing test corpus doesn't have to
-    # thread tokens through every POST.
     app.state.csrf.validate = lambda session, token: True
 
-    # Override get_db to use a shared in-memory connection
     conn = _make_test_db()
 
     def _override_db():
