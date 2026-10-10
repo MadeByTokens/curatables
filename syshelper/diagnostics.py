@@ -11,7 +11,7 @@ import socket
 import time
 from pathlib import Path
 
-from syshelper import drives, nm, runner, safefs, system
+from syshelper import drives, nm, runner, safefs, system, upgrade
 from syshelper.registry import action
 from syshelper.settings import SETTINGS
 
@@ -248,21 +248,11 @@ def _file(title: str, path: Path, tail: int = 200) -> str:
     return f"\n===== {title} =====\n" + "\n".join(lines) + "\n"
 
 
-def _version() -> str:
-    try:
-        for line in (SETTINGS.code_dir / "app" / "__init__.py").read_text().splitlines():
-            if line.startswith("__version__"):
-                return line.split("=", 1)[1].strip().strip("\"'")
-    except OSError:
-        pass
-    return "unknown"
-
-
 def build_report() -> str:
     parts = [
         "Curatables diagnostics report\n",
         f"Created: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n",
-        f"Curatables version: {_version()}\n",
+        f"Curatables version: {upgrade.version_of(SETTINGS.code_dir) or 'unknown'}\n",
         "Passwords, Wi-Fi passwords and keys have been removed. It does contain network names\n"
         "and local addresses: share it only with someone you trust to help.\n",
     ]

@@ -9,7 +9,7 @@ import sys
 
 def main(argv: list[str]) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    if len(argv) >= 1 and argv[0] == "--report":
+    if argv[:1] == ["--report"]:
         from syshelper import diagnostics
         report = diagnostics.build_report()
         if len(argv) >= 2:

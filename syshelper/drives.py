@@ -67,9 +67,6 @@ def _mounted_at(path: Path) -> str:
 
 
 def _is_usb(disk: dict) -> bool:
-    name = disk.get("name") or ""
-    if name.startswith(("mmcblk", "loop", "zram", "ram", "nvme")) and disk.get("tran") != "usb":
-        return False
     return disk.get("tran") == "usb"
 
 
@@ -223,7 +220,7 @@ def _start_curatables(job: Job) -> None:
     runner.run(["systemctl", "start", "curatables.service"], timeout=120)
 
 
-def _umount(path: str, job: Job | None = None) -> None:
+def _umount(path: str) -> None:
     runner.run(["sync"], timeout=600)
     result = runner.run(["umount", path], timeout=120)
     if not result.ok and _mounted_at(Path(path)):
@@ -343,7 +340,7 @@ def drive_use_for_videos(params: dict):
     def work(job: Job) -> dict:
         if part["role"] in ("import", "other"):
             job.log("Closing the drive's import folder first")
-            _umount(part["mountpoint"], job)
+            _umount(part["mountpoint"])
         state = media_state()
         if state["configured"] and state["mounted"] and state["uuid"] != part["uuid"]:
             _move_to(job, device, part)
@@ -376,10 +373,10 @@ def _move_to(job: Job, device: str, part: dict) -> None:
         else:
             _copy_library(job, SETTINGS.media_mount / LIBRARY, target, part["fstype"] == "ext4")
     finally:
-        _umount(str(trial), job)
+        _umount(str(trial))
     _stop_curatables(job)
     try:
-        _umount(str(SETTINGS.media_mount), job)
+        _umount(str(SETTINGS.media_mount))
         _remove_media_fstab(job)
     except Exception:
         _back_to_old_drive(job)
@@ -431,7 +428,7 @@ def drive_back_to_sd(params: dict):
                 storage["import_roots"] = [r for r in storage.get("import_roots") or []
                                            if r != str(SETTINGS.media_mount)]
             _write_config(update)
-            _umount(str(SETTINGS.media_mount), job)
+            _umount(str(SETTINGS.media_mount))
             _remove_media_fstab(job)
             (SETTINGS.dropin_dir / "media-drive.conf").unlink(missing_ok=True)
         finally:
@@ -453,15 +450,15 @@ def drive_eject(params: dict):
         if part["role"] == "videos":
             _stop_curatables(job)
             try:
-                _umount(str(SETTINGS.media_mount), job)
+                _umount(str(SETTINGS.media_mount))
             finally:
                 _start_curatables(job)
         elif part["mountpoint"]:
-            _umount(part["mountpoint"], job)
+            _umount(part["mountpoint"])
             _forget_import_mount(part["mountpoint"])
         for other in disk["partitions"]:
             if other["path"] != device and other["mountpoint"] and other["role"] in ("import", "other"):
-                _umount(other["mountpoint"], job)
+                _umount(other["mountpoint"])
         power = runner.run(["udisksctl", "power-off", "-b", disk["path"]], timeout=60)
         if not power.ok:
             job.log("The drive could not be switched off, but it is safe to unplug")
@@ -518,7 +515,7 @@ def drive_repair(params: dict):
             _stop_curatables(job)
         try:
             if part["mountpoint"]:
-                _umount(part["mountpoint"], job)
+                _umount(part["mountpoint"])
             job.log(f"Checking the {part['fs_name']} drive (this can take a while)")
             rc = runner.stream([*FSCK[part["fstype"]], device], job.log, timeout=6 * 3600)
             if rc not in FSCK_OK[part["fstype"]]:
@@ -560,7 +557,7 @@ def drive_format(params: dict):
     def work(job: Job) -> dict:
         for part in disk["partitions"]:
             if part["mountpoint"]:
-                _umount(part["mountpoint"], job)
+                _umount(part["mountpoint"])
                 _forget_import_mount(part["mountpoint"])
         job.log("Erasing the old layout")
         runner.run(["wipefs", "-a", disk_path], timeout=120)
@@ -626,7 +623,7 @@ def drive_open_for_import(params: dict):
         if part["role"] == "import":
             return {"path": part["mountpoint"]}
         if part["mountpoint"]:
-            _umount(part["mountpoint"], job)
+            _umount(part["mountpoint"])
         target = _import_dir_for(part)
         target.mkdir(parents=True, exist_ok=True)
         fs, opts = mount_options(part["fstype"])

@@ -29,8 +29,7 @@ def action(name: str, *, job: bool = False, title: str = ""):
     return decorate
 
 
-def text(params: dict, key: str, *, max_len: int = 256, required: bool = True,
-         allow_empty: bool = False) -> str:
+def text(params: dict, key: str, *, max_len: int = 256, required: bool = True) -> str:
     value = params.get(key, "")
     if not isinstance(value, str):
         raise HelperError(f"'{key}' must be text")
@@ -38,7 +37,7 @@ def text(params: dict, key: str, *, max_len: int = 256, required: bool = True,
         raise HelperError(f"'{key}' cannot contain line breaks")
     if len(value) > max_len:
         raise HelperError(f"'{key}' is too long")
-    if required and not value and not allow_empty:
+    if required and not value:
         raise HelperError(f"'{key}' is missing")
     return value
 

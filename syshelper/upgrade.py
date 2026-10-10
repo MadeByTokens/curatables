@@ -26,6 +26,7 @@ from syshelper.settings import SETTINGS
 
 MAX_TARBALL = 200 * 1024 * 1024
 RESULT = "last-update.json"
+PENDING = "pending-update.json"
 
 
 # --- versions -----------------------------------------------------------------
@@ -260,9 +261,6 @@ def _switch(job: Job, incoming: Path) -> Path:
     _apply_system(job)
     runner.run(["systemctl", "start", "curatables.service"], timeout=120)
     return outgoing
-
-
-PENDING = "pending-update.json"
 
 
 def _updates_dir() -> Path:
