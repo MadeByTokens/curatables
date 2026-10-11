@@ -208,7 +208,11 @@ def settings_save_advanced(request: Request,
     config.parent.session_timeout_hours = session_timeout_hours
     config.save()
     return templates.TemplateResponse(request, "parent/settings.html", {
-        **ctx, "success": "Advanced settings saved. Restart the server for port, host, session timeout, and log level changes to take effect.",
+        **ctx, "success": ("Advanced settings saved. Port, host, session timeout and log level changes take effect "
+                    "after Curatables restarts (Box → Restart Curatables)."
+                    if request.app.state.system_helper.available else
+                    "Advanced settings saved. Restart the server for port, host, session timeout, "
+                    "and log level changes to take effect."),
         "error": None,
     })
 
