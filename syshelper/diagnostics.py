@@ -253,6 +253,49 @@ def _file(title: str, path: Path, tail: int = 200) -> str:
     return f"\n===== {title} =====\n" + "\n".join(lines) + "\n"
 
 
+APP_LOG_RECORD = re.compile(r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \[[^\]]*\] (\w+) ")
+APP_LOG_PROBLEM_LEVELS = {"WARNING", "ERROR", "CRITICAL"}
+APP_LOG_PROBLEM_DAYS = 7
+APP_LOG_PROBLEM_LINES = 1000
+APP_LOG_TAIL_LINES = 300
+APP_LOG_BACKUPS = 3
+
+
+def app_log_problems(lines: list[str], since: float) -> list[str]:
+    """The warning and error records logged at or after since, each with its
+    traceback, oldest first."""
+    kept: list[str] = []
+    keeping = False
+    for line in lines:
+        record = APP_LOG_RECORD.match(line)
+        if record:
+            try:
+                logged = time.mktime(time.strptime(record.group(1), "%Y-%m-%d %H:%M:%S"))
+            except ValueError:
+                logged = 0.0
+            keeping = record.group(2) in APP_LOG_PROBLEM_LEVELS and logged >= since
+        if keeping:
+            kept.append(line)
+    return kept
+
+
+def _app_log_sections() -> str:
+    log_dir = SETTINGS.data_dir / "logs"
+    uid = _service_uid()
+    lines: list[str] = []
+    for name in [f"curatables.log.{n}" for n in range(APP_LOG_BACKUPS, 0, -1)] + ["curatables.log"]:
+        text = safefs.read_owned(log_dir / name, uid)
+        if text is not None:
+            lines.extend(text.splitlines())
+    if not lines:
+        return ""
+    problems = app_log_problems(lines, time.time() - APP_LOG_PROBLEM_DAYS * 86400)
+    return (f"\n===== Curatables app log: warnings and errors, last {APP_LOG_PROBLEM_DAYS} days =====\n"
+            + ("\n".join(problems[-APP_LOG_PROBLEM_LINES:]) or "(none)") + "\n"
+            + "\n===== Curatables app log: latest lines =====\n"
+            + "\n".join(lines[-APP_LOG_TAIL_LINES:]) + "\n")
+
+
 def build_report() -> str:
     parts = [
         "Curatables diagnostics report\n",
@@ -301,10 +344,7 @@ def build_report() -> str:
                                                      "-u", "curatables-firstboot.service"]))
     parts.append(_section("Kernel messages", ["journalctl", "-k", "-b", "-n", "150", "--no-pager",
                                               "-o", "short-iso"]))
-    app_log = safefs.read_owned(SETTINGS.data_dir / "logs" / "curatables.log", _service_uid(),
-                                tail_bytes=256 * 1024)
-    if app_log is not None:
-        parts.append("\n===== Curatables app log =====\n" + "\n".join(app_log.splitlines()[-300:]) + "\n")
+    parts.append(_app_log_sections())
     return redact("".join(parts), secrets())
 
 

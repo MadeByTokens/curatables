@@ -6,6 +6,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -606,6 +607,26 @@ def test_report_skips_an_app_log_that_points_elsewhere(fake, tmp_path, monkeypat
     (logs / "curatables.log").unlink()
     (logs / "curatables.log").write_text("ordinary app line\n")
     assert "ordinary app line" in diagnostics.build_report()
+
+
+def test_report_carries_the_weeks_warnings_from_every_app_log(fake, monkeypatch):
+    monkeypatch.setattr(diagnostics, "_tcp", lambda host, port, timeout=5: "")
+    logs = SETTINGS.data_dir / "logs"
+    logs.mkdir()
+    old = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - 10 * 86400))
+    recent = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - 3 * 86400))
+    (logs / "curatables.log.2").write_text(f"{old} [-] ERROR app: too old to matter\n")
+    (logs / "curatables.log.1").write_text(
+        f"{recent} [abc] ERROR app.jobs: download failed\n"
+        "Traceback (most recent call last):\n  ValueError: boom\n"
+        f"{recent} [-] INFO app: routine line\n")
+    (logs / "curatables.log").write_text(f"{recent} [-] WARNING app: disk getting full\n")
+    report = diagnostics.build_report()
+    problems = report.split("warnings and errors, last 7 days =====\n", 1)[1].split("=====", 1)[0]
+    assert "download failed" in problems and "ValueError: boom" in problems
+    assert "disk getting full" in problems
+    assert "routine line" not in problems and "too old to matter" not in problems
+    assert problems.index("download failed") < problems.index("disk getting full")
 
 
 def test_config_edits_refuse_a_config_that_is_a_symlink(fake, tmp_path):
