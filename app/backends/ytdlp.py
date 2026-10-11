@@ -87,6 +87,13 @@ class YtdlpBackend(VideoBackend):
                 details=details,
                 suggestion="Try a different resolution in Settings.",
             )
+        if "incomplete youtube id" in msg.lower() or "unsupported url" in msg.lower():
+            return BackendError(
+                error_type=BackendErrorType.UNKNOWN,
+                message="That link looks incomplete, or isn't a link to a video.",
+                details=details,
+                suggestion="Copy the whole address again from the video's page.",
+            )
         return BackendError(
             error_type=BackendErrorType.UNKNOWN,
             message="An unexpected error occurred.",

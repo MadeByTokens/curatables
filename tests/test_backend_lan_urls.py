@@ -26,3 +26,9 @@ def test_home_network_urls_are_refused_before_yt_dlp(url, monkeypatch, tmp_path)
 def test_names_that_do_not_resolve_are_left_to_yt_dlp(monkeypatch):
     b = YtdlpBackend()
     assert not b._blocked("https://no-such-host.invalid/watch")
+
+
+def test_a_cut_off_link_gets_a_plain_message():
+    e = YtdlpBackend().classify_error(Exception(
+        "[youtube:truncated_id] abc: Incomplete YouTube ID abc. URL https://www.youtube.com/watch?v=abc looks truncated."))
+    assert "incomplete" in e.message and "Copy the whole address" in e.suggestion
