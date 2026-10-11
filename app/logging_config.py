@@ -133,5 +133,4 @@ def setup_logging(log_level: str = "info",
         root.addHandler(file_handler)
 
     # Suppress noisy third-party loggers
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("watchfiles").setLevel(logging.WARNING)

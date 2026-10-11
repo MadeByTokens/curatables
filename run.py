@@ -239,8 +239,10 @@ def main():
     # Cap graceful shutdown so Ctrl+C exits promptly even when browsers
     # are holding keep-alive sockets on /media/video — HTML5 <video>
     # preload parks a range-request connection on every open watch page.
+    # Requests are logged once, by RequestLoggingMiddleware (with the
+    # request id and timing), so uvicorn's own access log is off.
     uvicorn.run(app, host=host, port=port, log_level=log_level,
-                timeout_graceful_shutdown=3)
+                access_log=False, timeout_graceful_shutdown=3)
 
 
 if __name__ == "__main__":
