@@ -806,3 +806,19 @@ td .btn { white-space: nowrap; }
 .delete-details summary { list-style: none; }
 .delete-details summary::-webkit-details-marker { display: none; }
 .delete-details[open] form { margin-top: 8px; }
+.ytdlp-thanks {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin: 40px 0 8px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fff6d8, #ffe9e1);
+  border: 1px solid #f3c98b;
+  border-radius: 10px;
+}
+.ytdlp-thanks h2 { margin: 0 0 6px; font-size: 20px; }
+.ytdlp-thanks p { margin: 0 0 14px; font-size: 16px; line-height: 1.5; max-width: 640px; }
+.ytdlp-heart { font-size: 44px; line-height: 1; }
+.ytdlp-sponsor { font-size: 16px; font-weight: bold; padding: 10px 18px; background: #c2410c; }
+.ytdlp-sponsor:hover { background: #9a3412; }
+@media (max-width: 500px) { .ytdlp-thanks { flex-direction: column; gap: 6px; } }
