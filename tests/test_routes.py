@@ -392,7 +392,7 @@ class TestMultiSourceAddConfirm:
         resp = authed_client.post("/parent/add/confirm", data=payload)
         assert resp.status_code == 200
         # Zero videos added — the id never passed validation.
-        assert b"Added 0 video" in resp.content
+        assert b"Nothing new was added" in resp.content
 
         from app.dependencies import get_db
         from app.repositories import VideoRepository

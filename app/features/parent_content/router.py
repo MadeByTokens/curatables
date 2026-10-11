@@ -199,9 +199,10 @@ async def add_confirm(request: Request,
             skipped += 1
         wishlist.approve_video(make_video_id(extractor, vid))
 
-    msg = f"Added {added} video(s). Downloading in the background — check the Content tab for progress."
+    msg = (f"Added {added} video(s). Downloading in the background — check the Content tab for progress."
+           if added else "Nothing new was added.")
     if skipped:
-        msg += f" {skipped} already existed (skipped)."
+        msg += f" {skipped} already in your library (skipped)."
     if added and channel_id is None:
         msg += " They have no channel, so kids can't find them: pick one with Edit on the Content tab."
     if unreviewed:
