@@ -37,6 +37,7 @@ class VideoMetadata:
 class BackendErrorType(Enum):
     """Classified error types for user-facing messages and debugging."""
     BOT_BLOCKED = "bot_blocked"         # source blocked the request as a bot
+    RATE_LIMITED = "rate_limited"       # source asked us to slow down (HTTP 429)
     VIDEO_UNAVAILABLE = "unavailable"   # video is private, deleted, region-locked
     NETWORK = "network"                 # connection timeout, DNS failure, etc.
     AGE_RESTRICTED = "age_restricted"   # requires age verification

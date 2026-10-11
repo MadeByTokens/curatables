@@ -199,7 +199,7 @@ class SearchGate:
         now = time.time()
         self._failures = [f for f in self._failures if f[0] > now - FAILURE_WINDOW_SECONDS]
         self._failures.append((now, error.message))
-        if error.error_type == BackendErrorType.BOT_BLOCKED:
+        if error.error_type in (BackendErrorType.BOT_BLOCKED, BackendErrorType.RATE_LIMITED):
             self.resting_until = now + REST_SECONDS
             raise SearchRefused("resting")
         raise SearchRefused("broken")

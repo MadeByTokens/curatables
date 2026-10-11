@@ -70,8 +70,14 @@ class YtdlpBackend(VideoBackend):
         msg = str(error)
         details = msg
 
-        if ("Sign in to confirm" in msg or re.search(r"\bbots?\b", msg.lower())
-                or "429" in msg or "too many requests" in msg.lower()):
+        if "429" in msg or "too many requests" in msg.lower():
+            return BackendError(
+                error_type=BackendErrorType.RATE_LIMITED,
+                message="The source asked the box to slow down (too many requests).",
+                details=details,
+                suggestion="Wait an hour or so, then try again.",
+            )
+        if "Sign in to confirm" in msg or re.search(r"\bbots?\b", msg.lower()):
             return BackendError(
                 error_type=BackendErrorType.BOT_BLOCKED,
                 message="The source blocked the request (bot detection).",

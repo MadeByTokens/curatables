@@ -56,6 +56,8 @@ _DOWNLOAD_ERROR_ADVICE = {
     "bot_blocked": "The site blocked the download. Press Retry after updating "
                    "yt-dlp (Settings → Updates), or turn on Browser Impersonation "
                    "(Settings → Advanced → Anti-Bot).",
+    "rate_limited": "The site asked the box to slow down for a while. "
+                    "Wait an hour or so, then press Retry.",
     "unavailable": "The video is private, removed, or not available where you live.",
     "age_restricted": "The site wants a logged-in account for this video "
                       "(Settings → Advanced → Anti-Bot → cookies).",

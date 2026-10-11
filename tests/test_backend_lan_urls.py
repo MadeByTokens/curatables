@@ -71,3 +71,11 @@ def test_a_failed_subtitle_does_not_fail_the_video(monkeypatch, tmp_path):
     assert out == tmp_path / "v" / "video.mp4"
     assert runs == [["en", "pt"], None]
 
+
+
+def test_too_many_requests_says_wait_not_change_settings():
+    from app.template_utils import friendly_download_error
+    e = YtdlpBackend().classify_error(Exception("ERROR: unable to download video data: HTTP Error 429: Too Many Requests"))
+    assert e.error_type == BackendErrorType.RATE_LIMITED
+    advice = friendly_download_error(f"[{e.error_type.value}] {e.message}")
+    assert "Wait" in advice and "Impersonation" not in advice
