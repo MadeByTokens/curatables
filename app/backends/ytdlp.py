@@ -137,9 +137,6 @@ class YtdlpBackend(VideoBackend):
             opts["cookiefile"] = self.cookies_file
         elif self.cookies_from_browser:
             opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
-        # Try every YouTube player client. yt-dlp ignores extractor args
-        # meant for other extractors, so this is harmless elsewhere.
-        opts["extractor_args"] = {"youtube": {"player_client": ["all"]}}
         return opts
 
     def _blocked(self, url: str) -> bool:
