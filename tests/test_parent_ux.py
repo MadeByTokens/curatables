@@ -142,3 +142,9 @@ def test_settings_page_has_section_nav(authed_client):
     for anchor in ("settings-storage", "settings-password", "settings-advanced"):
         assert f'href="#{anchor}"' in page and f'id="{anchor}"' in page
     assert page.index('id="settings-password"') < page.index('id="settings-advanced"')
+
+
+def test_an_empty_filter_tab_does_not_say_the_library_is_empty(authed_client):
+    assert "No videos yet" in authed_client.get("/parent/content").text
+    page = authed_client.get("/parent/content", params={"status": "pending"}).text
+    assert "No videos yet" not in page and "Nothing here right now" in page
