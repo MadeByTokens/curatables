@@ -112,5 +112,6 @@ Review 116 ms, and the added video downloaded at 1280×720.
   the Big & clear theme keeps small cards on a 600 px tablet; a single
   channel still shows the channel chips.
 - **Requests page:** decided requests have no YouTube link.
+- **Visual guides, once the UI is frozen:** a picture guide for parents and one for kids, and a fresh screenshot for the README. The run above can be re-used to take them (same people, devices and steps).
 - **Not covered:** Wi-Fi, USB drives, updates, restarts, a real tablet's
   touch and video codecs.
