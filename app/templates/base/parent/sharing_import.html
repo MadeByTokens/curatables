@@ -12,7 +12,8 @@
 <div class="flash flash-error my-16">{{ error }}</div>
 {% endif %}
 
-<form method="POST" action="/parent/channels/import" enctype="multipart/form-data" class="mt-16 mw-640">
+<form method="POST" action="/parent/channels/import" enctype="multipart/form-data" class="mt-16 mw-640"
+      data-busy="Reading the list…">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <div class="form-group">

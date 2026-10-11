@@ -13,7 +13,8 @@
 </div>
 {% endif %}
 
-<form method="POST" action="/parent/add" class="mw-600">
+<form method="POST" action="/parent/add" class="mw-600"
+      data-busy="Looking it up… this can take half a minute">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="form-group">
     <label for="url">Video URL</label>

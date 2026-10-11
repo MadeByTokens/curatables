@@ -8,6 +8,31 @@
     }
   }, true);
 
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    var message = form.getAttribute && form.getAttribute('data-busy');
+    if (!message || e.defaultPrevented) { return; }
+    var button = form.querySelector('button[type="submit"], button:not([type])');
+    if (button) {
+      button.setAttribute('data-idle-text', button.textContent);
+      // Disabled after this event, so the button's own name/value still goes with the form.
+      setTimeout(function () { button.disabled = true; }, 0);
+      button.textContent = message;
+    }
+    form.setAttribute('aria-busy', 'true');
+  });
+
+  // Back from the next page can show this one as it was left: busy.
+  window.addEventListener('pageshow', function () {
+    var buttons = document.querySelectorAll('[data-idle-text]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].textContent = buttons[i].getAttribute('data-idle-text');
+      buttons[i].removeAttribute('data-idle-text');
+      buttons[i].disabled = false;
+      buttons[i].form.removeAttribute('aria-busy');
+    }
+  });
+
   document.addEventListener('change', function (e) {
     var ids = e.target.getAttribute && e.target.getAttribute('data-show-password');
     if (!ids) { return; }
