@@ -80,7 +80,7 @@ and load time (scenario X1).
 |---|------|--------------|-------------|
 | P1 | Must | Sam on the phone: sees Mia's requests, Review & add one (timed), turns the other down | Review opens fast with Mia's name/channel; download starts; Mia sees "Yes! Watch" and "Not this time" |
 | P2 | Must | Sam reads Mia's comment, replies, deletes another; checks what each kid watched (Stats) | reply shows for Mia; deleted comment gone; stats name the videos |
-| P3 | Must | Sam edits a video (title, picture, tags), hides one, brings it back, moves one to "(none)", deletes one; uses bulk actions | each kid's screen follows within a reload; the "(none)" warning shows |
+| P3 | Must | Sam edits a video (title, picture; tags are each kid's own), hides one, brings it back, moves one to "(none)", deletes one; uses bulk actions | each kid's screen follows within a reload; the "(none)" warning shows |
 | P4 | Must | Sam changes Leo to also see Animals, then to "none of yours"; turns Mia's Find new off | kids' screens follow; Mia's Find new disappears |
 | P5 | Must | Sam shares the Songs channel (exports .ytc and the printable list) and imports the .ytc as a new channel | files download; the import preview lists the videos; the new channel fills |
 | P6 | Should | Sam opens Import (files on a drive) with no drive plugged in | the page explains what to do; nothing breaks |
@@ -127,4 +127,91 @@ Each is left out on purpose, with what still covers it:
 
 ## Results
 
-Not run yet.
+Run on 2026-10-11, 15:19–16:30 box time, against `main` from `27712b2`
+onwards: each fix below was committed, deployed to the box and checked
+again before the run went on. Same box, wired; the test laptop on Wi-Fi.
+
+### Verdict
+
+**Not ready to publish yet, for two reasons outside the app code:**
+
+1. The backup fix (F12) is only half on the box: the scripts are, but
+   the systemd unit in `/etc/systemd/system` is still the image's. It
+   reaches boxes with the next image (or an update that runs
+   `apply-system.sh`); a new image is needed before release.
+2. X2 is only partly checked: the box keeps its journal in memory, so the
+   reboot cleared it, and the diagnostics report carries only the last
+   300 lines of the app log. 15:20–15:31, around 15:45 and 16:18–16:30
+   were read (no errors other than the ones under F4); about 15:50–16:15
+   were not.
+
+Everything else passed, after the fixes below.
+
+| # | Result | Notes |
+|---|--------|-------|
+| W1 | Pass | Each delete asks first; Storage 0.00 GB after; the kid screen says there are no kids yet. |
+| W2 | Pass after F1 | General, request rules, imports and Advanced each say they saved and keep their values. |
+| W3 | Pass after F2–F5 | One video: preview 11–17 s; a 37-video playlist: 6 s. Add stays disabled until "I have already fully watched" is ticked; the summary counts what was skipped. |
+| W4 | Pass | 4.7 MB upload with progress in 8.5 s; plays at 1280×720 for Mia. |
+| W5 | Pass after F6, F7 | The Kids list reads as set; QR on the Kids page. |
+| K1 | Pass | Picture PIN wrong then right; the video plays to the end (Again / Home); reaction, comment and tag survive a reload. |
+| K2 | Pass | 12 results with pictures in 7 s; "Looking…" for Search and More; More is a second page with Back; two requests, one named, back on the results with "⌛ Asked". |
+| K3 | Pass | Mia's own channel, a 2.3 MB upload in 3 s, a new title and picture on her home. |
+| K4 | Pass | Portuguese, larger text; Find new, uploads, a parent page, an Animals video and Mia's video all refused (sent home or to the parent sign-in; the file itself 404). |
+| K5 | Pass | Five wrong PINs lock the profile for 5 minutes ("Demasiados intentos"), even for the right PIN; then in; only Animals and Songs; no comment, reaction, tag or upload controls. |
+| K6 | Not supported | Coming back starts the video from the beginning; no "carry on" offer (Open). |
+| P1 | Pass | On the phone; Review 2.5 s with Mia's name and channel; "Yes! Watch" at 1280×720; the turn-down asks "Hide this video from Mia's searches?". |
+| P2 | Pass after F8 | Reply reaches Mia; deleting asks and removes it for both. |
+| P3 | Pass | Title and picture changes reach the kids (pictures are revalidated); hide, bring back, "(none)" with its warning, delete, bulk hide/unhide/move. |
+| P4 | Pass | Leo + Animals, then "None of yours" (kind Portuguese empty screen); Mia's Find new off removes the button and the page. |
+| P5 | Pass after F9, F10 | .ytc, .txt and .pdf export correctly; importing a pasted list into a chosen channel. |
+| P6 | Pass after F11 | No drive: the page explains; it pointed to a command line, now to Box → Drives. |
+| P7 | Pass | Signing out on the laptop leaves the phone signed in; kids get the parent sign-in. |
+| A1 | Pass after F12 | All checks explain themselves; the report (1,000 lines) holds none of the four passwords used in the run and says it names networks. |
+| A2 | Pass after F13 | "0.5.0 is the newest version"; the downloader update came back by itself in 12 s. |
+| A3 | Pass | `apt` ran to the end in under a minute ("0 upgraded": the daily security updates had already run). |
+| A4 | Pass | Wrong current password and a mismatch refused; the change signs other devices out; changed back. |
+| A5 | Pass | Too short (browser), mismatch, same as the parent password, wrong parent password: each refused; a fresh SSH login took the new password and refused the old; changed back and checked again. |
+| A6 | Pass | SSH off: "Connection refused"; on: logs in. |
+| A7 | Pass after F12 | Back up now, then restoring it: 9 s, every kid, channel and video as before, the parent still signed in. The empty file the failed nightly run had left was refused. |
+| A8 | Pass | Per-channel sizes add up; 0.12 GB for 11 videos. |
+| A9 | Pass | No broken links; matches the screens (its list of kid switches leaves out Ask for new videos, which has its own section). |
+| A10 | Pass | Back by itself in 13 s; the kid's video kept playing; the cut download was reset and finished ("Resumed 1 pending download(s) after restart"). |
+| A11 | Pass | A real reboot (uptime checked), back by itself in 42 s; `curatables.local` answers; kids, channels, videos, requests, comments and settings identical; each kid device still in its profile; Diagnostics all green. |
+| X1 | Pass | No script errors on any device; every console error was expected (deliberate 404/400s, the wait pages polling during restarts); no sideways scrolling at 1280, 810, 600 or 390 px; parent pages 0.25–1.2 s. |
+| X2 | Partly checked | See the verdict. Each request is logged once. |
+| X3 | Pass | Every delete, restore, restart and system update asks first and says what happens; SSH and password changes need the parent password instead. |
+
+### Found and fixed
+
+| | Severity | Finding | Fix |
+|-|----------|---------|-----|
+| F12 | Blocker | The nightly backup failed after a boot (`ProtectHome=read-only`; SQLite has to write the `-shm` file to read a WAL database) and left an empty `curatables-*.db`, listed as a backup; an empty file passes `PRAGMA integrity_check`, so restoring it would have replaced the family's data with nothing | The unit may write the db folder; the snapshot is renamed into place only when complete; restore needs the profiles table (`08127dd`); Diagnostics says to press Back up now (`acb9aaf`) |
+| F6 | Major | A new kid's chosen channels were never saved on the box (written after the commit); the kid saw none of the parent's channels | `d262980`, with a test that reads through a second connection |
+| F1 | Major | Advanced settings could not be saved on a new box: the kid upload limit showed as 0.49 in a field that takes steps of 0.1, and the browser refused the form without a visible word | `0e88aa7` |
+| F4 | Major | With subtitles en,pt,es, a 429 on one subtitle track failed the whole video (2 of 4) | `979f4b9` |
+| F5 | Major | 429 was shown as "site blocked, update yt-dlp or turn on impersonation" | `5d02c76` |
+| F10 | Major | The import page's target channel was ignored; imported videos had no channel | `286810d` |
+| F2 | Minor | Looking up a link (6–17 s) showed nothing on screen | `bd614c2` |
+| F3 | Minor | A gone video in a playlist was listed as "None" | `76dea7f` |
+| F7 | Minor | With "None of yours" selected, a ticked channel was dropped | `8c7784a` |
+| F8 | Minor | Stats showed video codes instead of names | `e1cf383` |
+| F9 | Minor | "Added 0 video(s). Downloading…" when everything was a duplicate | `6af9fc8` |
+| F11 | Minor | Command-line advice (sudo, install.sh, docs paths) on the box's pages | `9432293` |
+| F13 | Minor | Box → Updates said the result was on the page; it was not | `aa715ac` |
+| – | Minor | Empty Downloading/Failed tab said "No videos yet"; deleting a kid did not say what goes; "Restart the server"; a "Family" channel that did not exist | `74b30b1`, `23a6240` |
+
+### Open
+
+- **Before release:** a new image with the backup unit (F12); a full read
+  of `curatables.log` for the run, or a re-run of X2 on the new image.
+- **The journal is kept in memory**, so a reboot or power cut loses the
+  system log; the app's own log survives. Worth deciding whether the
+  report should carry more of the app log.
+- **Kid requests:** when the kid leaves "What is it about?" empty, the
+  review form fills in YouTube's description, advert links and all; a
+  parent who adds it as it is shows that text to the kid.
+- **Carry on watching (K6):** not a feature yet.
+- **Search** matches inside words ("park" finds "Sparky").
+- From the first round: higher quality for every video (PO token
+  options), kid-screen polish, visual guides once the UI is frozen.
