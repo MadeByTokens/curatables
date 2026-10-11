@@ -32,6 +32,12 @@ class WishlistRequest:
     target_channel_id: int | None = None
     profile_name: str = ""
 
+    @property
+    def has_details(self) -> bool:
+        """YouTube's full details are stored (search results carry no
+        upload date; a full lookup always does)."""
+        return bool(self.upload_date)
+
     def metadata(self) -> VideoMetadata:
         """What YouTube said about the video, as the backend returned it."""
         return VideoMetadata(

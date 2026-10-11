@@ -571,3 +571,18 @@ def test_full_details_that_break_the_rules_turn_the_request_down(app, client, au
     repo = WishlistRepository(_conn(app))
     assert repo.list_by_status("pending") == []
     assert repo.list_by_status("rejected")[0].video_id == "youtube_aaaaaaaaaaa"
+
+
+def test_review_fetches_details_the_lookup_after_ask_missed(app, client, authed_client, backend):
+    from dataclasses import replace
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    backend.fetch_video_info = lambda url: None
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert not item.has_details
+    GATE.reset()
+    backend.fetch_video_info = lambda url: replace(RESULTS[0], description="Numbers", upload_date="20260101")
+    review = authed_client.get(f"/parent/requests/{item.id}/review").text
+    assert ">Numbers</textarea>" in review
+    assert WishlistRepository(_conn(app)).get(item.id).has_details

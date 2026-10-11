@@ -4,10 +4,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from app.dependencies import get_content_service, get_wishlist_repo, require_parent
+from starlette.concurrency import run_in_threadpool
+
+from app.dependencies import (
+    get_content_service, get_wishlist_repo, get_wishlist_service, require_parent,
+)
 from app.models import ViewerContext
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.content import ContentService
+from app.services.wishlist import WishlistService
 
 router = APIRouter(prefix="/parent/requests", tags=["parent-requests"])
 
@@ -36,13 +41,17 @@ def reject_request(request_id: int,
 
 
 @router.get("/{request_id}/review", response_class=HTMLResponse)
-def review_request(request: Request, request_id: int,
-                   viewer: ViewerContext = Depends(require_parent),
-                   repo: WishlistRepository = Depends(get_wishlist_repo),
-                   content: ContentService = Depends(get_content_service)):
+async def review_request(request: Request, request_id: int,
+                         viewer: ViewerContext = Depends(require_parent),
+                         repo: WishlistRepository = Depends(get_wishlist_repo),
+                         content: ContentService = Depends(get_content_service),
+                         wishlist: WishlistService = Depends(get_wishlist_service)):
     """The usual Review & add page, filled from what was stored when the
-    kid asked: no trip to YouTube."""
+    kid asked. Only if the lookup after Ask failed is YouTube asked now."""
     item = repo.get(request_id)
+    if item is not None and item.status == "pending" and not item.has_details:
+        await run_in_threadpool(wishlist.fill_details, request_id)
+        item = repo.get(request_id)
     if item is None or item.status != "pending":
         return RedirectResponse(url="/parent/requests", status_code=303)
     meta = item.metadata()

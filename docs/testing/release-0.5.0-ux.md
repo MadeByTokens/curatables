@@ -68,6 +68,14 @@ test laptop on Wi-Fi). Fixes made after the run are in commits
 | F4 | yt-dlp: "n challenge solving failed, formats may be missing"; downloads came out at 360p | `yt-dlp-ejs` installed and upgraded with yt-dlp (`66ce992`); with it a test video offered H.264 up to 1080p on the box. Needs a new image or an app update there |
 | F5 | A cut-off link said "An unexpected error occurred" | Plain message (`9799861`) |
 
+### Re-checked on the box after deploying the fixes
+
+Ask answered in 108 ms on the box (3.9 s end to end over the laptop's
+Wi-Fi), down from 12–15 s; "What is it about?" started empty; finished
+requests showed their names. One background lookup got a one-off "video
+not available" from YouTube (the same lookup then worked 3 times out of 3),
+so Review now fetches the details itself when they are still missing.
+
 ### Open (decide or do later)
 
 - **YouTube 360p:** some videos come only as 360p without a PO token
@@ -82,6 +90,7 @@ test laptop on Wi-Fi). Fixes made after the run are in commits
   the Big & clear theme keeps small cards on a 600 px tablet; a single
   channel still shows the channel chips.
 - **Requests page:** decided requests have no YouTube link.
+- **No favicon:** every page asks for `/favicon.ico` and gets a 404.
 - **Logs:** every request is logged twice (uvicorn and Curatables), which
   doubles SD-card writes.
 - **Not covered:** Wi-Fi, USB drives, updates, restarts, a real tablet's
