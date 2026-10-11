@@ -148,3 +148,20 @@ def test_an_empty_filter_tab_does_not_say_the_library_is_empty(authed_client):
     assert "No videos yet" in authed_client.get("/parent/content").text
     page = authed_client.get("/parent/content", params={"status": "pending"}).text
     assert "No videos yet" not in page and "Nothing here right now" in page
+
+
+def test_stats_name_videos_and_say_when_one_was_deleted(authed_client, app):
+    from app.models import Profile
+    from app.repositories import EventRepository, ProfileRepository
+    from app.repositories.comment_repo import CommentRepository
+    conn = next(app.dependency_overrides[get_db]())
+    pid = ProfileRepository(conn).create(Profile(name="mia", display_name="Mia"))
+    _video(app, "v_park", title="Our trip to the park")
+    for vid in ("v_park", "v_gone"):
+        EventRepository(conn).insert_raw("video_complete", vid, pid)
+    CommentRepository(conn).create(video_id="v_park", body="Ducks!", profile_id=pid)
+    for page in (authed_client.get("/parent/stats").text,
+                 authed_client.get(f"/parent/stats/profiles/{pid}").text):
+        assert "Our trip to the park" in page and "v_gone" not in page
+        assert "A video that was deleted" in page
+    assert "on Our trip to the park" in authed_client.get(f"/parent/stats/profiles/{pid}").text

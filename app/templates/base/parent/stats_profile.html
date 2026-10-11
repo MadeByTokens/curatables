@@ -47,7 +47,7 @@
     {% for v in top_videos %}
     <tr>
       <td>{{ loop.index }}</td>
-      <td><a href="/parent/content/{{ v.video_id }}">{{ v.video_title or v.video_id }}</a></td>
+      <td>{% if v.video_title %}<a href="/parent/content/{{ v.video_id }}">{{ v.video_title }}</a>{% else %}<span class="muted">A video that was deleted</span>{% endif %}</td>
       <td>{{ v.plays }}</td>
       <td>{{ (v.secs // 60) }}m</td>
       <td>
@@ -73,7 +73,7 @@
   <tbody>
     {% for r in recent_reactions %}
     <tr>
-      <td><a href="/parent/content/{{ r.video_id }}">{{ r.video_title or r.video_id }}</a></td>
+      <td>{% if r.video_title %}<a href="/parent/content/{{ r.video_id }}">{{ r.video_title }}</a>{% else %}<span class="muted">A video that was deleted</span>{% endif %}</td>
       <td>{{ emoji_lookup.get(r.emoji, r.emoji) }}</td>
       <td class="muted fs-13">{{ r.created_at }}</td>
     </tr>
@@ -90,7 +90,7 @@
   <div class="card comment-card">
     <div class="fs-13 muted">{{ c.created_at }}</div>
     <div class="my-4">{{ c.body }}</div>
-    <div class="fs-12 muted-3">on {{ c.video_id }}</div>
+    <div class="fs-12 muted-3">on {{ c.video_title or "a video that was deleted" }}</div>
     <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/stats/profiles/{{ profile.id }}%3Fwindow%3D{{ window }}"
           data-confirm="Delete this comment?" class="d-inline mt-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

@@ -150,8 +150,9 @@ class CommentRepository(BaseRepository):
     def list_recent_by_profile(self, profile_id: int,
                                limit: int = 20) -> list[Comment]:
         rows = self.db.execute(
-            _SELECT_WITH_AUTHOR + "WHERE c.profile_id = ? "
-            "ORDER BY c.created_at DESC LIMIT ?",
+            "SELECT c.*, v.title AS video_title FROM comments c "
+            "LEFT JOIN videos v ON v.video_id = c.video_id "
+            "WHERE c.profile_id = ? ORDER BY c.created_at DESC LIMIT ?",
             (profile_id, limit),
         ).fetchall()
         return [self._to_model(r) for r in rows]

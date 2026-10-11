@@ -47,7 +47,7 @@
     {% for v in top_videos %}
     <tr>
       <td>{{ loop.index }}</td>
-      <td><a href="/parent/content/{{ v.video_id }}">{{ v.video_title or v.video_id }}</a></td>
+      <td>{% if v.video_title %}<a href="/parent/content/{{ v.video_id }}">{{ v.video_title }}</a>{% else %}<span class="muted">A video that was deleted</span>{% endif %}</td>
       <td>{{ v.plays }}</td>
       <td>{{ (v.secs // 60) }}m</td>
       <td>
