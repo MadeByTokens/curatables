@@ -805,7 +805,8 @@ td .btn { white-space: nowrap; }
 .delete-details { display: inline-block; }
 .delete-details summary { list-style: none; }
 .delete-details summary::-webkit-details-marker { display: none; }
-.delete-details[open] form { margin-top: 8px; }
+.delete-details[open] { display: block; margin-top: 6px; }
+.card .actions .delete-details form { display: block; margin-top: 8px; }
 .ytdlp-thanks {
   display: flex;
   gap: 18px;
