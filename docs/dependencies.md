@@ -79,6 +79,7 @@ Authoritative list lives in `requirements.txt`. Rationale for each:
 | `jinja2>=3.1,<4.0` | Template engine for every HTML page (kid UI, parent dashboard). | Every HTML route 500s. |
 | `python-multipart>=0.0.6,<1.0` | Form parsing for FastAPI `Form()` params. Not a hard dep of FastAPI itself; forms silently 500 without it. | Login, settings save, add-video, channel edit, sharing import — every POST route fails at request time with a `RuntimeError`. |
 | `yt-dlp>=2024.0` | Metadata fetch and video download from YouTube/etc. | `/parent/add` can't fetch previews or download. |
+| `yt-dlp-ejs>=0.8` | The JavaScript that solves YouTube's "n challenge"; yt-dlp runs it with Deno. Upgraded together with yt-dlp by the in-app update. | yt-dlp warns "n challenge solving failed", some formats go missing and some lookups fail outright. |
 | `curl_cffi>=0.10,<0.15` | Browser TLS impersonation so yt-dlp bypasses YouTube's bot detection without a login. | Listed in `run.py:check_dependencies` as a *warning*, not an error: the server still boots, but anti-bot detection will trip on real YouTube URLs. |
 | `itsdangerous>=2.0,<3.0` | Session cookie signing. Required by Starlette's `SessionMiddleware`. | Parent login flow fails at import time. |
 | `zeroconf>=0.130,<1.0` | mDNS / `_http._tcp.local.` advertisement via `zeroconf.asyncio.AsyncZeroconf`. | `run.py:check_dependencies` emits a warning; `ZeroconfAdvertiser.start()` logs an "skipped: library not installed" message and returns False; server still boots; `curatables.local` just won't resolve. |

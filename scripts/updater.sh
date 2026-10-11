@@ -7,7 +7,7 @@
 # curatables-updater.path systemd unit notices the flag and runs this
 # script (as root, via curatables-updater.service). It:
 #   1. reads the request flag
-#   2. pip-upgrades yt-dlp in the venv
+#   2. pip-upgrades yt-dlp and its YouTube challenge solver in the venv
 #   3. writes a result file the app reads back
 #   4. removes the request flag (re-arming the path watcher)
 #   5. restarts the curatables service so the new yt-dlp is live
@@ -89,7 +89,7 @@ before="$(ytdlp_ver)"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
-if as_venv_owner "$PY" -m pip install --upgrade 'yt-dlp>=2024.0' >"$log" 2>&1; then
+if as_venv_owner "$PY" -m pip install --upgrade 'yt-dlp>=2024.0' 'yt-dlp-ejs>=0.8' >"$log" 2>&1; then
     after="$(ytdlp_ver)"
     if [[ "$before" == "$after" ]]; then
         write_result "ok" "Already up to date." "$before" "$after"
