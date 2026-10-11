@@ -138,3 +138,10 @@ def test_power_buttons_explain_themselves(authed_client, helper):
     for label in ("Restart Curatables", "Reconnect network", "Restart the box", "Shut down"):
         assert label in page
     assert "Use before unplugging the box" in page
+
+
+def test_on_the_box_drive_advice_points_to_the_drives_page(authed_client, helper):
+    for url in ("/parent/import", "/parent/settings"):
+        page = authed_client.get(url).text
+        assert "Box → Drives" in page, url
+        assert "sudo" not in page and "install.sh" not in page and "docs/deployment.md" not in page, url

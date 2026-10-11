@@ -22,10 +22,16 @@ until a video is imported into a channel they can watch.</p>
 {% endfor %}
 {% if not roots and not problems %}
 <div class="flash mw-700 warn-bg warn-text">
+  {% if request.app.state.system_helper.available %}
+  No import folders yet. Plug the drive into the box, then press <strong>Import from it</strong>
+  on <a href="/parent/system/drives">Box → Drives</a> (it never formats the drive, and your
+  files stay where they are).
+  {% else %}
   No import folders yet. On a Raspberry Pi, plug the drive in and run
   <code>sudo /opt/curatables/scripts/setup-external-drive.sh --media-only /dev/sda1</code>
   (it never formats the drive, and your files stay where they are). Or add a folder under
   <a href="/parent/settings#settings-import">Settings → Import from a drive</a>.
+  {% endif %}
 </div>
 {% endif %}
 
