@@ -1,6 +1,7 @@
 {# One card per video: thumbnail + title, optional reaction counts.
-   `emojis` maps reaction name -> emoji character. #}
-{% macro video_grid(videos, empty_icon, empty_text, reaction_counts=None, emojis=None) %}
+   `emojis` maps reaction name -> emoji character. `find_new`: where the
+   empty state's Find new button goes, for kids who may ask for videos. #}
+{% macro video_grid(videos, empty_icon, empty_text, reaction_counts=None, emojis=None, find_new=None) %}
 <div class="video-grid">
 {% if videos %}
   {% for v in videos %}
@@ -23,6 +24,9 @@
   <div class="empty-state">
     <div class="empty-icon" aria-hidden="true">{{ empty_icon }}</div>
     <p>{{ empty_text }}</p>
+    {% if find_new and viewer and viewer.is_child and viewer.allow_wishlist %}
+    <a href="{{ find_new }}" class="wishlist-pill is-on empty-find-new"><span aria-hidden="true">&#128301;</span> {{ _("Find new videos") }}</a>
+    {% endif %}
   </div>
 {% endif %}
 </div>

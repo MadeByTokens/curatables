@@ -109,9 +109,10 @@ def _conn(app):
     return next(app.dependency_overrides[get_db]())
 
 
-def _kid(app, client, name="wren", wishlist=True):
+def _kid(app, client, name="wren", wishlist=True, search_mode="disabled"):
     svc = ProfileService(ProfileRepository(_conn(app)))
-    pid = svc.create(name=name, display_name=name.title(), allow_wishlist=wishlist)
+    pid = svc.create(name=name, display_name=name.title(), allow_wishlist=wishlist,
+                     search_mode=search_mode)
     assert client.post("/profiles/select", data={"profile_id": pid}).status_code == 302
     return pid
 
@@ -586,3 +587,11 @@ def test_review_fetches_details_the_lookup_after_ask_missed(app, client, authed_
     review = authed_client.get(f"/parent/requests/{item.id}/review").text
     assert ">Numbers</textarea>" in review
     assert WishlistRepository(_conn(app)).get(item.id).has_details
+
+
+def test_empty_screens_point_to_find_new_only_when_it_is_on(app, client, backend):
+    _kid(app, client, "wren", search_mode="curated")
+    assert 'href="/wishlist" class="wishlist-pill is-on empty-find-new"' in client.get("/").text
+    assert 'href="/wishlist?q=dinosaurs"' in client.get("/search", params={"q": "dinosaurs"}).text
+    _kid(app, client, "otto", wishlist=False)
+    assert "empty-find-new" not in client.get("/").text

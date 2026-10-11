@@ -12,6 +12,6 @@
 </div>
 
 {% if query %}
-{{ video_grid(videos, "&#129300;"|safe, _("Nothing found. Try another word!")) }}
+{{ video_grid(videos, "&#129300;"|safe, _("Nothing found. Try another word!"), find_new="/wishlist?q=" ~ query|urlencode) }}
 {% endif %}
 {% endblock %}

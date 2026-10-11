@@ -127,6 +127,7 @@ body {
     line-height: 1;
     margin-bottom: 12px;
 }
+.empty-state .empty-find-new { margin-top: 8px; }
 
 /* Larger screens: 3 or 4 columns */
 @media (min-width: 600px) {

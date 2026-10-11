@@ -42,7 +42,7 @@
 </nav>
 {% endif %}
 
-{{ video_grid(videos, "&#128250;"|safe, _("No videos here yet. Ask a grown-up to add some!"), reaction_counts, emojis) }}
+{{ video_grid(videos, "&#128250;"|safe, _("No videos here yet. Ask a grown-up to add some!"), reaction_counts, emojis, find_new="/wishlist") }}
 
 {% if total_pages > 1 %}
 <div class="pagination">
