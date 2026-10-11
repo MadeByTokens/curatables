@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Review &amp; Add</h1>
 {% if wish %}
-<p><strong>{{ wish.profile_name }}</strong> asked for this video{% if wish.title != wish.original_title or wish.description != wish.original_description or wish.target_channel_id %}
+<p><strong>{{ wish.profile_name }}</strong> asked for this video{% if wish.title != wish.original_title or wish.description or wish.target_channel_id %}
   and chose the name, description{% if wish.target_channel_id %} and channel{% endif %} below. Change anything you like{% endif %}.</p>
 {% else %}
 <p>{{ videos|length }} video(s) from {{ url_type }}: <strong>{{ source_title }}</strong></p>
@@ -127,7 +127,7 @@
 
       <div class="form-group">
         <label for="desc_{{ v.video_id }}">Description</label>
-        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ wish.description[:1000] if wish else (v.description[:500] if v.description else '') }}</textarea>
+        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ (wish.description or v.description)[:1000] if wish else (v.description[:500] if v.description else '') }}</textarea>
       </div>
 
       <div class="review-watched-row">

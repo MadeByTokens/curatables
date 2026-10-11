@@ -57,7 +57,7 @@ class WishlistRepository(BaseRepository):
             "duration, upload_date, view_count, url, thumbnail_url) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (profile_id, video_id, meta.extractor, meta.video_id, meta.title, meta.title,
-             meta.description, meta.description, meta.channel, meta.duration,
+             "", meta.description, meta.channel, meta.duration,
              meta.upload_date, meta.view_count, url, meta.thumbnail_url))
         self.db.commit()
         row = self.db.execute(

@@ -106,8 +106,10 @@
       <a href="/wishlist/asked/{{ w.id }}?back={{ here|urlencode }}" class="wishlist-mine-title">{{ w.title }} <span aria-hidden="true">&#9999;&#65039;</span></a>
       <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Waiting") }}</span>
       {% elif w.status == "approved" %}
+      <span class="wishlist-mine-title">{{ w.title }}</span>
       <a href="/watch/{{ w.video_id }}" class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes! Watch") }}</a>
       {% else %}
+      <span class="wishlist-mine-title">{{ w.title }}</span>
       <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#10006;</span> {{ _("Not this time") }}</span>
       {% endif %}
     </li>

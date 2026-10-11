@@ -202,8 +202,6 @@ def wishlist_choose(request: Request, request_id: int,
         if not title or title == " ".join(item.title.split())[:TITLE_MAX]:
             title = item.title
         description = description.strip()[:DESCRIPTION_MAX]
-        if description == item.description[:DESCRIPTION_MAX].strip():
-            description = item.description
         repo.choose(request_id, title, description, target)
     return RedirectResponse(url=_with_asked(_back(back)), status_code=303)
 

@@ -512,3 +512,18 @@ def test_a_parent_lookup_never_waits_forever(monkeypatch):
     gate = SearchGate()
     gate._youtube.acquire()
     assert gate.video("aaaaaaaaaaa", lambda: RESULTS[0]) == RESULTS[0]
+
+
+def test_the_kid_never_sees_the_youtube_description(app, client, authed_client, backend):
+    from dataclasses import replace
+    backend.fetch_video_info = lambda url: replace(RESULTS[0], description="Subscribe for $3.99 at shop.example")
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert "Subscribe" not in client.get(f"/wishlist/asked/{item.id}").text
+    client.post(f"/wishlist/asked/{item.id}", data={"title": "", "description": ""})
+    review = authed_client.get(f"/parent/requests/{item.id}/review").text
+    assert ">Subscribe for $3.99 at shop.example</textarea>" in review
+    authed_client.post(f"/parent/requests/{item.id}/reject")
+    mine = client.get("/wishlist").text.split("What I asked for")[1]
+    assert "Counting to ten" in mine and "Not this time" in mine
