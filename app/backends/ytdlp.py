@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 # Entry IDs become filesystem path components; anything else is skipped.
 _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
 _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+# Titles flat playlist listings give videos that can no longer be watched.
+_GONE_TITLES = {"[Private video]", "[Deleted video]"}
 _YOUTUBE_CHANNEL_ID = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
 
 
@@ -345,7 +347,7 @@ def _info_to_metadata(info: dict) -> VideoMetadata:
     extractor = (info.get("extractor_key") or info.get("extractor") or "").lower()
     return VideoMetadata(
         video_id=info.get("id", ""),
-        title=info.get("title", "Unknown"),
+        title=info.get("title") or "Unknown",
         channel=info.get("channel") or info.get("uploader") or "Unknown",
         duration=_parse_duration(info.get("duration")),
         view_count=info.get("view_count") or 0,
@@ -388,7 +390,9 @@ def _entries_to_metadata(entries: list,
 
     Flat extraction can omit an entry's extractor, so the containing
     channel or playlist's `parent_extractor` is the fallback. Entries
-    whose IDs are unsafe as path components are skipped.
+    whose IDs are unsafe as path components are skipped, and so are
+    YouTube videos that are gone (private or deleted): they come
+    without a title.
     """
     results = []
     for e in entries:
@@ -401,9 +405,12 @@ def _entries_to_metadata(entries: list,
         # extractor is "youtubetab", which must not end up in video ids.
         extractor = (e.get("extractor_key") or e.get("extractor") or e.get("ie_key")
                      or parent_extractor or "").lower()
+        title = e.get("title")
+        if title in _GONE_TITLES or (not title and extractor.startswith("youtube")):
+            continue
         results.append(VideoMetadata(
             video_id=vid_id,
-            title=e.get("title", "N/A"),
+            title=title or "Untitled video",
             channel=e.get("channel") or e.get("uploader") or default_channel,
             duration=_parse_duration(e.get("duration")),
             view_count=e.get("view_count") or 0,

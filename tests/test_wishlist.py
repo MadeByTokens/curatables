@@ -595,3 +595,16 @@ def test_empty_screens_point_to_find_new_only_when_it_is_on(app, client, backend
     assert 'href="/wishlist?q=dinosaurs"' in client.get("/search", params={"q": "dinosaurs"}).text
     _kid(app, client, "otto", wishlist=False)
     assert "empty-find-new" not in client.get("/").text
+
+
+def test_playlist_listings_leave_out_videos_that_are_gone():
+    from app.backends.ytdlp import _entries_to_metadata
+    metas = _entries_to_metadata([
+        {"id": "aaaaaaaaaaa", "title": "Five Little Ducks"},
+        {"id": "bbbbbbbbbbb", "title": None, "duration": None},
+        {"id": "ccccccccccc", "title": "[Private video]"},
+        {"id": "ddddddddddd"},
+    ], parent_extractor="youtube")
+    assert [m.title for m in metas] == ["Five Little Ducks"]
+    elsewhere = _entries_to_metadata([{"id": "v1"}], parent_extractor="vimeo")
+    assert [m.title for m in elsewhere] == ["Untitled video"]
