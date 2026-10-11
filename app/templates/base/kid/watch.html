@@ -6,13 +6,18 @@
 <div class="player-page" id="watch"
      data-video-id="{{ video.video_id }}"
      data-csrf="{{ csrf_token }}"
-     data-auto-subs="{{ '1' if (not viewer or viewer.auto_subtitles) else '0' }}">
+     data-auto-subs="{{ '1' if (not viewer or viewer.auto_subtitles) else '0' }}"
+     data-profile-id="{{ viewer.profile_id if kid else '' }}">
   <div class="video-frame">
     <video id="player" controls playsinline preload="metadata"
            controlsList="nodownload noremoteplayback" disablePictureInPicture disableRemotePlayback
            poster="/media/thumb/{{ video.video_id }}">
       <source src="/media/video/{{ video.video_id }}" type="video/mp4">
     </video>
+    <div class="end-card d-none" id="resume-card">
+      <button type="button" class="end-btn" id="resume-carry-on"><span aria-hidden="true">&#9654;</span> {{ _("Carry on") }}</button>
+      <button type="button" class="end-btn" id="resume-from-start"><span aria-hidden="true">&#9198;</span> {{ _("From the start") }}</button>
+    </div>
     <div class="end-card d-none" id="end-card">
       {% if next_episode %}
       <a href="/watch/{{ next_episode.video_id }}" class="end-btn"><span aria-hidden="true">&#9654;</span> {{ _("Next episode") }}</a>

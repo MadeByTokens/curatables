@@ -78,6 +78,13 @@ def test_watch_page_blocks_cast_download_and_pip(app):
     assert 'id="end-card"' in page
 
 
+def test_watch_page_offers_to_carry_on_for_the_kid_who_stopped(app):
+    _, kid, pid = _setup(app)
+    page = kid.get("/watch/yt_train").text
+    assert f'data-profile-id="{pid}"' in page
+    assert 'id="resume-card"' in page and "Carry on" in page and "From the start" in page
+
+
 def test_pin_page_has_keypad(app, client):
     conn = next(app.dependency_overrides[get_db]())
     from app.services.profiles import ProfileService

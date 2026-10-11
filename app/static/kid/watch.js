@@ -192,27 +192,120 @@
     document.addEventListener('submit', onSubmit, false);
   }
 
+  /* --- Carry on watching ------------------------------------------
+     Where each kid stopped is kept on this device only, newest first,
+     for the last RESUME_KEEP videos. */
+  var RESUME_KEEP = 50;
+  var RESUME_MIN_SECONDS = 10;
+  var RESUME_END_MARGIN = 15;
+  var RESUME_SAVE_EVERY_MS = 5000;
+
+  function resumeSpot(profileId) {
+    var key = 'curatables.resume.' + profileId;
+    var card = document.getElementById('resume-card');
+    var lastSave = 0;
+
+    function load() {
+      try {
+        var list = JSON.parse(window.localStorage.getItem(key) || '[]');
+        return list instanceof Array ? list : [];
+      } catch (err) { return []; }
+    }
+    function save(list) {
+      try { window.localStorage.setItem(key, JSON.stringify(list.slice(0, RESUME_KEEP))); } catch (err) {}
+    }
+    function without(list) {
+      var out = [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].v !== videoId) { out.push(list[i]); }
+      }
+      return out;
+    }
+    function saved() {
+      var list = load();
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].v === videoId && list[i].t >= RESUME_MIN_SECONDS) { return list[i].t; }
+      }
+      return 0;
+    }
+    function worthKeeping(t) {
+      var d = video.duration;
+      return t >= RESUME_MIN_SECONDS && !(d > 0 && t > d - RESUME_END_MARGIN);
+    }
+    function seek(t) {
+      if (video.readyState >= 1) {
+        try { video.currentTime = t; } catch (err) {}
+        return;
+      }
+      var once = function () {
+        video.removeEventListener('loadedmetadata', once, false);
+        try { video.currentTime = t; } catch (err) {}
+      };
+      video.addEventListener('loadedmetadata', once, false);
+    }
+
+    if (!profileId || !card || !window.localStorage) {
+      return { offer: function () {}, hideCard: function () {},
+               remember: function () {}, forget: function () {} };
+    }
+    return {
+      offer: function () {
+        var t = saved();
+        if (!t) { return; }
+        removeClass(card, 'd-none');
+        document.getElementById('resume-carry-on').onclick = function () {
+          addClass(card, 'd-none');
+          seek(t);
+          video.play();
+        };
+        document.getElementById('resume-from-start').onclick = function () {
+          addClass(card, 'd-none');
+          video.play();
+        };
+      },
+      hideCard: function () { addClass(card, 'd-none'); },
+      remember: function (now) {
+        var stamp = new Date().getTime();
+        if (!now && stamp - lastSave < RESUME_SAVE_EVERY_MS) { return; }
+        lastSave = stamp;
+        var t = Math.floor(video.currentTime || 0);
+        var list = without(load());
+        if (worthKeeping(t)) { list.unshift({ v: videoId, t: t }); }
+        save(list);
+      },
+      forget: function () { save(without(load())); }
+    };
+  }
+
   /* --- Player ---------------------------------------------------- */
   sendLog('video_view');
   if (!video) { return; }
 
   var loggedPlay = false;
   var endCard = document.getElementById('end-card');
+  var resume = resumeSpot(root.getAttribute('data-profile-id'));
 
   video.onplay = function () {
     if (endCard) { addClass(endCard, 'd-none'); }
+    resume.hideCard();
     if (!loggedPlay) {
       sendLog('video_play');
       loggedPlay = true;
     }
   };
 
+  video.ontimeupdate = function () { resume.remember(false); };
+  video.onpause = function () { resume.remember(true); };
+
   video.onended = function () {
     var watchSeconds = 0;
     try { watchSeconds = Math.floor(video.duration); } catch (err) {}
     sendLog('video_complete', { watch_seconds: watchSeconds });
+    resume.forget();
     if (endCard) { removeClass(endCard, 'd-none'); }
   };
+
+  resume.offer();
 
   var again = document.getElementById('play-again');
   if (again) {
