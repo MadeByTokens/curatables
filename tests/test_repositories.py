@@ -86,6 +86,27 @@ class TestProfileRepository:
         assert len(rows) == 0
 
 
+    def test_a_new_kids_channels_are_saved_for_the_next_request(self, tmp_path):
+        """Each request on the box has its own connection; anything left
+        uncommitted is gone when it closes."""
+        import sqlite3
+        from app.db.schema import init_schema
+
+        def connect():
+            conn = sqlite3.connect(str(tmp_path / "box.db"))
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys=ON")
+            return conn
+
+        first = connect()
+        init_schema(first)
+        cid = ChannelRepository(first).create("Songs")
+        pid = ProfileRepository(first).create(Profile(name="leo", allowed_channel_ids=[cid]))
+        first.close()
+
+        assert ProfileRepository(connect()).get(pid).allowed_channel_ids == [cid]
+
+
 class TestProfileNameFallback:
     """A profile with no display name is shown by its name."""
 

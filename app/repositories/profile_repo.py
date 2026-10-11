@@ -52,10 +52,10 @@ class ProfileRepository(BaseRepository):
              int(profile.channels_restricted or bool(profile.allowed_channel_ids)),
              *(int(bool(getattr(profile, f))) for f in FEATURE_FIELDS)),
         )
-        self.db.commit()
         profile_id = self._new_id(cur)
         if profile.allowed_channel_ids:
             self._set_channel_ids(profile_id, profile.allowed_channel_ids)
+        self.db.commit()
         return profile_id
 
     _UPDATABLE_FIELDS = {
