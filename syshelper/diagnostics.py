@@ -114,8 +114,13 @@ def check_services() -> list[dict]:
                           "the box."))
     failed = runner.run(["systemctl", "--failed", "--plain", "--no-legend"]).out.split("\n")
     failed = [line.split()[0] for line in failed if line.strip()]
+    if "curatables-backup.service" in failed:
+        failed.remove("curatables-backup.service")
+        out.append(_check("backup", "Nightly backup", WARN, "The last backup did not work.",
+                          "Press Back up now on Box → Drives. If that fails too, send the diagnostics "
+                          "report to whoever helps you."))
     if failed:
-        out.append(_check("units", "System services", WARN, "Not running: " + ", ".join(failed[:6]),
+        out.append(_check("units", "System services", WARN, "Stopped with an error: " + ", ".join(failed[:6]),
                           "Restart the box. If this stays, send the diagnostics report to whoever helps you."))
     return out
 

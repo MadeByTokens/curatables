@@ -778,3 +778,11 @@ def test_media_mounts_never_allow_setuid_or_devices(fake):
     for fstype in ("ext4", "exfat", "ntfs", "vfat"):
         opts = drives.mount_options(fstype)[1].split(",")
         assert "nosuid" in opts and "nodev" in opts, fstype
+
+
+def test_a_failed_nightly_backup_gets_its_own_advice(fake):
+    fake.on(["systemctl", "is-active"], out="active")
+    fake.on(["systemctl", "--failed"], out="curatables-backup.service loaded failed failed Curatables backup\n")
+    checks = {c["id"]: c for c in diagnostics.check_services()}
+    assert checks["backup"]["status"] == "warn" and "Back up now" in checks["backup"]["fix"]
+    assert "units" not in checks
