@@ -7,8 +7,10 @@ a parent reviews and adds it.
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
+from typing import Callable
 
 from app.backends.base import ChannelHit, VideoBackend, VideoMetadata
 from app.config import Config
@@ -17,6 +19,8 @@ from app.repositories.wishlist_repo import WishlistRepository
 from app.services.ids import make_video_id
 from app.services.search_gate import GATE, SearchRefused
 from app.services.thumbnails import ThumbnailService
+
+logger = logging.getLogger(__name__)
 
 MAX_PAGES = 5
 MAX_FETCH = 100
@@ -244,3 +248,17 @@ class WishlistService:
         self.repo.fill_details(request_id, meta)
         if not self.passes(meta):
             self.repo.decide(request_id, "rejected")
+
+
+def fill_details_later(connect: Callable, backend: VideoBackend, thumbnails: ThumbnailService,
+                       config: Config, request_id: int) -> None:
+    """WishlistService.fill_details as a background task: it runs after the
+    response, when the request's own database connection is closed."""
+    conn = connect()
+    try:
+        WishlistService(backend, WishlistRepository(conn), VideoRepository(conn),
+                        thumbnails, config).fill_details(request_id)
+    except Exception:
+        logger.exception("wishlist: fetching details for request %s failed", request_id)
+    finally:
+        conn.close()

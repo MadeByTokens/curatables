@@ -37,6 +37,7 @@ For people changing the code.
 |-----|----------------|
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Development setup, tests, lint, CI, migrations, commit style. |
 | [architecture.md](architecture.md) | Layers, services, request flow, download queue, background tasks. |
+| [testing/release-0.5.0-ux.md](testing/release-0.5.0-ux.md) | The release test on a real box: scenarios with a parent and two kids, results, what is still open. |
 | [threat-model.md](threat-model.md) | Trust boundaries and attack surface; read with [../SECURITY.md](../SECURITY.md). |
 
 ## Design notes (future work)

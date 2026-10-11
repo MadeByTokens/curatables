@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from urllib.parse import quote, quote_plus
 
-import logging
-
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -15,16 +13,14 @@ from app.dependencies import (
 )
 from app.i18n import gettext
 from app.models import ViewerContext
-from app.repositories.video_repo import VideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.images import image_extension
 from app.services.thumbnails import ThumbnailService
-from app.services.wishlist import SORTS, WishlistError, WishlistService
+from app.services.wishlist import SORTS, WishlistError, WishlistService, fill_details_later
 from app.template_utils import render_kid_template
 
-logger = logging.getLogger(__name__)
 router = APIRouter(tags=["kid-wishlist"])
 
 _wishlist = require_kid_feature("allow_wishlist")
@@ -144,19 +140,6 @@ async def wishlist_channel(request: Request, channel_id: str,
     return _render(request, viewer, repo, **ctx)
 
 
-def _fill_details(request: Request, service: WishlistService, request_id: int) -> None:
-    """After the kid has their answer: YouTube's full details, on a
-    connection of its own (the request's is closed by now)."""
-    conn = request.app.state.db_connect()
-    try:
-        WishlistService(service.backend, WishlistRepository(conn), VideoRepository(conn),
-                        service.thumbnails, request.app.state.config).fill_details(request_id)
-    except Exception:
-        logger.exception("wishlist: fetching details for request %s failed", request_id)
-    finally:
-        conn.close()
-
-
 @router.post("/wishlist/ask")
 async def wishlist_ask(request: Request,
                        background: BackgroundTasks,
@@ -171,7 +154,8 @@ async def wishlist_ask(request: Request,
     except WishlistError as e:
         return _render(request, viewer, repo, **_refusal(viewer, e))
     if partial:
-        background.add_task(_fill_details, request, service, request_id)
+        background.add_task(fill_details_later, request.app.state.db_connect, service.backend,
+                            service.thumbnails, request.app.state.config, request_id)
     item = repo.get(request_id)
     events.log("wishlist_request", video_id=item.video_id if item else None,
                profile_id=viewer.profile_id)
