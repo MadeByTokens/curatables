@@ -218,7 +218,7 @@ device per child (with device-level locking) rather than the PIN.
 
 `POST /upload` (if the profile's upload switch is on). Mitigations:
 
-- Body ceiling `storage.max_kid_upload_bytes` (default 500 MB) enforced
+- Body ceiling `storage.max_kid_upload_bytes` (default 0.5 GB) enforced
   by `BodySizeLimitMiddleware`, which is the outermost middleware and
   checks `Content-Length` and streamed bytes before anything (including
   CSRF form parsing) reads the body.

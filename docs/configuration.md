@@ -51,7 +51,7 @@ the spelling: a misspelled key has no effect.
 | `max_download_bytes` | 4 GB | Advanced | Source files bigger than this are not downloaded. |
 | `max_concurrent_downloads` | `1` | Advanced | Downloads + conversions running at once. Keep `1` on a Raspberry Pi. |
 | `max_upload_bytes` | 10 GB | Advanced | Largest file a parent can upload. |
-| `max_kid_upload_bytes` | 500 MB | Advanced | Largest file a kid can upload. |
+| `max_kid_upload_bytes` | 0.5 GB | Advanced | Largest file a kid can upload. |
 | `impersonate` | `chrome` | Advanced → Anti-Bot | Make yt-dlp's requests look like this browser. Empty = off. |
 | `cookies_file` | empty | Advanced → Anti-Bot | Path to a Netscape `cookies.txt` for sites that need a login. |
 | `cookies_from_browser` | empty | Advanced → Anti-Bot | Read cookies from a browser installed on the server (desktops only). |

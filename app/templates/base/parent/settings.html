@@ -244,7 +244,7 @@
     <div class="form-group">
       <label for="max_download_gb">Maximum Download Size (GB)</label>
       <input type="number" id="max_download_gb" name="max_download_gb"
-             value="{{ '%.2f'|format(config.storage.max_download_bytes / 1073741824) }}"
+             value="{{ '%.1f'|format(config.storage.max_download_bytes / 1073741824) }}"
              min="0.1" step="0.1">
       <small class="muted">Videos whose source file is bigger than this are not downloaded (protects the disk from very long streams). Default: 4 GB.</small>
     </div>
@@ -252,7 +252,7 @@
     <div class="form-group">
       <label for="min_free_disk_gb">Minimum Free Disk Space (GB)</label>
       <input type="number" id="min_free_disk_gb" name="min_free_disk_gb"
-             value="{{ '%.2f'|format(config.storage.min_free_disk_bytes / 1073741824) }}"
+             value="{{ '%.1f'|format(config.storage.min_free_disk_bytes / 1073741824) }}"
              min="0" step="0.1">
       <small class="muted">Refuse new downloads and uploads when free disk space would drop below this value. Default: 2 GB.</small>
     </div>
@@ -260,7 +260,7 @@
     <div class="form-group">
       <label for="max_upload_gb">Maximum Upload Size (GB)</label>
       <input type="number" id="max_upload_gb" name="max_upload_gb"
-             value="{{ '%.2f'|format(config.storage.max_upload_bytes / 1073741824) }}"
+             value="{{ '%.1f'|format(config.storage.max_upload_bytes / 1073741824) }}"
              min="0" step="0.1">
       <small class="muted">Absolute upper bound for a single uploaded video file. Default: 10 GB.</small>
     </div>
@@ -268,7 +268,7 @@
     <div class="form-group">
       <label for="max_kid_upload_gb">Maximum Kid Upload Size (GB)</label>
       <input type="number" id="max_kid_upload_gb" name="max_kid_upload_gb"
-             value="{{ '%.2f'|format(config.storage.max_kid_upload_bytes / 1073741824) }}"
+             value="{{ '%.1f'|format(config.storage.max_kid_upload_bytes / 1073741824) }}"
              min="0" step="0.1">
       <small class="muted">Per-upload ceiling for videos uploaded from kid profiles. Keeps kid uploads smaller than the parent ceiling. Default: 0.5 GB.</small>
     </div>

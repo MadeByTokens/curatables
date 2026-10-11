@@ -549,3 +549,15 @@ class TestSettingsMaxKidUpload:
         assert resp.status_code == 200
         assert b"cannot be negative" in resp.content
         assert app.state.config.storage.max_kid_upload_bytes == original
+
+    @pytest.mark.parametrize("kid_bytes", [524_288_000, None])
+    def test_size_fields_render_values_the_browser_accepts(self, authed_client, app, kid_bytes):
+        """step="0.1" inputs block the whole form when a value has more
+        decimals, so a stored byte count must never render like 0.49."""
+        import re
+        if kid_bytes is not None:
+            app.state.config.storage.max_kid_upload_bytes = kid_bytes
+        page = authed_client.get("/parent/settings").text
+        for name in ("max_download_gb", "min_free_disk_gb", "max_upload_gb", "max_kid_upload_gb"):
+            value = re.search(rf'name="{name}"\s+value="([^"]+)"', page).group(1)
+            assert re.fullmatch(r"\d+\.\d", value), (name, value)
