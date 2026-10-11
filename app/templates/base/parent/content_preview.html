@@ -45,7 +45,7 @@
       <select id="channel_id" name="channel_id">
         <option value="">(none: kids won&rsquo;t see it)</option>
         {% for ch in channels %}
-        <option value="{{ ch.id }}"{% if wish and wish.target_channel_id == ch.id %} selected{% endif %}>{{ ch.name }}</option>
+        <option value="{{ ch.id }}"{% if (wish and wish.target_channel_id == ch.id) or (import_context and import_context.target_channel_id == ch.id|string) %} selected{% endif %}>{{ ch.name }}</option>
         {% endfor %}
       </select>
       <small class="muted">With no channel, kids can't find this video.</small>
@@ -53,7 +53,8 @@
 
     <div class="form-group">
       <label for="new_channel_name">Or create new channel</label>
-      <input type="text" id="new_channel_name" name="new_channel_name" placeholder="New channel name...">
+      <input type="text" id="new_channel_name" name="new_channel_name" placeholder="New channel name..."
+             value="{{ import_context.new_channel_name if import_context and not import_context.target_channel_id else '' }}">
       <small class="muted">If filled, this overrides the selection above.</small>
     </div>
   </div>

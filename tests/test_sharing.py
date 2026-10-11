@@ -280,6 +280,25 @@ class TestImportRouteIntegration:
         assert resp.status_code == 200
         assert "Review &amp; Add" in resp.text
 
+    def test_the_channel_picked_on_the_import_page_carries_to_the_review(
+            self, app, authed_client, monkeypatch):
+        import re
+        from app.services.content import ContentService
+        from app.backends.base import VideoMetadata
+        from app.dependencies import get_db
+        from app.repositories import ChannelRepository
+        monkeypatch.setattr(ContentService, "fetch_previews_for_urls", lambda self, urls: (
+            [VideoMetadata(video_id="v1", title="t", channel="c", duration=0, upload_date="",
+                           view_count=0, description="", thumbnail_url="", extractor="youtube",
+                           original_url=urls[0])], []))
+        cid = ChannelRepository(next(app.dependency_overrides[get_db]())).create("Shared songs")
+        page = authed_client.post("/parent/channels/import", data={
+            "pasted": "https://a.com/1", "target_channel_id": str(cid)}).text
+        assert re.search(rf'<option value="{cid}"\s+selected>Shared songs', page)
+        page = authed_client.post("/parent/channels/import", data={
+            "pasted": "https://a.com/1", "new_channel_name": "Silva songs"}).text
+        assert 'value="Silva songs"' in page
+
 
 class TestExportRoute:
     def test_export_ytc_returns_json_with_schema(self, app, authed_client):
