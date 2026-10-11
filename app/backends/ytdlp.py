@@ -28,6 +28,8 @@ _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
 _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 # Titles flat playlist listings give videos that can no longer be watched.
 _GONE_TITLES = {"[Private video]", "[Deleted video]"}
+_SUBTITLE_FAILED = "Unable to download video subtitles"
+_SUBTITLE_OPTS = ("writesubtitles", "writeautomaticsub", "subtitlesformat", "subtitleslangs")
 _YOUTUBE_CHANNEL_ID = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
 
 
@@ -302,8 +304,19 @@ class YtdlpBackend(VideoBackend):
             opts["subtitleslangs"] = subtitle_langs
 
         try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([url])
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    ydl.download([url])
+            except yt_dlp.utils.DownloadError as e:
+                # yt-dlp fails the whole video when one subtitle track
+                # fails (YouTube often answers those with 429), so
+                # fetch the video again without them.
+                if not (subtitle_langs and _SUBTITLE_FAILED in str(e)):
+                    raise
+                logger.warning("Subtitles left out for %s: %s", url, e)
+                opts = {k: v for k, v in opts.items() if k not in _SUBTITLE_OPTS}
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    ydl.download([url])
         except Exception as e:
             self.last_error = self.classify_error(e)
             logger.exception("Download failed for %s", url)

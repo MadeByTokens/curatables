@@ -40,3 +40,34 @@ def test_yt_dlp_caches_in_the_data_folder(tmp_path):
     config.storage.path = str(tmp_path)
     opts = YtdlpBackend.from_config(config)._base_opts()
     assert opts["cachedir"] == str(tmp_path / "cache" / "yt-dlp")
+
+
+def test_a_failed_subtitle_does_not_fail_the_video(monkeypatch, tmp_path):
+    import yt_dlp
+    runs = []
+
+    class FakeYDL:
+        def __init__(self, opts):
+            self.opts = opts
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def download(self, urls):
+            runs.append(self.opts.get("subtitleslangs"))
+            if self.opts.get("writesubtitles"):
+                raise yt_dlp.utils.DownloadError(
+                    "ERROR: Unable to download video subtitles for 'pt': HTTP Error 429: Too Many Requests")
+            (tmp_path / "v" / "video.mp4").write_bytes(b"x")
+
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", FakeYDL)
+    b = YtdlpBackend()
+    monkeypatch.setattr(b, "_blocked", lambda url: False)
+    out = b.download_video("https://www.youtube.com/watch?v=aaaaaaaaaaa", tmp_path / "v",
+                           subtitle_langs=["en", "pt"])
+    assert out == tmp_path / "v" / "video.mp4"
+    assert runs == [["en", "pt"], None]
+
