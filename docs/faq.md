@@ -57,9 +57,8 @@ stop that for a favourite, tick **Keep forever** on its edit page, or set
 Freeing up space back to `0`.
 
 **A kid sees no videos at all.**
-Check **Kids → Edit → Visible channels**: if "Only show the channels
-ticked below" is on with nothing ticked, that kid sees only their own
-channels. Also check the videos have a channel (a video whose channel is
+Check **Kids → Edit → Which channels can they see?**: with **None of
+yours** that kid sees only their own channels. Also check the videos have a channel (a video whose channel is
 **(none)** is hidden from every kid) and are not **Hidden**.
 
 **The disk is full.**

@@ -76,28 +76,41 @@ Ask: 108 ms on the server (under 1 s end to end); the details arrived in
 the background and Review then opened in 34 ms. "What is it about?"
 started empty; finished requests showed their names.
 
-Switching yt-dlp to its default YouTube clients (faster: ~10 s against
-~17 s per lookup) made every lookup fail on the box: the defaults need
-the challenge solver, which the box doesn't have yet. It was reverted;
-`player_client=all` stays until `yt-dlp-ejs` is on every box.
+Switching yt-dlp to its default YouTube clients first made every lookup
+fail on the box, which had no challenge solver yet, so it was reverted.
+After `yt-dlp-ejs` 0.8.0 (the version yt-dlp 2026.08.19 expects) was
+installed there, with an empty cache:
+
+| Video | default clients | `player_client=all` |
+|-------|-----------------|---------------------|
+| the one that came out at 360p | OK, 10.0 s, H.264 up to 720p | OK, 17.6 s, only 360p |
+| a second one | OK, 10.5 s, up to 1080p | OK, 17.3 s, up to 1080p |
+
+So the defaults are back (`13af8c0`). End to end on the box: Ask 0.67 s,
+Review 116 ms, and the added video downloaded at 1280×720.
+
+### Follow-up fixes
+
+- Log each request once (`9a060f9`).
+- A maple-leaf app icon for tabs and tablet home screens (`7d00a1f`).
+- Empty kid screens offer Find new when the kid may use it (`a125cf4`).
+- Clearer Kids list, a three-way "Which channels can they see?",
+  channel cards without "Position: 0" and with delete behind a button
+  (`48805d4`, `0905c82`, `5f4ce61`).
+- The thanks to yt-dlp on the dashboard is a card with a Sponsor button (`83ad5cc`).
+- The picture PIN showing as it's tapped is accepted as is: it isn't a
+  banking PIN, and parents can sort it out between siblings.
 
 ### Open (decide or do later)
 
-- **Faster lookups:** once `yt-dlp-ejs` is installed everywhere (new image or update), switch to yt-dlp's default YouTube clients and re-measure.
-- **YouTube 360p:** some videos come only as 360p without a PO token
-  (yt-dlp skips the other formats). A PO-token provider plugin or
-  cookies would fix it; it's a new component, so it's a decision.
-- **Picture PIN shown in the clear** as it's tapped: a sibling can read it.
-- **Parent wording:** the Kids list says "Search: curated" and not the
-  language or Find new; the Visible Channels help text is hard to follow;
-  every channel shows its delete options and "Position: 0".
-- **Kid screens:** an empty home or "Nothing found" could point to Find
-  new when it's on; after Send the kid is back at the top of the results;
+- **Higher quality for every video:** with the solver most videos come
+  in HD; a few may still be limited to 360p unless YouTube gets a PO
+  token. Options: keep the
+  solver only, add a PO-token provider (no personal data, a new
+  component), or a cookie file from a YouTube account (personal data).
+- **Kid screens:** after Send the kid is back at the top of the results;
   the Big & clear theme keeps small cards on a 600 px tablet; a single
   channel still shows the channel chips.
 - **Requests page:** decided requests have no YouTube link.
-- **No favicon:** every page asks for `/favicon.ico` and gets a 404.
-- **Logs:** every request is logged twice (uvicorn and Curatables), which
-  doubles SD-card writes.
 - **Not covered:** Wi-Fi, USB drives, updates, restarts, a real tablet's
   touch and video codecs.

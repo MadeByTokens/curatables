@@ -103,7 +103,7 @@ Stored in the database, not `config.json`.
 | Theme | Default, Playful, Calm, or Big & clear (large text, high contrast). |
 | Search | Off, or search within the approved library. |
 | What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles, and asking for new videos from YouTube (the wishlist). New profiles start with reactions only. |
-| Visible channels | Untick everything = every channel; tick some = only those; tick "Only show the channels ticked below" alone = only the kid's own channels. |
+| Which channels can they see? | **All channels** (including new ones), **Only the ones ticked here**, or **None of yours** (only the kid's own channels). Ticking a channel means "only the ticked ones". |
 
 ## Environment variables
 

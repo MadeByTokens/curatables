@@ -239,7 +239,7 @@ See [backup.md](backup.md) for the details.
 |-----|-------|
 | YouTube videos stop downloading | **Box → Updates → Update the downloader**, then **Retry** on the failed videos |
 | Kids see "the videos are resting" | Plug the videos drive in, then **Reconnect** on **Box → Drives & backups** |
-| A kid sees no videos | **Kids → Edit → Visible channels**; check the videos have a channel and aren't **Hidden** |
+| A kid sees no videos | **Kids → Edit → Which channels can they see?**; check the videos have a channel and aren't **Hidden** |
 | A new video doesn't show up | It is still downloading: **Content → Downloading** |
 | You forgot the parent password | `curatables-reset.txt` on the SD card (table below) |
 | The dashboard won't open | The list under "The dashboard won't open at all" below |
