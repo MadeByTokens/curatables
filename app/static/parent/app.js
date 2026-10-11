@@ -53,6 +53,13 @@
   document.addEventListener('change', function (e) {
     if (e.target.name === 'pin_style') { showPinPanel(); }
   });
+
+  // Ticking a channel means "only the ones ticked here".
+  document.addEventListener('change', function (e) {
+    if (e.target.name !== 'channel_ids' || !e.target.checked) { return; }
+    var some = e.target.form.querySelector('input[name="channel_access"][value="some"]');
+    if (some) { some.checked = true; }
+  });
   showPinPanel();
 
   function openTargetDetails() {
