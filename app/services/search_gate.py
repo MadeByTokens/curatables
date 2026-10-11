@@ -75,13 +75,19 @@ class _Cache:
             return None
 
     def put(self, key: tuple, asked: int, items: list, title: str = "") -> None:
-        ttl = VIDEO_CACHE_SECONDS if key[0] == "video" else CACHE_SECONDS
-        packed = json.dumps({"title": title, "items": [
-            ["video" if isinstance(i, VideoMetadata) else "channel", asdict(i)] for i in items]})
+        self.put_many([(key, asked, items, title)])
+
+    def put_many(self, entries: list[tuple[tuple, int, list, str]]) -> None:
+        now = time.time()
+        rows = []
+        for key, asked, items, title in entries:
+            ttl = VIDEO_CACHE_SECONDS if key[0] == "video" else CACHE_SECONDS
+            packed = json.dumps({"title": title, "items": [
+                ["video" if isinstance(i, VideoMetadata) else "channel", asdict(i)] for i in items]})
+            rows.append((json.dumps(key), now + ttl, asked, packed))
         with self._lock, self._db:
-            self._db.execute("INSERT OR REPLACE INTO answers VALUES (?, ?, ?, ?)",
-                             (json.dumps(key), time.time() + ttl, asked, packed))
-            self._db.execute("DELETE FROM answers WHERE expires <= ?", (time.time(),))
+            self._db.executemany("INSERT OR REPLACE INTO answers VALUES (?, ?, ?, ?)", rows)
+            self._db.execute("DELETE FROM answers WHERE expires <= ?", (now,))
             self._db.execute(
                 "DELETE FROM answers WHERE key NOT IN "
                 "(SELECT key FROM answers ORDER BY expires DESC LIMIT ?)", (CACHE_ENTRIES,))
@@ -140,6 +146,16 @@ class SearchGate:
             return items
         finally:
             self._youtube.release()
+
+    def remember_shown(self, metas: list[VideoMetadata]) -> None:
+        """What a search said about each video a kid was shown, so asking
+        for one needs no second trip to YouTube."""
+        self._cache.put_many([(("shown", m.video_id), 1, [m], "") for m in metas])
+
+    def shown(self, raw_id: str) -> VideoMetadata | None:
+        found = self._cache.get(("shown", raw_id))
+        item = found[2][0] if found and found[2] else None
+        return item if isinstance(item, VideoMetadata) else None
 
     def video(self, raw_id: str, call: Callable[[], VideoMetadata | None]) -> VideoMetadata | None:
         """A YouTube video's details for the parent: from the cache when a

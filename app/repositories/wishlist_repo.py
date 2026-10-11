@@ -110,6 +110,18 @@ class WishlistRepository(BaseRepository):
             "SELECT COUNT(*) AS n FROM wishlist_requests WHERE status = 'pending'").fetchone()
         return int(row["n"])
 
+    def fill_details(self, request_id: int, meta: VideoMetadata) -> None:
+        """YouTube's full details for a request recorded from search
+        results. The kid's own title is kept if they changed it."""
+        self.db.execute(
+            "UPDATE wishlist_requests SET "
+            "title = CASE WHEN title = original_title THEN ? ELSE title END, "
+            "original_title = ?, original_description = ?, channel = ?, duration = ?, "
+            "upload_date = ?, view_count = ? WHERE id = ?",
+            (meta.title, meta.title, meta.description, meta.channel, meta.duration,
+             meta.upload_date, meta.view_count, request_id))
+        self.db.commit()
+
     def decide(self, request_id: int, status: str) -> None:
         self.db.execute(
             "UPDATE wishlist_requests SET status = ?, decided_at = datetime('now') "

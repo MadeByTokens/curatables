@@ -146,6 +146,7 @@ class WishlistService:
             results.append(WishlistResult(meta, video_id, status))
         shown, has_more = self._paged(results, page, sort, lambda r: r.meta.title)
         self.thumbnails.download_many([(r.video_id, r.meta.thumbnail_url) for r in shown])
+        GATE.remember_shown([r.meta for r in shown])
         return shown, has_more
 
     def search(self, profile_id: int, query: str, page: int = 1,
@@ -201,9 +202,12 @@ class WishlistService:
         results, has_more = self._videos(profile_id, found, page, sort)
         return WishlistPage(results=results, page=page, has_more=has_more, title=name)
 
-    def ask(self, profile_id: int, raw_id: str) -> int:
+    def ask(self, profile_id: int, raw_id: str) -> tuple[int, bool]:
         """Record the kid's request after re-checking the video against the
-        rules. Returns the request id."""
+        rules. Returns the request id, and whether YouTube's full details
+        still have to be fetched (see fill_details): a video the kid was
+        just shown is recorded from its search result, so the kid doesn't
+        wait for YouTube."""
         if not _YOUTUBE_ID.match(raw_id):
             raise WishlistError("failed")
         video_id = make_video_id("youtube", raw_id)
@@ -211,8 +215,12 @@ class WishlistService:
             raise WishlistError("rejected")
         url = f"https://www.youtube.com/watch?v={raw_id}"
         known = self.repo.latest_for_video(video_id)
+        partial = False
+        meta: VideoMetadata | None
         if known is not None:
-            meta: VideoMetadata | None = known.metadata()
+            meta = known.metadata()
+        elif (shown := GATE.shown(raw_id)) is not None:
+            meta, partial = shown, True
         else:
             found = self._fetch(profile_id, ("video", raw_id), 1, lambda n: [
                 m for m in [self.backend.fetch_video_info(url)] if m])
@@ -221,4 +229,18 @@ class WishlistService:
             raise WishlistError("not_allowed")
         request_id = self.repo.add(profile_id, video_id, meta, meta.original_url or url)
         self.thumbnails.download(video_id, meta.thumbnail_url)
-        return request_id
+        return request_id, partial
+
+    def fill_details(self, request_id: int) -> None:
+        """Fetch YouTube's full details for a request recorded from search
+        results, and turn it down if they break the rules (a blocked word
+        in the description, say)."""
+        item = self.repo.get(request_id)
+        if item is None or item.status != "pending":
+            return
+        meta = GATE.video(item.raw_id, lambda: self.backend.fetch_video_info(item.url))
+        if meta is None:
+            return
+        self.repo.fill_details(request_id, meta)
+        if not self.passes(meta):
+            self.repo.decide(request_id, "rejected")

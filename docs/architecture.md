@@ -443,12 +443,17 @@ parent switches on **Ask for new videos**):
 (`config.wishlist`: blocked words, allowed channels, maximum length; live
 streams are never shown) and fetches thumbnails itself, so the kid's
 device never talks to YouTube. `POST /wishlist/ask` takes only a video
-id, fetches its details again, re-applies the rules and stores a pending
-`wishlist_requests` row with what YouTube said. The kid is then offered
+id and re-applies the rules. A video the kid was just shown is recorded
+at once from its search result (the gate keeps each shown result as
+`("shown", id)`); YouTube's full details are fetched after the response
+(`WishlistService.fill_details`, a background task on its own
+connection), and the request is turned down if they break the rules.
+Any other id is looked up before recording. The kid is then offered
 `/wishlist/asked/<id>`, where they can give the request their own name
 and description and pick one of their visible channels
 (`WishlistRepository.choose`); YouTube's original title and description
-are kept next to them (migration 0013).
+are kept next to them (migration 0013). The kid never sees YouTube's
+description, which is often an advert with links.
 
 The parent's inbox is `app/features/parent_requests/`. **Review** opens
 the normal Review & add page (`parent/content_preview.html`) filled from

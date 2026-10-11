@@ -79,8 +79,23 @@ class FakeThumbnails(ThumbnailService):
         return path
 
 
+class _Shared:
+    """The test's connection for background work, which may not close it."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def close(self):
+        pass
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 @pytest.fixture
 def backend(app):
+    conn = next(app.dependency_overrides[get_db]())
+    app.state.db_connect = lambda: _Shared(conn)
     fake = FakeBackend()
     app.dependency_overrides[get_backend] = lambda: fake
     app.dependency_overrides[get_thumbnail_service] = lambda: FakeThumbnails(app.state.config.data_dir)
@@ -527,3 +542,32 @@ def test_the_kid_never_sees_the_youtube_description(app, client, authed_client, 
     authed_client.post(f"/parent/requests/{item.id}/reject")
     mine = client.get("/wishlist").text.split("What I asked for")[1]
     assert "Counting to ten" in mine and "Not this time" in mine
+
+
+def test_asking_for_a_shown_video_records_it_from_the_search(app, client, backend):
+    from dataclasses import replace
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    calls = []
+
+    def full(url):
+        calls.append(url)
+        return replace(RESULTS[0], description="All about numbers", upload_date="20260101")
+    backend.fetch_video_info = full
+    assert client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"}).status_code == 303
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert len(calls) == 1
+    assert (item.original_description, item.upload_date) == ("All about numbers", "20260101")
+
+
+def test_full_details_that_break_the_rules_turn_the_request_down(app, client, authed_client, backend):
+    from dataclasses import replace
+    authed_client.post("/parent/settings/wishlist", data={"blocked_words": "scary", "allowed_channels": "",
+                                                           "max_duration_minutes": "30", "max_results": "12"})
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    backend.fetch_video_info = lambda url: replace(RESULTS[0], description="A scary story")
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    repo = WishlistRepository(_conn(app))
+    assert repo.list_by_status("pending") == []
+    assert repo.list_by_status("rejected")[0].video_id == "youtube_aaaaaaaaaaa"
