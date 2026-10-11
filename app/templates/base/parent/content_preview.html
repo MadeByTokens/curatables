@@ -127,8 +127,12 @@
       </div>
 
       <div class="form-group">
+        {% set from_site = v.description and not (wish and wish.description) %}
         <label for="desc_{{ v.video_id }}">Description</label>
-        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans">{{ (wish.description or v.description)[:1000] if wish else (v.description[:500] if v.description else '') }}</textarea>
+        <textarea id="desc_{{ v.video_id }}" name="desc_{{ v.video_id }}" rows="3" class="w-100 p-8 fs-14 bd-ccc r-3 bb ff-sans"{% if from_site %} aria-describedby="desc_from_{{ v.video_id }}"{% endif %}>{{ (wish.description or v.description)[:1000] if wish else (v.description[:500] if v.description else '') }}</textarea>
+        {% if from_site %}
+        <small id="desc_from_{{ v.video_id }}" class="muted">This text comes from {{ 'YouTube' if v.extractor == 'youtube' else "the video's website" }}. Kids see it, so read it first: it can have adverts and links.</small>
+        {% endif %}
       </div>
 
       <div class="review-watched-row">

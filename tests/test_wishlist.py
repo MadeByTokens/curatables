@@ -197,6 +197,7 @@ def test_kid_names_the_video_and_parent_reviews_without_youtube(app, client, aut
     review = authed_client.get(f"/parent/requests/{item.id}/review").text
     assert calls == [] and backend.queries == []
     assert 'value="My counting song"' in review and ">Numbers!</textarea>" in review
+    assert "This text comes from" not in review
     assert f'value="{songs}" selected' in review
     assert 'name="original_title_aaaaaaaaaaa" value="Counting to ten"' in review
     assert "On YouTube: Counting to ten" in authed_client.get("/parent/requests").text
@@ -540,6 +541,7 @@ def test_the_kid_never_sees_the_youtube_description(app, client, authed_client, 
     client.post(f"/wishlist/asked/{item.id}", data={"title": "", "description": ""})
     review = authed_client.get(f"/parent/requests/{item.id}/review").text
     assert ">Subscribe for $3.99 at shop.example</textarea>" in review
+    assert "This text comes from YouTube. Kids see it, so read it first" in review
     authed_client.post(f"/parent/requests/{item.id}/reject")
     mine = client.get("/wishlist").text.split("What I asked for")[1]
     assert "Counting to ten" in mine and "Not this time" in mine
