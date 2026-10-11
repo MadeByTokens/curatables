@@ -42,8 +42,9 @@ switching, USB drives, formatting, restarts, updates, password changes.
 ## Results
 
 Run on 2026-10-11 against the freshly flashed box (Pi 4, wired; the
-test laptop on Wi-Fi). Fixes made after the run are in commits
-`bedf0cf`..`98abaa8`; they were **not yet on the box** during the run.
+test laptop on Wi-Fi). Fixes made after the run are in commits `bedf0cf`..`04a1201`; the
+app-code ones were deployed to the box afterwards and re-checked (below).
+`yt-dlp-ejs` is not on the box yet: it needs a new image or an update.
 
 | # | Result | Notes |
 |---|--------|-------|
@@ -62,22 +63,27 @@ test laptop on Wi-Fi). Fixes made after the run are in commits
 
 | | Finding | Fix |
 |-|---------|-----|
-| F1 | Ask took 12–15 s on the box while yt-dlp fetched full details | Recorded at once from the search result; details fetched afterwards, request turned down if they break the rules (`98abaa8`). yt-dlp's default YouTube clients instead of `all`: ~17 s → ~10 s per lookup, measured on the box, with fewer requests to YouTube (`bf49013`) |
+| F1 | Ask took 12–15 s on the box while yt-dlp fetched full details | Recorded at once from the search result; details fetched afterwards, and the request is turned down if they break the rules (`98abaa8`); Review fetches them itself if that lookup failed (`eebceca`). Re-checked on the box: Ask 108 ms on the server, review 34 ms |
 | F2 | "What is it about?" showed the kid YouTube's description (an advert with links) | Kid's box starts empty; the parent sees YouTube's text (`bedf0cf`) |
 | F3 | Finished requests under What I asked for lost their names | Fixed (`bedf0cf`) |
 | F4 | yt-dlp: "n challenge solving failed, formats may be missing"; downloads came out at 360p | `yt-dlp-ejs` installed and upgraded with yt-dlp (`66ce992`); with it a test video offered H.264 up to 1080p on the box. Needs a new image or an app update there |
+| F6 | yt-dlp and deno could not cache anything (the service's home is read-only), so every lookup fetched YouTube's player code again | Both cache in `<data>/cache` (`04a1201`) |
 | F5 | A cut-off link said "An unexpected error occurred" | Plain message (`9799861`) |
 
 ### Re-checked on the box after deploying the fixes
 
-Ask answered in 108 ms on the box (3.9 s end to end over the laptop's
-Wi-Fi), down from 12–15 s; "What is it about?" started empty; finished
-requests showed their names. One background lookup got a one-off "video
-not available" from YouTube (the same lookup then worked 3 times out of 3),
-so Review now fetches the details itself when they are still missing.
+Ask: 108 ms on the server (under 1 s end to end); the details arrived in
+the background and Review then opened in 34 ms. "What is it about?"
+started empty; finished requests showed their names.
+
+Switching yt-dlp to its default YouTube clients (faster: ~10 s against
+~17 s per lookup) made every lookup fail on the box: the defaults need
+the challenge solver, which the box doesn't have yet. It was reverted;
+`player_client=all` stays until `yt-dlp-ejs` is on every box.
 
 ### Open (decide or do later)
 
+- **Faster lookups:** once `yt-dlp-ejs` is installed everywhere (new image or update), switch to yt-dlp's default YouTube clients and re-measure.
 - **YouTube 360p:** some videos come only as 360p without a PO token
   (yt-dlp skips the other formats). A PO-token provider plugin or
   cookies would fix it; it's a new component, so it's a decision.
