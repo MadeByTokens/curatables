@@ -41,6 +41,7 @@ Curatables. Installed: <code>{{ update_state.current_version or "unknown" }}</co
   <input type="hidden" name="back" value="/parent/system/updates">
   <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
 </form>
+<div class="mt-12">{% include "parent/_downloader_result.html" %}</div>
 
 <h2 class="mt-40">System</h2>
 <p class="fs-14 mw-500">Security updates for the box's operating system install by themselves every day.

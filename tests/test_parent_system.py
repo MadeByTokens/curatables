@@ -145,3 +145,13 @@ def test_on_the_box_drive_advice_points_to_the_drives_page(authed_client, helper
         page = authed_client.get(url).text
         assert "Box → Drives" in page, url
         assert "sudo" not in page and "install.sh" not in page and "docs/deployment.md" not in page, url
+
+
+def test_the_downloader_result_shows_where_the_notice_says(authed_client, helper, app):
+    import json
+    from app.services import updates
+    updates.result_path(app.state.config).write_text(json.dumps({
+        "kind": "yt-dlp", "status": "ok", "message": "Already up to date.",
+        "from_version": "2026.08.19", "to_version": "2026.08.19", "finished_at": "2026-10-11 16:20"}))
+    for url in ("/parent/system/updates?notice=downloader", "/parent/settings"):
+        assert "2026.08.19 was already the newest" in authed_client.get(url).text, url
