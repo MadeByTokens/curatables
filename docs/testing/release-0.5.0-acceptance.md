@@ -159,7 +159,7 @@ Everything else passed, after the fixes below.
 | K3 | Pass | Mia's own channel, a 2.3 MB upload in 3 s, a new title and picture on her home. |
 | K4 | Pass | Portuguese, larger text; Find new, uploads, a parent page, an Animals video and Mia's video all refused (sent home or to the parent sign-in; the file itself 404). |
 | K5 | Pass | Five wrong PINs lock the profile for 5 minutes ("Demasiados intentos"), even for the right PIN; then in; only Animals and Songs; no comment, reaction, tag or upload controls. |
-| K6 | Not supported | Coming back starts the video from the beginning; no "carry on" offer (Open). |
+| K6 | Pass after F14 | Added after the run (`958c3d5`): stopped at 32 s, back later, Seguir viendo goes on from 32 s; Desde el principio starts at 0 and forgets the spot; finishing the video forgets it too. Checked at 320, 390 and 820 px. |
 | P1 | Pass | On the phone; Review 2.5 s with Mia's name and channel; "Yes! Watch" at 1280×720; the turn-down asks "Hide this video from Mia's searches?". |
 | P2 | Pass after F8 | Reply reaches Mia; deleting asks and removes it for both. |
 | P3 | Pass | Title and picture changes reach the kids (pictures are revalidated); hide, bring back, "(none)" with its warning, delete, bulk hide/unhide/move. |
@@ -199,19 +199,23 @@ Everything else passed, after the fixes below.
 | F9 | Minor | "Added 0 video(s). Downloading…" when everything was a duplicate | `6af9fc8` |
 | F11 | Minor | Command-line advice (sudo, install.sh, docs paths) on the box's pages | `9432293` |
 | F13 | Minor | Box → Updates said the result was on the page; it was not | `aa715ac` |
+| F14 | Minor | On a phone, the end-of-video buttons stacked past the bottom of the video and over its title (found while checking K6) | `366ed43` |
 | – | Minor | Empty Downloading/Failed tab said "No videos yet"; deleting a kid did not say what goes; "Restart the server"; a "Family" channel that did not exist | `74b30b1`, `23a6240` |
 
 ### Open
 
-- **Before release:** a new image with the backup unit (F12); a full read
-  of `curatables.log` for the run, or a re-run of X2 on the new image.
-- **The journal is kept in memory**, so a reboot or power cut loses the
-  system log; the app's own log survives. Worth deciding whether the
-  report should carry more of the app log.
+- **Before release:** a new image with the backup unit (F12), then X2 and
+  a backup after a reboot checked again on it.
+- **The journal is kept in memory** (on purpose: it spares the SD card),
+  so a reboot or power cut loses the system log. The app's own log
+  survives, and the report now carries its warnings and errors of the
+  last 7 days (`59b2957`); the box helper picks this up with the new image.
 - **Kid requests:** when the kid leaves "What is it about?" empty, the
-  review form fills in YouTube's description, advert links and all; a
-  parent who adds it as it is shows that text to the kid.
-- **Carry on watching (K6):** not a feature yet.
-- **Search** matches inside words ("park" finds "Sparky").
+  review form still fills in YouTube's description, and now says so and
+  asks the parent to read it first (`73415fd`).
+- **Search** now matches from the start of a word (`221c9f0`; "park" no
+  longer finds "Sparky").
+- **Carry on watching** is kept on each device, so it does not follow a
+  kid to another device.
 - From the first round: higher quality for every video (PO token
   options), kid-screen polish, visual guides once the UI is frozen.
