@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import re
 import sqlite3
 
 from app.models import Video
@@ -130,30 +131,22 @@ class VideoRepository(BaseRepository):
 
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
                      limit: int = 24, offset: int = 0) -> builtins.list[Video]:
-        """Search ready videos by title and description. `channel_ids`
-        None searches every video; an empty list matches nothing."""
+        """Search ready videos by title and description, matching from the
+        start of a word: "park" finds "Park day" and "parks", not "Sparky".
+        `channel_ids` None searches every video; an empty list matches nothing."""
         like = f"%{query}%"
+        sql = ("SELECT * FROM videos WHERE status = 'active' AND download_status = 'ready' "
+               "AND (title LIKE ? OR description LIKE ?) ")
+        params: list = [like, like]
         if channel_ids is not None:
             if not channel_ids:
                 return []
-            placeholders = ",".join("?" for _ in channel_ids)
-            params: list = list(channel_ids)
-            params.extend([like, like, limit, offset])
-            rows = self.db.execute(
-                f"SELECT * FROM videos WHERE status = 'active' AND download_status = 'ready' "
-                f"AND channel_id IN ({placeholders}) "
-                f"AND (title LIKE ? OR description LIKE ?) "
-                f"ORDER BY added_at DESC LIMIT ? OFFSET ?",
-                params,
-            ).fetchall()
-        else:
-            rows = self.db.execute(
-                "SELECT * FROM videos WHERE status = 'active' AND download_status = 'ready' "
-                "AND (title LIKE ? OR description LIKE ?) "
-                "ORDER BY added_at DESC LIMIT ? OFFSET ?",
-                (like, like, limit, offset),
-            ).fetchall()
-        return [self._to_model(r) for r in rows]
+            sql += f"AND channel_id IN ({','.join('?' for _ in channel_ids)}) "
+            params.extend(channel_ids)
+        word_start = re.compile(r"(?<!\w)" + re.escape(query), re.IGNORECASE)
+        rows = [r for r in self.db.execute(sql + "ORDER BY added_at DESC", params)
+                if word_start.search(r["title"] or "") or word_start.search(r["description"] or "")]
+        return [self._to_model(r) for r in rows[offset:offset + limit]]
 
     def insert(self, video: Video) -> None:
         self.db.execute(

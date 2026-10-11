@@ -122,3 +122,16 @@ class TestProfileNameFallback:
         assert [r["profile_name"] for r in reactions] == ["kiddo"]
         stats = EventRepository(db).stats_per_profile()
         assert [s["profile_name"] for s in stats] == ["kiddo"]
+
+
+class TestVideoSearch:
+    def test_search_matches_from_the_start_of_a_word(self, db):
+        repo = VideoRepository(db)
+        repo.insert(_make_video("v1", title="Park day"))
+        repo.insert(_make_video("v2", title="Sparky the dog"))
+        repo.insert(_make_video("v3", title="Fun in the (parks)"))
+        repo.insert(_make_video("v4", title="Ducks"))
+        assert {v.video_id for v in repo.search_ready("park")} == {"v1", "v3"}
+        assert {v.video_id for v in repo.search_ready("Park DAY")} == {"v1"}
+        assert len(repo.search_ready("park", limit=1, offset=1)) == 1
+        assert repo.search_ready("park", channel_ids=[]) == []

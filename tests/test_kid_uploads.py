@@ -190,8 +190,9 @@ class TestContentServiceKidVisibility:
 
     def test_search_for_viewer_hides_sibling_content(self, db):
         service, alice, bob, fam, alice_ch, bob_ch = self._setup(db)
-        results = service.search_for_viewer("i", self._viewer(alice))
+        results = service.search_for_viewer("f", self._viewer(alice))
         ids = {v.video_id for v in results}
+        assert "fam00000001" in ids
         assert "bob000000001" not in ids
 
     def test_get_video_for_viewer_refuses_sibling_video(self, db):
