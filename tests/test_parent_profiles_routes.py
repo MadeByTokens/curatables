@@ -282,3 +282,18 @@ class TestProfilesDelete:
         assert resp.headers["location"] == "/parent/profiles"
 
         assert ProfileRepository(conn).get(pid) is None
+
+
+def test_kids_list_says_plainly_what_each_kid_has(authed_client, app):
+    from app.dependencies import get_db
+    from app.repositories import ChannelRepository
+    from app.services.profiles import ProfileService
+    from app.repositories import ProfileRepository
+    conn = next(app.dependency_overrides[get_db]())
+    songs = ChannelRepository(conn).create("Songs")
+    svc = ProfileService(ProfileRepository(conn))
+    svc.create(name="leo", display_name="Leo", language="pt-BR", theme="clear", allowed_channel_ids=[songs])
+    svc.create(name="ana", display_name="Ana", channels_restricted=True, allow_wishlist=True)
+    page = authed_client.get("/parent/profiles/").text
+    assert "Português (Brasil)" in page and "Big &amp; clear theme" in page and "Sees Songs" in page
+    assert "Only their own channels" in page and "Can ask for new videos" in page

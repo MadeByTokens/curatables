@@ -110,7 +110,7 @@
     <label class="fw-normal d-block"><input type="radio" name="channel_access" value="all"{% if access == "all" %} checked{% endif %}> All channels, including new ones</label>
     <label class="fw-normal d-block"><input type="radio" name="channel_access" value="some"{% if access == "some" %} checked{% endif %}> Only the ones ticked here:</label>
     {% for ch in channels %}
-    <div class="my-4 ml-24">
+    <div class="my-4 channel-pick">
       <label class="fw-normal d-inline">
         <input type="checkbox" name="channel_ids" value="{{ ch.id }}"
                {% if ch.id in selected_channel_ids %}checked{% endif %}>

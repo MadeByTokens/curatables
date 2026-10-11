@@ -14,7 +14,7 @@
         {{ languages.get(p.language, p.language) }}
         &middot; {{ themes.get(p.theme, p.theme) }} theme
         &middot; {% if not p.pin %}No PIN{% elif p.pin_style == "pictures" %}Picture PIN{% else %}Number PIN{% endif %}
-        &middot; {% if not p.channels_restricted %}All channels{% elif p.allowed_channel_ids %}Sees {{ p.allowed_channel_ids|map("extract", channel_names)|reject("none")|join(", ") }}{% else %}Only their own channels{% endif %}
+        &middot; {% if not p.channels_restricted %}All channels{% elif p.allowed_channel_ids %}Sees {% for cid in p.allowed_channel_ids if cid in channel_names %}{{ channel_names[cid] }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}Only their own channels{% endif %}
         {% if p.search_mode != "disabled" %}&middot; Search box{% endif %}
         {% if p.allow_wishlist %}&middot; Can ask for new videos{% endif %}
       </div>
