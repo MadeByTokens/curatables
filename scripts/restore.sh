@@ -41,10 +41,14 @@ fi
 if ! "$PYTHON" - "$BACKUP_FILE" <<'PYEOF'
 import sqlite3, sys
 conn = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
-sys.exit(0 if conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok" else 1)
+ok = conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+# An empty file passes the integrity check; a Curatables database has profiles.
+ok = ok and conn.execute(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'profiles'").fetchone() is not None
+sys.exit(0 if ok else 1)
 PYEOF
 then
-    echo "ERROR: backup failed integrity check — refusing to restore" >&2
+    echo "ERROR: not a complete Curatables backup (integrity check failed or no tables) — refusing to restore" >&2
     exit 2
 fi
 

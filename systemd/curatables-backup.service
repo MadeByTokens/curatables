@@ -22,4 +22,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=-/mnt/curatables-media
 ProtectHome=read-only
+# SQLite has to write the database's -shm file even to read a WAL
+# database, so the db folder (only) must stay writable.
+ReadWritePaths=/home/curatables/curatables-data/db
 PrivateTmp=true

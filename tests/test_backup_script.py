@@ -50,3 +50,25 @@ def test_missing_drive_does_not_fail_the_backup(tmp_path):
     proc = _run(data, tmp_path / "out")
     assert proc.returncode == 0, proc.stderr
     assert len(list((tmp_path / "out").glob("curatables-*.db"))) == 1
+
+
+def test_a_failed_snapshot_leaves_nothing_that_looks_like_a_backup(tmp_path):
+    data = _data(tmp_path, {})
+    (data / "db" / "curatables.db").write_text("not a database")
+    proc = _run(data, tmp_path / "out")
+    assert proc.returncode != 0
+    assert list((tmp_path / "out").iterdir()) == []
+
+
+RESTORE = SCRIPT.parent / "restore.sh"
+
+
+def test_restore_refuses_an_empty_backup(tmp_path):
+    data = _data(tmp_path, {})
+    before = (data / "db" / "curatables.db").read_bytes()
+    empty = tmp_path / "curatables-2026-10-11-121435.db"
+    empty.touch()
+    env = dict(os.environ, CURATABLES_DATA_DIR=str(data), PYTHON=sys.executable)
+    proc = subprocess.run(["bash", str(RESTORE), str(empty)], env=env, capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 2 and "refusing to restore" in proc.stderr
+    assert (data / "db" / "curatables.db").read_bytes() == before

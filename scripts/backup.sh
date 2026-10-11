@@ -37,18 +37,26 @@ mkdir -p "$OUT_DIR"
 TIMESTAMP="$(date +%Y-%m-%d-%H%M%S)"
 OUT_FILE="$OUT_DIR/curatables-$TIMESTAMP.db"
 
+# The snapshot is written under a temporary name and only renamed once it
+# is complete, so a failed run leaves no file that looks like a backup.
 "$PYTHON" - "$DB_PATH" "$OUT_FILE" <<'PYEOF'
-import sqlite3, sys
+import os, sqlite3, sys
 src_path, out_path = sys.argv[1:3]
-src = sqlite3.connect(f"file:{src_path}?mode=ro", uri=True)
-dst = sqlite3.connect(out_path)
-with dst:
-    src.backup(dst)
-ok = dst.execute("PRAGMA integrity_check").fetchone()[0]
-dst.close()
-src.close()
-if ok != "ok":
-    sys.exit(f"ERROR: integrity check failed on {out_path}: {ok}")
+partial = out_path + ".partial"
+try:
+    src = sqlite3.connect(f"file:{src_path}?mode=ro", uri=True)
+    dst = sqlite3.connect(partial)
+    with dst:
+        src.backup(dst)
+    ok = dst.execute("PRAGMA integrity_check").fetchone()[0]
+    dst.close()
+    src.close()
+    if ok != "ok":
+        sys.exit(f"ERROR: integrity check failed on {out_path}: {ok}")
+    os.replace(partial, out_path)
+finally:
+    if os.path.exists(partial):
+        os.remove(partial)
 PYEOF
 
 if [ -f "$CONFIG_PATH" ]; then
