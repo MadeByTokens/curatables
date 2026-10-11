@@ -11,10 +11,12 @@
     <div class="info">
       <div class="title-line">{{ p.display_name or p.name }}</div>
       <div class="meta">
-        Theme: {{ p.theme }}
-        &middot; Search: {{ p.search_mode }}
-        {% if p.pin %}&middot; PIN set{% endif %}
-        {% if p.allowed_channel_ids %}&middot; {{ p.allowed_channel_ids|length }} channel(s){% else %}&middot; All channels{% endif %}
+        {{ languages.get(p.language, p.language) }}
+        &middot; {{ themes.get(p.theme, p.theme) }} theme
+        &middot; {% if not p.pin %}No PIN{% elif p.pin_style == "pictures" %}Picture PIN{% else %}Number PIN{% endif %}
+        &middot; {% if not p.channels_restricted %}All channels{% elif p.allowed_channel_ids %}Sees {{ p.allowed_channel_ids|map("extract", channel_names)|reject("none")|join(", ") }}{% else %}Only their own channels{% endif %}
+        {% if p.search_mode != "disabled" %}&middot; Search box{% endif %}
+        {% if p.allow_wishlist %}&middot; Can ask for new videos{% endif %}
       </div>
       <div class="actions">
         <a href="/parent/profiles/{{ p.id }}/edit" class="btn btn-sm btn-primary">Edit</a>

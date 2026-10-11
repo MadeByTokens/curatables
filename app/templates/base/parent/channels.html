@@ -36,7 +36,7 @@
       <div class="desc">{{ ch.description }}</div>
       {% endif %}
       <div class="meta">
-        {{ count }} video(s) &middot; Position: {{ ch.position }}
+        {{ count }} video(s)
       </div>
       <div class="actions">
         <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm btn-primary">Edit</a>
@@ -48,19 +48,23 @@
           <a href="/parent/channels/{{ ch.id }}/export?format=pdf"
              class="btn btn-sm btn-secondary" title="Printable PDF">.pdf</a>
         </span>
-        <form method="POST" action="/parent/channels/{{ ch.id }}/delete"
-              data-confirm="Delete channel {{ ch.name }}? This cannot be undone.">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <select name="reassign_to">
-            <option value="">Orphan videos (uncategorized)</option>
-            {% for other in all_channels %}
-              {% if other.id != ch.id %}
-              <option value="{{ other.id }}">Move videos to "{{ other.name }}"</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </form>
+        <details class="delete-details">
+          <summary class="btn btn-sm btn-danger">Delete&hellip;</summary>
+          <form method="POST" action="/parent/channels/{{ ch.id }}/delete"
+                data-confirm="Delete channel {{ ch.name }}? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label for="reassign-{{ ch.id }}" class="fw-normal">Its videos:</label>
+            <select id="reassign-{{ ch.id }}" name="reassign_to">
+              <option value="">keep them with no channel (kids won&rsquo;t see them)</option>
+              {% for other in all_channels %}
+                {% if other.id != ch.id %}
+                <option value="{{ other.id }}">move them to &ldquo;{{ other.name }}&rdquo;</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-danger">Delete channel</button>
+          </form>
+        </details>
       </div>
     </div>
   </div>

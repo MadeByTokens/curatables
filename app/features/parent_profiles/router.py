@@ -25,14 +25,22 @@ def _choice(value, choices, default: str) -> str:
 
 
 def _profile_fields(form) -> dict:
+    """channel_access: "all" channels, "some" (the ticked channel_ids) or
+    "none" (only the kid's own channels). Ticking a channel means "some"."""
     channel_ids = [int(x) for x in form.getlist("channel_ids") if x.isdigit()]
+    access = form.get("channel_access")
+    if access == "none":
+        channel_ids = []
+    elif channel_ids:
+        access = "some"
+    elif access != "some":
+        access = "all"
     return {
         "avatar": _choice(form.get("avatar"), AVATAR_CHOICES, "default"),
         "theme": _choice(form.get("theme"), THEME_CHOICES, "base"),
         "language": _choice(form.get("language"), LANGUAGES, DEFAULT_LANGUAGE),
         "search_mode": _choice(form.get("search_mode"), SEARCH_CHOICES, "disabled"),
-        "channels_restricted": (form.get("channels_restricted") == "1"
-                                or bool(channel_ids)),
+        "channels_restricted": access != "all",
         "allowed_channel_ids": channel_ids,
         **{field: form.get(field) == "1" for field, _l, _d in FEATURE_SWITCHES},
     }
@@ -77,11 +85,15 @@ def _render_form(request: Request, content: ContentService, profile=None,
 @router.get("/", response_class=HTMLResponse)
 def list_profiles(request: Request,
                   viewer: ViewerContext = Depends(require_parent),
-                  profiles_svc: ProfileService = Depends(get_profile_service)):
+                  profiles_svc: ProfileService = Depends(get_profile_service),
+                  content: ContentService = Depends(get_content_service)):
     return request.app.state.templates.TemplateResponse(request, "parent/profiles.html", {
         "request": request,
         "profiles": profiles_svc.list(),
         "avatars": AVATAR_EMOJIS,
+        "languages": dict(LANGUAGES),
+        "themes": {key: label.split(" (")[0] for key, label in THEME_CHOICES},
+        "channel_names": {c.id: c.name for c in content.list_channels()},
     })
 
 

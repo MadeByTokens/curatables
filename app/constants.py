@@ -42,4 +42,4 @@ PIN_PICTURES = [
 ]
 PICTURE_PIN_LENGTH = 3
 
-SEARCH_CHOICES = [("disabled", "Disabled"), ("curated", "Curated (approved content only)")]
+SEARCH_CHOICES = [("disabled", "Off"), ("curated", "On: they can search the videos they can see")]

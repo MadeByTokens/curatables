@@ -83,7 +83,7 @@
   </div>
 
   <div class="form-group">
-    <label for="search_mode">Search</label>
+    <label for="search_mode">Search box on their screen</label>
     <select id="search_mode" name="search_mode">
       {% for val, label in search_choices %}
       <option value="{{ val }}" {% if profile and profile.search_mode == val %}selected{% endif %}>{{ label }}</option>
@@ -104,16 +104,13 @@
   </fieldset>
 
   {% if channels %}
-  <div class="form-group">
-    <label>Visible Channels</label>
-    <label class="fw-normal d-block mb-6">
-      <input type="checkbox" name="channels_restricted" value="1"
-             {% if profile and profile.channels_restricted %}checked{% endif %}>
-      Only show the channels ticked below
-    </label>
-    <small class="muted d-block mb-6">Ticking any channel limits the kid to those channels. Untick everything to show all channels. Tick only this box to hide every parent channel.</small>
+  {% set access = "all" if not (profile and profile.channels_restricted) else ("some" if selected_channel_ids else "none") %}
+  <fieldset class="form-group">
+    <legend>Which channels can they see?</legend>
+    <label class="fw-normal d-block"><input type="radio" name="channel_access" value="all"{% if access == "all" %} checked{% endif %}> All channels, including new ones</label>
+    <label class="fw-normal d-block"><input type="radio" name="channel_access" value="some"{% if access == "some" %} checked{% endif %}> Only the ones ticked here:</label>
     {% for ch in channels %}
-    <div class="my-4">
+    <div class="my-4 ml-24">
       <label class="fw-normal d-inline">
         <input type="checkbox" name="channel_ids" value="{{ ch.id }}"
                {% if ch.id in selected_channel_ids %}checked{% endif %}>
@@ -121,7 +118,8 @@
       </label>
     </div>
     {% endfor %}
-  </div>
+    <label class="fw-normal d-block"><input type="radio" name="channel_access" value="none"{% if access == "none" %} checked{% endif %}> None of yours (only the channels they make themselves)</label>
+  </fieldset>
   {% endif %}
 
   <div class="mt-20">

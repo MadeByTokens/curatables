@@ -802,3 +802,7 @@ td .btn { white-space: nowrap; }
 .power-list { list-style: none; padding: 0; }
 .power-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-bottom: 10px; }
 .power-list form { display: block; margin: 0; }
+.delete-details { display: inline-block; }
+.delete-details summary { list-style: none; }
+.delete-details summary::-webkit-details-marker { display: none; }
+.delete-details[open] form { margin-top: 8px; }

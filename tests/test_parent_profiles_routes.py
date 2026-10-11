@@ -202,7 +202,7 @@ class TestProfilesEditSubmit:
         assert prof.allowed_channel_ids == []
         assert not prof.channels_restricted
 
-    def test_restrict_box_alone_restricts_to_nothing(self, authed_client, app):
+    def test_none_of_yours_hides_every_parent_channel(self, authed_client, app):
         from app.dependencies import get_db
         from app.repositories import ProfileRepository
 
@@ -210,7 +210,7 @@ class TestProfilesEditSubmit:
         pid = _create_profile(app, name="Jo")
         authed_client.post(
             f"/parent/profiles/{pid}/edit",
-            data={"display_name": "Jo", "channels_restricted": "1"},
+            data={"display_name": "Jo", "channel_access": "none"},
         )
         prof = ProfileRepository(conn).get(pid)
         assert prof.channels_restricted
