@@ -101,11 +101,7 @@ def get_event_repo(db=Depends(get_db)) -> EventRepository:
 
 def get_backend(config=Depends(get_config)) -> VideoBackend:
     """Return the video backend. Change this to swap yt-dlp for another implementation."""
-    return YtdlpBackend(
-        impersonate=config.storage.impersonate,
-        cookies_from_browser=config.storage.cookies_from_browser,
-        cookies_file=config.storage.cookies_file,
-    )
+    return YtdlpBackend.from_config(config)
 
 
 def get_auth_service(config=Depends(get_config)) -> AuthService:

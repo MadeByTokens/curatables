@@ -130,6 +130,12 @@ class Config:
         return Path(self.storage.path)
 
     @property
+    def cache_dir(self) -> Path:
+        """Caches for yt-dlp and deno. The service's home folder is
+        read-only, so they live in the data folder."""
+        return self.data_dir / "cache"
+
+    @property
     def media_dir(self) -> Path:
         return Path(self.storage.media_path) if self.storage.media_path else self.data_dir
 
@@ -217,7 +223,7 @@ def ensure_directories(config: Config) -> None:
     drive from the dashboard.
     """
     base = config.data_dir
-    for subdir in ("db", "logs"):
+    for subdir in ("db", "logs", "cache"):
         (base / subdir).mkdir(parents=True, exist_ok=True)
     media = config.media_dir
     if config.storage.media_path and not media.is_dir():

@@ -51,11 +51,7 @@ def prepare_data_dir(config: Config) -> None:
 
 def build_content_service(conn: sqlite3.Connection, config: Config, metrics=None):
     """A ContentService outside the request cycle (startup resume)."""
-    backend = YtdlpBackend(
-        impersonate=config.storage.impersonate,
-        cookies_from_browser=config.storage.cookies_from_browser,
-        cookies_file=config.storage.cookies_file,
-    )
+    backend = YtdlpBackend.from_config(config)
     storage = StorageService(
         config.media_dir, backend,
         min_free_bytes=config.storage.min_free_disk_bytes,

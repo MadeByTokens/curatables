@@ -7,14 +7,18 @@ layer knows which platform a video came from.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus, urlsplit
 
 from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
 from app.services.safe_fetch import BlockedURL, check_url
+
+if TYPE_CHECKING:
+    from app.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +34,23 @@ class YtdlpBackend(VideoBackend):
 
     def __init__(self, cookies_from_browser: str = "",
                  cookies_file: str = "",
-                 impersonate: str = ""):
+                 impersonate: str = "",
+                 cache_dir: Path | None = None):
         self.cookies_from_browser = cookies_from_browser
         self.cookies_file = cookies_file
         self.impersonate = impersonate
+        self.cache_dir = cache_dir
         self._local = threading.local()
+
+    @classmethod
+    def from_config(cls, config: Config) -> YtdlpBackend:
+        # yt-dlp runs deno for YouTube's challenge, and deno needs a
+        # writable cache of its own.
+        os.environ.setdefault("DENO_DIR", str(config.cache_dir / "deno"))
+        return cls(impersonate=config.storage.impersonate,
+                   cookies_from_browser=config.storage.cookies_from_browser,
+                   cookies_file=config.storage.cookies_file,
+                   cache_dir=config.cache_dir / "yt-dlp")
 
     @property
     def last_error(self) -> BackendError | None:
@@ -109,6 +125,8 @@ class YtdlpBackend(VideoBackend):
         local browser (desktop only).
         """
         opts: dict[str, Any] = {"quiet": True, "no_warnings": True}
+        if self.cache_dir is not None:
+            opts["cachedir"] = str(self.cache_dir)
         if self.impersonate:
             try:
                 from yt_dlp.networking.impersonate import ImpersonateTarget
@@ -119,6 +137,9 @@ class YtdlpBackend(VideoBackend):
             opts["cookiefile"] = self.cookies_file
         elif self.cookies_from_browser:
             opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
+        # Try every YouTube player client. yt-dlp ignores extractor args
+        # meant for other extractors, so this is harmless elsewhere.
+        opts["extractor_args"] = {"youtube": {"player_client": ["all"]}}
         return opts
 
     def _blocked(self, url: str) -> bool:

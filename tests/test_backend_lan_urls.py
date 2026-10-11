@@ -32,3 +32,11 @@ def test_a_cut_off_link_gets_a_plain_message():
     e = YtdlpBackend().classify_error(Exception(
         "[youtube:truncated_id] abc: Incomplete YouTube ID abc. URL https://www.youtube.com/watch?v=abc looks truncated."))
     assert "incomplete" in e.message and "Copy the whole address" in e.suggestion
+
+
+def test_yt_dlp_caches_in_the_data_folder(tmp_path):
+    from app.config import Config
+    config = Config()
+    config.storage.path = str(tmp_path)
+    opts = YtdlpBackend.from_config(config)._base_opts()
+    assert opts["cachedir"] == str(tmp_path / "cache" / "yt-dlp")
