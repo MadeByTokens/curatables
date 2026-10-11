@@ -162,7 +162,8 @@ Curatables downloads videos with [yt-dlp](https://github.com/yt-dlp/yt-dlp),
 a free project kept alive by volunteers. If Curatables helps your family,
 please consider
 [sponsoring a yt-dlp maintainer](https://github.com/yt-dlp/yt-dlp/blob/master/Maintainers.md#maintainers).
-Videos are converted with [FFmpeg](https://ffmpeg.org/).
+Videos are converted with [FFmpeg](https://ffmpeg.org/). The maple-leaf icon is drawn from
+[Noto Emoji](https://github.com/googlefonts/noto-emoji) (Apache-2.0).
 
 ## License
 

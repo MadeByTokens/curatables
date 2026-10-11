@@ -127,3 +127,10 @@ def test_bookmarked_videos_show_in_kids_own_channel(app):
     ProfileChannelVideoRepository(conn).add(pid, mine, "yt_train")
     page = kid.get(f"/channel/{mine}").text
     assert "Steam train" in page
+
+
+def test_pages_declare_the_app_icon(client):
+    for path in ("/profiles", "/parent/login"):
+        assert 'href="/static/icons/favicon.ico"' in client.get(path).text
+    icon = client.get("/static/icons/favicon.ico")
+    assert icon.status_code == 200 and icon.content[:4] == b"\x00\x00\x01\x00"
