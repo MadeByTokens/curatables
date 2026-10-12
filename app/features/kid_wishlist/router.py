@@ -207,7 +207,8 @@ def wishlist_choose(request: Request, request_id: int,
             title = item.title
         description = description.strip()[:DESCRIPTION_MAX]
         repo.choose(request_id, title, description, target)
-    return RedirectResponse(url=_with_asked(_back(back)), status_code=303)
+    spot = f"#ask-{quote(item.raw_id, safe='')}" if item is not None else ""
+    return RedirectResponse(url=_with_asked(_back(back)) + spot, status_code=303)
 
 
 @router.get("/wishlist/thumb/{video_id}")

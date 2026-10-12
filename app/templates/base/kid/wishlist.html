@@ -59,7 +59,7 @@
   <div class="clear"></div>
 {% elif results %}
   {% for r in results %}
-  <div class="video-card wishlist-card">
+  <div class="video-card wishlist-card" id="ask-{{ r.meta.video_id }}">
     <span class="thumb"><img src="/wishlist/thumb/{{ r.video_id }}" alt=""></span>
     <span class="video-title">{{ r.meta.title }}</span>
     <span class="wishlist-meta">{{ r.meta.channel }}{% if r.meta.duration %} &middot; {{ duration(r.meta.duration) }}{% endif %}</span>

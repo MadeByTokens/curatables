@@ -185,7 +185,8 @@ def test_kid_names_the_video_and_parent_reviews_without_youtube(app, client, aut
     resp = client.post(f"/wishlist/asked/{item.id}", data={
         "title": "  My   counting  song ", "description": "Numbers!",
         "channel_id": str(songs), "back": "/wishlist?q=songs&mode=videos"})
-    assert resp.headers["location"] == "/wishlist?q=songs&mode=videos&asked=1"
+    assert resp.headers["location"] == f"/wishlist?q=songs&mode=videos&asked=1#ask-{item.raw_id}"
+    assert f'id="ask-{item.raw_id}"' in client.get("/wishlist", params={"q": "songs"}).text
     item = WishlistRepository(_conn(app)).get(item.id)
     assert (item.title, item.description, item.target_channel_id) == (
         "My counting song", "Numbers!", songs)
@@ -210,7 +211,7 @@ def test_kid_choices_are_checked(app, client, backend):
     resp = client.post(f"/wishlist/asked/{item.id}", data={
         "title": "", "description": "x" * 5000, "channel_id": "99999",
         "back": "//evil.example/"})
-    assert resp.headers["location"] == "/wishlist?asked=1"
+    assert resp.headers["location"] == f"/wishlist?asked=1#ask-{item.raw_id}"
     item = WishlistRepository(_conn(app)).get(item.id)
     assert item.title == "Counting to ten" and len(item.description) == 1000
     assert item.target_channel_id is None
