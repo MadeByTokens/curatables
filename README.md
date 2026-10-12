@@ -100,21 +100,23 @@ The full, plain-language explanation is in
 
 ## Screenshots
 
-_A demo library (generated test clips, no real data)._
+_From a real box with an example family and free films. The picture
+guides for [parents](docs/guide/parents.md) and [kids](docs/guide/kids.md)
+walk through every screen._
 
 **Kid side**: calm, finite, picture-driven.
 
-| Who's watching? | Video grid | Watch page |
+| Who's watching? | Home | Watching |
 |:---:|:---:|:---:|
-| [![Profile picker](docs/screenshots/kid-profiles.png)](docs/screenshots/kid-profiles.png) | [![Kid home grid](docs/screenshots/kid-home.png)](docs/screenshots/kid-home.png) | [![Kid watch page](docs/screenshots/kid-watch.png)](docs/screenshots/kid-watch.png) |
+| [![Profile picker](docs/guide/img/kid-who-is-watching.webp)](docs/guide/img/kid-who-is-watching.webp) | [![Kid home grid](docs/guide/img/kid-home.webp)](docs/guide/img/kid-home.webp) | [![Kid watch page](docs/guide/img/kid-watch.webp)](docs/guide/img/kid-watch.webp) |
 
 **Parent side**: everything that needs you, at a glance.
 
-| Dashboard | Content library | Add a video |
+| Dashboard | Content library | Review & Add |
 |:---:|:---:|:---:|
-| [![Parent dashboard](docs/screenshots/parent-dashboard.png)](docs/screenshots/parent-dashboard.png) | [![Content library](docs/screenshots/parent-content.png)](docs/screenshots/parent-content.png) | [![Add a video](docs/screenshots/parent-add.png)](docs/screenshots/parent-add.png) |
-| Usage stats | Per-video detail | Settings |
-| [![Usage stats](docs/screenshots/parent-stats.png)](docs/screenshots/parent-stats.png) | [![Per-video detail](docs/screenshots/parent-content-detail.png)](docs/screenshots/parent-content-detail.png) | [![Settings](docs/screenshots/parent-settings.png)](docs/screenshots/parent-settings.png) |
+| [![Parent dashboard](docs/guide/img/parent-dashboard.webp)](docs/guide/img/parent-dashboard.webp) | [![Content library](docs/guide/img/parent-content.webp)](docs/guide/img/parent-content.webp) | [![Review and add a video](docs/guide/img/parent-review-and-add.webp)](docs/guide/img/parent-review-and-add.webp) |
+| Kids | A kid's request, on a phone | Box diagnostics |
+| [![Kid profiles](docs/guide/img/parent-kids.webp)](docs/guide/img/parent-kids.webp) | [![Video requests on a phone](docs/guide/img/parent-requests-phone.webp)](docs/guide/img/parent-requests-phone.webp) | [![Diagnostics](docs/guide/img/parent-diagnostics.webp)](docs/guide/img/parent-diagnostics.webp) |
 
 ## Other ways to install
 

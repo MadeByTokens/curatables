@@ -11,6 +11,8 @@ For anyone looking after a Curatables box. No programming needed.
 | Doc | Read it when |
 |-----|--------------|
 | [parents-guide.md](parents-guide.md) | **Start here if you have the ready-made Raspberry Pi image.** Flashing the SD card, Wi-Fi, the two passwords, your first video and kid, the Box pages, USB drives, backups and what to do when something's wrong. From Windows, Mac or a phone; no terminal. |
+| [guide/parents.md](guide/parents.md) | You'd like to see it: every everyday screen in pictures, from adding a video and making a kid's profile to answering requests, backups and the Box pages. |
+| [guide/kids.md](guide/kids.md) | A picture guide to the kids' screen, to look at together with your kid. |
 | [getting-started.md](getting-started.md) | You are installing Curatables yourself on a Raspberry Pi or spare Linux laptop, and can copy and paste commands into a terminal. |
 | [safety-model.md](safety-model.md) | You want to know what a child can and can't reach, what is recorded, and how to lock the tablet to Curatables. |
 | [faq.md](faq.md) | You have an everyday question: can't connect, a video is stuck, YouTube fails, the disk is full, a PIN is forgotten. |

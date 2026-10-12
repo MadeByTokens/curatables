@@ -10,6 +10,9 @@ the network yet) are done by editing text files on the SD card.
 If you're installing Curatables on a computer of your own instead of the
 ready-made image, follow [getting-started.md](getting-started.md).
 
+Once the box is set up, the picture guides show every everyday screen:
+[for parents](guide/parents.md) and [for kids](guide/kids.md).
+
 - [What you need](#what-you-need)
 - [1. Put Curatables on the SD card](#1-put-curatables-on-the-sd-card)
 - [2. Connect the box to your network](#2-connect-the-box-to-your-network)
