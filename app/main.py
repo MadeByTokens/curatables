@@ -265,11 +265,12 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             return RedirectResponse(url="/", status_code=302)
         return PlainTextResponse("", status_code=403)
 
-    def _error_page(request: Request, status_code: int, heading: str | None = None):
+    def _error_page(request: Request, status_code: int, heading: str | None = None,
+                    detail: str | None = None):
         if request.url.path.startswith("/parent/"):
             try:
                 return app.state.templates.TemplateResponse(request,
-                    "parent/error.html", {"request": request, "heading": heading},
+                    "parent/error.html", {"request": request, "heading": heading, "detail": detail},
                     status_code=status_code)
             except Exception:
                 _error_logger.exception("Parent error page failed to render")
@@ -288,13 +289,17 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     @app.exception_handler(StarletteHTTPException)
     async def http_error_handler(request: Request, exc: StarletteHTTPException):
         if exc.status_code in (404, 405) and _wants_html(request):
-            return _error_page(request, exc.status_code, "Page not found")
+            return _error_page(request, exc.status_code, "Page not found",
+                               "There is no page at this address. The link may be cut off "
+                               "or out of date.")
         return await http_exception_handler(request, exc)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request: Request, exc: RequestValidationError):
         if _wants_html(request):
-            return _error_page(request, 400, "That request didn't look right")
+            return _error_page(request, 400, "That request didn't look right",
+                               "Something the page sent was missing or not as expected. "
+                               "Go back, reload the page and try again.")
         return await request_validation_exception_handler(request, exc)
 
     @app.exception_handler(Exception)

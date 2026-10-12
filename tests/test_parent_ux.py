@@ -165,3 +165,10 @@ def test_stats_name_videos_and_say_when_one_was_deleted(authed_client, app):
         assert "Our trip to the park" in page and "v_gone" not in page
         assert "A video that was deleted" in page
     assert "on Our trip to the park" in authed_client.get(f"/parent/stats/profiles/{pid}").text
+
+
+def test_a_missing_parent_page_says_so_without_claiming_an_error(authed_client):
+    page = authed_client.get("/parent/no-such-page")
+    assert page.status_code == 404
+    assert "Page not found" in page.text and "There is no page at this address" in page.text
+    assert "unexpected error" not in page.text and "logged" not in page.text
