@@ -199,7 +199,7 @@
                 <span class="badge badge-pending">pending</span>
               {% endif %}
             </div>
-            <div class="sub">{{ v.channel_name or 'no channel' }} · {{ v.added_at }}</div>
+            <div class="sub">{{ v.channel_name or ('Uploaded' if v.storage_mode == 'uploaded' else 'Unknown source') }} · {{ v.added_at }}</div>
           </div>
         </div>
         {% endfor %}

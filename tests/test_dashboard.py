@@ -110,3 +110,16 @@ class TestDashboardOverview:
         assert b"Needs your attention" in resp.content
         assert b"download" in resp.content
         assert b"Broken Clip" in resp.content
+
+    def test_recently_added_says_where_a_video_came_from(self, authed_client, app):
+        from app.dependencies import get_db
+        conn = next(app.dependency_overrides[get_db]())
+        repo = VideoRepository(conn)
+        repo.insert(Video(video_id="up_drawing", title="My drawing", original_title="My drawing",
+                          download_status="ready", storage_mode="uploaded"))
+        repo.insert(Video(video_id="yt_llama", title="Llamas", original_title="Llamas",
+                          channel_name="Blender", download_status="ready"))
+        conn.commit()
+        recent = authed_client.get("/parent/").text.split("Recently added")[1]
+        assert "Uploaded ·" in recent and "Blender ·" in recent
+        assert "no channel" not in recent
