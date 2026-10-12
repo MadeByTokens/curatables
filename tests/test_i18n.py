@@ -97,3 +97,25 @@ def test_parent_sets_kid_language(app, authed_client):
     assert resp.status_code == 302
     form = authed_client.get("/parent/profiles/create").text
     assert 'value="pt-BR"' in form
+
+
+def test_the_kids_error_page_is_rendered_in_the_kids_language(app, client, monkeypatch):
+    from app.dependencies import get_db
+    page = client.get("/no-such-page")
+    assert page.status_code == 404
+    assert "{%" not in page.text and "{{" not in page.text
+    assert "Oops! That didn" in page.text
+    conn = next(app.dependency_overrides[get_db]())
+
+    class Shared:
+        def __getattr__(self, name):
+            return getattr(conn, name)
+
+        def close(self):
+            pass
+    monkeypatch.setattr(app.state, "db_connect", Shared)
+    pid = ProfileService(ProfileRepository(conn)).create(name="lu", display_name="Lu", language="es")
+    conn.commit()
+    client.post("/profiles/select", data={"profile_id": pid})
+    page = client.get("/no-such-page")
+    assert "{%" not in page.text and 'lang="es"' in page.text

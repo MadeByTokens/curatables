@@ -19,6 +19,7 @@ from starlette.responses import FileResponse, HTMLResponse, PlainTextResponse, R
 from app.config import load_config, ensure_directories
 from app.db.connection import create_connection, get_db_path
 from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
+from app.repositories import ProfileRepository
 from app.features.api.router import router as api_router
 from app.features.healthz.router import router as healthz_router
 from app.features.kid_browse.router import router as browse_router
@@ -62,7 +63,6 @@ from app.template_utils import register_filters
 from app.web import kid_address
 
 _APP_DIR = os.path.dirname(__file__)
-_KID_ERROR_PAGE = os.path.join(_APP_DIR, "templates", "base", "kid", "error.html")
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
@@ -280,10 +280,27 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
             except Exception:
                 _error_logger.exception("Parent error page failed to render")
         try:
-            with open(_KID_ERROR_PAGE) as f:
-                return HTMLResponse(content=f.read(), status_code=status_code)
+            return app.state.templates.TemplateResponse(request,
+                "kid/error.html", {"request": request, "lang": _kid_language(request)},
+                status_code=status_code)
         except Exception:
+            _error_logger.exception("Kid error page failed to render")
             return HTMLResponse(content="<h1>Something went wrong</h1>", status_code=status_code)
+
+    def _kid_language(request: Request) -> str | None:
+        """The selected kid's language, when there is one and it can be read."""
+        try:
+            profile_id = request.session.get("profile_id")
+            if not profile_id:
+                return None
+            conn = app.state.db_connect()
+            try:
+                profile = ProfileRepository(conn).get(profile_id)
+            finally:
+                conn.close()
+            return profile.language if profile else None
+        except Exception:
+            return None
 
     def _wants_html(request: Request) -> bool:
         path = request.url.path
