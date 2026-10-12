@@ -202,20 +202,75 @@ Everything else passed, after the fixes below.
 | F14 | Minor | On a phone, the end-of-video buttons stacked past the bottom of the video and over its title (found while checking K6) | `366ed43` |
 | – | Minor | Empty Downloading/Failed tab said "No videos yet"; deleting a kid did not say what goes; "Restart the server"; a "Family" channel that did not exist | `74b30b1`, `23a6240` |
 
+### Second run: the new image
+
+On 2026-10-12, 00:43–01:20 box time (UTC), on a box flashed with the
+image built from `3d2498c`. The image was first checked in a chroot:
+all 398 shipped files match the commit, the ten systemd units match the
+repo, and the backup unit has `ReadWritePaths` for the db folder. The
+SD card was read back and matched the image byte for byte. The parent
+did setup from scratch; then the same family (with Mia on a landscape
+tablet, Leo on a phone and Lucía on a portrait tablet) used the box,
+and the screenshots for the [picture guides](../guide/parents.md) were
+taken along the way.
+
+| Area | Result |
+|------|--------|
+| Setup, channels, four videos added (lookups about 3 s each), three kids | Pass |
+| Mia: picture PIN, home, watch, reaction, comment, tag, carry on, end card, search, Find new, ask with a name and channel, upload to her own channel, customize, Help | Pass after F16, F18 |
+| Leo (phone, Big & clear, Portuguese) sees only Cartoons; Lucía (wrong then right number PIN, Spanish, Calm) sees everything but Mia's channel; search matches from the start of a word | Pass |
+| Sam on the phone: the request at the top of the dashboard, Review & add in 0.3 s with Mia's choices, reply to Mia's comment, stats | Pass after F17, F20 |
+| Diagnostics and report: no password in it; the week's warnings section works | Pass after F15, F19 |
+| Back up now (1.1 s), a change, Restore: the change is gone, everything else back, nobody signed out | Pass |
+| Restart the box from Box: back by itself in 46 s; every device still in its profile; all nine checks green | Pass |
+| No sideways scrolling: 20 parent pages at 390 px, 15 kid pages at 360–390 px | Pass after F20 |
+| Log (X2): the system journal from boot to before the reboot, and the app log, read in full | Pass: no errors; two subtitle 429 warnings, handled as F4 intended |
+
+Two things this run could not settle:
+
+- **The nightly backup unit itself** has not run on this box yet: the
+  timer's first run is 03:00 UTC, and starting the unit by hand with the
+  app stopped (the case that failed in F12) was not allowed from the test
+  laptop. Its fix is in the image and checked there.
+- **An unexplained power cut** before setup: the app log has a run of zero
+  bytes after 23:49, the kernel ran orphan cleanup on the root file
+  system at the next boot, and the boot reason is power-on
+  (`rsts=0x1000`), not a watchdog or a crash. Most likely the box was
+  unplugged; the parent has been asked.
+
+| | Severity | Finding | Fix |
+|-|----------|---------|-----|
+| F15 | Minor | Right after setup, Diagnostics warned "System services: Stopped with an error: userconfig.service": setup stops Raspberry Pi OS's first-boot dialog, and systemd marks a stopped dialog as failed | `1b24c60` |
+| F16 | Minor | A long description stopped mid-sentence ("…with improving a free and open") on the kid's watch page: the Add form cut it at exactly 500 characters | `909ea04` |
+| F17 | Minor | The dashboard's Recently added said "no channel" for Mia's upload, which was in her own channel | `1d1faeb` |
+| F18 | Minor | The kids' Help page did not mention Tags, Find new or Carry on | `00e3164` |
+| F19 | Minor | After the power cut, the diagnostics report carried the zero bytes into the text file | `bb0a8c7` |
+| F20 | Minor | On a phone, the Stats tables were about 410 px wide and the page scrolled sideways | `cded92a` |
+
+F16–F18 and F20 were deployed and checked on the box. F15 and F19 are in
+the helper, which the deploy script does not restart; they are covered
+by tests and reach the box with the next image.
+
+### Verdict after the second run
+
+**Ready to publish once the release image is built from the final
+commit**, a chroot check of it passes, and the first nightly backup on
+this box (03:00 UTC) is seen to work. The F12 blocker is fixed in the
+image, every Must passed, the log of the run is clean, and the six new
+findings are Minor and fixed.
+
 ### Open
 
-- **Before release:** a new image with the backup unit (F12), then X2 and
-  a backup after a reboot checked again on it.
 - **The journal is kept in memory** (on purpose: it spares the SD card),
   so a reboot or power cut loses the system log. The app's own log
-  survives, and the report now carries its warnings and errors of the
-  last 7 days (`59b2957`); the box helper picks this up with the new image.
+  survives, and the report carries its warnings and errors of the last
+  7 days (`59b2957`).
 - **Kid requests:** when the kid leaves "What is it about?" empty, the
-  review form still fills in YouTube's description, and now says so and
-  asks the parent to read it first (`73415fd`).
-- **Search** now matches from the start of a word (`221c9f0`; "park" no
-  longer finds "Sparky").
+  review form still fills in YouTube's description, and says so and asks
+  the parent to read it first (`73415fd`).
 - **Carry on watching** is kept on each device, so it does not follow a
   kid to another device.
-- From the first round: higher quality for every video (PO token
-  options), kid-screen polish, visual guides once the UI is frozen.
+- **The picture PIN shows the pictures as they are tapped**, so a sibling
+  watching can learn it. Kid-screen polish for after 0.5.0.
+- **Higher quality for every video** (PO token options): the solver-only
+  setup stays; explaining the cookies option in the docs is still to do.
