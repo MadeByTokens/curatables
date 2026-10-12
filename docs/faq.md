@@ -49,6 +49,34 @@ press **Retry** on the failed videos. If it still fails, turn on
 **Settings → Advanced → Anti-Bot → Browser Impersonation** (makes
 downloads look like a normal browser).
 
+**A few YouTube videos only come in low quality (360p).**
+YouTube keeps its better formats for players it trusts, and the box
+doesn't sign in to YouTube. Most videos still come in HD; a few stay at
+360p, which looks soft on a tablet but is fine on a phone. You can leave
+it like that: nothing needs setting up and no account is involved.
+
+If you want those videos in HD, the box can sign in with a YouTube
+login saved in a cookies file. Use a **separate Google account made just
+for the box**, never your own or the family's: YouTube can block an
+account it sees used this way, and anyone who holds the SD card can read
+the file.
+
+1. On a computer, open a private browser window, sign in to YouTube
+   with that account, and save its cookies with a browser extension that
+   exports a `cookies.txt` file (Netscape format; yt-dlp's FAQ lists
+   some). Close the private window without signing out: signing out
+   would end the login the file holds.
+2. **Box → Shut down** the box. Put its SD card in the computer and copy
+   `cookies.txt` onto the part the computer opens (`bootfs`). Put the
+   card back and start the box.
+3. In **Settings → Advanced → Anti-Bot**, type `/boot/firmware/cookies.txt`
+   under **Cookie File**, save, and restart Curatables when the page
+   asks.
+
+The login runs out after a while; when HD videos come out at 360p
+again, repeat steps 1 and 2. To stop, clear **Cookie File** and delete
+the file from the card.
+
 **A kid sees "Getting your video ready…" for a long time.**
 Its file is not on the box, so it is downloading again. Videos are kept
 unless you turned on **Settings → Freeing up space**; then a video nobody
