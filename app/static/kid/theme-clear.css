@@ -23,3 +23,7 @@
 .muted, .muted-2, .page-info, .comment-meta, .reaction-label { color: #000; }
 @media (min-width: 600px) { .video-card { width: 48%; } }
 @media (min-width: 900px) { .video-card { width: 31.3%; } }
+@supports (display: grid) {
+  @media (min-width: 600px) { .video-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .video-grid { grid-template-columns: repeat(3, 1fr); } }
+}
