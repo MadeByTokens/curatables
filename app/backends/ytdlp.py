@@ -45,6 +45,7 @@ class YtdlpBackend(VideoBackend):
         self.impersonate = impersonate
         self.cache_dir = cache_dir
         self._local = threading.local()
+        self._cookies_copied_from: tuple[int, int] | None = None
 
     @classmethod
     def from_config(cls, config: Config) -> YtdlpBackend:
@@ -144,10 +145,38 @@ class YtdlpBackend(VideoBackend):
             except Exception as e:
                 logger.info("Browser impersonation unavailable (%s); continuing without it", e)
         if self.cookies_file:
-            opts["cookiefile"] = self.cookies_file
+            cookiefile = self._writable_cookies()
+            if cookiefile:
+                opts["cookiefile"] = cookiefile
         elif self.cookies_from_browser:
             opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
         return opts
+
+    def _writable_cookies(self) -> str:
+        """The cookies file to give yt-dlp: a private copy in the cache
+        folder, made again whenever the parent's file changes, because
+        yt-dlp writes cookies back to its file when it finishes. '' when
+        the parent's file cannot be read."""
+        source = Path(self.cookies_file)
+        if self.cache_dir is None:
+            return str(source)
+        copy = self.cache_dir / "cookies.txt"
+        try:
+            st = source.stat()
+            signature = (st.st_mtime_ns, st.st_size)
+            if signature != self._cookies_copied_from or not copy.exists():
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                tmp = copy.with_name(f"cookies.{threading.get_ident()}.tmp")
+                fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "wb") as f:
+                    f.write(source.read_bytes())
+                os.replace(tmp, copy)
+                self._cookies_copied_from = signature
+        except OSError as e:
+            logger.warning("Cookie file %s cannot be read (%s); going on without cookies",
+                           self.cookies_file, e)
+            return ""
+        return str(copy)
 
     def _blocked(self, url: str) -> bool:
         """True (with last_error set) when url points at the home network

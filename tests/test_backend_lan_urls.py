@@ -42,6 +42,30 @@ def test_yt_dlp_caches_in_the_data_folder(tmp_path):
     assert opts["cachedir"] == str(tmp_path / "cache" / "yt-dlp")
 
 
+def test_a_read_only_cookies_file_is_used_through_a_writable_copy(tmp_path):
+    import os
+    source = tmp_path / "cookies.txt"
+    source.write_text("# Netscape HTTP Cookie File\n")
+    source.chmod(0o444)
+    backend = YtdlpBackend(cookies_file=str(source), cache_dir=tmp_path / "cache")
+    copy = backend._base_opts()["cookiefile"]
+    assert copy == str(tmp_path / "cache" / "cookies.txt")
+    assert open(copy).read() == "# Netscape HTTP Cookie File\n"
+    assert oct(os.stat(copy).st_mode & 0o777) == "0o600"
+    with open(copy, "a") as f:
+        f.write("yt-dlp wrote this\n")
+    assert "yt-dlp wrote" in open(backend._base_opts()["cookiefile"]).read()
+    source.chmod(0o644)
+    source.write_text("# Netscape HTTP Cookie File\n# a new login\n")
+    assert "a new login" in open(backend._base_opts()["cookiefile"]).read()
+
+
+def test_a_missing_cookies_file_means_no_cookies_not_failed_downloads(tmp_path, caplog):
+    backend = YtdlpBackend(cookies_file=str(tmp_path / "gone.txt"), cache_dir=tmp_path / "cache")
+    assert "cookiefile" not in backend._base_opts()
+    assert "going on without cookies" in caplog.text
+
+
 def test_a_failed_subtitle_does_not_fail_the_video(monkeypatch, tmp_path):
     import yt_dlp
     runs = []
