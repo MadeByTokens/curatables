@@ -26,8 +26,9 @@ Lucía. The videos are free films (see the
 ![Who's watching? Leo, Lucía and Mia](img/kid-who-is-watching.webp)
 
 **Some kids have a secret.** Tap your three pictures in the right order.
+Each one shows for a moment, then hides, so nobody else can see it.
 
-![Mia taps her secret pictures: dog, frog, then one more](img/kid-picture-pin.webp)
+![Mia's secret pictures: the first is hidden, the frog shows for a moment](img/kid-picture-pin.webp)
 
 Or tap your numbers, then ✓. Got it wrong? Just try again.
 
