@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from starlette.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
 
 from app.config import load_config, ensure_directories
 from app.db.connection import create_connection, get_db_path
@@ -143,6 +143,11 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     templates.env.filters["fromjson"] = _fromjson
 
     app.mount("/static", StaticFiles(directory=os.path.join(_APP_DIR, "static")), name="static")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        return FileResponse(os.path.join(_APP_DIR, "static", "icons", "favicon.ico"),
+                            headers={"Cache-Control": "public, max-age=86400"})
 
     # Middleware order: each add_middleware() (and @app.middleware) wraps
     # everything added before it, so the one added last sees a request

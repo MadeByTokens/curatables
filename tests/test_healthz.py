@@ -76,3 +76,8 @@ class TestHealthz:
         # and uptime alongside the failure.
         assert body["version"] == __version__
         assert body["uptime_seconds"] is not None
+
+
+def test_the_icon_is_also_at_the_address_browsers_try_first(client):
+    resp = client.get("/favicon.ico")
+    assert resp.status_code == 200 and resp.content[:4] == b"\x00\x00\x01\x00"
