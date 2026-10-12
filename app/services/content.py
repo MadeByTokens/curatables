@@ -459,6 +459,18 @@ class ContentService:
     def list_channels(self):
         return self.channel_repo.list()
 
+    def already_in_library(self, videos: list[VideoMetadata]) -> dict[str, str]:
+        """For each preview the library already has: its raw id and how the
+        library shows it, the title and, when it has one, the channel."""
+        found: dict[str, str] = {}
+        for meta in videos:
+            video = self.video_repo.get(make_video_id(meta.extractor, meta.video_id))
+            if video is None:
+                continue
+            channel = self.channel_repo.get(video.channel_id) if video.channel_id else None
+            found[meta.video_id] = f"{video.title} ({channel.name})" if channel else video.title
+        return found
+
     def resolve_channel(self, channel_id_str: str,
                         new_channel_name: str) -> int | None:
         """Resolve a channel selection: create new or use existing."""

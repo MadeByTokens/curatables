@@ -177,6 +177,7 @@ async def import_submit(request: Request,
         "source_title": payload.channel_name or "Imported list",
         "channels": channels_svc.list(),
         "default_resolution": content.config.storage.default_resolution,
+        "in_library": content.already_in_library(videos),
         "import_context": {
             "format": payload.source_format,
             "failed_count": len(failed),

@@ -613,3 +613,17 @@ def test_playlist_listings_leave_out_videos_that_are_gone():
     assert [m.title for m in metas] == ["Five Little Ducks"]
     elsewhere = _entries_to_metadata([{"id": "v1"}], parent_extractor="vimeo")
     assert [m.title for m in elsewhere] == ["Untitled video"]
+
+
+def test_review_leaves_out_a_video_the_library_already_has(app, authed_client, backend):
+    from app.models import Video
+    from app.repositories import ChannelRepository, VideoRepository
+    conn = _conn(app)
+    songs = ChannelRepository(conn).create("Songs")
+    VideoRepository(conn).insert(Video(
+        video_id="youtube_aaaaaaaaaaa", extractor="youtube", title="My counting song",
+        original_title="Counting to ten", channel_id=songs, status="active", download_status="ready"))
+    conn.commit()
+    page = authed_client.post("/parent/add", data={"url": "https://youtu.be/aaaaaaaaaaa"}).text
+    assert "Already in your library, so left out" in page and "My counting song (Songs)" in page
+    assert "nothing new to add" in page and "watched_aaaaaaaaaaa" not in page

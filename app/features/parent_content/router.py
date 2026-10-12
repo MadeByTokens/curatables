@@ -125,6 +125,7 @@ def add_fetch(request: Request,
         "source_title": source_title,
         "channels": channels,
         "default_resolution": content.config.storage.default_resolution,
+        "in_library": content.already_in_library(videos),
     })
 
 

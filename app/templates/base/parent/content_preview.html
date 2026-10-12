@@ -8,15 +8,28 @@
 <p>{{ videos|length }} video(s) from {{ url_type }}: <strong>{{ source_title }}</strong></p>
 {% endif %}
 
-{% set is_multi = videos|length > 1 %}
+{% set in_library = in_library or {} %}
+{% set new_videos = videos|rejectattr("video_id", "in", in_library)|list %}
+{% set is_multi = new_videos|length > 1 %}
+
+{% if in_library %}
+<div class="flash flash-info mw-600">
+  <p class="mt-0 mb-8">Already in your library, so left out:</p>
+  <ul class="mt-0 mb-8">
+    {% for title in in_library.values() %}<li>{{ title }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if new_videos %}
 
 {% if is_multi %}
 <div class="review-player" id="review-player">
   <div class="placeholder">Pick a video below and press <strong>Watch &#9654;</strong></div>
 </div>
 <div class="review-current" id="review-current">No video loaded</div>
-<div class="review-progress" id="review-progress" data-total="{{ videos|length }}" hidden>
-  <span id="review-count">0 of {{ videos|length }} watched</span>
+<div class="review-progress" id="review-progress" data-total="{{ new_videos|length }}" hidden>
+  <span id="review-count">0 of {{ new_videos|length }} watched</span>
   <button type="button" class="btn btn-sm btn-secondary" id="next-unwatched">Next not watched &#9654;</button>
 </div>
 {% endif %}
@@ -59,7 +72,7 @@
     </div>
   </div>
 
-  {% for v in videos %}
+  {% for v in new_videos %}
   {% set composite_id = make_video_id(v.extractor, v.video_id) %}
   {% set embed = embed_url_for(v.extractor, v.video_id, v.original_url) %}
   <div class="review-card" id="card-{{ v.video_id }}">
@@ -148,7 +161,7 @@
 
   <div class="mt-24">
     <button type="submit" id="add-btn" class="btn" disabled>
-      Add {{ videos|length }} video(s)
+      Add {{ new_videos|length }} video(s)
     </button>
     <a href="{{ '/parent/requests' if wish else '/parent/add' }}" class="ml-12">Cancel</a>
     <div id="add-btn-hint" class="d-ib ml-12 muted fs-13">
@@ -158,4 +171,7 @@
 </form>
 
 <script src="/static/parent/content_preview.js?v={{ asset_v }}"></script>
+{% else %}
+<p class="mt-24">There is nothing new to add. <a href="/parent/add">Add something else</a>.</p>
+{% endif %}
 {% endblock %}
