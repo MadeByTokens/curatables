@@ -9,6 +9,8 @@
   var max = parseInt(pad.getAttribute('data-max'), 10) || 6;
   var autoSubmit = pad.getAttribute('data-auto-submit') === '1';
   var shown = [];
+  var SHOW_MS = 900;
+  var hideTimer = null;
 
   document.documentElement.className += ' js';
   input.setAttribute('readonly', 'readonly');
@@ -26,10 +28,13 @@
     var d = el.getAttribute('data-digit');
     if (d === 'back') {
       input.value = input.value.substring(0, input.value.length - 1);
-      shown.length = input.value.length;
+      shown = [];
     } else if (input.value.length < max) {
       input.value += d;
+      shown = [];
       shown[input.value.length - 1] = el.getAttribute('data-show');
+      if (hideTimer) { clearTimeout(hideTimer); }
+      hideTimer = setTimeout(function () { shown = []; render(); }, SHOW_MS);
     }
     render();
     if (autoSubmit && d !== 'back' && input.value.length === max) {
