@@ -13,6 +13,7 @@
   <div class="help-grid">
     {{ tile("&#127968;"|safe, _("Home shows all your videos")) }}
     {{ tile("&#127916;"|safe, _("Tap a video to watch it")) }}
+    {{ tile("&#9654;&#65039;"|safe, _("Stopped in the middle? Tap Carry on next time")) }}
     {% if viewer and viewer.is_child and viewer.allow_reactions %}
     {{ tile("&#128522;"|safe, _("Tap a face to say how you liked it")) }}
     {% endif %}
@@ -21,6 +22,12 @@
     {% endif %}
     {% if viewer and viewer.search_mode != 'disabled' %}
     {{ tile("&#128269;"|safe, _("Search for videos")) }}
+    {% endif %}
+    {% if viewer and viewer.is_child and viewer.allow_tags %}
+    {{ tile("&#127991;&#65039;"|safe, _("Put a word on a video to find it again")) }}
+    {% endif %}
+    {% if viewer and viewer.is_child and viewer.allow_wishlist %}
+    {{ tile("&#128301;"|safe, _("Ask for a new video")) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_upload %}
     {{ tile("&#128228;"|safe, _("Upload a video")) }}

@@ -1,5 +1,6 @@
 """Kid UI: per-profile feature switches, reactions, navigation and pages."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.dependencies import get_db
@@ -151,3 +152,13 @@ def test_pages_declare_the_app_icon(client):
         assert 'href="/static/icons/favicon.ico"' in client.get(path).text
     icon = client.get("/static/icons/favicon.ico")
     assert icon.status_code == 200 and icon.content[:4] == b"\x00\x00\x01\x00"
+
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_help_lists_only_what_the_kid_can_do(app, allowed):
+    _, kid, _ = _setup(app, allow_tags=allowed, allow_wishlist=allowed)
+    page = kid.get("/help").text
+    assert "Carry on" in page
+    assert ("Put a word on a video" in page) is allowed
+    assert ("Ask for a new video" in page) is allowed
