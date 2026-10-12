@@ -21,3 +21,5 @@
 .channel-link { font-size: 18px; border: 2px solid #000; }
 .reaction-btn { font-size: 30px; border-color: #000; }
 .muted, .muted-2, .page-info, .comment-meta, .reaction-label { color: #000; }
+@media (min-width: 600px) { .video-card { width: 48%; } }
+@media (min-width: 900px) { .video-card { width: 31.3%; } }
