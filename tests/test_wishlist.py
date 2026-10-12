@@ -256,6 +256,8 @@ def test_rejected_video_is_hidden_from_that_kid(app, client, authed_client, back
     client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
     item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
     assert authed_client.post(f"/parent/requests/{item.id}/reject").status_code == 303
+    decided = authed_client.get("/parent/requests").text.split("Recently decided")[1]
+    assert f'href="{item.url}"' in decided and "/parent/content/" not in decided
     page = client.get("/wishlist", params={"q": "songs"}).text
     assert "Counting to ten</span>" not in page.split("What I asked for")[0]
     assert "Not this time" in page
