@@ -133,6 +133,7 @@ def _finish_first_boot_wizard(user: str) -> None:
         return
     runner.run(["cancel-rename", user], timeout=60)
     runner.run(["systemctl", "stop", "userconfig.service"], timeout=30)
+    runner.run(["systemctl", "reset-failed", "userconfig.service"])
 
 
 @action("ssh_set")

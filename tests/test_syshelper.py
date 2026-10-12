@@ -209,6 +209,7 @@ def test_setting_the_password_closes_the_first_boot_user_dialog(fake):
     accounts.account_set_password({"password": "a long password"})
     assert fake.ran("cancel-rename", "admin")
     assert fake.ran("systemctl", "stop", "userconfig.service")
+    assert fake.ran("systemctl", "reset-failed", "userconfig.service")
 
 
 @pytest.mark.parametrize("password", ["short", "two\nlines", "x" * 1025])
