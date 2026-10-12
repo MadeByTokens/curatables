@@ -22,11 +22,12 @@ ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-RestrictAddressFamilies=AF_INET AF_NETLINK AF_UNIX
+RestrictAddressFamilies=AF_INET AF_NETLINK AF_PACKET AF_UNIX
 RestrictNamespaces=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-CapabilityBoundingSet=
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
 MemoryMax=48M
 
 [Install]

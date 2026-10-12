@@ -50,6 +50,12 @@ only `CAP_NET_BIND_SERVICE` (port 80), `NoNewPrivileges`,
 single `ReadWritePaths`, `PrivateTmp`, and restricted address families.
 `MemoryDenyWriteExecute` is off because Deno may JIT.
 
+`curatables-mdns-unicast.service` runs as a dynamic user with only
+`CAP_NET_RAW`: it reads mDNS queries through a packet socket, whose
+kernel filter passes nothing but UDP to 224.0.0.251:5353, and sends one
+A record back to the asker's hardware address. It has no file access
+(`ProtectSystem=strict`, `ProtectHome`, `PrivateDevices`).
+
 The image enables SSH but bakes no login password: the flasher sets the
 login user in Raspberry Pi Imager. Wi-Fi credentials are read from
 `curatables-wifi.txt` on the FAT boot partition by

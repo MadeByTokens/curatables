@@ -28,7 +28,9 @@ PyPI or Docker release.
   and disconnects Wi-Fi; unplugging the cable brings Wi-Fi back. A Wi-Fi
   network that doesn't show up in a scan is tried once as hidden.
 - `curatables.local` works behind routers that drop multicast on Wi-Fi:
-  the Pi also answers the lookup directly to the device that asked.
+  the Pi also answers the lookup directly to the device that asked, by
+  its hardware address, so it works on the first try after a restart
+  even when the router drops broadcasts too.
 - Pi image, everything from the dashboard: a new **Box** section changes
   the Linux login password and SSH, switches Wi-Fi (testing the new
   network first and going back if it fails), and restarts Curatables,
