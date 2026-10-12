@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.dependencies import get_db
 from app.models import Profile, Video
 from app.repositories import ChannelRepository, ProfileRepository, VideoRepository
-from app.template_utils import friendly_date
+from app.template_utils import excerpt, friendly_date
 
 
 def _setup(app, **flags):
@@ -103,6 +103,16 @@ def test_friendly_date():
     assert friendly_date("2026-10-05", today) == "3 days ago"
     assert friendly_date("2026-09-01", today) == "1 Sep 2026"
     assert friendly_date("", today) == ""
+
+
+def test_long_descriptions_end_at_a_sentence_or_a_word():
+    text = "Koro the llama is hungry. " * 10 + "The penguin wants the last berry too"
+    short = excerpt(text, 100)
+    assert short.endswith("hungry.") and len(short) <= 100
+    words = "llama " * 40
+    assert excerpt(words, 50) == ("llama " * 8).rstrip() + "…"
+    assert excerpt("Short.", 500) == "Short."
+    assert excerpt(None, 500) == ""
 
 
 def test_kid_upload_xhr_gets_json(app):

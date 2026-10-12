@@ -83,7 +83,7 @@
   {% endif %}
 
   {% if video.description %}
-  <div class="description">{{ video.description[:500] }}</div>
+  <div class="description">{{ video.description|excerpt(500) }}</div>
   {% endif %}
 
   {% if (kid and viewer.allow_comments) or (viewer and viewer.is_parent) %}

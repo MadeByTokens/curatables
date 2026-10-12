@@ -79,6 +79,19 @@ def friendly_download_error(raw: str | None) -> str:
     return "The download failed. Press Retry; if it keeps failing, update yt-dlp in Settings."
 
 
+def excerpt(text: str | None, limit: int) -> str:
+    """text cut to at most limit characters: at the end of a sentence when
+    one ends in the second half, else at a word with "…" added."""
+    if not text or len(text) <= limit:
+        return text or ""
+    cut = text[:limit]
+    sentence_end = max(cut.rfind(mark) for mark in (". ", "! ", "? ", "\n"))
+    if sentence_end >= limit // 2:
+        return cut[:sentence_end + 1].rstrip()
+    space = cut.rfind(" ")
+    return (cut[:space] if space > 0 else cut).rstrip() + "…"
+
+
 @pass_context
 def _friendly_date_filter(ctx, value: str | None) -> str:
     return friendly_date(value, lang=context_language(ctx))
@@ -91,6 +104,7 @@ def register_filters(templates: Jinja2Templates) -> None:
     templates.env.globals["js_messages"] = js_messages
     templates.env.globals["kid_languages"] = LANGUAGES
     templates.env.filters["friendly_download_error"] = friendly_download_error
+    templates.env.filters["excerpt"] = excerpt
     templates.env.globals["asset_v"] = _asset_version()
     templates.env.globals["kid_themes"] = [key for key, _label in THEME_CHOICES if key != "base"]
 
