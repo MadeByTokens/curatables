@@ -98,6 +98,10 @@ th {
   text-transform: uppercase;
   color: #666;
 }
+@media (max-width: 600px) {
+  th, td { padding: 8px 6px; }
+  th { font-size: 11px; }
+}
 
 /* === Buttons === */
 
