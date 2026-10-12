@@ -259,6 +259,53 @@ this box (03:00 UTC) is seen to work. The F12 blocker is fixed in the
 image, every Must passed, the log of the run is clean, and the six new
 findings are Minor and fixed.
 
+### Third pass: regression and polish
+
+Same box and family, 2026-10-12 01:30–02:10 UTC, after a deploy of every
+commit since the image. Each fix was checked again in the browser on the
+box (or, where noted, only by tests), and the first round's open
+kid-screen items were done.
+
+| Check | Result |
+|-------|--------|
+| F1 Advanced settings save (and set back) | Pass |
+| F2 Add says "Looking it up…" and disables the button while it looks | Pass |
+| F7 ticking a channel picks "Only the ones ticked here" | Pass |
+| F9, F10 a shared list goes into the chosen new channel; a duplicate is skipped and said so | Pass, then F28 |
+| F11 Import with no drive explains what to do | Pass |
+| F19 the report has no zero bytes, with the power cut's still in the log | Pass |
+| F15 no failed service after setup | Tests only: it needs a new setup |
+| Mia uploads to a channel that is not hers: it waits for the parent; approved, Leo sees it | Pass |
+| A kid's own title (Customize) shows only to that kid | Pass |
+| Console errors on 25 parent and 12 kid pages | None, other than the deliberate 404s |
+| The log of this boot | No warnings or errors |
+| Restart the box from Box again | Back in 43 s; checks green; devices still in their profiles |
+
+| | Severity | Finding | Fix |
+|-|----------|---------|-----|
+| F30 | Major | The kids' error page (old or mistyped link, a crash on the kid side) showed raw template code: `{% include "_icons.html" %} 🙈 {{ _("Oops! …") }}` | Rendered, in the kid's language (`6e0b7ab`) |
+| F26 | Major | With a cookies file the service cannot write (for example on the SD card's boot partition), every lookup and download failed: yt-dlp writes cookies back when it closes | A private copy in the cache folder (`e541133`); checked with a real YouTube lookup |
+| F21 | Minor | A kid with one channel got "All" and that channel as buttons showing the same videos | `ebd6bed` |
+| F22 | Minor | Big & clear kept three 180 px cards a row on a 600 px tablet | Two a row up to 900 px (`dd7ceac`, `e5babfc`) |
+| F23 | Minor | After Send on Find new, the kid was back at the top of the results | Back at the card (`6ad3012`) |
+| F24 | Minor | Decided requests had no link to the video or to YouTube | `d6cde8f` |
+| F25 | Minor | The picture PIN stayed on screen as it was tapped | Each picture shows for 0.9 s (`ade693a`) |
+| F27 | Minor | A parent 404 said "An unexpected error occurred. The details have been logged." | Its own words (`f970606`) |
+| F28 | Minor | Review & Add offered videos the library already has, under YouTube's title | Listed as left out (`ded0183`) |
+| F29 | Minor | `/favicon.ico` was a 404 on pages without the icon link | `12be8a5` |
+
+The FAQ now explains why a few YouTube videos come in 360p and how to
+use a cookies file from a spare account (`6fdb8e5`).
+
+### Verdict after the third pass
+
+**Ready for the release image.** Every finding from the three runs is
+fixed and checked again on the box, except F15 (tests only: it needs a
+new setup) and F26 (checked on the laptop with a real YouTube lookup;
+putting a cookies file on the box was not part of the run). What is left for the
+image built from the final commit: a chroot check, then on the box the
+first nightly backup, and Diagnostics right after setup (F15).
+
 ### Open
 
 - **The journal is kept in memory** (on purpose: it spares the SD card),
@@ -270,7 +317,5 @@ findings are Minor and fixed.
   the parent to read it first (`73415fd`).
 - **Carry on watching** is kept on each device, so it does not follow a
   kid to another device.
-- **The picture PIN shows the pictures as they are tapped**, so a sibling
-  watching can learn it. Kid-screen polish for after 0.5.0.
-- **Higher quality for every video** (PO token options): the solver-only
-  setup stays; explaining the cookies option in the docs is still to do.
+- **Higher quality for every video:** the solver-only setup stays; the
+  FAQ explains the cookies option and its risks.
