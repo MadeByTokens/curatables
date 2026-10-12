@@ -162,3 +162,11 @@ def test_help_lists_only_what_the_kid_can_do(app, allowed):
     assert "Carry on" in page
     assert ("Put a word on a video" in page) is allowed
     assert ("Ask for a new video" in page) is allowed
+
+
+def test_one_channel_needs_no_channel_buttons(app):
+    conn, kid, _ = _setup(app)
+    assert 'class="channel-nav"' not in kid.get("/").text
+    ChannelRepository(conn).create("Planes")
+    conn.commit()
+    assert 'class="channel-nav"' in kid.get("/").text

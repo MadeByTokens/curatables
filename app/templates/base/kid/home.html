@@ -32,7 +32,7 @@
 </div>
 {% endif %}
 
-{% if channels %}
+{% if channels|length > 1 %}
 <nav class="channel-nav" aria-label="{{ _('Channels') }}">
   <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>{{ _("All") }}</a>
   {% for ch in channels %}
