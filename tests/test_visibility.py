@@ -77,13 +77,14 @@ def test_kid_nav_hides_non_whitelisted_channels(app):
     conn = _conn(app)
     channels = ChannelRepository(conn)
     allowed = channels.create("Trains")
+    also = channels.create("Boats")
     channels.create("Secret Grownup Channel")
     _video(conn, "yt_train", allowed, "Train clip")
-    pid = _kid(conn, "dan", allowed=[allowed])
+    pid = _kid(conn, "dan", allowed=[allowed, also])
 
     kid = _as_kid(app, pid)
     home = kid.get("/")
-    assert "Trains" in home.text
+    assert "Trains" in home.text and "Boats" in home.text
     assert "Secret Grownup Channel" not in home.text
 
 
