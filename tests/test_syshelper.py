@@ -630,6 +630,16 @@ def test_report_carries_the_weeks_warnings_from_every_app_log(fake, monkeypatch)
     assert problems.index("download failed") < problems.index("disk getting full")
 
 
+def test_report_drops_the_zero_bytes_a_power_cut_leaves_in_the_app_log(fake, monkeypatch):
+    monkeypatch.setattr(diagnostics, "_tcp", lambda host, port, timeout=5: "")
+    logs = SETTINGS.data_dir / "logs"
+    logs.mkdir()
+    (logs / "curatables.log").write_bytes(b"before the cut\n" + b"\0" * 86 + b"after the restart\n")
+    report = diagnostics.build_report()
+    assert "\0" not in report
+    assert "before the cut\nafter the restart" in report
+
+
 def test_config_edits_refuse_a_config_that_is_a_symlink(fake, tmp_path):
     victim = tmp_path / "other.json"
     victim.write_text('{"parent": {"password_hash": "x"}}')

@@ -286,7 +286,7 @@ def _app_log_sections() -> str:
     for name in [f"curatables.log.{n}" for n in range(APP_LOG_BACKUPS, 0, -1)] + ["curatables.log"]:
         text = safefs.read_owned(log_dir / name, uid)
         if text is not None:
-            lines.extend(text.splitlines())
+            lines.extend(line for line in text.replace("\0", "").splitlines() if line)
     if not lines:
         return ""
     problems = app_log_problems(lines, time.time() - APP_LOG_PROBLEM_DAYS * 86400)
