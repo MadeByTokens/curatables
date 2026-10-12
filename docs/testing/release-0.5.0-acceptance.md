@@ -306,6 +306,21 @@ putting a cookies file on the box was not part of the run). What is left for the
 image built from the final commit: a chroot check, then on the box the
 first nightly backup, and Diagnostics right after setup (F15).
 
+### The release image
+
+- **Nightly backup on the box:** the timer's first run, 2026-10-12 03:00
+  UTC, finished with `Result=success` and saved a 208 KB snapshot (the
+  failure in F12 left an empty file). That closes F12.
+- **Image** `image_2026-10-12-curatables.img.xz` from `32824f6`
+  (SHA-256 `74e688d6…5fe442c2c`), checked in a chroot: all 430 shipped
+  files match the commit, the systemd units match the repo, no stray
+  private files or local addresses, the admin account locked until
+  setup; first-run setup, the Box pages, the kids' 404 page (rendered),
+  `/favicon.ico` and the diagnostics report (no passwords, no zero
+  bytes, the week's warnings section) all work, with no server errors.
+- **Still to do on real hardware:** flash it, run setup, and check that
+  Diagnostics is all green right after setup (F15).
+
 ### Open
 
 - **The journal is kept in memory** (on purpose: it spares the SD card),
