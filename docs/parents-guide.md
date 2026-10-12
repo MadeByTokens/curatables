@@ -131,7 +131,8 @@ open it again.
    until you tick only some. A PIN is optional.
 4. **Set up the tablet.** On the kid's tablet, open the kid address
    shown on the **Kids** page (or scan its QR code with the camera) and
-   add it to the home screen. To keep your child inside it, see
+   add it to the home screen (on an iPad, use Safari; see the
+   [FAQ](faq.md#getting-connected)). To keep your child inside it, see
    [What you still need to do on the device](safety-model.md#what-you-still-need-to-do-on-the-device).
 
 The dashboard's **Help** page has more tips.

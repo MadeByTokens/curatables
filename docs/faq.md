@@ -15,6 +15,25 @@ type commands on the box (over SSH). Setup problems are in the
   number address (next question).
 - If a Windows computer can't open it, use the number address too.
 
+**My browser says the box is "Not secure".**
+The box sends plain web pages (`http://`), not padlocked ones
+(`https://`): a padlock needs a certificate from the internet, and the
+box stays inside your home. The warning means only that the pages are
+not encrypted on their way across your home network. At home that is
+fine, because nobody outside your network can reach the box. Browsers
+word this differently, and some warn on the parent password box or show
+a warning page before opening the box; you can carry on to the box.
+Don't open the parent dashboard on shared Wi-Fi (an apartment network,
+a hotspot), where someone else on the network could copy your login
+([threat-model.md](threat-model.md#session-theft-on-the-lan)).
+
+**The box opens in Safari but not in another browser on an iPad or iPhone.**
+On an iPad or iPhone, browsers other than Safari need your permission
+to reach devices on your home network, and they ask for it the first
+time. If that was refused, the box never loads in that browser. Turn
+it back on in the iPad's **Settings**, on the browser's own page (look
+for **Local Network**). Or use Safari, which needs no permission.
+
 **How do I find the box's number address?**
 Look in your router's list of connected devices for `curatables`, then
 browse to `http://<that address>/` (like `http://192.168.1.50/`; add
@@ -29,7 +48,9 @@ network & power** switches Wi-Fi without the SD card.
 
 **How do I put it on the kid's tablet like an app?**
 The **Kids** page shows the kid address and a QR code; point the tablet's
-camera at it to open the address. iPad: open the kid address in Safari → **Share → Add to Home Screen**.
+camera at it to open the address. iPad: open the kid address in Safari
+(other browsers need a permission first, see above) → **Share → Add to
+Home Screen**.
 Android: Chrome menu → **Add to Home screen**. To keep the child inside
 it, see [safety-model.md → What you still need to do on the
 device](safety-model.md#what-you-still-need-to-do-on-the-device).
