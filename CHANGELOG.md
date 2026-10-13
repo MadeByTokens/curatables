@@ -1,14 +1,21 @@
 # Changelog
 
-Shipped feature history by development milestone. The forward-looking
-roadmap (v0.6+) lives in [README.md](README.md#roadmap); the design
-rationale for each area lives under [docs/](docs/README.md).
+Shipped feature history. The forward-looking roadmap lives in
+[README.md](README.md#roadmap); the design rationale for each area lives
+under [docs/](docs/README.md).
 
-The "Unreleased" sections are development milestones. Tagged GitHub
-releases are what Pi boxes install from **Box → Updates**; there is no
-PyPI or Docker release.
+Tagged GitHub releases are what Pi boxes install from **Box → Updates**;
+there is no PyPI or Docker release. The sections below v0.6.0 are the
+development milestones up to the first public release, v0.1.0 (whose
+code already called itself 0.5.0).
 
-## Unreleased — Import from a drive
+## v0.6.0
+
+The first release since v0.1.0. Boxes on v0.1.0 can't install it from
+the dashboard (that release only updates the downloader): flash the new
+image. Later releases install from **Box → Updates**.
+
+### Import from a drive
 
 **New for parents**
 - Import page: browse a drive, pick movies, episodes or home videos, check
@@ -76,7 +83,7 @@ PyPI or Docker release.
 - First boot: Wi-Fi is saved as a NetworkManager profile and retried
   until the network shows up, with a log on the boot partition.
 
-## Unreleased — Wishlist, languages, picture PIN and hardening
+### Wishlist, languages, picture PIN and hardening
 
 **New for kids and parents**
 - Kids can ask for new videos (off by default per kid): a Find new page
@@ -109,7 +116,7 @@ PyPI or Docker release.
   for an open network with no psk line; the wheel was missing the
   migrations and schema.
 
-## Unreleased — Safety, Raspberry Pi robustness and a simpler kid screen
+### Safety, Raspberry Pi robustness and a simpler kid screen
 
 **Child safety**
 - Channel restriction is an explicit per-profile flag and fails closed:

@@ -8,7 +8,7 @@ mitigate today.
 
 ## Supported versions
 
-Curatables is pre-1.0 (`pyproject.toml` says 0.5.0). Security fixes land
+Curatables is pre-1.0 (`pyproject.toml` says 0.6.0). Security fixes land
 on `main` and ship in the next GitHub release, which Pi boxes install
 from **Box → Updates**; `scripts/install.sh --systemd` installs from a
 checkout. There are no LTS branches or backports: the fix is "update"

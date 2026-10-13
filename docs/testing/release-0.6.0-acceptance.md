@@ -1,16 +1,20 @@
-# Release acceptance: 0.5.0 on a real box
+# Release acceptance: 0.6.0 on a real box
 
-The last check before 0.5.0 is published. One family uses the box the
+The tests ran while the code still called itself 0.5.0; the release
+was renumbered 0.6.0 afterwards. Screen text quoted below keeps the
+number the box showed at the time.
+
+The last check before 0.6.0 is published. One family uses the box the
 way real families will, only through the browser: a parent sets it up,
 looks after it for a few "weeks", and two children use it every day.
 Nothing is checked from code or the command line; the Python test suite
 covers the code and its logic. This run follows
-[release-0.5.0-ux.md](release-0.5.0-ux.md) (the first round, kid and
+[release-0.6.0-ux.md](release-0.6.0-ux.md) (the first round, kid and
 parent screens) and adds everything a parent does to look after the box.
 
 ## When we can release
 
-0.5.0 can be published when, after the run:
+0.6.0 can be published when, after the run:
 
 1. every **Must** scenario below passed;
 2. no **Blocker** or **Major** finding is open (fixed and re-checked on

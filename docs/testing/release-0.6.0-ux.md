@@ -1,4 +1,8 @@
-# Release test: 0.5.0 UX on a real box
+# Release test: 0.6.0 UX on a real box
+
+The tests ran while the code still called itself 0.5.0; the release
+was renumbered 0.6.0 afterwards. Screen text quoted below keeps the
+number the box showed at the time.
 
 A scripted, real-world-style walk through Curatables before the first
 public release: one parent and two children, each on their own device,
