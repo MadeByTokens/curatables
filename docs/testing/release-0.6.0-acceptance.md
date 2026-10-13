@@ -325,6 +325,33 @@ first nightly backup, and Diagnostics right after setup (F15).
 - **Still to do on real hardware:** flash it, run setup, and check that
   Diagnostics is all green right after setup (F15).
 
+### After flashing: `curatables.local` after a restart
+
+- **F31 (Major): `curatables.local` failed on the first try after the
+  box restarted** and worked once the laptop had opened the box's
+  number address. Captures on the Wi-Fi laptop showed the router (a
+  Netgear R7000) delivering no multicast or broadcast to Wi-Fi at the
+  time: 16 lookups went unanswered, because the box's direct answer
+  waited for an ARP reply that never came. Fixed in `4808dfa`: the
+  helper answers to the asker's hardware address, with no ARP. On the
+  box, after a restart, the answer reached the laptop 4 ms after the
+  question, with no ARP from the box, and the parent confirmed it after
+  restarting the box themselves. The same router later delivered
+  multicast again, so the fault comes and goes.
+- **Renumbered 0.6.0** (`931792d`): the June release v0.1.0 already
+  called itself 0.5.0.
+- **Image** `image_2026-10-13-curatables.img.xz` from `931792d`
+  (SHA-256 `9382afd3…3731a2ff2517bab8e363b42f2e8b06`), checked in a
+  chroot: all 430 shipped files match the commit, the systemd units
+  match the repo (the name helper's grants only `CAP_NET_RAW`), the
+  version is 0.6.0, the name helper runs on the image's Python, no stray
+  private files, the admin account locked until setup; first-run setup,
+  the Box pages, the kids' 404 page, `/favicon.ico` and the diagnostics
+  report all work, with no server errors.
+- **Still to do on real hardware:** flash it, run setup, check that
+  Diagnostics is all green right after setup (F15), and that
+  `curatables.local` answers on the first try after a restart.
+
 ### Open
 
 - **The journal is kept in memory** (on purpose: it spares the SD card),
