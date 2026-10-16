@@ -111,6 +111,14 @@ class WishlistRepository(BaseRepository):
             (status, limit)).fetchall()
         return [self._to_model(r) for r in rows]
 
+    def list_decided(self, limit: int = 20) -> builtins.list[WishlistRequest]:
+        """Approved and rejected requests, the latest decision first."""
+        rows = self.db.execute(
+            f"{self._SELECT} WHERE w.status IN ('approved', 'rejected') "
+            "ORDER BY w.decided_at DESC, w.id DESC LIMIT ?",
+            (limit,)).fetchall()
+        return [self._to_model(r) for r in rows]
+
     def count_pending(self) -> int:
         row = self.db.execute(
             "SELECT COUNT(*) AS n FROM wishlist_requests WHERE status = 'pending'").fetchone()

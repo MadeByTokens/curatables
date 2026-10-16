@@ -7,6 +7,10 @@ description and channel the kid chose; watch it and change anything you like. <s
 searches for good.</p>
 
 {% if pending %}
+  {% if pending_total > pending|length %}
+  <p class="muted mt-16">Showing the oldest {{ pending|length }} of {{ pending_total }} requests.
+  The next ones appear as you decide these.</p>
+  {% endif %}
   {% for w in pending %}
   <div class="card">
     <div class="thumb"><img src="/media/thumb/{{ w.video_id }}" alt=""></div>

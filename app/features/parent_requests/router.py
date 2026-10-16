@@ -25,8 +25,8 @@ def requests_page(request: Request,
     return request.app.state.templates.TemplateResponse(request, "parent/requests.html", {
         "request": request,
         "pending": repo.list_by_status("pending"),
-        "decided": (repo.list_by_status("approved", limit=10)
-                    + repo.list_by_status("rejected", limit=10)),
+        "pending_total": repo.count_pending(),
+        "decided": repo.list_decided(),
     })
 
 

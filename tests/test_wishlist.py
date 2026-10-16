@@ -1,4 +1,6 @@
 """Kid wishlist: server-side YouTube search, filtered, approved by a parent."""
+import re
+
 import pytest
 
 from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoMetadata
@@ -263,6 +265,33 @@ def test_rejected_video_is_hidden_from_that_kid(app, client, authed_client, back
     assert "Not this time" in page
     again = client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"}).text
     assert "not this one" in again
+
+
+def test_recently_decided_shows_the_latest_decisions(app, client, authed_client, backend):
+    pid = _kid(app, client)
+    conn = _conn(app)
+    repo = WishlistRepository(conn)
+    for i in range(30):
+        raw = f"v{i:010d}"
+        rid = repo.add(pid, f"youtube_{raw}", _meta(raw, f"Video {i}"), f"https://example.com/{raw}")
+        repo.decide(rid, "approved" if i % 2 else "rejected")
+        conn.execute("UPDATE wishlist_requests SET decided_at = datetime('now', ?) WHERE id = ?",
+                     (f"-{30 - i} minutes", rid))
+    conn.commit()
+    decided = authed_client.get("/parent/requests").text.split("Recently decided")[1]
+    shown = re.findall(r"Video (\d+)\b", decided)
+    assert shown == [str(i) for i in range(29, 9, -1)]
+
+
+def test_more_than_a_page_of_requests_says_how_many(app, client, authed_client, backend):
+    pid = _kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    for i in range(105):
+        raw = f"v{i:010d}"
+        repo.add(pid, f"youtube_{raw}", _meta(raw, f"Video {i}"), f"https://example.com/{raw}")
+    page = authed_client.get("/parent/requests").text
+    assert "Showing the oldest 100 of 105 requests." in page
+    assert page.count("/review\"") == 100
 
 
 def test_adding_the_video_approves_the_request(app, client, authed_client, backend):
