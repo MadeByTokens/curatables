@@ -72,3 +72,26 @@ def test_restore_refuses_an_empty_backup(tmp_path):
     proc = subprocess.run(["bash", str(RESTORE), str(empty)], env=env, capture_output=True, text=True, timeout=60)
     assert proc.returncode == 2 and "refusing to restore" in proc.stderr
     assert (data / "db" / "curatables.db").read_bytes() == before
+
+
+def test_a_full_videos_drive_leaves_no_cut_off_backup(tmp_path):
+    media = tmp_path / "drive" / "curatables-library"
+    media.mkdir(parents=True)
+    data = _data(tmp_path, {"media_path": str(media), "drive_backups": True})
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    # cp that runs out of space half way through a copy to the drive.
+    (fake / "cp").write_text(
+        '#!/bin/sh\nfor last; do :; done\n'
+        '[ -d "$last" ] && last="$last/$(basename "$1")"\n'
+        f'case "$last" in {media}/*) head -c 10 "$1" > "$last"; exit 1;; esac\n'
+        'exec /bin/cp "$@"\n')
+    (fake / "cp").chmod(0o755)
+    env = dict(os.environ, CURATABLES_DATA_DIR=str(data), PYTHON=sys.executable, RETAIN="2",
+               PATH=f"{fake}:{os.environ['PATH']}")
+    proc = subprocess.run(["bash", str(SCRIPT), str(tmp_path / "out")], env=env,
+                          capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    assert "could not copy the backup to the videos drive" in proc.stderr
+    assert list((media / "backups").iterdir()) == []
+    assert len(list((tmp_path / "out").glob("curatables-*.db"))) == 1

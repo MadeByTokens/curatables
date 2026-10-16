@@ -144,8 +144,14 @@ class VideoRepository(BaseRepository):
             sql += f"AND channel_id IN ({','.join('?' for _ in channel_ids)}) "
             params.extend(channel_ids)
         word_start = re.compile(r"(?<!\w)" + re.escape(query), re.IGNORECASE)
-        rows = [r for r in self.db.execute(sql + "ORDER BY added_at DESC", params)
-                if word_start.search(r["title"] or "") or word_start.search(r["description"] or "")]
+        # Stop reading once this page is full: a short query matches
+        # most of a large library.
+        rows: builtins.list = []
+        for r in self.db.execute(sql + "ORDER BY added_at DESC", params):
+            if word_start.search(r["title"] or "") or word_start.search(r["description"] or ""):
+                rows.append(r)
+                if len(rows) >= offset + limit:
+                    break
         return [self._to_model(r) for r in rows[offset:offset + limit]]
 
     def insert(self, video: Video) -> None:
@@ -191,6 +197,10 @@ class VideoRepository(BaseRepository):
         self.db.commit()
 
     def delete(self, video_id: str) -> None:
+        """Delete the video with its comments and reactions, which have no
+        foreign key; if the same video is added again it starts clean."""
+        self.db.execute("DELETE FROM comments WHERE video_id = ?", (video_id,))
+        self.db.execute("DELETE FROM reactions WHERE video_id = ?", (video_id,))
         self.db.execute("DELETE FROM videos WHERE video_id = ?", (video_id,))
         self.db.commit()
 

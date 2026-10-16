@@ -26,7 +26,7 @@ from typing import Callable
 
 from app.config import Config
 from app.repositories import ChannelRepository, VideoRepository
-from app.repositories.import_job_repo import ImportJob, ImportJobRepository
+from app.repositories.import_job_repo import ACTIVE_STATES, ImportJob, ImportJobRepository
 from app.services.ffmpeg_runner import (
     CancelToken, Cancelled, Progress, Stalled, run_ffmpeg, tail_log,
 )
@@ -37,7 +37,7 @@ from app.services.import_scan import (
 from app.services.ingest import HASH_CHUNK, IngestService, VideoDetails, upload_video_id
 from app.services.media_probe import MediaProbeService, ProbeError, ProbeResult, UnsupportedCodec
 from app.services.normalize import MediaNormalizer, plan_for
-from app.services.storage import StorageService
+from app.services.storage import StorageService, newest_mtime
 from app.services.subtitles import language_code, to_vtt
 from app.services.thumbnails import ThumbnailService
 
@@ -669,19 +669,30 @@ class ImportWorker:
         for token in tokens:
             token.cancel()
 
-    def sweep(self, conn: sqlite3.Connection) -> int:
-        """Delete job and preview folders no live job owns."""
+    def sweep(self, conn: sqlite3.Connection, idle_hours: float = 0) -> int:
+        """Delete job and preview folders no live job owns. At startup
+        (idle_hours 0) nothing is running; the periodic sweep passes
+        idle_hours so a folder is only removed once untouched that long."""
         repo = ImportJobRepository(conn)
         tmp = self.config.media_dir / "uploads" / ".tmp"
         if not tmp.is_dir():
             return 0
         keep_work = {work_dir_name(j.id) for j in repo.list_states(("working",))}
         keep_preview = {preview_dir_name(j.id) for j in repo.list_states(("draft",))}
+        if idle_hours:
+            keep_work |= {work_dir_name(j.id) for j in repo.list_states(ACTIVE_STATES)}
+            keep_preview |= {preview_dir_name(j.id) for j in repo.list_states(ACTIVE_STATES)}
+        cutoff = time.time() - idle_hours * 3600
         removed = 0
         for entry in tmp.iterdir():
             if not entry.is_dir() or not entry.name.startswith("import-"):
                 continue
             if entry.name in keep_work or entry.name in keep_preview:
+                continue
+            try:
+                if idle_hours and newest_mtime(entry) >= cutoff:
+                    continue
+            except OSError:
                 continue
             shutil.rmtree(entry, ignore_errors=True)
             removed += 1

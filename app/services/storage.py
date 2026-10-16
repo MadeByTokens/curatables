@@ -51,6 +51,19 @@ class EvictionReport:
     video_ids: list[str] = field(default_factory=list)
 
 
+def newest_mtime(path: Path) -> float:
+    """The latest change under path. A folder's own mtime only moves when
+    an entry is added or removed, not while a file in it is written."""
+    newest = path.stat().st_mtime
+    if path.is_dir():
+        for sub in path.rglob("*"):
+            try:
+                newest = max(newest, sub.stat().st_mtime)
+            except OSError:
+                continue
+    return newest
+
+
 class StorageService:
     def __init__(self, media_dir: Path, backend: VideoBackend | None = None,
                  min_free_bytes: int = 0,
@@ -129,7 +142,7 @@ class StorageService:
         removed = 0
         for entry in tmp_dir.iterdir():
             try:
-                if entry.stat().st_mtime >= cutoff:
+                if newest_mtime(entry) >= cutoff:
                     continue
                 if entry.is_dir():
                     if entry.name.startswith("import-"):
@@ -215,6 +228,11 @@ class StorageService:
         try:
             existing = self.downloaded_file(video_id)
             if existing is not None:
+                # A power cut between download and conversion leaves the
+                # original here; converting a file that is already
+                # baseline only probes it.
+                if self.normalizer is not None:
+                    existing = self.normalizer.normalize(existing).path
                 return existing
 
             allowed, reason = self.check_can_write()

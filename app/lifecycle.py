@@ -35,6 +35,9 @@ from app.services.video_source import VideoSourceService
 
 logger = logging.getLogger("curatables")
 
+# Upload and import leftovers untouched this long are abandoned.
+UPLOAD_IDLE_HOURS = 24
+
 
 def prepare_data_dir(config: Config) -> None:
     """Session secret, schema migrations and crash recovery."""
@@ -86,16 +89,17 @@ def startup_jobs(config: Config, metrics=None) -> None:
     try:
         storage = StorageService(config.media_dir,
                                  min_free_bytes=config.storage.min_free_disk_bytes)
-        swept = storage.sweep_upload_tmp(ttl_hours=24)
+        swept = storage.sweep_upload_tmp(ttl_hours=UPLOAD_IDLE_HOURS)
         if swept:
             logger.info("Swept %d abandoned upload tmp files", swept)
     except Exception:
         logger.warning("Upload sweep at startup failed (continuing)", exc_info=True)
 
 
-def _maintenance_pass(config: Config):
-    """One sweep: evict cache videos nobody watched for cache_days and
-    drop usage events older than events_retention_days."""
+def _maintenance_pass(config: Config, importer=None):
+    """One sweep: evict cache videos nobody watched for cache_days, drop
+    usage events older than events_retention_days, and remove upload and
+    import leftovers untouched for UPLOAD_IDLE_HOURS."""
     conn = create_connection(get_db_path(config.data_dir))
     try:
         report = None
@@ -106,9 +110,22 @@ def _maintenance_pass(config: Config):
         pruned = 0
         if config.storage.events_retention_days > 0:
             pruned = EventRepository(conn).delete_older_than(config.storage.events_retention_days)
+        if importer is not None and not media_missing(config.storage.media_path):
+            sweep_leftovers(config, conn, importer)
         return report, pruned
     finally:
         conn.close()
+
+
+def sweep_leftovers(config: Config, conn, importer) -> None:
+    """Abandoned uploads and import folders, so a box that runs for months
+    without a restart does not fill the drive with them."""
+    storage = StorageService(config.media_dir,
+                             min_free_bytes=config.storage.min_free_disk_bytes)
+    swept = storage.sweep_upload_tmp(ttl_hours=UPLOAD_IDLE_HOURS)
+    swept += importer.sweep(conn, idle_hours=UPLOAD_IDLE_HOURS)
+    if swept:
+        logger.info("Swept %d abandoned upload/import folder(s)", swept)
 
 
 async def maintenance_loop(app: FastAPI, config: Config) -> None:
@@ -122,7 +139,8 @@ async def maintenance_loop(app: FastAPI, config: Config) -> None:
             if config.storage.cache_cleanup_interval_minutes <= 0:
                 continue
             try:
-                report, pruned = await asyncio.to_thread(_maintenance_pass, config)
+                report, pruned = await asyncio.to_thread(
+                    _maintenance_pass, config, app.state.import_worker)
                 if report is not None and report.evicted_count:
                     logger.info("cache sweep: evicted %d videos, freed %d bytes",
                                 report.evicted_count, report.freed_bytes)

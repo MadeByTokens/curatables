@@ -135,3 +135,14 @@ class TestVideoSearch:
         assert {v.video_id for v in repo.search_ready("Park DAY")} == {"v1"}
         assert len(repo.search_ready("park", limit=1, offset=1)) == 1
         assert repo.search_ready("park", channel_ids=[]) == []
+
+    def test_pages_of_a_search_follow_on(self, db):
+        repo = VideoRepository(db)
+        for i in range(12):
+            repo.insert(_make_video(f"v{i:02d}", title=("Park " if i % 2 else "Sparky ") + str(i)))
+            db.execute("UPDATE videos SET added_at = datetime('now', ?) WHERE video_id = ?",
+                       (f"-{i} minutes", f"v{i:02d}"))
+        db.commit()
+        pages = [[v.video_id for v in repo.search_ready("park", limit=2, offset=o)]
+                 for o in (0, 2, 4, 6)]
+        assert pages == [["v01", "v03"], ["v05", "v07"], ["v09", "v11"], []]

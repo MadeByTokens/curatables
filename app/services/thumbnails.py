@@ -13,6 +13,17 @@ from app.services.safe_fetch import fetch_public
 logger = logging.getLogger(__name__)
 
 
+def _write_atomic(path: Path, data: bytes) -> None:
+    """Write via a temporary file so a power cut or a full drive never
+    leaves a cut-off picture under the real name."""
+    tmp = path.with_name(f".{path.name}.partial")
+    try:
+        tmp.write_bytes(data)
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 class ThumbnailService:
     def __init__(self, media_dir: Path):
         self.media_dir = media_dir
@@ -24,7 +35,8 @@ class ThumbnailService:
         return self.media_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
 
     def is_cached(self, video_id: str) -> bool:
-        return self.get_path(video_id).exists()
+        path = self.get_path(video_id)
+        return path.exists() and path.stat().st_size > 0
 
     def save_uploaded(self, video_id: str, file_data: bytes) -> Path:
         """Overwrite a video's thumbnail with already-validated bytes. The
@@ -32,7 +44,7 @@ class ThumbnailService:
         the real type for the Content-Type."""
         thumb_path = self.get_path(video_id)
         thumb_path.parent.mkdir(parents=True, exist_ok=True)
-        thumb_path.write_bytes(file_data)
+        _write_atomic(thumb_path, file_data)
         return thumb_path
 
     def download(self, video_id: str, thumbnail_url: str | None = None) -> Path | None:
@@ -51,7 +63,7 @@ class ThumbnailService:
             if len(data) > MAX_IMAGE_BYTES or image_extension(data) is None:
                 logger.warning("Rejected thumbnail for %s from %s", video_id, thumbnail_url)
                 return None
-            thumb_path.write_bytes(data)
+            _write_atomic(thumb_path, data)
             return thumb_path
         except Exception as e:
             logger.warning("Error downloading thumbnail for %s: %s", video_id, e)
@@ -75,23 +87,30 @@ class ThumbnailService:
 
         thumb_path = self.get_path(video_id)
         thumb_path.parent.mkdir(parents=True, exist_ok=True)
+        # ffmpeg picks the format from the extension, so keep .jpg last.
+        tmp = thumb_path.with_name(f".{video_id}.partial.jpg")
 
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [
                     "ffmpeg", "-y",
                     "-ss", timestamp,
                     "-i", str(source_path),
                     "-vframes", "1",
                     "-q:v", "2",
-                    str(thumb_path),
+                    str(tmp),
                 ],
                 capture_output=True, timeout=30,
             )
-            return thumb_path if thumb_path.exists() else None
+            if result.returncode != 0 or not tmp.exists() or tmp.stat().st_size == 0:
+                return thumb_path if self.is_cached(video_id) else None
+            tmp.replace(thumb_path)
+            return thumb_path
         except Exception as e:
             logger.warning("Error extracting frame for %s: %s", video_id, e)
-            return None
+            return thumb_path if self.is_cached(video_id) else None
+        finally:
+            tmp.unlink(missing_ok=True)
 
     def delete(self, video_id: str) -> None:
         """Remove the canonical thumbnail and every kid's custom thumbnail

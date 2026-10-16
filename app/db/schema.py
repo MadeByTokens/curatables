@@ -45,15 +45,18 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
                        "video files were not checked.", media_dir)
         return
 
-    # Partial files left behind by yt-dlp.
+    # Partial files left behind by yt-dlp, and a conversion the power cut
+    # stopped (video.norm.mp4 and its log); nothing is downloading or
+    # converting yet, so none of these is in use.
     videos_dir = media_dir / "videos"
     if videos_dir.exists():
         for vdir in videos_dir.iterdir():
             if not vdir.is_dir():
                 continue
             for f in vdir.iterdir():
-                if f.suffix == ".part":
-                    f.unlink()
+                if (f.suffix in (".part", ".ytdl") or ".part-Frag" in f.name
+                        or f.name.startswith("video.norm.")):
+                    f.unlink(missing_ok=True)
 
     # A "ready" video whose file is gone: a download (videos/<id>/) goes
     # back to "pending" to be fetched again; an upload (uploads/<id>/)

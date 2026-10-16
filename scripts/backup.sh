@@ -92,12 +92,17 @@ if storage.get("drive_backups") and media and os.path.isdir(media):
 PYEOF
 )"
 if [ -n "$DRIVE_DIR" ]; then
-    if mkdir -p "$DRIVE_DIR" && cp "$OUT_FILE" "$DRIVE_DIR/" && {
+    # Copy under a temporary name so a full drive never leaves a cut-off
+    # file that looks like a backup.
+    DRIVE_FILE="$DRIVE_DIR/$(basename "$OUT_FILE")"
+    if mkdir -p "$DRIVE_DIR" && cp "$OUT_FILE" "$DRIVE_FILE.partial" &&
+            mv -f "$DRIVE_FILE.partial" "$DRIVE_FILE" && {
             [ ! -f "$OUT_DIR/curatables-$TIMESTAMP.config.json" ] ||
             cp "$OUT_DIR/curatables-$TIMESTAMP.config.json" "$DRIVE_DIR/"; }; then
         echo "Copied to the videos drive: $DRIVE_DIR"
         prune "$DRIVE_DIR"
     else
+        rm -f -- "$DRIVE_FILE.partial"
         echo "WARNING: could not copy the backup to the videos drive ($DRIVE_DIR)" >&2
     fi
 fi

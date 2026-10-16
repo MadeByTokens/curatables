@@ -3,6 +3,7 @@
 import threading
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -273,3 +274,104 @@ def test_preview_thumbnails_download_concurrently(tmp_path, monkeypatch):
     monkeypatch.setattr(svc, "download", slow_download)
     svc.download_many([(f"v{i}", f"https://t.invalid/{i}.jpg") for i in range(8)])
     assert peak[0] > 1
+
+
+class TestLongUse:
+    """Leftovers that would pile up on a box that runs for months."""
+
+    def test_a_power_cut_mid_conversion_leaves_nothing_behind(self, db, tmp_path):
+        vdir = tmp_path / "videos" / "cut"
+        vdir.mkdir(parents=True)
+        for name in ("video.webm", "video.norm.mp4", "video.norm.mp4.log",
+                     "video.f137.mp4.part", "video.f137.mp4.part-Frag3", "video.f137.mp4.ytdl"):
+            (vdir / name).write_bytes(b"x")
+        recover_from_crash(db, tmp_path)
+        assert sorted(p.name for p in vdir.iterdir()) == ["video.webm"]
+
+    def test_an_unconverted_original_is_converted_before_it_counts(self, tmp_path):
+        class Normalizer:
+            def __init__(self):
+                self.seen = []
+
+            def normalize(self, path):
+                self.seen.append(path.name)
+                target = path.with_name("video.mp4")
+                path.replace(target)
+                return type("R", (), {"path": target})()
+
+        vdir = tmp_path / "videos" / "orig"
+        vdir.mkdir(parents=True)
+        (vdir / "video.webm").write_bytes(b"x")
+        normalizer = Normalizer()
+        storage = StorageService(tmp_path, backend=None, normalizer=normalizer)
+        assert storage.download("orig", "https://example.com/v").name == "video.mp4"
+        assert normalizer.seen == ["video.webm"]
+
+    def test_a_cut_off_thumbnail_is_not_cached(self, tmp_path):
+        svc = ThumbnailService(tmp_path)
+        path = svc.get_path("v1")
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"")
+        assert not svc.is_cached("v1")
+        svc.save_uploaded("v1", b"\xff\xd8\xff")
+        assert svc.is_cached("v1")
+        assert [p.name for p in path.parent.iterdir()] == ["v1.jpg"]
+
+    def test_a_failed_frame_leaves_no_thumbnail(self, tmp_path, monkeypatch):
+        import subprocess as sp
+        src = tmp_path / "videos" / "v2" / "video.mp4"
+        src.parent.mkdir(parents=True)
+        src.write_bytes(b"x")
+
+        def ffmpeg_dies(args, **kw):
+            Path(args[-1]).write_bytes(b"")
+            return sp.CompletedProcess(args, 1)
+
+        monkeypatch.setattr("app.services.thumbnails.subprocess.run", ffmpeg_dies)
+        svc = ThumbnailService(tmp_path)
+        assert svc.extract_frame("v2") is None
+        assert list(svc.get_path("v2").parent.iterdir()) == []
+
+    def test_deleting_a_video_deletes_its_comments_and_reactions(self, db):
+        from app.repositories.comment_repo import CommentRepository
+        from app.repositories.reaction_repo import ReactionRepository
+        pid = ProfileRepository(db).create(Profile(name="k", display_name="K"))
+        VideoRepository(db).insert(Video(video_id="gone", title="t", original_title="t"))
+        CommentRepository(db).create("gone", "hi", pid)
+        ReactionRepository(db).upsert(pid, "gone", "👍")
+        VideoRepository(db).delete("gone")
+        assert db.execute("SELECT COUNT(*) FROM comments").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM reactions").fetchone()[0] == 0
+
+    def test_upload_leftovers_are_swept_only_when_idle(self, tmp_path):
+        import os
+        storage = StorageService(tmp_path, backend=None)
+        tmp = storage.upload_tmp_dir()
+        old = time.time() - 48 * 3600
+        abandoned = tmp / "abandoned.work"
+        busy = tmp / "busy.work"
+        for d in (abandoned, busy):
+            d.mkdir()
+            (d / "out.mp4").write_bytes(b"x")
+            os.utime(d / "out.mp4", (old, old))
+            os.utime(d, (old, old))
+        os.utime(busy / "out.mp4")  # still being written
+        assert storage.sweep_upload_tmp(ttl_hours=24) == 1
+        assert not abandoned.exists() and busy.exists()
+
+    def test_the_periodic_sweep_keeps_folders_of_live_imports(self, db, tmp_path):
+        import os
+        from types import SimpleNamespace
+        from app.services.imports import ImportWorker
+        tmp = tmp_path / "uploads" / ".tmp"
+        old = time.time() - 48 * 3600
+        for name in ("import-1", "import-preview-2", "import-3"):
+            (tmp / name).mkdir(parents=True)
+            os.utime(tmp / name, (old, old))
+        (tmp / "import-4").mkdir()  # just created, no job row yet
+        db.execute("INSERT INTO import_jobs (id, state, batch, source_path) VALUES (1, 'queued', 'b', '/x')")
+        db.execute("INSERT INTO import_jobs (id, state, batch, source_path) VALUES (2, 'queued', 'b', '/x')")
+        db.commit()
+        worker = ImportWorker(SimpleNamespace(media_dir=tmp_path), None, None, None)
+        assert worker.sweep(db, idle_hours=24) == 1
+        assert sorted(p.name for p in tmp.iterdir()) == ["import-1", "import-4", "import-preview-2"]

@@ -72,6 +72,7 @@ def test_sweep_removes_stale_work_folders_but_not_import_jobs(tmp_path):
     for name in ("tok.work", "import-3"):
         (tmp / name).mkdir()
         (tmp / name / "video.mkv").write_bytes(b"x")
+        os.utime(tmp / name / "video.mkv", (old, old))
         os.utime(tmp / name, (old, old))
     assert storage.sweep_upload_tmp(ttl_hours=24) == 1
     assert not (tmp / "tok.work").exists()
