@@ -601,10 +601,13 @@ label {
 }
 
 /* === Review & add === */
+/* 16:9 of the player's own width (a padding-bottom percentage follows
+   the page's width and made a 640x540 box). Until a video is picked it
+   is a short strip, so the list starts near the top. */
 .review-player {
   position: relative;
-  padding-bottom: 56.25%;
-  height: 0;
+  aspect-ratio: 16 / 9;
+  width: 100%;
   max-width: 640px;
   margin: 0 auto 16px;
   background: #000;
@@ -628,6 +631,7 @@ label {
   text-align: center;
   padding: 0 16px;
 }
+.review-player.is-empty { aspect-ratio: auto; height: 72px; }
 .review-current {
   text-align: center;
   font-size: 13px;

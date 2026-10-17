@@ -91,6 +91,7 @@
       var orig = this.getAttribute('data-orig');
       var ext = this.getAttribute('data-extractor');
       if (!player) return;
+      player.classList.remove('is-empty');
 
       if (embed) {
         // Some sites (YouTube) ignore autoplay; most honour it.
