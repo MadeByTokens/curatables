@@ -18,7 +18,7 @@ from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app.services.media_fs import capped
 from app.config import Config
 from app.dependencies import (
-    get_channel_service, get_config, get_event_service,
+    get_channel_service, get_config, get_content_service, get_event_service,
     get_storage_service, get_upload_service, require_kid_feature,
 )
 from app.i18n import gettext
@@ -26,6 +26,7 @@ from app.web import is_xhr
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 from app.services.channels import ChannelService
+from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.storage import StorageService, InsufficientDiskSpace
 from app.services.uploads import DuplicateUpload, UploadService, UploadError
@@ -51,7 +52,8 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
                         error: str | None = None,
                         selected_channel_id: int | None = None,
                         status_code: int = 200,
-                        sent_for_review: bool = False):
+                        sent_for_review: bool = False,
+                        sent: list[dict] | None = None):
     channels = channels_svc.visible_to_kid(viewer.kid_id)
     if selected_channel_id is None and channels:
         selected_channel_id = channels[0].id
@@ -61,15 +63,38 @@ def _render_upload_page(request: Request, viewer: ViewerContext,
         "max_upload_bytes": _effective_max(config),
         "error": gettext(viewer.language, error) if error else None,
         "sent_for_review": sent_for_review,
+        "sent": sent or [],
     })
     response.status_code = status_code
     return response
+
+
+def _sent_videos(viewer: ViewerContext, events: EventService,
+                 content: ContentService) -> list[dict]:
+    """What the kid uploaded lately and where each one stands: waiting
+    for a grown-up, there to watch, or not kept."""
+    sent: list[dict] = []
+    if not viewer.profile_id:
+        return sent
+    for row in events.event_repo.kid_upload_history(viewer.profile_id):
+        video = content.video_repo.get(row["video_id"])
+        if video is None or video.status == "hidden":
+            state = "declined"
+        elif video.status == "review":
+            state = "waiting"
+        else:
+            state = "yes"
+        sent.append({"video_id": row["video_id"], "state": state,
+                     "title": (video.title if video else "") or row["title"] or ""})
+    return sent
 
 
 @router.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request,
                 viewer: ViewerContext = Depends(_uploads),
                 channels_svc: ChannelService = Depends(get_channel_service),
+                events: EventService = Depends(get_event_service),
+                content: ContentService = Depends(get_content_service),
                 config: Config = Depends(get_config)):
     selected = request.query_params.get("selected")
     selected_id = None
@@ -77,7 +102,8 @@ def upload_page(request: Request,
         selected_id = int(selected)
     return _render_upload_page(request, viewer, channels_svc, config,
                                selected_channel_id=selected_id,
-                               sent_for_review=request.query_params.get("sent") == "1")
+                               sent_for_review=request.query_params.get("sent") == "1",
+                               sent=_sent_videos(viewer, events, content))
 
 
 @router.post("/upload/new-channel")

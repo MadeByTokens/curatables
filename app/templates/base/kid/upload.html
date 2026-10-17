@@ -38,6 +38,27 @@
   </div>
 </form>
 
+{% if sent %}
+<div class="upload-form">
+  <h2>{{ _("What I sent") }}</h2>
+  <ul class="wishlist-mine">
+    {% for v in sent %}
+    <li class="wishlist-mine-item">
+      <img src="/media/thumb/{{ v.video_id }}" alt="" class="wishlist-mine-thumb">
+      <span class="wishlist-mine-title">{{ v.title }}</span>
+      {% if v.state == "waiting" %}
+      <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Waiting") }}</span>
+      {% elif v.state == "yes" %}
+      <a href="/watch/{{ v.video_id }}" class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes! Watch") }}</a>
+      {% else %}
+      <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#10006;</span> {{ _("Not this time") }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <form id="new-channel-form" class="new-channel-form" method="POST" action="/upload/new-channel">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <h2>{{ _("Make a new channel") }}</h2>
