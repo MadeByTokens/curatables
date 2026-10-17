@@ -1,0 +1,11 @@
+{# A file input that speaks the kid's language: the browser's own
+   button says "Choose file / No file chosen" in the browser's language.
+   The real input stays focusable (visually hidden); file_picker.js puts
+   the chosen file's name next to the button. #}
+{% macro file_picker(id, name, accept, label, required=false) %}
+<span class="file-picker">
+  <input type="file" id="{{ id }}" name="{{ name }}" accept="{{ accept }}" class="sr-only file-picker-input" data-picker-name="{{ id }}-name"{% if required %} required{% endif %}>
+  <label for="{{ id }}" class="tappable txt r-4 fs-14 clickable secondary-btn"><span aria-hidden="true">&#128206;</span> {{ label }}</label>
+  <span id="{{ id }}-name" class="muted fs-13 file-picker-name">{{ _("Nothing chosen yet") }}</span>
+</span>
+{% endmacro %}

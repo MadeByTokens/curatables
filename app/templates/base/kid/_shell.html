@@ -15,5 +15,6 @@
 </head>
 <body data-messages="{{ js_messages(page_language())|tojson|forceescape }}">
 {% block body %}{% endblock %}
+<script src="/static/kid/file_picker.js?v={{ asset_v }}"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 {% extends "kid/base.html" %}
+{% from "kid/_file_picker.html" import file_picker with context %}
 {% block content %}
 <div class="mw-600 mx-auto p-16">
   <h2>{{ _("Edit Channel") }}</h2>
@@ -22,19 +23,19 @@
     </div>
 
     <div class="mb-16">
-      <label class="d-block fw-bold mb-4">{{ _("Banner Image") }}</label>
+      <label for="banner-input" class="d-block fw-bold mb-4">{{ _("Banner Image") }}</label>
       {% if channel.banner_filename %}
       <img src="/media/channel/{{ channel.id }}/banner" alt="" class="w-100 of-cover r-4 mb-6 banner-preview">
       {% endif %}
-      <input type="file" name="banner" accept="image/*" class="fs-14">
+      {{ file_picker("banner-input", "banner", "image/*", _("Choose a picture")) }}
     </div>
 
     <div class="mb-16">
-      <label class="d-block fw-bold mb-4">{{ _("Channel Icon") }}</label>
+      <label for="icon-input" class="d-block fw-bold mb-4">{{ _("Channel Icon") }}</label>
       {% if channel.icon_filename %}
       <img src="/media/channel/{{ channel.id }}/icon" alt="" class="r-circle of-cover mb-6 channel-icon">
       {% endif %}
-      <input type="file" name="icon" accept="image/*" class="fs-14">
+      {{ file_picker("icon-input", "icon", "image/*", _("Choose a picture")) }}
     </div>
 
     <div class="d-flex gap-8">
