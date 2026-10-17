@@ -59,7 +59,7 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? "
-               "AND v.status = 'active' AND v.download_status = 'ready'")
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
         params: list = [profile_id]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
@@ -76,7 +76,7 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? AND t.name = ? COLLATE NOCASE "
-               "AND v.status = 'active' AND v.download_status = 'ready'")
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
         params: list = [profile_id, tag_name]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
@@ -93,7 +93,7 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? AND t.name = ? COLLATE NOCASE "
-               "AND v.status = 'active' AND v.download_status = 'ready'")
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
         params: list = [profile_id, tag_name]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)

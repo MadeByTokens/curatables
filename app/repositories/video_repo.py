@@ -85,8 +85,9 @@ class VideoRepository(BaseRepository):
 
     def list_ready(self, channel_id: int | None = None,
                    limit: int = 30, offset: int = 0) -> builtins.list[Video]:
-        """List videos that are active AND downloaded (visible to kids)."""
-        clauses = ["status = 'active'", "download_status = 'ready'"]
+        """Videos kids can open: active, and downloaded or freed (a freed
+        video downloads again when a kid opens it)."""
+        clauses = ["status = 'active'", "download_status IN ('ready', 'evicted')"]
         params: list = []
         order = "added_at DESC"
         if channel_id is not None:
@@ -103,7 +104,7 @@ class VideoRepository(BaseRepository):
         return [self._to_model(r) for r in rows]
 
     def count_ready(self, channel_id: int | None = None) -> int:
-        clauses = ["status = 'active'", "download_status = 'ready'"]
+        clauses = ["status = 'active'", "download_status IN ('ready', 'evicted')"]
         params: list = []
         if channel_id is not None:
             clauses.append("channel_id = ?")
@@ -122,7 +123,7 @@ class VideoRepository(BaseRepository):
         params: list = list(channel_ids)
         params.extend([limit, offset])
         rows = self.db.execute(
-            f"SELECT * FROM videos WHERE status = 'active' AND download_status = 'ready' "
+            f"SELECT * FROM videos WHERE status = 'active' AND download_status IN ('ready', 'evicted') "
             f"AND channel_id IN ({placeholders}) "
             f"ORDER BY added_at DESC LIMIT ? OFFSET ?",
             params,
@@ -143,7 +144,7 @@ class VideoRepository(BaseRepository):
         placeholders = ",".join("?" for _ in channel_ids)
         row = self.db.execute(
             f"SELECT COUNT(*) as cnt FROM videos "
-            f"WHERE status = 'active' AND download_status = 'ready' "
+            f"WHERE status = 'active' AND download_status IN ('ready', 'evicted') "
             f"AND channel_id IN ({placeholders})",
             channel_ids,
         ).fetchone()
@@ -153,7 +154,7 @@ class VideoRepository(BaseRepository):
         """Channels that hold at least one video kids can watch."""
         rows = self.db.execute(
             "SELECT DISTINCT channel_id FROM videos WHERE status = 'active' "
-            "AND download_status = 'ready' AND channel_id IS NOT NULL").fetchall()
+            "AND download_status IN ('ready', 'evicted') AND channel_id IS NOT NULL").fetchall()
         return {r["channel_id"] for r in rows}
 
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
@@ -171,7 +172,7 @@ class VideoRepository(BaseRepository):
                " WHERE pvt.profile_id = ? AND pvt.video_id = v.video_id) AS kid_tags "
                "FROM videos v LEFT JOIN profile_video_overrides o "
                "ON o.video_id = v.video_id AND o.profile_id = ? "
-               "WHERE v.status = 'active' AND v.download_status = 'ready' ")
+               "WHERE v.status = 'active' AND v.download_status IN ('ready', 'evicted') ")
         params: list = [profile_id, profile_id]
         if channel_ids is not None:
             if not channel_ids:
