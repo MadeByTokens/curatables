@@ -11,9 +11,18 @@ from app.models import ViewerContext
 
 router = APIRouter(prefix="/parent/channels", tags=["parent-channels"])
 
+# Messages the page shows after returning with ?notice=<key>.
+NOTICES = {
+    "created": "Channel created. Add videos to it from Add Content or a video's Edit page.",
+    "exists": "A channel with that name already exists.",
+    "saved": "Channel saved.",
+    "deleted": "Channel deleted.",
+}
+
 
 @router.get("/", response_class=HTMLResponse)
 def list_channels(request: Request,
+                  notice: str = "",
                   viewer: ViewerContext = Depends(require_parent),
                   channels_svc: ChannelService = Depends(get_channel_service),
                   profiles_svc: ProfileService = Depends(get_profile_service)):
@@ -33,6 +42,7 @@ def list_channels(request: Request,
         "channels_with_counts": channels_with_counts,
         "owner_names": owner_names,
         "all_channels": all_channels,
+        "notice": NOTICES.get(notice),
     })
 
 
@@ -43,9 +53,12 @@ def create_channel(request: Request,
                    viewer: ViewerContext = Depends(require_parent),
                    channels_svc: ChannelService = Depends(get_channel_service)):
     name = name.strip()
-    if name:
-        channels_svc.create(name, description.strip())
-    return RedirectResponse(url="/parent/channels/", status_code=302)
+    if not name:
+        return RedirectResponse(url="/parent/channels/", status_code=302)
+    if channels_svc.get_by_name(name) is not None:
+        return RedirectResponse(url="/parent/channels/?notice=exists", status_code=302)
+    channels_svc.create(name, description.strip())
+    return RedirectResponse(url="/parent/channels/?notice=created", status_code=302)
 
 
 @router.get("/{channel_id}/edit", response_class=HTMLResponse)
@@ -87,7 +100,7 @@ def edit_submit(request: Request, channel_id: int,
         channels_svc.update(channel_id, description=description.strip(),
                             position=max(0, position),
                             owner_profile_id=owner_id)
-    return RedirectResponse(url="/parent/channels/", status_code=302)
+    return RedirectResponse(url="/parent/channels/?notice=saved", status_code=302)
 
 
 @router.post("/{channel_id}/delete")
@@ -105,4 +118,4 @@ def delete_channel(request: Request, channel_id: int,
         elif channels_svc.get(candidate) is not None:
             reassign_id = candidate
     channels_svc.delete(channel_id, reassign_to=reassign_id)
-    return RedirectResponse(url="/parent/channels/", status_code=302)
+    return RedirectResponse(url="/parent/channels/?notice=deleted", status_code=302)

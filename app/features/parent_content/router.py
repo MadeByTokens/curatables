@@ -17,7 +17,7 @@ from app.repositories.wishlist_repo import WishlistRepository
 from app.services.ids import make_video_id
 from app.services.images import validate_image
 from app.services.storage import RESOLUTION_MAP
-from app.services.content import ContentService, ContentError
+from app.services.content import ContentService, ContentError, VideoNotFound
 from app.services.channels import ChannelService
 from app.services.thumbnails import ThumbnailService
 from app.services.reactions import EMOJI_MAP
@@ -309,8 +309,16 @@ def hide(request: Request, video_id: str,
 def activate(request: Request, video_id: str,
              viewer: ViewerContext = Depends(require_parent),
              content: ContentService = Depends(get_content_service)):
+    try:
+        video = content.get_video(video_id)
+    except VideoNotFound:
+        return RedirectResponse(url="/parent/content", status_code=302)
     content.activate_video(video_id)
-    return RedirectResponse(url="/parent/content", status_code=302)
+    # The same button approves a kid upload and unhides a hidden video.
+    done = "Approved" if video.status == "review" else "Unhid"
+    channel = next((c.name for c in content.list_channels() if c.id == video.channel_id), None)
+    where = f" Kids see it in {channel}." if channel else " It has no channel, so kids can't find it yet."
+    return _redirect_with_flash(1, f'{done} "{video.title}".{where}')
 
 
 @router.post("/content/{video_id}/retry")

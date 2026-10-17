@@ -1,6 +1,7 @@
 {% extends "parent/base.html" %}
 {% block content %}
 <h1>Channels</h1>
+{% if notice %}<div class="flash" role="status">{{ notice }}</div>{% endif %}
 
 <p class="page-intro">
   <a href="/parent/channels/import" class="btn btn-sm btn-secondary">&#128228; Import shared channel</a>

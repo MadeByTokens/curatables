@@ -38,3 +38,31 @@ def test_detail_page_names_the_family_channel(app, authed_client):
     assert "Animals</a>" in page and "From " not in page
     page = authed_client.get("/parent/content/yt_zoo").text
     assert "No channel: kids can&rsquo;t see it" in page and "From jawed" in page
+
+
+def test_approving_a_kid_upload_says_where_kids_see_it(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    animals = ChannelRepository(conn).create("Animals")
+    VideoRepository(conn).insert(Video(video_id="up_d", title="My drawing", original_title="My drawing",
+                                       download_status="ready", status="review", channel_id=animals))
+    resp = authed_client.post("/parent/content/up_d/activate", follow_redirects=True)
+    assert "Approved &#34;My drawing&#34;. Kids see it in Animals." in resp.text
+    assert VideoRepository(conn).get("up_d").status == "active"
+
+
+def test_channel_changes_are_confirmed(authed_client):
+    page = authed_client.post("/parent/channels/create", data={"name": "Bedtime"},
+                              follow_redirects=True).text
+    assert "Channel created." in page
+    page = authed_client.post("/parent/channels/create", data={"name": "Bedtime"},
+                              follow_redirects=True).text
+    assert "already exists" in page
+    assert authed_client.get("/parent/channels/?notice=<b>x</b>").text.count('role="status"') == 0
+
+
+def test_unhiding_says_unhid(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    VideoRepository(conn).insert(Video(video_id="yt_h", title="Hidden one", original_title="h",
+                                       download_status="ready", status="hidden"))
+    resp = authed_client.post("/parent/content/yt_h/activate", follow_redirects=True)
+    assert "Unhid &#34;Hidden one&#34;. It has no channel" in resp.text
