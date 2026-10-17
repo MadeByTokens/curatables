@@ -155,6 +155,12 @@ the drive exactly as it was. Files that already play in a web browser
 
 ## Kids and profiles
 
+**What does a kid's search look in?**
+The videos that kid can see: their titles and descriptions, plus the
+names, descriptions and tags that child gave them (another kid's names
+and tags stay private). Accents and capitals don't matter, so "vulcao"
+finds "Vulcão".
+
 **Can each child have different rules?**
 Yes. Each profile has its own channels, PIN, theme and switches for
 reactions, comments, tags, customizing, uploads, search and automatic
@@ -171,8 +177,9 @@ They get a **Find new** page that searches YouTube videos or channels
 through Curatables and shows only results that pass your rules
 (Settings → Video requests). Tapping **Ask** sends it to **Video requests** (linked from
 the dashboard and the Kids page), and the child can then give it their own name and
-description and pick one of their channels. You watch it, change what you like and add
-it, or press **Not this one**. The review page opens instantly: it shows what was
+description and pick one of their channels (or leave the choice to you: then **Add**
+waits until you pick a channel, or "none"). You watch it, change what you like and add
+it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
 saved when the child asked, without asking YouTube again. Nothing downloads before you
 add it. See [safety-model.md](safety-model.md) for what the child sees
 in the meantime. Searches are cached and rate-limited, so a child

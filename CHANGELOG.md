@@ -15,6 +15,38 @@ The first release since v0.1.0. Boxes on v0.1.0 can't install it from
 the dashboard (that release only updates the downloader): flash the new
 image. Later releases install from **Box → Updates**.
 
+### Family use: search, stats and phone screens
+
+**For kids**
+- Search finds a video by the kid's own title, description and tags,
+  ignores accents ("vulcao" finds "Vulcão") and shows the kid's title.
+- On a phone the menu is one short row, so videos start near the top.
+- Channels with nothing to watch yet are not shown (the kid's own
+  channels always are).
+- Comment threads have one Reply button that opens the box; the count
+  includes replies.
+- File pickers, the reaction hint ("One per video") and the profile
+  tiles are in the kid's language and line up.
+
+**For parents**
+- Approving a request returns to Video requests. Every Add page asks
+  for a channel, or "none" on purpose, before Add works.
+- Approving a kid upload, and creating, saving or deleting a channel,
+  say what happened.
+- Stats list every kid, and Top Videos includes videos that were only
+  opened or reacted to (with an Opened column).
+- Content and video pages name the family channel and say "Kids can
+  see it", "Hidden from kids" or "Waiting for your OK"; on a phone the
+  list is compact and the bulk buttons open once a video is ticked.
+- The dashboard shows the kids' avatars, and a kid upload awaiting
+  approval as waiting rather than ready.
+- Diagnostics shows the clock in the family's time zone; each page has
+  its own browser title.
+
+**Fixes**
+- Finishing a parent upload asked "Leave site?", and answering "Stay"
+  left the video unprocessed.
+
 ### Running for years: a full drive, a stale clock, power cuts
 
 **New for parents**

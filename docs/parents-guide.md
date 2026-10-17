@@ -130,7 +130,8 @@ open it again.
 2. **Add a video.** Open **+ Add** and paste a link to a video, a whole
    channel or a playlist. Watch each video in the preview, tick **I have
    already fully watched this video**, pick its channel and press
-   **Add**. A video with no channel is hidden from the kids. It then
+   **Add** (it waits until a channel is picked). "None" is allowed,
+   but a video with no channel is hidden from the kids. It then
    downloads and is converted so it plays on older tablets too; on a
    Raspberry Pi 4 that takes a few minutes. **Content → Downloading**
    shows how it's going.
