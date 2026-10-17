@@ -18,7 +18,7 @@
   </label>
   <button type="submit" class="btn btn-sm btn-secondary js-hide">Sort</button>
 </form>
-<p>{{ total }} video(s) — page {{ page }} of {{ total_pages }}</p>
+<p>{{ total }} video{{ "s" if total != 1 }}{% if total_pages > 1 %} — page {{ page }} of {{ total_pages }}{% endif %}</p>
 {% if sort in ('least_played', 'unwatched_longest', 'largest') %}
 <p class="muted fs-13">To make room, tick the videos nobody watches and press <strong>Free up files</strong>:
 their files are deleted but they stay in the library and download again when a kid taps them.
@@ -32,6 +32,8 @@ their files are deleted but they stay in the library and download again when a k
 <div class="flash {% if flash_type == 'error' %}flash-error{% endif %}">{{ flash }}</div>
 {% endif %}
 
+{% set channel_names = {} %}
+{% for ch in channels %}{% set _ = channel_names.update({ch.id: ch.name}) %}{% endfor %}
 {% if videos %}
 <div class="bulk-bar">
   <form id="bulk-form" method="POST" action="/parent/content/bulk">
@@ -40,7 +42,9 @@ their files are deleted but they stay in the library and download again when a k
     <input type="hidden" name="status" value="{{ status_filter }}">
     <input type="hidden" name="sort" value="{{ sort }}">
     <label><input type="checkbox" id="select-all"> Select all on this page</label>
-    &nbsp;&nbsp;
+    <span id="bulk-count" class="muted fs-13 ml-12"></span>
+    {# content.js shows these once a video is ticked. #}
+    <div id="bulk-actions" class="mt-8">
     <select name="target_channel_id">
       <option value="">(pick channel for move)</option>
       {% for ch in channels %}
@@ -53,6 +57,7 @@ their files are deleted but they stay in the library and download again when a k
     <button type="submit" name="action" value="free" class="btn btn-sm btn-secondary"
             title="Delete the files but keep the videos listed; they download again when a kid taps them">Free up files</button>
     <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">Delete</button>
+    </div>
   </form>
 </div>
 {% endif %}
@@ -69,7 +74,8 @@ their files are deleted but they stay in the library and download again when a k
         <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>
       </div>
       <div class="meta">
-        {{ v.channel_name }}
+        {% if v.channel_id in channel_names %}{{ channel_names[v.channel_id] }}{% else %}<span class="muted">No channel</span>{% endif %}
+        {% if v.channel_name %}&middot; from {{ v.channel_name }}{% endif %}
         {% if v.original_url %}
         &middot; <a href="{{ v.original_url }}" target="_blank" rel="noopener noreferrer" class="fs-11 muted-3">original{% if v.extractor %} ({{ v.extractor }}){% endif %}</a>
         {% endif %}
@@ -82,8 +88,7 @@ their files are deleted but they stay in the library and download again when a k
         {% else %}
           ?
         {% endif %}
-        &middot;
-        <small>{{ v.video_id }}</small>
+
       </div>
       <div class="meta">
         Watched {{ v.play_count }} time{% if v.play_count != 1 %}s{% endif %}
@@ -94,7 +99,7 @@ their files are deleted but they stay in the library and download again when a k
       <div class="desc">{{ v.description[:120] }}{% if v.description|length > 120 %}...{% endif %}</div>
       {% endif %}
       <div class="status-line">
-        <strong>{{ v.status }}</strong>
+        <strong>{{ {"active": "Kids can see it", "hidden": "Hidden from kids", "review": "Waiting for your OK"}.get(v.status, v.status) }}</strong>
         &middot;
         {% if v.download_status == 'ready' %}
           <span class="status-ok">&#10003; downloaded</span>

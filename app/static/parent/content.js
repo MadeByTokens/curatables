@@ -34,12 +34,26 @@
       if (!confirmBulk(e.submitter || document.activeElement)) { e.preventDefault(); }
     });
   }
+  // The bulk buttons stay folded until a video is ticked: on a phone
+  // they took half the screen above the list.
+  var actions = document.getElementById('bulk-actions');
+  var count = document.getElementById('bulk-count');
+  function refreshBulk() {
+    var n = document.querySelectorAll(boxSelector + ':checked').length;
+    if (actions) actions.hidden = n === 0;
+    if (count) count.textContent = n ? n + ' selected' : 'Tick videos to move, hide or delete them.';
+  }
   if (all) {
     all.addEventListener('change', function () {
       var boxes = document.querySelectorAll(boxSelector);
       for (var i = 0; i < boxes.length; i++) { boxes[i].checked = all.checked; }
+      refreshBulk();
     });
   }
+  document.addEventListener('change', function (e) {
+    if (e.target.matches && e.target.matches(boxSelector)) refreshBulk();
+  });
+  refreshBulk();
 })();
 
 /* While downloads run, poll their status instead of reloading the page

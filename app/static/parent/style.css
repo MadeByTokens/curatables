@@ -270,11 +270,11 @@ label {
 .card .bulk-check { float: left; margin-right: 8px; transform: scale(1.3); }
 
 @media (max-width: 600px) {
+  /* A small picture beside the text, so a phone shows several videos
+     at a time. */
   .card .thumb {
-    float: none;
-    width: 100%;
-    margin-right: 0;
-    margin-bottom: 10px;
+    width: 96px;
+    margin-right: 10px;
   }
 }
 
