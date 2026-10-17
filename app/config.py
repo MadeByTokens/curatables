@@ -113,7 +113,7 @@ class WishlistConfig:
     # Non-empty: only results from these channel names are shown.
     allowed_channels: list[str] = field(default_factory=list)
     max_results: int = 12
-    max_duration_minutes: int = 20
+    max_duration_minutes: int = 0
 
 
 @dataclass
