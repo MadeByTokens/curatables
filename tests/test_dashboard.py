@@ -177,3 +177,14 @@ def test_dashboard_marks_a_kid_upload_waiting_for_approval(app, authed_client):
     recent = page.split("Recently added")[1]
     assert "waiting for your OK" in recent
     assert "badge-ready" not in recent
+
+
+def test_dashboard_shows_kid_avatars_and_links_whole_lines(app, authed_client):
+    from app.dependencies import get_db
+    conn = next(app.dependency_overrides[get_db]())
+    ProfileRepository(conn).create(Profile(name="lia", display_name="Lia", avatar="unicorn"))
+    ProfileRepository(conn).create(Profile(name="sam", display_name="Sam"))
+    page = authed_client.get("/parent/").text
+    assert "\U0001f984" in page          # Lia's unicorn
+    assert '<div class="avatar" aria-hidden="true">S</div>' in page
+    assert "Upload a video" in page
