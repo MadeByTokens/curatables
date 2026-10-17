@@ -61,7 +61,7 @@ class TestProfilesCreateSubmit:
             },
         )
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/parent/profiles"
+        assert resp.headers["location"] == "/parent/profiles?notice=added"
 
         conn = next(app.dependency_overrides[get_db]())
         profiles = ProfileRepository(conn).list()
@@ -166,7 +166,7 @@ class TestProfilesEditSubmit:
             },
         )
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/parent/profiles"
+        assert resp.headers["location"] == "/parent/profiles?notice=saved"
 
         conn = next(app.dependency_overrides[get_db]())
         prof = ProfileRepository(conn).get(pid)
@@ -279,7 +279,7 @@ class TestProfilesDelete:
 
         resp = authed_client.post(f"/parent/profiles/{pid}/delete")
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/parent/profiles"
+        assert resp.headers["location"] == "/parent/profiles?notice=deleted"
 
         assert ProfileRepository(conn).get(pid) is None
 

@@ -135,7 +135,7 @@ open it again.
    downloads and is converted so it plays on older tablets too; on a
    Raspberry Pi 4 that takes a few minutes. **Content → Downloading**
    shows how it's going.
-3. **Make a profile for each kid.** Open **Kids → Create Profile**, give
+3. **Make a profile for each kid.** Open **Kids → Add a kid**, give
    it a name and a picture, and choose what the child may do. A new
    profile can watch and react, nothing more, and sees every channel
    until you tick only some. A PIN is optional.

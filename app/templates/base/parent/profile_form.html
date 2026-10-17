@@ -1,7 +1,7 @@
 {% extends "parent/base.html" %}
-{% block title %}{% if profile %}Edit kid{% else %}New kid{% endif %} · curatables{% endblock %}
+{% block title %}{% if profile %}Edit {{ profile.display_name or profile.name }}{% else %}Add a kid{% endif %} · curatables{% endblock %}
 {% block content %}
-<h1>{% if profile %}Edit Profile{% else %}Create Profile{% endif %}</h1>
+<h1>{% if profile %}Edit {{ profile.display_name or profile.name }}{% else %}Add a kid{% endif %}</h1>
 
 {% if error %}
 <div class="flash flash-error">{{ error }}</div>
@@ -124,7 +124,7 @@
   {% endif %}
 
   <div class="mt-20">
-    <button type="submit" class="btn">{% if profile %}Save Changes{% else %}Create Profile{% endif %}</button>
+    <button type="submit" class="btn">{% if profile %}Save Changes{% else %}Add kid{% endif %}</button>
     <a href="/parent/profiles" class="ml-12">Cancel</a>
   </div>
 </form>

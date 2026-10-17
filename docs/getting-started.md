@@ -196,7 +196,7 @@ videos you've approved.
    this video**, pick a channel and press **Add**. A video with no
    channel is hidden from the kids. Curatables downloads it and prepares
    it for playback.
-4. Make a profile for each kid under **Kids → Create Profile**. The
+4. Make a profile for each kid under **Kids → Add a kid**. The
    dashboard's **Help** page walks you through the rest.
 
 #### Why does a new video take a while?
