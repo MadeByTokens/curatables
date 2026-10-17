@@ -3,8 +3,8 @@
 {% set nav_active = "search" %}
 {% block content %}
 <div class="p-16 mw-600 mx-auto">
-  <h2><span aria-hidden="true">&#128269;</span> {{ _("Search my videos") }}</h2>
-  <p>{{ _("Type a word to find it in your videos.") }}</p>
+  <h2 class="page-title"><span aria-hidden="true">&#128269;</span> {{ _("Search my videos") }}</h2>
+  <p class="page-intro">{{ _("Type a word to find it in your videos.") }}</p>
   <form method="GET" action="/search" role="search" class="search-form">
     <label for="q" class="sr-only">{{ _("Search videos") }}</label>
     <input type="search" id="q" name="q" value="{{ query }}" autocomplete="off"
