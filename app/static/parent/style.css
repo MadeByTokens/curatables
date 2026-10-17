@@ -106,6 +106,7 @@ th {
 /* === Buttons === */
 
 .btn {
+  box-sizing: border-box;
   display: inline-block;
   padding: 8px 16px;
   background: var(--accent);
@@ -244,6 +245,7 @@ label {
   font-size: 13px;
   margin-bottom: 8px;
 }
+.content-sort select { width: auto; max-width: 100%; }
 .card .actions { margin-top: 8px; }
 .card .actions .btn { margin: 2px 4px 2px 0; }
 .card .actions form { display: inline; }

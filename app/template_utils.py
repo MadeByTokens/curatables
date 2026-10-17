@@ -102,13 +102,32 @@ def excerpt(text: str | None, limit: int) -> str:
     return (cut[:space] if space > 0 else cut).rstrip() + "…"
 
 
+def local_time(value: str | None, today: date | None = None, lang: str = "en",
+               tz: str = "") -> str:
+    """A stored UTC timestamp ('YYYY-MM-DD HH:MM:SS' or ISO 8601) as the
+    family's day and time: 'today 18:36', '1 Sep 2026 09:10'."""
+    if not value:
+        return ""
+    try:
+        stamp = datetime.strptime(str(value)[:19].replace("T", " "), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return str(value)
+    local = stamp.replace(tzinfo=timezone.utc).astimezone(family_zone(tz))
+    return f"{friendly_date(local.strftime('%Y-%m-%d'), today, lang, tz)} {local:%H:%M}"
+
+
 def register_filters(templates: Jinja2Templates,
                      timezone_name: Callable[[], str] = lambda: "") -> None:
     @pass_context
     def _friendly_date_filter(ctx, value: str | None) -> str:
         return friendly_date(value, lang=context_language(ctx), tz=timezone_name())
 
+    @pass_context
+    def _local_time_filter(ctx, value: str | None) -> str:
+        return local_time(value, lang=context_language(ctx), tz=timezone_name())
+
     templates.env.filters["friendly_date"] = _friendly_date_filter
+    templates.env.filters["local_time"] = _local_time_filter
     templates.env.globals["_"] = jinja_gettext
     templates.env.globals["page_language"] = jinja_language
     templates.env.globals["js_messages"] = js_messages

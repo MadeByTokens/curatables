@@ -88,7 +88,7 @@
     <div class="d-flex jc-sb ai-c">
       <div>
         <strong>{{ c.author_name }}{% if c.is_parent_user %} (Parent){% endif %}</strong>
-        <span class="muted fs-12 ml-8">{{ c.created_at }}</span>
+        <span class="muted fs-12 ml-8">{{ c.created_at|local_time }}</span>
       </div>
       <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" data-confirm="Delete this comment and its replies?" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -109,7 +109,7 @@
       <div class="d-flex jc-sb ai-c">
         <div>
           <strong>{{ reply.author_name }}{% if reply.is_parent_user %} (Parent){% endif %}</strong>
-          <span class="muted fs-12 ml-8">{{ reply.created_at }}</span>
+          <span class="muted fs-12 ml-8">{{ reply.created_at|local_time }}</span>
         </div>
         <form method="POST" action="/parent/comments/{{ reply.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" data-confirm="Delete this comment?" class="d-inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
