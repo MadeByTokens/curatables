@@ -216,18 +216,21 @@ async def add_confirm(request: Request,
             skipped += 1
         wishlist.approve_video(make_video_id(extractor, vid))
 
-    msg = (f"Added {added} video(s). Downloading in the background — check the Content tab for progress."
-           if added else "Nothing new was added.")
+    msg = (f"Added {added} video{'s' if added != 1 else ''}; {'they download' if added != 1 else 'it downloads'}"
+           " in the background, with progress below." if added else "Nothing new was added.")
     if skipped:
-        msg += f" {skipped} already in your library (skipped)."
+        msg += f" {skipped} already in your library, so left out."
     if added and channel_id is None:
-        msg += " They have no channel, so kids can't find them: pick one with Edit on the Content tab."
+        msg += " They have no channel, so kids can't find them: pick one with Edit."
     if unreviewed:
-        msg += (f" {unreviewed} skipped because the \"I have already fully watched this video\" "
-                f"box was not ticked.")
+        msg += (f" The other {unreviewed}, not ticked as watched, were left out." if added
+                else f" {unreviewed} not ticked as watched, so left out.")
     if added and form_str(form, "from_request"):
         # Approving a kid's request: back to the list, for the next one.
         return RedirectResponse(url="/parent/requests?notice=added", status_code=303)
+    if added:
+        # Redirect, so reloading the page doesn't send the form again.
+        return _redirect_with_flash(1, msg)
     return templates.TemplateResponse(request, "parent/add.html", {
         "request": request, "error": None, "success": msg,
     })
