@@ -730,3 +730,17 @@ def test_a_channel_full_of_filtered_videos_still_offers_more(app, client, backen
     assert backend.queries[-1] == ("channel", 48)
     assert page.count('class="wishlist-ask-btn"') == 4
     assert "&amp;page=2" in page
+
+
+def test_requests_list_shows_the_kids_note_and_channel(app, client, authed_client, backend):
+    from app.repositories.channel_repo import ChannelRepository
+    dino = ChannelRepository(_conn(app)).create("Dinosaurs")
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "counting"})
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    request_id = WishlistRepository(_conn(app)).list_by_status("pending")[0].id
+    client.post(f"/wishlist/asked/{request_id}", data={
+        "title": "Counting", "description": "To dance with my brother", "channel_id": str(dino)})
+    page = authed_client.get("/parent/requests").text
+    assert "For: <strong>Dinosaurs</strong>" in page
+    assert "To dance with my brother" in page
