@@ -158,6 +158,10 @@ class TestStatsPage:
         assert (top[0]["plays"], top[0]["opens"], top[0]["secs"]) == (1, 1, 19)
         assert top[2]["reactions"] == {"heart": 1}
         assert [v["video_id"] for v in _mk_stats(db).top_videos("all", profile_id=lia)] == ["snail"]
+        # A kid's page counts that kid's reactions only.
+        ReactionRepository(db).upsert(_theo, "zoo", "funny")
+        assert _mk_stats(db).top_videos("all", profile_id=_maya)[0]["reactions"] == {}
+        assert _mk_stats(db).top_videos("all", profile_id=_theo)[0]["reactions"] == {"funny": 1}
 
     def test_window_leaves_out_older_activity(self, db):
         self._seed(db)
