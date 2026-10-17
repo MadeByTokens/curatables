@@ -25,8 +25,8 @@
 {% if new_videos %}
 
 {% if is_multi %}
-<div class="review-player" id="review-player">
-  <div class="placeholder">Pick a video below and press <strong>Watch &#9654;</strong></div>
+<div class="review-player is-empty" id="review-player">
+  <div class="placeholder"><span>Pick a video below and press <strong>Watch &#9654;</strong></span></div>
 </div>
 <div class="review-current" id="review-current">No video loaded</div>
 <div class="review-progress" id="review-progress" data-total="{{ new_videos|length }}" hidden>
