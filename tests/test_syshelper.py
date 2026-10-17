@@ -822,12 +822,18 @@ def test_a_failed_nightly_backup_gets_its_own_advice(fake):
 
 # --- clock ----------------------------------------------------------------------
 
-def test_the_clock_is_stepped_forward_while_ntp_has_not_synced(fake):
+def test_the_clock_is_stepped_forward_while_ntp_has_not_synced(fake, monkeypatch, tmp_path):
+    saved = tmp_path / "timesync-clock"
+    saved.write_text("")
+    os.utime(saved, (1, 1))
+    monkeypatch.setattr(system, "TIMESYNC_CLOCK_FILE", saved)
     fake.on(["timedatectl"], out="no\n")
     ahead = int(time.time()) + 3 * 86400
     assert system.set_clock({"epoch": ahead})["set"] is True
     assert fake.ran("date", "-u", "-s", f"@{ahead}")
-    assert fake.ran("fake-hwclock", "save")
+    # Saved for the next boot (the real clock moved, so the file's
+    # mtime is "now" again rather than the stale time it had).
+    assert saved.stat().st_mtime > 1
 
 
 def test_the_clock_is_left_alone_once_ntp_synced(fake):

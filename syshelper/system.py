@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import threading
 import time
+from pathlib import Path
 
 from syshelper import runner
 from syshelper.errors import HelperError
@@ -79,12 +82,15 @@ def power_status(params: dict) -> dict:
 
 
 # The Pi has no battery-backed clock: after a power cut it starts from the
-# time fake-hwclock saved, and stays there until NTP reaches the internet.
+# time last saved (systemd-timesyncd's clock file, or fake-hwclock where
+# installed), and stays there until NTP reaches the internet.
 # A phone or tablet opening a page knows the real time, so the app hands
 # it over. Only forward, and never by more than this: the saved time is
 # always behind, and nobody can push the clock years ahead.
 MAX_CLOCK_STEP = 400 * 86400
 MIN_CLOCK_STEP = 120
+# systemd-timesyncd starts the clock at boot from this file's mtime.
+TIMESYNC_CLOCK_FILE = Path("/var/lib/systemd/timesync/clock")
 
 
 def ntp_synchronized() -> bool:
@@ -114,5 +120,8 @@ def set_clock(params: dict) -> dict:
     if not result.ok:
         raise HelperError(f"Could not set the clock: {result.err.strip() or result.out.strip()}")
     # Save it, so the next boot after a power cut starts from here.
-    runner.run(["fake-hwclock", "save"])
+    if TIMESYNC_CLOCK_FILE.exists():
+        os.utime(TIMESYNC_CLOCK_FILE)
+    if shutil.which("fake-hwclock"):
+        runner.run(["fake-hwclock", "save"])
     return {"set": True, "step": int(step)}
