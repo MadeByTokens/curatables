@@ -28,6 +28,7 @@ class Video:
     file_size: int = 0
     keep_forever: bool = False
     last_played_at: str | None = None
+    play_count: int = 0
     origin: str = ""               # import: "movie" | "youtube" | "web" | "home"
     origin_ref: str = ""           # import: Wikidata / TMDB / YouTube id
     source_path: str = ""          # import: the file it came from

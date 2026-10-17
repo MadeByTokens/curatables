@@ -37,6 +37,7 @@ from app.services.import_scan import (
 from app.services.ingest import HASH_CHUNK, IngestService, VideoDetails, upload_video_id
 from app.services.media_probe import MediaProbeService, ProbeError, ProbeResult, UnsupportedCodec
 from app.services.normalize import MediaNormalizer, plan_for
+from app.services.disk_space import InsufficientDiskSpace, SpaceWatch
 from app.services.storage import StorageService, newest_mtime
 from app.services.subtitles import language_code, to_vtt
 from app.services.thumbnails import ThumbnailService
@@ -69,13 +70,15 @@ def same_filesystem(a: Path, b: Path) -> bool:
 
 
 def copy_with_progress(src: Path, dst: Path, on_progress: Callable[[Progress], None],
-                       cancel: CancelToken) -> None:
+                       cancel: CancelToken, space: SpaceWatch | None = None) -> None:
     total = src.stat().st_size
     done = 0
     try:
         with open(src, "rb") as fin, open(dst, "wb") as fout:
             while chunk := fin.read(HASH_CHUNK):
                 cancel.check()
+                if space is not None:
+                    space.check()
                 fout.write(chunk)
                 done += len(chunk)
                 on_progress(Progress(phase="copy", done=done, total=total))
@@ -501,7 +504,6 @@ class ImportRunner:
             self.repo.finish(job_id, "failed", error=f"Something went wrong: {e}")
 
     def _run(self, job: ImportJob, work: Path, report: _Reporter, cancel: CancelToken) -> dict:
-        details = job.details
         src = self.roots.check_file(job.source_path)
         st = src.stat()
         if st.st_size != job.source_size or abs(st.st_mtime - job.source_mtime) > 1:
@@ -509,6 +511,15 @@ class ImportRunner:
         allowed, reason = self.ingest.storage.check_can_write(st.st_size)
         if not allowed:
             raise ImportFailed(reason)
+        try:
+            return self._import(job, src, work, report, cancel)
+        except InsufficientDiskSpace as e:
+            raise ImportFailed(str(e)) from None
+
+    def _import(self, job: ImportJob, src: Path, work: Path, report: _Reporter,
+                cancel: CancelToken) -> dict:
+        details = job.details
+        space = self.ingest.storage.space_watch()
 
         info = self.ingest.probe.validate(src, original_filename=src.name)
         digest = self.ingest.hash_file(src, on_progress=report, cancel=cancel)
@@ -520,7 +531,7 @@ class ImportRunner:
         converted = self.normalizer.convert(
             src, work / "video.mp4", on_progress=report, cancel=cancel,
             audio_index=details.get("audio_index"),
-            burn_subtitle_index=details.get("burn_subtitle_index"))
+            burn_subtitle_index=details.get("burn_subtitle_index"), space=space)
         if converted.action == "skipped":
             raise ImportFailed(f"The video could not be converted ({converted.reason}).")
         renamed_source = False
@@ -530,7 +541,7 @@ class ImportRunner:
                 renamed_source = True
             else:
                 final = work / f"video{src.suffix.lower()}"
-                copy_with_progress(src, final, report, cancel)
+                copy_with_progress(src, final, report, cancel, space)
         else:
             final = converted.path
             try:

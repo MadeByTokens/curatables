@@ -22,6 +22,10 @@ class ServerConfig:
     # Language of the kid screens before a kid is picked (profile picker);
     # each profile has its own.
     kid_language: str = "en"
+    # The family's time zone (IANA name, e.g. "America/Toronto"): where
+    # "today" starts in the stats. Times are stored in UTC. Empty until
+    # a parent's browser reports it; changeable in Settings.
+    timezone: str = ""
     # Unix socket of the root system helper (curatables-helper.service).
     # Only the Raspberry Pi image has one; without it the system pages
     # (Linux password, Wi-Fi, drives, diagnostics) explain that.

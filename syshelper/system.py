@@ -1,4 +1,4 @@
-"""Restarting things, and the Pi's power and temperature readings."""
+"""Restarting things, the clock, and the Pi's power and temperature readings."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import threading
 import time
 
 from syshelper import runner
+from syshelper.errors import HelperError
 from syshelper.registry import action
 
 THROTTLE_BITS = {
@@ -75,3 +76,43 @@ def power() -> dict:
 @action("power_status")
 def power_status(params: dict) -> dict:
     return power()
+
+
+# The Pi has no battery-backed clock: after a power cut it starts from the
+# time fake-hwclock saved, and stays there until NTP reaches the internet.
+# A phone or tablet opening a page knows the real time, so the app hands
+# it over. Only forward, and never by more than this: the saved time is
+# always behind, and nobody can push the clock years ahead.
+MAX_CLOCK_STEP = 400 * 86400
+MIN_CLOCK_STEP = 120
+
+
+def ntp_synchronized() -> bool:
+    result = runner.run(["timedatectl", "show", "-p", "NTPSynchronized", "--value"])
+    return result.ok and result.out.strip() == "yes"
+
+
+@action("clock_status")
+def clock_status(params: dict) -> dict:
+    return {"synchronized": ntp_synchronized(), "now": time.time()}
+
+
+@action("set_clock")
+def set_clock(params: dict) -> dict:
+    """Step the clock forward to `epoch` (seconds) unless NTP already set it."""
+    epoch = params.get("epoch")
+    if not isinstance(epoch, int) or isinstance(epoch, bool):
+        raise HelperError("'epoch' must be a whole number of seconds")
+    if ntp_synchronized():
+        return {"set": False, "reason": "synchronized"}
+    step = epoch - time.time()
+    if step < MIN_CLOCK_STEP:
+        return {"set": False, "reason": "not ahead"}
+    if step > MAX_CLOCK_STEP:
+        raise HelperError("That time is too far ahead of the box's clock.")
+    result = runner.run(["date", "-u", "-s", f"@{epoch}"])
+    if not result.ok:
+        raise HelperError(f"Could not set the clock: {result.err.strip() or result.out.strip()}")
+    # Save it, so the next boot after a power cut starts from here.
+    runner.run(["fake-hwclock", "save"])
+    return {"set": True, "step": int(step)}

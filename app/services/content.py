@@ -158,14 +158,15 @@ class ContentService:
         return videos, failed
 
     def list_all(self, page: int = 1, per_page: int = 30,
-                 filter_name: str = "") -> tuple[list[Video], int]:
+                 filter_name: str = "", sort: str = "newest") -> tuple[list[Video], int]:
         """List videos for the parent content page, any status, optionally
-        narrowed to one of VideoRepository.LIST_FILTERS."""
+        narrowed to one of VideoRepository.LIST_FILTERS and ordered by one
+        of VideoRepository.SORTS."""
         offset = (page - 1) * per_page
         if filter_name in self.video_repo.LIST_FILTERS:
-            return (self.video_repo.list_filtered(filter_name, per_page, offset),
+            return (self.video_repo.list_filtered(filter_name, per_page, offset, sort=sort),
                     self.video_repo.count_filtered(filter_name))
-        videos = self.video_repo.list(status=None, limit=per_page, offset=offset)
+        videos = self.video_repo.list(status=None, limit=per_page, offset=offset, sort=sort)
         total = self.video_repo.count(status=None)
         return videos, total
 
@@ -422,6 +423,10 @@ class ContentService:
                 self._start_download(video_id, video.original_url, video.resolution)
             return video
         return None
+
+    def free_files(self, video_ids: list[str]):
+        """See StorageService.free_files."""
+        return self.storage.free_files(self.video_repo, video_ids)
 
     def hide_video(self, video_id: str) -> None:
         self.video_repo.update(video_id, status="hidden")

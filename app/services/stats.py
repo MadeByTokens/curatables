@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-
 from app.repositories.event_repo import EventRepository
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.reaction_repo import ReactionRepository
@@ -11,6 +9,7 @@ from app.repositories.profile_repo import ProfileRepository
 from app.repositories.video_repo import VideoRepository
 from app.models.viewer import ViewerContext
 from app.services.comments import CommentService
+from app.services.family_time import since_days_ago
 
 
 class StatsService:
@@ -19,20 +18,23 @@ class StatsService:
                  reaction_repo: ReactionRepository,
                  profile_repo: ProfileRepository,
                  comment_service: CommentService,
-                 video_repo: VideoRepository):
+                 video_repo: VideoRepository,
+                 timezone: str = ""):
         self.event_repo = event_repo
         self.comment_repo = comment_repo
         self.reaction_repo = reaction_repo
         self.profile_repo = profile_repo
         self.comment_service = comment_service
         self.video_repo = video_repo
+        # The family's zone: "today" starts at their midnight, not UTC's.
+        self.timezone = timezone
 
-    @staticmethod
-    def _since_date(window: str) -> str | None:
+    def _since_date(self, window: str) -> str | None:
+        """Start of the window, as stored UTC text."""
         if window == "today":
-            return date.today().isoformat()
+            return since_days_ago(0, self.timezone)
         if window == "7d":
-            return (date.today() - timedelta(days=7)).isoformat()
+            return since_days_ago(7, self.timezone)
         return None
 
     def dashboard_overview(self) -> dict:
@@ -44,13 +46,13 @@ class StatsService:
         recent_videos = self.video_repo.list_recent(limit=5)
         awaiting_review = self.video_repo.list_awaiting_review(limit=10)
 
-        yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
+        yesterday_iso = since_days_ago(1, self.timezone)
         new_comments_count = self.comment_repo.count_since(since=yesterday_iso)
 
         kpis_today = self.dashboard_kpis("today")
 
         profiles = self.profile_repo.list()
-        today_iso = date.today().isoformat()
+        today_iso = since_days_ago(0, self.timezone)
         per_kid = []
         for p in profiles:
             if p.id is None:

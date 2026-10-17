@@ -12,6 +12,7 @@ from app.dependencies import (
 from app.services.auth import AuthService, MIN_PASSWORD_LENGTH
 from app.services.relocation import RelocationService, RelocationError
 from app.config import Config
+from app.services.family_time import valid_timezone
 from app.services.storage import RESOLUTION_MAP
 from app.models import ViewerContext
 from app.services import updates
@@ -74,6 +75,7 @@ def settings_save(request: Request,
                   default_resolution: str = Form(...),
                   subtitle_langs: str = Form("en"),
                   kid_language: str = Form(""),
+                  timezone: str = Form(""),
                   viewer: ViewerContext = Depends(require_parent),
                   config: Config = Depends(get_config)):
     templates = request.app.state.templates
@@ -85,9 +87,15 @@ def settings_save(request: Request,
     config.storage.subtitle_langs = subtitle_langs.strip()
     if kid_language in LANGUAGE_CODES:
         config.server.kid_language = kid_language
+    timezone = timezone.strip()
+    error = None
+    if valid_timezone(timezone):
+        config.server.timezone = timezone
+    elif timezone:
+        error = f'"{timezone}" is not a time zone this box knows; the old one was kept.'
     config.save()
     return templates.TemplateResponse(request, "parent/settings.html", {
-        **ctx, "success": "Settings saved.", "error": None,
+        **ctx, "success": "Settings saved.", "error": error,
     })
 
 

@@ -46,11 +46,19 @@ CONTENT_FILTERS = [
     ("hidden", "Hidden"),
 ]
 
+CONTENT_SORTS = [
+    ("newest", "Newest first"),
+    ("least_played", "Least watched"),
+    ("unwatched_longest", "Not watched for longest"),
+    ("largest", "Largest files"),
+]
+
 
 @router.get("/content", response_class=HTMLResponse)
 def content_list(request: Request,
                  page: int = Query(1, ge=1),
                  status: str = Query(""),
+                 sort: str = Query("newest"),
                  flash: str = Query(""),
                  flash_type: str = Query(""),
                  viewer: ViewerContext = Depends(require_parent),
@@ -58,8 +66,10 @@ def content_list(request: Request,
                  channels_svc: ChannelService = Depends(get_channel_service)):
     if status not in dict(CONTENT_FILTERS):
         status = ""
+    if sort not in dict(CONTENT_SORTS):
+        sort = "newest"
     videos, total = content.list_all(page=page, per_page=ITEMS_PER_PAGE,
-                                     filter_name=status)
+                                     filter_name=status, sort=sort)
     total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
     channels = channels_svc.list()
     return request.app.state.templates.TemplateResponse(request, "parent/content.html", {
@@ -71,6 +81,8 @@ def content_list(request: Request,
         "channels": channels,
         "status_filter": status,
         "content_filters": CONTENT_FILTERS,
+        "sort": sort,
+        "content_sorts": CONTENT_SORTS,
         "flash": flash or None,
         "flash_type": flash_type or "success",
     })
@@ -310,8 +322,13 @@ def delete(request: Request, video_id: str,
     return RedirectResponse(url="/parent/content", status_code=302)
 
 
-def _redirect_with_flash(page: int, message: str, flash_type: str = "success"):
+def _redirect_with_flash(page: int, message: str, flash_type: str = "success",
+                         status: str = "", sort: str = ""):
     url = f"/parent/content?page={page}&flash={quote(message)}&flash_type={flash_type}"
+    if status in dict(CONTENT_FILTERS) and status:
+        url += f"&status={status}"
+    if sort in dict(CONTENT_SORTS) and sort != "newest":
+        url += f"&sort={sort}"
     return RedirectResponse(url=url, status_code=302)
 
 
@@ -328,9 +345,10 @@ async def bulk_action(request: Request,
         page = max(1, int(page_str))
     except ValueError:
         page = 1
+    keep = {"status": form_str(form, "status").strip(), "sort": form_str(form, "sort").strip()}
 
     if not video_ids:
-        return _redirect_with_flash(page, "Pick at least one video first.", "error")
+        return _redirect_with_flash(page, "Pick at least one video first.", "error", **keep)
 
     if action == "move":
         target_raw = form_str(form, "target_channel_id").strip()
@@ -350,24 +368,34 @@ async def bulk_action(request: Request,
             except Exception as e:
                 logger.warning("Bulk move failed for %s: %s", vid, e)
         return _redirect_with_flash(
-            page, f"Moved {moved} video(s) to {target.name}.")
+            page, f"Moved {moved} video(s) to {target.name}.", **keep)
 
     if action == "hide":
         for vid in video_ids:
             content.hide_video(vid)
-        return _redirect_with_flash(page, f"Hid {len(video_ids)} video(s).")
+        return _redirect_with_flash(page, f"Hid {len(video_ids)} video(s).", **keep)
 
     if action == "unhide":
         for vid in video_ids:
             content.activate_video(vid)
         return _redirect_with_flash(
-            page, f"Unhid {len(video_ids)} video(s).")
+            page, f"Unhid {len(video_ids)} video(s).", **keep)
 
     if action == "delete":
         for vid in video_ids:
             content.delete_video(vid)
         return _redirect_with_flash(
-            page, f"Deleted {len(video_ids)} video(s).")
+            page, f"Deleted {len(video_ids)} video(s).", **keep)
+
+    if action == "free":
+        report = content.free_files(video_ids)
+        skipped = len(video_ids) - report.evicted_count
+        message = (f"Freed {report.freed_bytes / 1024 ** 3:.1f} GB from "
+                   f"{report.evicted_count} video(s); they download again when a kid taps them.")
+        if skipped:
+            message += (f" {skipped} skipped: uploads, and videos that are not"
+                        " downloaded, have no files to free.")
+        return _redirect_with_flash(page, message, **keep)
 
     return _redirect_with_flash(page, f"Unknown action '{action}'.", "error")
 

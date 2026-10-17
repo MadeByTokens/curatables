@@ -4,10 +4,26 @@
 <h1>Content</h1>
 <nav class="filter-tabs" aria-label="Filter">
   {% for key, label in content_filters %}
-  <a href="/parent/content{% if key %}?status={{ key }}{% endif %}" class="filter-tab{% if status_filter == key %} active{% endif %}"{% if status_filter == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  <a href="/parent/content?{% if key %}status={{ key }}&amp;{% endif %}sort={{ sort }}" class="filter-tab{% if status_filter == key %} active{% endif %}"{% if status_filter == key %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
 </nav>
+<form method="GET" action="/parent/content" class="content-sort">
+  {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  <label>Sort by
+    <select name="sort" class="js-autosubmit">
+      {% for key, label in content_sorts %}
+      <option value="{{ key }}"{% if sort == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="btn btn-sm btn-secondary js-hide">Sort</button>
+</form>
 <p>{{ total }} video(s) — page {{ page }} of {{ total_pages }}</p>
+{% if sort in ('least_played', 'unwatched_longest', 'largest') %}
+<p class="muted fs-13">To make room, tick the videos nobody watches and press <strong>Free up files</strong>:
+their files are deleted but they stay in the library and download again when a kid taps them.
+<strong>Delete</strong> removes them altogether.</p>
+{% endif %}
 <div id="refresh-notice" class="flash flash-info" hidden>
   Downloads have finished. <a href="">Refresh the list</a>
 </div>
@@ -21,6 +37,8 @@
   <form id="bulk-form" method="POST" action="/parent/content/bulk">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="page" value="{{ page }}">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="hidden" name="sort" value="{{ sort }}">
     <label><input type="checkbox" id="select-all"> Select all on this page</label>
     &nbsp;&nbsp;
     <select name="target_channel_id">
@@ -32,6 +50,8 @@
     <button type="submit" name="action" value="move" class="btn btn-sm">Move</button>
     <button type="submit" name="action" value="hide" class="btn btn-sm btn-secondary">Hide</button>
     <button type="submit" name="action" value="unhide" class="btn btn-sm btn-secondary">Unhide</button>
+    <button type="submit" name="action" value="free" class="btn btn-sm btn-secondary"
+            title="Delete the files but keep the videos listed; they download again when a kid taps them">Free up files</button>
     <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">Delete</button>
   </form>
 </div>
@@ -64,6 +84,11 @@
         {% endif %}
         &middot;
         <small>{{ v.video_id }}</small>
+      </div>
+      <div class="meta">
+        Watched {{ v.play_count }} time{% if v.play_count != 1 %}s{% endif %}
+        {% if v.last_played_at %}&middot; last {{ v.last_played_at|friendly_date }}{% endif %}
+        {% if v.file_size %}&middot; {{ v.file_size|filesizeformat }}{% endif %}
       </div>
       {% if v.description %}
       <div class="desc">{{ v.description[:120] }}{% if v.description|length > 120 %}...{% endif %}</div>
@@ -128,11 +153,11 @@
 {% if total_pages > 1 %}
 <div class="mt-20 ta-c">
   {% if page > 1 %}
-  <a href="/parent/content?page={{ page - 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">&larr; Previous</a>
+  <a href="/parent/content?page={{ page - 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}&amp;sort={{ sort }}" class="btn btn-sm btn-secondary">&larr; Previous</a>
   {% endif %}
   <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
   {% if page < total_pages %}
-  <a href="/parent/content?page={{ page + 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}" class="btn btn-sm btn-secondary">Next &rarr;</a>
+  <a href="/parent/content?page={{ page + 1 }}{% if status_filter %}&amp;status={{ status_filter }}{% endif %}&amp;sort={{ sort }}" class="btn btn-sm btn-secondary">Next &rarr;</a>
   {% endif %}
 </div>
 {% endif %}

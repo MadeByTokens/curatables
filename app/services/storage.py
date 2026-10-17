@@ -16,6 +16,7 @@ from pathlib import Path
 
 from app.backends.base import VideoBackend
 from app.models import Video
+from app.services.disk_space import InsufficientDiskSpace, SpaceWatch
 from app.services.media_fs import DRIVE_MISSING, TOO_BIG_FOR_FAT, file_size_limit
 from app.services.normalize import MediaNormalizer
 
@@ -37,10 +38,6 @@ _download_locks: "weakref.WeakValueDictionary[str, threading.Lock]" = weakref.We
 _locks_lock = threading.Lock()
 
 _VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov", ".m4v")
-
-
-class InsufficientDiskSpace(Exception):
-    """Raised when a write would drop free space below the configured minimum."""
 
 
 @dataclass
@@ -232,12 +229,13 @@ class StorageService:
                 # original here; converting a file that is already
                 # baseline only probes it.
                 if self.normalizer is not None:
-                    existing = self.normalizer.normalize(existing).path
+                    existing = self.normalizer.normalize(existing, space=self.space_watch()).path
                 return existing
 
             allowed, reason = self.check_can_write()
             if not allowed:
                 raise InsufficientDiskSpace(reason)
+            space = self.space_watch()
 
             height = RESOLUTION_MAP.get(resolution, 720)
             sub_list = None
@@ -255,12 +253,30 @@ class StorageService:
                 resolution=height,
                 subtitle_langs=sub_list,
                 max_filesize=self.max_download_bytes,
+                keep_going=space.ok,
             )
+            if path is None and not space.ok():
+                # Stopped (or failed) because the drive filled up: drop
+                # the partial download, which can be gigabytes.
+                self._remove_partial_download(video_id)
+                raise InsufficientDiskSpace(space.message())
             if path and self.normalizer is not None:
-                path = self.normalizer.normalize(path).path
+                path = self.normalizer.normalize(path, space=space).path
             return path
         finally:
             lock.release()
+
+    def space_watch(self) -> SpaceWatch:
+        """A watch that trips when the videos drive falls under its minimum."""
+        return SpaceWatch(self.media_dir, self.min_free_bytes)
+
+    def _remove_partial_download(self, video_id: str) -> None:
+        vdir = self.video_dir(video_id)
+        if not vdir.is_dir():
+            return
+        for f in vdir.iterdir():
+            if f.is_file() and (f.stem == "video" or f.name.startswith("video.")):
+                f.unlink(missing_ok=True)
 
     def _get_lock(self, video_id: str) -> threading.Lock:
         with _locks_lock:
@@ -270,9 +286,11 @@ class StorageService:
                 _download_locks[video_id] = lock
             return lock
 
-    def _evict(self, video_repo, video_id: str, report: EvictionReport) -> None:
+    def _evict(self, video_repo, video_id: str, report: EvictionReport,
+               keep_favourites: bool = True) -> None:
         """Delete one cached video's files and mark it evicted, re-checking
-        eligibility under the per-video lock."""
+        eligibility under the per-video lock. keep_favourites=False is for
+        the parent's own choice, which overrides keep_forever."""
         lock = self._get_lock(video_id)
         if not lock.acquire(blocking=True, timeout=5):
             logger.warning("evict: lock contention on %s, skipping", video_id)
@@ -280,7 +298,8 @@ class StorageService:
         try:
             video = video_repo.get(video_id)
             if (video is None or video.storage_mode != "cache"
-                    or video.keep_forever or video.download_status != "ready"):
+                    or (video.keep_forever and keep_favourites)
+                    or video.download_status != "ready"):
                 return
             size_before = video.file_size or self.file_size(video_id)
             self.delete_video_files(video)
@@ -294,6 +313,15 @@ class StorageService:
             logger.exception("evict failed for %s", video_id)
         finally:
             lock.release()
+
+    def free_files(self, video_repo, video_ids: list[str]) -> EvictionReport:
+        """Delete the files of the downloaded videos the parent picked; they
+        stay listed and download again when a kid taps them. Uploads have
+        no source to fetch again and are skipped."""
+        report = EvictionReport()
+        for video_id in video_ids:
+            self._evict(video_repo, video_id, report, keep_favourites=False)
+        return report
 
     def evict_expired(self, video_repo, cache_days: float) -> EvictionReport:
         """Delete cached videos nobody has watched for `cache_days`.

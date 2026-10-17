@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import shutil
 from pathlib import Path
 
 from app.services.images import validate_image
@@ -25,6 +26,11 @@ class KidLibraryService:
 
     def _thumb_dir(self, profile_id: int) -> Path:
         return self.media_dir / "thumbnails" / "profiles" / str(profile_id)
+
+    def delete_profile_files(self, profile_id: int) -> None:
+        """The pictures a deleted kid chose for videos; their rows go with
+        the profile (ON DELETE CASCADE), the files would stay."""
+        shutil.rmtree(self._thumb_dir(profile_id), ignore_errors=True)
 
     # --- Video title/thumbnail overrides ---
 

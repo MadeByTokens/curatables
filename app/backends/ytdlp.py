@@ -11,7 +11,7 @@ import os
 import re
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import quote_plus, urlsplit
 
 from app.backends.base import BackendError, BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
@@ -30,6 +30,10 @@ _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _GONE_TITLES = {"[Private video]", "[Deleted video]"}
 _SUBTITLE_FAILED = "Unable to download video subtitles"
 _SUBTITLE_OPTS = ("writesubtitles", "writeautomaticsub", "subtitlesformat", "subtitleslangs")
+
+
+class _StopDownload(Exception):
+    """Raised from a progress hook to stop a download part way."""
 _YOUTUBE_CHANNEL_ID = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
 
 
@@ -305,7 +309,8 @@ class YtdlpBackend(VideoBackend):
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
                        subtitle_langs: list[str] | None = None,
-                       max_filesize: int | None = None) -> Path | None:
+                       max_filesize: int | None = None,
+                       keep_going: Callable[[], bool] | None = None) -> Path | None:
         import yt_dlp
 
         self.last_error = None
@@ -331,6 +336,11 @@ class YtdlpBackend(VideoBackend):
         }
         if max_filesize:
             opts["max_filesize"] = max_filesize
+        if keep_going is not None:
+            def _stop_when_asked(_status: dict) -> None:
+                if not keep_going():
+                    raise _StopDownload("stopped: the drive is full")
+            opts["progress_hooks"] = [_stop_when_asked]
 
         if subtitle_langs:
             opts["writesubtitles"] = True

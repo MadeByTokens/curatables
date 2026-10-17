@@ -10,6 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+from typing import Callable
 from pathlib import Path
 
 
@@ -105,8 +106,11 @@ class VideoBackend(ABC):
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
                        subtitle_langs: list[str] | None = None,
-                       max_filesize: int | None = None) -> Path | None:
+                       max_filesize: int | None = None,
+                       keep_going: Callable[[], bool] | None = None) -> Path | None:
         """Download a video from its full URL to output_dir.
         Returns the path to the downloaded file, or None on failure
-        (including a source file larger than `max_filesize` bytes)."""
+        (including a source file larger than `max_filesize` bytes).
+        `keep_going` is polled while data arrives; once it returns False
+        the download stops and None is returned."""
         ...

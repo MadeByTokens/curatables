@@ -28,6 +28,8 @@ CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
     "/profiles/select",  # same: establishes the kid session
     "/profiles/pin",     # same
     "/api/log",        # telemetry beacon from kid watch page
+    "/api/clock",      # a device's time while the box's clock is behind;
+                       # sent from pages that may have no session yet
     # Parent tus uploads — the vendored tus-js-client doesn't know
     # about CSRF tokens. Parent auth + SameSite=strict cookie covers
     # the threat model on this LAN-only, parent-only endpoint.

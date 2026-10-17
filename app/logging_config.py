@@ -90,6 +90,13 @@ def _build_formatter(fmt: str) -> logging.Formatter:
     return logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 
 
+ACCESS_LOGGER = "curatables.access"
+
+
+def _no_access_lines(record: logging.LogRecord) -> bool:
+    return record.name != ACCESS_LOGGER or record.levelno >= logging.WARNING
+
+
 def setup_logging(log_level: str = "info",
                   log_dir: Path | None = None,
                   log_format: str | None = None) -> None:
@@ -99,6 +106,9 @@ def setup_logging(log_level: str = "info",
         log_level: One of debug, info, warning, error.
         log_dir: Directory for log files. If provided, creates a rotating
                  file handler at {log_dir}/curatables.log (5MB, 3 backups).
+                 The file leaves out the per-request access lines: on the
+                 Pi it lives on the SD card, and the console (the journal,
+                 kept in RAM) still has them.
         log_format: ``"plain"`` or ``"json"``. When omitted, falls back
                  to the ``LOG_FORMAT`` environment variable, then to
                  ``"plain"``.
@@ -130,6 +140,7 @@ def setup_logging(log_level: str = "info",
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         file_handler.addFilter(rid_filter)
+        file_handler.addFilter(_no_access_lines)
         root.addHandler(file_handler)
 
     # Suppress noisy third-party loggers

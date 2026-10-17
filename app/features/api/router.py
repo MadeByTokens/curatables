@@ -1,16 +1,18 @@
-"""API endpoints for kid UI (event logging)."""
+"""API endpoints for kid UI (event logging), and the clock beacon."""
 
 from fastapi import APIRouter, Depends, Form, Request
 from starlette.responses import JSONResponse, Response
 
+from app.config import Config
 from app.dependencies import (
-    get_viewer, get_event_service, get_reaction_service, get_content_service,
+    get_config, get_viewer, get_event_service, get_reaction_service, get_content_service,
     require_kid_feature,
 )
 from app.services.content import ContentService, VideoNotFound
 from app.services.events import EventService
 from app.services.reactions import ReactionService
 from app.models import ViewerContext
+from app.services.family_time import valid_timezone
 from app.services.rate_limit import RateLimiter
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -20,6 +22,23 @@ PLAYER_EVENTS = {"video_view", "video_play", "video_complete"}
 # A player sends a handful of these per video; anything far beyond that
 # is a script filling the database.
 EVENT_LIMITER = RateLimiter(max_events=120, window_seconds=600)
+
+
+@router.post("/clock")
+def clock_beacon(request: Request,
+                 now: float = Form(0),
+                 tz: str = Form(""),
+                 viewer: ViewerContext = Depends(get_viewer),
+                 config: Config = Depends(get_config)):
+    """static/js/clock.js: the device's time (ms) while the box's clock may
+    be behind, and its time zone, which a parent's browser sets once. Only
+    signed-in kids and parents count."""
+    if now > 0 and (viewer.is_parent or viewer.profile_id):
+        request.app.state.clock.offer(now / 1000, by_parent=viewer.is_parent)
+    if viewer.is_parent and not config.server.timezone and valid_timezone(tz):
+        config.server.timezone = tz
+        config.save()
+    return Response(status_code=204)
 
 
 @router.post("/log")

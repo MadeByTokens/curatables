@@ -9,6 +9,7 @@
 #   CURATABLES_DATA_DIR   Source data dir (default: $HOME/curatables-data)
 #   RETAIN                Number of snapshots to keep (default: 14)
 #   PYTHON                Python interpreter (default: python3)
+#   MIN_FREE_MB           Free space to leave in OUT_DIR (default: 1024)
 #
 # Writes $OUT_DIR/curatables-YYYY-MM-DD-HHMMSS.db (SQLite online backup
 # API, safe while the server runs) and, next to it,
@@ -33,6 +34,17 @@ fi
 
 umask 077
 mkdir -p "$OUT_DIR"
+
+# OUT_DIR is normally on the SD card the box runs from: never fill it.
+# The parent dashboard warns when the card is low.
+MIN_FREE_MB="${MIN_FREE_MB:-1024}"
+need_kb=$(( $(du -k "$DB_PATH" | cut -f1) + MIN_FREE_MB * 1024 ))
+free_kb=$(df -Pk "$OUT_DIR" | awk 'NR == 2 {print $4}')
+if [ "$free_kb" -lt "$need_kb" ]; then
+    echo "ERROR: not enough free space for a backup in $OUT_DIR" \
+         "($((free_kb / 1024)) MB free, need $((need_kb / 1024)) MB)" >&2
+    exit 1
+fi
 
 TIMESTAMP="$(date +%Y-%m-%d-%H%M%S)"
 OUT_FILE="$OUT_DIR/curatables-$TIMESTAMP.db"

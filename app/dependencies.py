@@ -274,10 +274,11 @@ def get_stats_service(
     profile_repo=Depends(get_profile_repo),
     comment_service=Depends(get_comment_service),
     video_repo=Depends(get_video_repo),
+    config: Config = Depends(get_config),
 ) -> StatsService:
     return StatsService(
         event_repo, comment_repo, reaction_repo, profile_repo,
-        comment_service, video_repo=video_repo)
+        comment_service, video_repo=video_repo, timezone=config.server.timezone)
 
 
 # --- Viewer context ---

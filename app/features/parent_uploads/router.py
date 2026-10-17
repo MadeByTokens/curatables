@@ -235,12 +235,11 @@ async def tus_patch(request: Request, token: str,
     if offset < 0:
         return Response(status_code=400, headers=_tus_headers())
 
-    allowed, reason = storage.check_can_write()
+    chunk = await request.body()
+    allowed, reason = storage.check_can_write(required_bytes=len(chunk))
     if not allowed:
         return Response(status_code=507, headers=_tus_headers(),
                         content=reason, media_type="text/plain")
-
-    chunk = await request.body()
     try:
         new_offset = uploads.append(token, offset, chunk)
     except UploadNotFound:

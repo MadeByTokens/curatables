@@ -59,6 +59,17 @@
   </div>
 
   <div class="form-group">
+    <label for="timezone">Time zone</label>
+    <input id="timezone" name="timezone" list="timezone-list" value="{{ config.server.timezone }}"
+           placeholder="e.g. America/Toronto" autocomplete="off">
+    <datalist id="timezone-list">
+      {% for name in timezones() %}<option value="{{ name }}">{% endfor %}
+    </datalist>
+    <small class="muted">Where "today" starts in the stats and dates. Filled in from this browser the
+      first time you sign in; change it if the family moves.</small>
+  </div>
+
+  <div class="form-group">
     <label for="subtitle_langs">Subtitle Languages</label>
     <input type="text" id="subtitle_langs" name="subtitle_langs" value="{{ config.storage.subtitle_langs }}">
     <small class="muted">Comma-separated language codes (e.g. "en,pt,es"), "all" for all available, or empty for none.</small>
