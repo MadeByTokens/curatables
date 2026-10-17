@@ -174,3 +174,18 @@ def test_comment_on_hidden_video_is_refused(app):
     resp = _as_kid(app, pid).post("/watch/yt_secret/comment", data={"body": "hi"})
     assert resp.status_code == 404
     assert conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0] == 0
+
+
+def test_kid_search_shows_and_finds_the_kids_own_title(app):
+    from app.repositories.override_repo import ProfileVideoOverrideRepository
+    conn = _conn(app)
+    ch = ChannelRepository(conn).create("Science")
+    _video(conn, "yt_volcano", ch, "Baking soda volcano")
+    pid = _kid(conn, "maya")
+    ProfileVideoOverrideRepository(conn).upsert(pid, "yt_volcano", title="Vulcão de bicarbonato")
+
+    kid = _as_kid(app, pid)
+    found = kid.get("/search?q=vulcao").text
+    assert "Vulcão de bicarbonato" in found
+    assert "Vulcão de bicarbonato" in kid.get("/search?q=volcano").text
+    assert "Baking soda volcano" not in kid.get("/search?q=volcano").text

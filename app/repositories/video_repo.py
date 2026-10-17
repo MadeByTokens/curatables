@@ -5,9 +5,19 @@ from __future__ import annotations
 import builtins
 import re
 import sqlite3
+import unicodedata
 
 from app.models import Video
 from app.repositories.base import BaseRepository
+
+
+def fold_text(text: str) -> str:
+    """Lower-case text with accents removed, for searching."""
+    if text.isascii():
+        # Most text, and 100x faster than decomposing it.
+        return text.lower()
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).casefold()
 
 
 class VideoRepository(BaseRepository):
@@ -140,25 +150,37 @@ class VideoRepository(BaseRepository):
         return int(row["cnt"])
 
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
-                     limit: int = 24, offset: int = 0) -> builtins.list[Video]:
+                     limit: int = 24, offset: int = 0,
+                     profile_id: int | None = None) -> builtins.list[Video]:
         """Search ready videos by title and description, matching from the
         start of a word: "park" finds "Park day" and "parks", not "Sparky".
-        `channel_ids` None searches every video; an empty list matches nothing."""
-        like = f"%{query}%"
-        sql = ("SELECT * FROM videos WHERE status = 'active' AND download_status = 'ready' "
-               "AND (title LIKE ? OR description LIKE ?) ")
-        params: list = [like, like]
+        Accents and case are ignored ("vulcao" finds "Vulcão"). With a
+        `profile_id`, that kid's own title, description and tags are
+        searched as well. `channel_ids` None searches every video; an empty list
+        matches nothing."""
+        sql = ("SELECT v.*, o.title AS kid_title, o.description AS kid_description, "
+               "(SELECT group_concat(t.name, char(31)) FROM profile_video_tags pvt "
+               " JOIN tags t ON t.id = pvt.tag_id "
+               " WHERE pvt.profile_id = ? AND pvt.video_id = v.video_id) AS kid_tags "
+               "FROM videos v LEFT JOIN profile_video_overrides o "
+               "ON o.video_id = v.video_id AND o.profile_id = ? "
+               "WHERE v.status = 'active' AND v.download_status = 'ready' ")
+        params: list = [profile_id, profile_id]
         if channel_ids is not None:
             if not channel_ids:
                 return []
-            sql += f"AND channel_id IN ({','.join('?' for _ in channel_ids)}) "
+            sql += f"AND v.channel_id IN ({','.join('?' for _ in channel_ids)}) "
             params.extend(channel_ids)
-        word_start = re.compile(r"(?<!\w)" + re.escape(query), re.IGNORECASE)
+        # Folding is done here, not in SQL: SQLite's LIKE folds neither
+        # accents nor non-ASCII case.
+        word_start = re.compile(r"(?<!\w)" + re.escape(fold_text(query)))
         # Stop reading once this page is full: a short query matches
         # most of a large library.
         rows: builtins.list = []
-        for r in self.db.execute(sql + "ORDER BY added_at DESC", params):
-            if word_start.search(r["title"] or "") or word_start.search(r["description"] or ""):
+        for r in self.db.execute(sql + "ORDER BY v.added_at DESC", params):
+            texts = (r["title"], r["description"], r["kid_title"],
+                     r["kid_description"], r["kid_tags"])
+            if any(t and word_start.search(fold_text(t)) for t in texts):
                 rows.append(r)
                 if len(rows) >= offset + limit:
                     break
