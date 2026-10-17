@@ -1359,3 +1359,30 @@ a.wishlist-mine-title { color: inherit; }
     vertical-align: middle;
     word-break: break-all;
 }
+
+/* Phones: the search box and its button share one row (the button
+   keeps its icon; the word stays for screen readers), and Find new's
+   pills are smaller, its sorts one row that scrolls sideways, so
+   results start well up the screen. */
+@media (max-width: 480px) {
+    .wishlist-intro { font-size: 15px; margin-bottom: 8px; }
+    .search-form { white-space: nowrap; }
+    .search-input { width: calc(100% - 62px); box-sizing: border-box; vertical-align: middle; }
+    .search-btn { width: 54px; padding: 10px 0; vertical-align: middle; }
+    .search-btn-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+    .wishlist-modes { margin-top: 6px; }
+    .wishlist-sorts {
+        margin-top: 6px;
+        white-space: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .wishlist-modes .wishlist-pill,
+    .wishlist-sorts .wishlist-pill { font-size: 15px; padding: 0 12px; }
+}
