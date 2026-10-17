@@ -176,3 +176,22 @@ class TestSiblingCommentVisibility:
         ProfileRepository(db).update(bob, channels_restricted=True)
         assert svc.count_for_video("vshared", self._kid(alice)) == 1
         assert svc.count_for_video("vshared", _parent_viewer()) == 3
+
+
+def test_one_reply_box_per_thread(app):
+    from fastapi.testclient import TestClient
+    from app.dependencies import get_db
+    conn = next(app.dependency_overrides[get_db]())
+    _mk_video(conn, "vthread")
+    ch = ChannelRepository(conn).create("Thread channel")
+    conn.execute("UPDATE videos SET channel_id = ? WHERE video_id = 'vthread'", (ch,))
+    conn.commit()
+    pid = ProfileRepository(conn).create(Profile(name="theo3", display_name="Theo"))
+    top = _seed_comment(conn, "vthread", "first", profile_id=pid, is_parent_user=0)
+    _seed_comment(conn, "vthread", "a reply", parent_comment_id=top, profile_id=pid, is_parent_user=0)
+    _seed_comment(conn, "vthread", "second", profile_id=pid, is_parent_user=0)
+    kid = TestClient(app, follow_redirects=False)
+    kid.post("/profiles/select", data={"profile_id": pid})
+    page = kid.get("/watch/vthread").text
+    assert page.count('name="parent_comment_id"') == 2
+    assert page.count("comment-reply-open") == 2

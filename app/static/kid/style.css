@@ -510,6 +510,15 @@ body {
     margin-bottom: 16px;
 }
 
+/* Opens a thread's reply box: quieter than a send button. */
+.comment-reply-btn.comment-reply-open {
+    background: transparent;
+    color: #1f7a70;
+    color: var(--accent, #1f7a70);
+    border: 1px solid;
+    padding: 8px 14px;
+}
+
 .comment-submit, .comment-reply-btn {
     display: inline-block;
     min-height: 44px;
