@@ -1087,8 +1087,8 @@ noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
 .pin-pad-pictures .pin-key-back { margin-left: 33.5%; }
 
 /* Wishlist: find new videos and ask a grown-up */
-.wishlist-title { margin: 0 0 4px; }
-.wishlist-intro { margin: 0 0 12px; color: #444; }
+.wishlist-title, .page-title { margin: 0 0 4px; }
+.wishlist-intro, .page-intro { margin: 0 0 12px; color: #444; }
 .wishlist-sent, .wishlist-error {
     margin: 12px 0 0;
     padding: 12px 14px;
