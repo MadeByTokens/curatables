@@ -137,7 +137,7 @@
     var empty = document.getElementById('no-comments');
     if (empty) { addClass(empty, 'd-none'); }
     var count = document.getElementById('comment-count');
-    if (count && !parentId) {
+    if (count) {
       var total = parseInt(count.getAttribute('data-total'), 10) || 0;
       total += 1;
       count.setAttribute('data-total', String(total));

@@ -162,3 +162,17 @@ class TestSiblingCommentVisibility:
         db.commit()
         comments, _ = _mk_svc(db).list_for_video("vshared", self._kid(alice))
         assert comments[0].replies == []
+
+    def test_count_includes_replies_the_kid_sees(self, db):
+        _ch, alice, bob = self._setup(db)
+        svc = _mk_svc(db)
+        first = _seed_comment(db, "vshared", "one", profile_id=alice, is_parent_user=0)
+        _seed_comment(db, "vshared", "two", profile_id=bob, is_parent_user=0)
+        _seed_comment(db, "vshared", "a reply", parent_comment_id=first, profile_id=bob,
+                      is_parent_user=0)
+        assert svc.count_for_video("vshared", self._kid(alice)) == 3
+        assert svc.count_for_video("vshared", _parent_viewer()) == 3
+        # Bob's comments are hidden from Alice once he can't see the channel.
+        ProfileRepository(db).update(bob, channels_restricted=True)
+        assert svc.count_for_video("vshared", self._kid(alice)) == 1
+        assert svc.count_for_video("vshared", _parent_viewer()) == 3
