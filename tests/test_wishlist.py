@@ -681,3 +681,37 @@ def test_search_says_it_looks_in_the_kids_own_videos(app, client, backend):
     _kid(app, client, "wren", search_mode="curated")
     page = client.get("/search").text
     assert "Search my videos" in page and "Find new videos" not in page
+
+
+def test_a_video_youtube_wont_serve_is_marked_unavailable(app, client, authed_client, backend):
+    from app.backends.base import BackendErrorType
+    from app.services.wishlist import WishlistService
+    from app.repositories import VideoRepository
+    pid = _kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    request_id = repo.add(pid, "youtube_zzzzzzzzzzz", _meta("zzzzzzzzzzz", "Gone video"),
+                          "https://www.youtube.com/watch?v=zzzzzzzzzzz")
+
+    def gone(url):
+        backend.last_error = BackendError(BackendErrorType.VIDEO_UNAVAILABLE, "not available", "")
+        return None
+    backend.fetch_video_info = gone
+    WishlistService(backend, repo, VideoRepository(_conn(app)),
+                    FakeThumbnails(app.state.config.data_dir), app.state.config).fill_details(request_id)
+    assert repo.get(request_id).status == "unavailable"
+    resp = authed_client.get(f"/parent/requests/{request_id}/review")
+    assert resp.headers["location"] == "/parent/requests?notice=unavailable"
+    assert "YouTube won't serve it" in authed_client.get("/parent/requests").text
+    assert "Can&#39;t get this one" in client.get("/wishlist").text
+
+
+def test_kid_history_hides_a_turned_down_title_with_a_blocked_word(app, client, authed_client, backend):
+    pid = _kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    request_id = repo.add(pid, "youtube_yyyyyyyyyyy", _meta("yyyyyyyyyyy", "Spooky night"),
+                          "https://www.youtube.com/watch?v=yyyyyyyyyyy")
+    repo.decide(request_id, "rejected")
+    assert "Spooky night" in client.get("/wishlist").text
+    app.state.config.wishlist.blocked_words = ["spooky"]
+    page = client.get("/wishlist").text
+    assert "Spooky night" not in page and "A video" in page

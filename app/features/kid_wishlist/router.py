@@ -18,7 +18,9 @@ from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.images import image_extension
 from app.services.thumbnails import ThumbnailService
-from app.services.wishlist import SORTS, WishlistError, WishlistService, fill_details_later
+from app.services.wishlist import (
+    SORTS, WishlistError, WishlistService, blocked_word_in, fill_details_later,
+)
 from app.template_utils import render_kid_template
 
 router = APIRouter(tags=["kid-wishlist"])
@@ -62,13 +64,20 @@ def _with_asked(url: str) -> str:
 
 
 def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository, **ctx):
+    mine = repo.list_for_profile(viewer.kid_id, limit=24)
+    # A turned-down request whose title now has one of the parent's
+    # blocked words is listed without its title and picture.
+    words = request.app.state.config.wishlist.blocked_words
+    hidden = {w.id for w in mine if w.status != "approved"
+              and blocked_word_in(words, f"{w.title}\n{w.original_title}")}
     context = {
         "here": _here(request),
         "query": "", "mode": "videos", "sort": "", "sorts": (), "results": [],
         "channels": [], "page": 1, "has_more": False, "base": "",
         "channel_id": "", "channel_title": "",
         "error": None, "error_kind": "", "asked": False,
-        "my_requests": repo.list_for_profile(viewer.kid_id, limit=24),
+        "my_requests": mine,
+        "hidden_requests": hidden,
         "nav_active": "wishlist",
     }
     context.update(ctx)

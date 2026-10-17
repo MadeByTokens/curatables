@@ -20,6 +20,7 @@ router = APIRouter(prefix="/parent/requests", tags=["parent-requests"])
 NOTICES = {
     "added": "Added. It is downloading now; the Content tab shows its progress.",
     "rejected": "Done. That video won't be offered to that kid again.",
+    "unavailable": "YouTube won't serve that video (private, removed or restricted), so it can't be added.",
 }
 
 
@@ -61,6 +62,8 @@ async def review_request(request: Request, request_id: int,
     if item is not None and item.status == "pending" and not item.has_details:
         await run_in_threadpool(wishlist.fill_details, request_id)
         item = repo.get(request_id)
+    if item is not None and item.status == "unavailable":
+        return RedirectResponse(url="/parent/requests?notice=unavailable", status_code=303)
     if item is None or item.status != "pending":
         return RedirectResponse(url="/parent/requests", status_code=303)
     meta = item.metadata()

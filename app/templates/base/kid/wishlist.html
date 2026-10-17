@@ -101,13 +101,23 @@
   <ul class="wishlist-mine">
     {% for w in my_requests %}
     <li class="wishlist-mine-item">
+      {% if w.id in hidden_requests %}
+      <span class="wishlist-mine-thumb wishlist-mine-hidden" aria-hidden="true">&#128584;</span>
+      <span class="wishlist-mine-title">{{ _("A video") }}</span>
+      <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#10006;</span> {{ _("Not this time") }}</span>
+      {% else %}
       <img src="/wishlist/thumb/{{ w.video_id }}" alt="" class="wishlist-mine-thumb">
-      {% if w.status == "pending" %}
+      {% endif %}
+      {% if w.id in hidden_requests %}
+      {% elif w.status == "pending" %}
       <a href="/wishlist/asked/{{ w.id }}?back={{ here|urlencode }}" class="wishlist-mine-title">{{ w.title }} <span aria-hidden="true">&#9999;&#65039;</span></a>
       <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Waiting") }}</span>
       {% elif w.status == "approved" %}
       <span class="wishlist-mine-title">{{ w.title }}</span>
       <a href="/watch/{{ w.video_id }}" class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes! Watch") }}</a>
+      {% elif w.status == "unavailable" %}
+      <span class="wishlist-mine-title">{{ w.title }}</span>
+      <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#128683;</span> {{ _("Can't get this one") }}</span>
       {% else %}
       <span class="wishlist-mine-title">{{ w.title }}</span>
       <span class="wishlist-badge wishlist-badge-no"><span aria-hidden="true">&#10006;</span> {{ _("Not this time") }}</span>

@@ -98,7 +98,7 @@ class YtdlpBackend(VideoBackend):
                 suggestion="Set up source authentication in Settings "
                            "(cookie file or browser cookies from a logged-in account).",
             )
-        if "unavailable" in msg.lower() or "private" in msg.lower() or "removed" in msg.lower():
+        if any(w in msg.lower() for w in ("unavailable", "not available", "private", "removed")):
             return BackendError(
                 error_type=BackendErrorType.VIDEO_UNAVAILABLE,
                 message="This video is unavailable (private, deleted, or region-locked).",
