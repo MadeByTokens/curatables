@@ -119,3 +119,10 @@ def test_the_kids_error_page_is_rendered_in_the_kids_language(app, client, monke
     client.post("/profiles/select", data={"profile_id": pid})
     page = client.get("/no-such-page")
     assert "{%" not in page.text and 'lang="es"' in page.text
+
+
+@pytest.mark.parametrize("lang", LANGUAGE_CODES)
+def test_kid_menu_labels_are_all_different(lang):
+    labels = ["Home", "Search", "Tags", "Find new", "Upload", "Help", "Switch"]
+    shown = [gettext(lang, label) for label in labels]
+    assert len(set(shown)) == len(shown), shown
