@@ -170,3 +170,13 @@ def test_one_channel_needs_no_channel_buttons(app):
     ChannelRepository(conn).create("Planes")
     conn.commit()
     assert 'class="channel-nav"' in kid.get("/").text
+
+
+def test_label_emoji_ask_for_colour():
+    # U+1F3F7 draws as a plain outline without the emoji selector.
+    import re
+    from pathlib import Path
+    for path in (Path(__file__).parent.parent / "app" / "templates").rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"&#127991;(?!&#65039;)", text), path
+        assert "\U0001F3F7" not in text.replace("\U0001F3F7️", ""), path

@@ -14,7 +14,7 @@
     {{ nav_btn("/search", "search", "&#128269;"|safe, _("Search"), nav_active) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_tags %}
-    {{ nav_btn("/tags", "tags", "&#127991;"|safe, _("Tags"), nav_active) }}
+    {{ nav_btn("/tags", "tags", "&#127991;&#65039;"|safe, _("Tags"), nav_active) }}
     {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_wishlist %}
     {{ nav_btn("/wishlist", "wishlist", "&#128301;"|safe, _("Find new"), nav_active) }}
