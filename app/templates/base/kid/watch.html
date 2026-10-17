@@ -52,7 +52,7 @@
             class="reaction-btn{% if my_reaction == name %} active{% endif %}"
             aria-pressed="{{ 'true' if my_reaction == name else 'false' }}">
       <span aria-hidden="true">{{ emoji_char }}</span>
-      <span class="reaction-label">{{ _(name) }}</span>
+      <span class="reaction-label">{{ _(name)|capitalize }}</span>
       <span class="reaction-count" data-count-for="{{ name }}">{{ reaction_counts.get(name) or '' }}</span>
     </button>
     {% endfor %}
@@ -63,7 +63,7 @@
     {% for name, emoji_char in reactions_list %}
     <span class="reaction-btn cur-default">
       <span aria-hidden="true">{{ emoji_char }}</span>
-      <span class="reaction-label">{{ _(name) }}</span>
+      <span class="reaction-label">{{ _(name)|capitalize }}</span>
       <span class="reaction-count">{{ reaction_counts.get(name, 0) }}</span>
     </span>
     {% endfor %}
