@@ -185,3 +185,10 @@ def test_label_emoji_ask_for_colour():
         text = path.read_text(encoding="utf-8")
         assert not re.search(r"&#127991;(?!&#65039;)", text), path
         assert "\U0001F3F7" not in text.replace("\U0001F3F7️", ""), path
+
+
+def test_reaction_labels_capitalise_only_the_first_word(app):
+    conn, kid, pid = _setup(app)
+    ProfileRepository(conn).update(pid, language="es")
+    page = kid.get("/watch/yt_train").text
+    assert ">Me encanta<" in page and "text-transform: capitalize" not in kid.get("/static/kid/style.css").text
