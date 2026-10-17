@@ -78,9 +78,9 @@ Video requests).
 
 | Key | Default | Meaning |
 |---|---|---|
-| `blocked_words` | a starter list (horror, scary, gun, …) | Results whose title, channel or description contains one of these whole words are hidden, and so are channels whose name does; a search containing one shows nothing. |
+| `blocked_words` | a starter list in English, Spanish and Portuguese (horror, scary, gun, miedo, medo, …) | Results whose title, channel or description contains one of these whole words are hidden, and so are channels whose name does; a search containing one shows nothing. |
 | `allowed_channels` | `[]` | If not empty, only these channels (by name) and their videos are shown. |
-| `max_duration_minutes` | `30` | Longer results are hidden; `0` = any length. |
+| `max_duration_minutes` | `20` | Longer results are hidden; `0` = any length. |
 | `max_results` | `12` | Results per page; **More** shows up to 5 pages. |
 
 ### `imports`

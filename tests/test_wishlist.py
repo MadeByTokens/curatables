@@ -708,13 +708,13 @@ def test_a_video_youtube_wont_serve_is_marked_unavailable(app, client, authed_cl
 def test_kid_history_hides_a_turned_down_title_with_a_blocked_word(app, client, authed_client, backend):
     pid = _kid(app, client)
     repo = WishlistRepository(_conn(app))
-    request_id = repo.add(pid, "youtube_yyyyyyyyyyy", _meta("yyyyyyyyyyy", "Spooky night"),
+    request_id = repo.add(pid, "youtube_yyyyyyyyyyy", _meta("yyyyyyyyyyy", "Pirate night"),
                           "https://www.youtube.com/watch?v=yyyyyyyyyyy")
     repo.decide(request_id, "rejected")
-    assert "Spooky night" in client.get("/wishlist").text
-    app.state.config.wishlist.blocked_words = ["spooky"]
+    assert "Pirate night" in client.get("/wishlist").text
+    app.state.config.wishlist.blocked_words = ["pirate"]
     page = client.get("/wishlist").text
-    assert "Spooky night" not in page and "A video" in page
+    assert "Pirate night" not in page and "A video" in page
 
 
 def test_a_channel_full_of_filtered_videos_still_offers_more(app, client, backend):
