@@ -334,3 +334,12 @@ def test_the_log_file_leaves_out_access_lines(tmp_path):
             handler.close()
         root.handlers[:], root.level = saved[0], saved[1]
     assert "downloaded a video" in text and "GET / 200" not in text
+
+
+def test_stored_times_show_in_the_familys_day_and_time():
+    from app.template_utils import local_time
+    today = date(2026, 10, 16)
+    assert local_time("2026-10-16 22:36:14", today, tz="America/Toronto") == "today 18:36"
+    assert local_time("2026-10-17T00:40:09.5+00:00", today, tz="America/Toronto") == "today 20:40"
+    assert local_time("2026-09-01T13:10:00Z", today, tz="America/Toronto") == "1 Sep 2026 09:10"
+    assert local_time("", today) == ""

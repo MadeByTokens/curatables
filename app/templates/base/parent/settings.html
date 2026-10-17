@@ -60,7 +60,7 @@
 
   <div class="form-group">
     <label for="timezone">Time zone</label>
-    <input id="timezone" name="timezone" list="timezone-list" value="{{ config.server.timezone }}"
+    <input type="text" id="timezone" name="timezone" list="timezone-list" value="{{ config.server.timezone }}"
            placeholder="e.g. America/Toronto" autocomplete="off">
     <datalist id="timezone-list">
       {% for name in timezones() %}<option value="{{ name }}">{% endfor %}

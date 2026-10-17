@@ -75,7 +75,7 @@
     <tr>
       <td>{% if r.video_title %}<a href="/parent/content/{{ r.video_id }}">{{ r.video_title }}</a>{% else %}<span class="muted">A video that was deleted</span>{% endif %}</td>
       <td>{{ emoji_lookup.get(r.emoji, r.emoji) }}</td>
-      <td class="muted fs-13">{{ r.created_at }}</td>
+      <td class="muted fs-13">{{ r.created_at|local_time }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -88,7 +88,7 @@
 {% if recent_comments %}
   {% for c in recent_comments %}
   <div class="card comment-card">
-    <div class="fs-13 muted">{{ c.created_at }}</div>
+    <div class="fs-13 muted">{{ c.created_at|local_time }}</div>
     <div class="my-4">{{ c.body }}</div>
     <div class="fs-12 muted-3">on {{ c.video_title or "a video that was deleted" }}</div>
     <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/stats/profiles/{{ profile.id }}%3Fwindow%3D{{ window }}"
