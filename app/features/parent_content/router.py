@@ -411,10 +411,13 @@ def content_detail(request: Request, video_id: str,
     except Exception:
         return RedirectResponse(url="/parent/content", status_code=302)
     detail = stats.video_detail(video_id, viewer=viewer, comments_page=cp)
+    family_channel = next((c for c in content.list_channels()
+                           if c.id == video.channel_id), None)
     return request.app.state.templates.TemplateResponse(request,
         "parent/content_detail.html", {
             "request": request,
             "video": video,
+            "family_channel": family_channel,
             "emoji_lookup": dict(EMOJI_MAP),
             **detail,
         })

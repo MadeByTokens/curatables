@@ -13,7 +13,10 @@
   </div>
 </div>
 <h1 class="detail-title">{{ video.title }}</h1>
-<div class="muted-2 fs-14">{{ video.channel_name or 'No channel' }}</div>
+<div class="muted-2 fs-14">
+  {% if family_channel %}Channel: <a href="/parent/channels/{{ family_channel.id }}/edit">{{ family_channel.name }}</a>{% else %}No channel: kids can&rsquo;t see it{% endif %}
+  {% if video.channel_name %}&middot; From {{ video.channel_name }}{% endif %}
+</div>
 {% if video.status == 'review' %}
 <div class="flash flash-info mt-8">
   {% if video.download_error %}{{ video.download_error }}{% else %}A kid uploaded this into a shared channel.{% endif %}
