@@ -89,7 +89,7 @@ Sam shortened YouTube's long title to "Caminandes 2: Gran Dillama".
 
 ## 4. Make a profile for each kid
 
-Open **Kids → Create Profile**. Give the kid a name and a picture, then
+Open **Kids → Add a kid**. Give the kid a name and a picture, then
 choose:
 
 - **A PIN**, if you want one: four to six numbers, or three pictures for a

@@ -111,3 +111,15 @@ def test_freeing_files_reports_sizes_kids_can_follow(app, authed_client):
     assert "Freed 3 MB from 1 video;" in page
     assert "1 left as they are: only videos downloaded from a website can be freed" in page
     assert "file freed: downloads again when a kid opens it" in page
+
+
+def test_hide_and_kid_changes_are_confirmed(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    VideoRepository(conn).insert(Video(video_id="yt_s", title="Show", original_title="s",
+                                       download_status="ready"))
+    page = authed_client.post("/parent/content/yt_s/hide", follow_redirects=True).text
+    assert "Hid &#34;Show&#34;." in page
+    page = authed_client.post("/parent/profiles/create", data={"display_name": "Ben"},
+                              follow_redirects=True).text
+    assert "Kid added." in page
+    assert "Add a kid · curatables" in authed_client.get("/parent/profiles/create").text

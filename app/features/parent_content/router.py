@@ -302,7 +302,11 @@ def hide(request: Request, video_id: str,
          viewer: ViewerContext = Depends(require_parent),
          content: ContentService = Depends(get_content_service)):
     content.hide_video(video_id)
-    return RedirectResponse(url="/parent/content", status_code=302)
+    try:
+        title = content.get_video(video_id).title
+    except VideoNotFound:
+        return RedirectResponse(url="/parent/content", status_code=302)
+    return _redirect_with_flash(1, f'Hid "{title}". Kids no longer see it; Unhide brings it back.')
 
 
 @router.post("/content/{video_id}/activate")

@@ -2,7 +2,8 @@
 {% block title %}Kids · curatables{% endblock %}
 {% block content %}
 <h1>Kids</h1>
-<p><a href="/parent/profiles/create" class="btn">Create Profile</a>
+{% if notice %}<div class="flash" role="status">{{ notice }}</div>{% endif %}
+<p><a href="/parent/profiles/create" class="btn">Add a kid</a>
   <a href="/parent/requests" class="ml-12">Video requests</a></p>
 
 {% if profiles %}

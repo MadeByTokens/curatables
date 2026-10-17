@@ -85,8 +85,17 @@ def _render_form(request: Request, content: ContentService, profile=None,
     }, status_code=status_code)
 
 
+# Messages the Kids page shows after returning with ?notice=<key>.
+NOTICES = {
+    "added": "Kid added. Open the kid address on their tablet to start.",
+    "saved": "Changes saved. They apply the next time the kid opens a page.",
+    "deleted": "Kid deleted, with their comments, reactions, tags and video requests. Channels they made are yours now.",
+}
+
+
 @router.get("/", response_class=HTMLResponse)
 def list_profiles(request: Request,
+                  notice: str = "",
                   viewer: ViewerContext = Depends(require_parent),
                   profiles_svc: ProfileService = Depends(get_profile_service),
                   content: ContentService = Depends(get_content_service)):
@@ -97,6 +106,7 @@ def list_profiles(request: Request,
         "languages": dict(LANGUAGES),
         "themes": {key: label.split(" (")[0] for key, label in THEME_CHOICES},
         "channel_names": {c.id: c.name for c in content.list_channels()},
+        "notice": NOTICES.get(notice),
     })
 
 
@@ -126,7 +136,7 @@ async def create_submit(request: Request,
         pin_style=pin_style,
         **_profile_fields(form),
     )
-    return RedirectResponse(url="/parent/profiles", status_code=302)
+    return RedirectResponse(url="/parent/profiles?notice=added", status_code=302)
 
 
 @router.get("/{profile_id}/edit", response_class=HTMLResponse)
@@ -169,7 +179,7 @@ async def edit_submit(request: Request, profile_id: int,
         fields["pin"] = pin
         fields["pin_style"] = pin_style
     profiles_svc.update(profile_id, **fields)
-    return RedirectResponse(url="/parent/profiles", status_code=302)
+    return RedirectResponse(url="/parent/profiles?notice=saved", status_code=302)
 
 
 @router.post("/{profile_id}/delete")
@@ -179,4 +189,4 @@ def delete_profile(request: Request, profile_id: int,
                    kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     profiles_svc.delete(profile_id)
     kid_lib.delete_profile_files(profile_id)
-    return RedirectResponse(url="/parent/profiles", status_code=302)
+    return RedirectResponse(url="/parent/profiles?notice=deleted", status_code=302)
