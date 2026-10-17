@@ -128,6 +128,7 @@ def test_wishlist_is_off_unless_the_parent_switches_it_on(app, client, backend):
 
 def test_search_applies_the_parents_rules(app, client, backend):
     _kid(app, client)
+    app.state.config.wishlist.max_duration_minutes = 30
     page = client.get("/wishlist", params={"q": "songs"}).text
     assert "Counting to ten" in page
     assert "Shapes song" in page
@@ -382,6 +383,7 @@ def test_full_youtube_info_keeps_a_plain_jpeg_and_replaces_webp():
 
 def test_more_videos_shows_the_next_page(app, client, backend):
     app.state.config.wishlist.max_results = 1
+    app.state.config.wishlist.max_duration_minutes = 30
     try:
         _kid(app, client)
         first = client.get("/wishlist", params={"q": "songs"}).text
@@ -719,6 +721,7 @@ def test_kid_history_hides_a_turned_down_title_with_a_blocked_word(app, client, 
 
 def test_a_channel_full_of_filtered_videos_still_offers_more(app, client, backend):
     _kid(app, client)
+    app.state.config.wishlist.max_duration_minutes = 30
     long_ones = [_meta(f"l{i:010d}", f"Compilation {i}", duration=7200) for i in range(44)]
     short_ones = [_meta(f"s{i:010d}", f"Short {i}") for i in range(4)]
 
@@ -751,3 +754,11 @@ def test_a_channel_preview_says_when_only_the_newest_50_are_listed(app, authed_c
         "Big Channel", [_meta(f"b{i:010d}", f"Episode {i}") for i in range(50)])
     page = authed_client.post("/parent/add", data={"url": "https://www.youtube.com/@big"}).text
     assert "Only the newest 50 are listed; add older ones by their own link" in page
+
+
+def test_length_is_unlimited_until_the_parent_sets_a_limit(app, client, backend):
+    from app.config import WishlistConfig
+    assert WishlistConfig().max_duration_minutes == 0
+    _kid(app, client)
+    app.state.config.wishlist.max_duration_minutes = 0
+    assert "Two hour lullabies" in client.get("/wishlist", params={"q": "songs"}).text

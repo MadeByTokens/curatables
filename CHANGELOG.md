@@ -53,8 +53,9 @@ image. Later releases install from **Box → Updates**.
 - Adding, saving or deleting a kid, and hiding a video, say what
   happened. The dashboard says which kid uploaded a video and to which
   channel; Video requests show the kid's note and chosen channel.
-- Find new starts with a 20-minute limit and blocked words in English,
-  Spanish and Portuguese (new boxes).
+- Find new's starter list of blocked words covers English, Spanish and
+  Portuguese (new boxes). There is no length limit until the parent
+  sets one.
 
 **Fixes**
 - Finishing a parent upload asked "Leave site?", and answering "Stay"
