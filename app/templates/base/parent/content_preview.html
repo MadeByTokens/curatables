@@ -35,6 +35,7 @@
 {% endif %}
 
 <form method="POST" action="/parent/add/confirm" id="review-form">
+  {% if wish %}<input type="hidden" name="from_request" value="{{ wish.id }}">{% endif %}
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="url_type" value="{{ url_type }}">
   <input type="hidden" name="source_url" value="{{ source_url }}">
@@ -56,7 +57,8 @@
     <div class="form-group">
       <label for="channel_id">Add to Channel</label>
       <select id="channel_id" name="channel_id">
-        <option value="">(none: kids won&rsquo;t see it)</option>
+        <option value="">Choose a channel&hellip;</option>
+        <option value="none">(none: kids won&rsquo;t see it)</option>
         {% for ch in channels %}
         <option value="{{ ch.id }}"{% if (wish and wish.target_channel_id == ch.id) or (import_context and import_context.target_channel_id == ch.id|string) %} selected{% endif %}>{{ ch.name }}</option>
         {% endfor %}
