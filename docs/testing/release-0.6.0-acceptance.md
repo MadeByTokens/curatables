@@ -365,8 +365,38 @@ first nightly backup, and Diagnostics right after setup (F15).
   setup, and no private files or passwords are included; the setup
   page, the redirects to it and the static files work, with no server
   errors.
-- **The release** carries GitHub's own build of the tagged commit; check
-  that image the same way before announcing it.
+- **The release** carries GitHub's own build of the tagged commit,
+  which includes the fourth pass below; check that image the same way
+  before announcing it.
+
+### Fourth pass: a family's day on the pinned image
+
+The image above, set up from scratch, used like a family would for a
+day: three kids on their own devices (Lia: picture PIN, two channels,
+reactions only; Theo: number PIN, everything; Maya: no PIN, Portuguese,
+everything), YouTube searches and requests, downloads, uploads from a
+laptop and a phone, approvals, a rejection, reactions, comments,
+replies, tags and the kid's own titles. Diagnostics was all green right
+after setup (closes F15); pages answered in 10–250 ms; no console or
+server errors. The fixes were deployed to the box and the same data
+checked again.
+
+| | Severity | Finding | Fix |
+|-|----------|---------|-----|
+| F32 | Major | Every parent upload ended with a "Leave site?" prompt; "Stay" left the video unprocessed | `0ab5e95` |
+| F33 | Major | Kid search ignored the kid's own titles, descriptions and tags, and accents ("vulcao" did not find "Vulcão") | `888202a` |
+| F34 | Major | A request where the kid chose "A grown-up picks" defaulted to no channel, so a hurried Add hid the video from every kid; after Add the parent landed on the Add page | `4876790` |
+| F35 | Minor | Stats Per Kid and Top Videos left out kids and videos with no finished views | `c6b6a04` |
+| F36 | Minor | An uploaded video's page said "No channel" while it was in one | `1053e2d` |
+| F37 | Minor | The dashboard called a kid upload waiting for approval "ready" | `8204852` |
+| F38 | Minor | The comment count left out replies | `965b44a` |
+| F39 | Minor | Diagnostics showed the clock in UTC | `01f6fe0` |
+| F40 | Minor | On a 375 px phone the kid menu took three rows (239 of 740 px); 85 px after | `fceba34` |
+| F41 | Minor | Empty channels showed as buttons to kids | `d80ad0d` |
+| – | Polish | Reply box under every comment; file pickers in the browser's language; uneven tiles and buttons; no confirmation after approving or editing channels; internal ids and "active" in Content; letters instead of avatars; page titles all alike; 🏷 drawn as an outline | `bf81100`, `5569bdc`, `1d7f916`, `60f87a8`, `6b4135c`, `d7d6a31`, `49cb2b0`, `75787ac` |
+
+SSH was on after setup only because this box has it turned on for
+deploys; the image ships with it off.
 
 ### Open
 
