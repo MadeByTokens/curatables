@@ -27,6 +27,14 @@ image. Later releases install from **Box → Updates**.
   includes replies.
 - File pickers, the reaction hint ("One per video") and the profile
   tiles are in the kid's language and line up.
+- The upload page lists what the kid sent: waiting, ready to watch, or
+  not kept. Re-sending a video the box already has says so.
+- Find new on a phone: the search box and button share a row and the
+  pills are smaller, so results start higher; a channel page offers
+  More while the channel has more. A video YouTube won't serve is
+  marked "Can't get this one".
+- The Big & clear menu wraps to two rows on phones; the picture PIN
+  pad is bigger on tablets.
 
 **For parents**
 - Approving a request returns to Video requests. Every Add page asks
@@ -42,10 +50,20 @@ image. Later releases install from **Box → Updates**.
   approval as waiting rather than ready.
 - Diagnostics shows the clock in the family's time zone; each page has
   its own browser title.
+- Adding, saving or deleting a kid, and hiding a video, say what
+  happened. The dashboard says which kid uploaded a video and to which
+  channel; Video requests show the kid's note and chosen channel.
+- Find new starts with a 20-minute limit and blocked words in English,
+  Spanish and Portuguese (new boxes).
 
 **Fixes**
 - Finishing a parent upload asked "Leave site?", and answering "Stay"
   left the video unprocessed.
+- Freed videos ("Free up files", or freeing up space automatically)
+  vanished from every kid's screens; they stay listed and download
+  again when opened.
+- A kid's Stats page counted other kids' reactions; in Spanish, Search
+  and Find new were both "Buscar".
 
 ### Running for years: a full drive, a stale clock, power cuts
 
