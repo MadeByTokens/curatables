@@ -6,7 +6,9 @@
 <p><strong>{{ wish.profile_name }}</strong> asked for this video{% if wish.title != wish.original_title or wish.description or wish.target_channel_id %}
   and chose the name, description{% if wish.target_channel_id %} and channel{% endif %} below. Change anything you like{% endif %}.</p>
 {% else %}
-<p>{{ videos|length }} video(s) from {{ url_type }}: <strong>{{ source_title }}</strong></p>
+<p>{{ videos|length }} video{{ "s" if videos|length != 1 }} from {{ url_type }}: <strong>{{ source_title }}</strong>
+  {%- if videos|length >= 50 and url_type in ("channel", "playlist") %}.
+  Only the {{ "newest" if url_type == "channel" else "first" }} 50 are listed; add older ones by their own link{% endif %}</p>
 {% endif %}
 
 {% set in_library = in_library or {} %}

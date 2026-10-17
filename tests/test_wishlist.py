@@ -744,3 +744,10 @@ def test_requests_list_shows_the_kids_note_and_channel(app, client, authed_clien
     page = authed_client.get("/parent/requests").text
     assert "For: <strong>Dinosaurs</strong>" in page
     assert "To dance with my brother" in page
+
+
+def test_a_channel_preview_says_when_only_the_newest_50_are_listed(app, authed_client, backend):
+    backend.fetch_channel_videos = lambda url, max_results=50: (
+        "Big Channel", [_meta(f"b{i:010d}", f"Episode {i}") for i in range(50)])
+    page = authed_client.post("/parent/add", data={"url": "https://www.youtube.com/@big"}).text
+    assert "Only the newest 50 are listed; add older ones by their own link" in page
