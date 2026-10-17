@@ -29,9 +29,11 @@ NOTICES = {
 def requests_page(request: Request,
                   notice: str = "",
                   viewer: ViewerContext = Depends(require_parent),
-                  repo: WishlistRepository = Depends(get_wishlist_repo)):
+                  repo: WishlistRepository = Depends(get_wishlist_repo),
+                  content: ContentService = Depends(get_content_service)):
     return request.app.state.templates.TemplateResponse(request, "parent/requests.html", {
         "request": request,
+        "channel_names": {c.id: c.name for c in content.list_channels()},
         "notice": NOTICES.get(notice),
         "pending": repo.list_by_status("pending"),
         "pending_total": repo.count_pending(),
