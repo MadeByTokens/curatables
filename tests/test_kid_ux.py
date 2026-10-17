@@ -192,3 +192,10 @@ def test_reaction_labels_capitalise_only_the_first_word(app):
     ProfileRepository(conn).update(pid, language="es")
     page = kid.get("/watch/yt_train").text
     assert ">Me encanta<" in page and "text-transform: capitalize" not in kid.get("/static/kid/style.css").text
+
+
+def test_video_lengths_read_like_the_player():
+    from app.template_utils import clock_duration
+    assert clock_duration(83) == "1:23"
+    assert clock_duration(18785) == "5:13:05"
+    assert clock_duration(0) == "" and clock_duration(None) == ""

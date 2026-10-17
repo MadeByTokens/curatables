@@ -1,6 +1,6 @@
 {% extends "kid/base.html" %}
 {% macro duration(seconds) -%}
-{% if seconds %}{{ seconds // 60 }}:{{ '%02d'|format(seconds % 60) }}{% endif %}
+{{ seconds|duration }}
 {%- endmacro %}
 {% set sort_labels = {"best": _("Best match"), "newest": _("Newest"), "az": _("A to Z"), "za": _("Z to A")} %}
 {% set error_icons = {"rules": "&#128584;", "slow": "&#128034;", "busy": "&#9203;", "resting": "&#128564;", "broken": "&#128268;", "gone": "&#128566;"} %}

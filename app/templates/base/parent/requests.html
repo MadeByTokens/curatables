@@ -22,7 +22,7 @@ searches for good.</p>
       <div class="meta">
         Asked by <strong>{{ w.profile_name }}</strong> &middot; {{ w.created_at|friendly_date }}
         &middot; {{ w.channel }}
-        {% if w.duration %}&middot; {{ w.duration // 60 }}:{{ '%02d'|format(w.duration % 60) }}{% endif %}
+        {% if w.duration %}&middot; {{ w.duration|duration }}{% endif %}
       </div>
       <div class="meta">For: {% if w.target_channel_id in channel_names %}<strong>{{ channel_names[w.target_channel_id] }}</strong>{% else %}you to pick a channel{% endif %}</div>
       {% if w.description %}<div class="desc">&ldquo;{{ w.description }}&rdquo;</div>{% endif %}
