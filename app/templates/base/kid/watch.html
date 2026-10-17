@@ -54,6 +54,7 @@
     </button>
     {% endfor %}
   </div>
+  <div class="reaction-hint">{{ _("One per video. Tap another to change it.") }}</div>
   {% elif viewer and viewer.is_parent and reactions_list %}
   <div class="reaction-bar reaction-bar-readonly">
     {% for name, emoji_char in reactions_list %}

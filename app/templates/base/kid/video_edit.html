@@ -1,4 +1,5 @@
 {% extends "kid/base.html" %}
+{% from "kid/_file_picker.html" import file_picker with context %}
 {% block content %}
 <div class="mw-600 mx-auto p-16">
   <h2>{{ _("Customize Video") }}</h2>
@@ -55,7 +56,7 @@
 
     <div class="mb-16">
       <label for="thumb-input" class="d-block fw-bold mb-4">{{ _("Custom Thumbnail") }}</label>
-      <input type="file" id="thumb-input" name="thumbnail" accept="image/*" class="fs-14">
+      {{ file_picker("thumb-input", "thumbnail", "image/*", _("Choose a picture")) }}
       <div class="mt-6 muted fs-12">{{ _("Pick an image, then Save — the picture above updates once it's saved.") }}</div>
       {% if overrides and overrides.has_custom_thumb %}
       <div class="mt-6">

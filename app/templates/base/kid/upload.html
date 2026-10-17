@@ -1,4 +1,5 @@
 {% extends "kid/base.html" %}
+{% from "kid/_file_picker.html" import file_picker with context %}
 {% block content %}
 <h1 class="upload-page-title">{{ _("Upload a Video") }}</h1>
 
@@ -27,7 +28,7 @@
   <input type="text" id="title" name="title" placeholder="{{ _('What is this video about?') }}">
 
   <label for="file">{{ _("Video file") }}</label>
-  <input type="file" id="file" name="file" accept="video/*" required>
+  {{ file_picker("file", "file", "video/*", _("Choose a video"), required=true) }}
 
   <button type="submit" class="upload-btn" id="start-btn">{{ _("Send it") }}</button>
 
