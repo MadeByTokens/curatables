@@ -338,9 +338,10 @@ class TestMultiSourceAddConfirm:
         payload = self._confirm_payload(
             "123456789", "vimeo", "https://vimeo.com/123456789",
         )
-        resp = authed_client.post("/parent/add/confirm", data=payload)
+        resp = authed_client.post("/parent/add/confirm", data=payload, follow_redirects=True)
         assert resp.status_code == 200
-        assert b"Added 1 video" in resp.content
+        assert resp.url.path == "/parent/content"
+        assert b"Added 1 video;" in resp.content
 
         from app.dependencies import get_db
         from app.repositories import VideoRepository
@@ -361,9 +362,10 @@ class TestMultiSourceAddConfirm:
             "dQw4w9WgXcQ", "youtube",
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         )
-        resp = authed_client.post("/parent/add/confirm", data=payload)
+        resp = authed_client.post("/parent/add/confirm", data=payload, follow_redirects=True)
         assert resp.status_code == 200
-        assert b"Added 1 video" in resp.content
+        assert resp.url.path == "/parent/content"
+        assert b"Added 1 video;" in resp.content
 
         from app.dependencies import get_db
         from app.repositories import VideoRepository
