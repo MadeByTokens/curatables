@@ -1,5 +1,5 @@
-{# One comment with its reply form and, for a top-level comment, its
-   replies. Also the XHR response to posting one, so watch.js can insert
+{# One comment and, for a top-level comment, its replies and the
+   thread's reply form. Also the XHR response to posting one, so watch.js can insert
    it without reloading the video; data-parent-id tells it which .replies
    container a reply goes into. #}
 {% macro comment_node(comment, video_id, viewer, csrf_token) %}
@@ -7,8 +7,15 @@
   <div class="comment-author">{% if comment.is_parent_user %}<span aria-hidden="true">&#129489;</span> {% endif %}{{ _(comment.author_name) if comment.is_parent_user else comment.author_name }}</div>
   <div class="comment-body">{{ comment.body }}</div>
   <div class="comment-meta">{{ comment.created_at|friendly_date }}</div>
+  {% if not comment.parent_comment_id %}
+  <div class="replies" data-replies-for="{{ comment.id }}">
+    {% for reply in comment.replies %}{{ comment_node(reply, video_id, viewer, csrf_token) }}{% endfor %}
+  </div>
   {% if viewer and (viewer.is_child or viewer.is_parent) %}
-  <form method="POST" action="/watch/{{ video_id }}/comment" class="mt-6" data-xhr="comment">
+  {# One reply box per thread. watch.js folds it behind the Reply
+     button; without JS the box stays open and the button hidden. #}
+  <button type="button" class="comment-reply-btn comment-reply-open d-none" data-reply-for="{{ comment.id }}">&#8617;&#65039; {{ _("Reply") }}</button>
+  <form method="POST" action="/watch/{{ video_id }}/comment" class="mt-6 reply-form" data-xhr="comment" data-reply-form="{{ comment.id }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
     <label class="sr-only" for="reply-{{ comment.id }}">{{ _("Reply to {name}", name=comment.author_name) }}</label>
@@ -16,10 +23,6 @@
     <button type="submit" class="comment-reply-btn">{{ _("Reply") }}</button>
   </form>
   {% endif %}
-  {% if not comment.parent_comment_id %}
-  <div class="replies" data-replies-for="{{ comment.id }}">
-    {% for reply in comment.replies %}{{ comment_node(reply, video_id, viewer, csrf_token) }}{% endfor %}
-  </div>
   {% endif %}
 </div>
 {% endmacro %}

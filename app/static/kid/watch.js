@@ -124,6 +124,31 @@
   }
 
   /* --- Forms: comments and tags --------------------------------- */
+  /* Each thread's reply box stays folded behind its Reply button
+     until tapped, so a thread reads as a thread on a phone. */
+  function foldReplyForms(scope) {
+    var buttons = scope.getElementsByTagName('button');
+    for (var i = 0; i < buttons.length; i++) {
+      var id = buttons[i].getAttribute('data-reply-for');
+      if (!id) { continue; }
+      var form = document.querySelector('form[data-reply-form="' + id + '"]');
+      if (!form) { continue; }
+      addClass(form, 'd-none');
+      removeClass(buttons[i], 'd-none');
+      buttons[i].onclick = openReply;
+    }
+  }
+  function openReply() {
+    var btn = this;
+    var form = document.querySelector('form[data-reply-form="' +
+                                      btn.getAttribute('data-reply-for') + '"]');
+    if (!form) { return; }
+    removeClass(form, 'd-none');
+    addClass(btn, 'd-none');
+    if (form.elements['body'].focus) { form.elements['body'].focus(); }
+  }
+  foldReplyForms(document);
+
   function insertComment(html) {
     var node = nodeFromHtml(html);
     if (!node) { return; }
@@ -134,6 +159,7 @@
     }
     if (!target) { target = document.getElementById('comment-list'); }
     if (target) { target.appendChild(node); }
+    foldReplyForms(node);
     var empty = document.getElementById('no-comments');
     if (empty) { addClass(empty, 'd-none'); }
     var count = document.getElementById('comment-count');
