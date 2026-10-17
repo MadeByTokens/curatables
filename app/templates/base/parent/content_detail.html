@@ -76,7 +76,7 @@
 <p class="muted">No reactions yet.</p>
 {% endif %}
 
-<h2 id="comments" class="mt-32">Comments{% if comments_total %} ({{ comments_total }}){% endif %}</h2>
+<h2 id="comments" class="mt-32">Comments{% if comments_count %} ({{ comments_count }}){% endif %}</h2>
 
 <form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mb-20 mw-600">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

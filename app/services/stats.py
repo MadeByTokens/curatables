@@ -162,6 +162,7 @@ class StatsService:
             "comments": comments,
             "comments_page": comments_page,
             "comments_total": comments_total,
+            "comments_count": self.comment_service.count_for_video(video_id, viewer),
             "comments_total_pages": comments_total_pages,
         }
 

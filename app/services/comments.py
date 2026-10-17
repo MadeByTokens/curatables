@@ -23,6 +23,15 @@ class CommentService:
         self.comment_repo = comment_repo
         self.event_repo = event_repo
 
+    def count_for_video(self, video_id: str, viewer: ViewerContext) -> int:
+        """Comments and replies this viewer sees on the video."""
+        if viewer.is_parent:
+            return self.comment_repo.count_visible_for_video(video_id)
+        if viewer.profile_id:
+            return self.comment_repo.count_visible_for_video(
+                video_id, viewer.profile_id)
+        return 0
+
     def list_for_video(self, video_id: str, viewer: ViewerContext,
                        page: int = 1,
                        per_page: int = 20

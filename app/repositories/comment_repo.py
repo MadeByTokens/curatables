@@ -116,6 +116,24 @@ class CommentRepository(BaseRepository):
         ).fetchone()
         return int(row["cnt"])
 
+    def count_visible_for_video(self, video_id: str,
+                                viewer_profile_id: int | None = None) -> int:
+        """Comments and replies on a video; with viewer_profile_id, the
+        ones that kid sees (a reply shows only under a comment they see)."""
+        if viewer_profile_id is None:
+            row = self.db.execute(
+                "SELECT COUNT(*) as cnt FROM comments WHERE video_id = ?",
+                (video_id,)).fetchone()
+            return int(row["cnt"])
+        row = self.db.execute(
+            "SELECT COUNT(*) as cnt FROM comments c "
+            f"WHERE c.video_id = ? AND {_VISIBLE_TO_KID} "
+            "AND (c.parent_comment_id IS NULL OR c.parent_comment_id IN ("
+            f"  SELECT c.id FROM comments c WHERE c.video_id = ? AND {_VISIBLE_TO_KID}))",
+            (video_id, viewer_profile_id, video_id, viewer_profile_id),
+        ).fetchone()
+        return int(row["cnt"])
+
     def list_recent(self, limit: int = 50) -> list[Comment]:
         """Recent comments across all videos, for parent moderation."""
         rows = self.db.execute(

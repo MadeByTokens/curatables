@@ -88,7 +88,7 @@
 
   {% if (kid and viewer.allow_comments) or (viewer and viewer.is_parent) %}
   <div id="comments" class="comments-section">
-    <h3><span aria-hidden="true">&#128172;</span> {{ _("Comments") }} <span id="comment-count" data-total="{{ comments_total or 0 }}">{% if comments_total %}({{ comments_total }}){% endif %}</span></h3>
+    <h3><span aria-hidden="true">&#128172;</span> {{ _("Comments") }} <span id="comment-count" data-total="{{ comments_count or 0 }}">{% if comments_count %}({{ comments_count }}){% endif %}</span></h3>
 
     <form method="POST" action="/watch/{{ video.video_id }}/comment" class="comment-form" data-xhr="comment">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
