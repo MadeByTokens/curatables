@@ -406,6 +406,34 @@ class TestKidUploadRoutes:
         assert resp.status_code == 409
         assert b"already here" in resp.content
 
+    def test_reupload_of_a_visible_video_says_it_was_already_here(self, client, app, authed_client):
+        alice = _make_kid_in_app(app, "alice")
+        family = _make_channel_in_app(app, "Family")
+        music = _make_channel_in_app(app, "Music")
+        _login_kid(client, app, alice)
+
+        def _upload(cid):
+            with patch("app.services.uploads.MediaProbeService.validate",
+                       return_value=ProbeResult(codec_name="h264", width=320,
+                                                height=240, duration_seconds=1.0,
+                                                container="mov")):
+                with patch("app.services.uploads.ThumbnailService.extract_frame",
+                           return_value=None):
+                    return client.post(
+                        "/upload",
+                        data={"channel_id": str(cid), "title": "Twice"},
+                        files={"file": ("twice.mp4", b"t" * 200, "video/mp4")},
+                    )
+
+        _upload(family)
+        from app.dependencies import get_db
+        conn = next(app.dependency_overrides[get_db]())
+        conn.execute("UPDATE videos SET status = 'active', download_status = 'ready'")
+        conn.commit()
+        location = _upload(music).headers["location"]
+        assert location.endswith("?already=1")
+        assert "This video was already here" in client.get(location).text
+
     def test_review_upload_hidden_from_sibling_until_approved(
             self, client, app, authed_client):
         alice = _make_kid_in_app(app, "alice")
