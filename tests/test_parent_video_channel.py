@@ -123,3 +123,17 @@ def test_hide_and_kid_changes_are_confirmed(app, authed_client):
                               follow_redirects=True).text
     assert "Kid added." in page
     assert "Add a kid · curatables" in authed_client.get("/parent/profiles/create").text
+
+
+def test_deleting_a_channel_does_not_offer_a_kids_own_channel(app, authed_client):
+    from app.models import Profile
+    from app.repositories import ProfileRepository
+    conn = next(app.dependency_overrides[get_db]())
+    kid = ProfileRepository(conn).create(Profile(name="sofia2", display_name="Sofia"))
+    channels = ChannelRepository(conn)
+    old = channels.create("Old")
+    mine = channels.create("Mis videos", owner_profile_id=kid)
+    page = authed_client.get("/parent/channels/").text
+    assert "move them to “Mis videos”" not in page
+    authed_client.post(f"/parent/channels/{old}/delete", data={"reassign_to": str(mine)})
+    assert channels.get(mine) is not None
