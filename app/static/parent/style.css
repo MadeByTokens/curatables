@@ -406,16 +406,22 @@ label {
   min-width: 0;
   flex: 1;
 }
+/* A long title is cut short, never the status badge after it. */
 .recent-item .title-line {
   font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .recent-item .title-line a {
   color: #333;
   text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.recent-item .title-line .badge { flex-shrink: 0; }
 .recent-item .title-line a:hover { text-decoration: underline; }
 .recent-item .sub {
   color: #888;

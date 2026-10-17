@@ -119,10 +119,15 @@ class TestDashboardOverview:
                           download_status="ready", storage_mode="uploaded"))
         repo.insert(Video(video_id="yt_llama", title="Llamas", original_title="Llamas",
                           channel_name="Blender", download_status="ready"))
+        from app.repositories.channel_repo import ChannelRepository
+        art = ChannelRepository(conn).create("Art")
+        repo.update("up_drawing", channel_id=art)
+        pid = ProfileRepository(conn).create(Profile(name="sofia", display_name="Sofia"))
+        EventRepository(conn).insert_raw("video_uploaded_by_kid", "up_drawing", pid)
         conn.commit()
         recent = authed_client.get("/parent/").text.split("Recently added")[1]
-        assert "Uploaded ·" in recent and "Blender ·" in recent
-        assert "no channel" not in recent
+        assert "Uploaded by Sofia · in Art ·" in recent
+        assert "Blender · no channel: kids can’t see it ·" in recent
 
 
 class TestStatsPage:

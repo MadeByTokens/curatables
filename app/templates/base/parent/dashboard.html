@@ -215,7 +215,9 @@
                 <span class="badge badge-pending">pending</span>
               {% endif %}
             </div>
-            <div class="sub">{{ v.channel_name or ('Uploaded' if v.storage_mode == 'uploaded' else 'Unknown source') }} · {{ v.added_at|local_time }}</div>
+            <div class="sub">
+              {%- if v.video_id in recent_uploaders %}Uploaded by {{ recent_uploaders[v.video_id] }}{% elif v.storage_mode == 'uploaded' %}Uploaded{% else %}{{ v.channel_name or 'Unknown source' }}{% endif %}
+              {{- ' · in ' ~ channel_names[v.channel_id] if v.channel_id in channel_names else ' · no channel: kids can’t see it' }} · {{ v.added_at|local_time }}</div>
           </div>
         </div>
         {% endfor %}
