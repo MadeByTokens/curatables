@@ -28,6 +28,7 @@ def _tarball(path, version, extra=None, migrations=()):
         "app/__init__.py": f'__version__ = "{version}"\n',
         "scripts/apply-system.sh": "#!/bin/sh\n",
         "requirements.txt": "fastapi\n",
+        "requirements.lock": "fastapi==1.0 --hash=sha256:00\n",
         "run.py": "print('ok')\n",
     }
     files.update({f"app/db/migrations/{m}": "" for m in migrations})
@@ -114,6 +115,9 @@ def test_update_builds_beside_the_running_code_then_switches(box):
     argvs = box["fake"].argvs()
     pip = next(i for i, a in enumerate(argvs) if a[1:3] == ["-m", "pip"])
     assert argvs[pip][0] == str(upgrade._release_dir("0.6.0") / ".venv" / "bin" / "python")
+    new = upgrade._release_dir("0.6.0")
+    assert argvs[pip][-3:] == ["--require-hashes", "-r", str(new / "requirements.lock")]
+    assert argvs[pip + 1][-2:] == ["-r", str(new / "requirements.txt")]
     backup = argvs.index(["systemctl", "start", "curatables-backup.service"])
     stop = argvs.index(["systemctl", "stop", "curatables.service"])
     assert pip < backup < stop, "build and back up before the old version stops"

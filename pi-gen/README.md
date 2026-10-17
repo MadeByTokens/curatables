@@ -131,12 +131,19 @@ Flash that with Raspberry Pi Imager ("Use custom" → select the `.img.xz`)
 and boot the Pi. Customising the settings is optional; see the
 [parents' guide](../docs/parents-guide.md).
 
-The image is built from the **current checkout** (an rsync of this repo,
-minus `.git`/`.venv`/data), so it works on unmerged branches without
-pushing anything.
+The image is built from the **committed `HEAD`** (`git archive`, minus
+`pi-gen/`): uncommitted edits and untracked files are not in it, and a
+commit made after the build starts is not either.
+
+What else goes in is pinned, so two builds of one commit match: pi-gen
+is fetched at `PIGEN_COMMIT` in `build.sh` (its `arm64` branch), and the
+Python packages come from `requirements.lock` (exact versions, checked
+by hash), except yt-dlp and yt-dlp-ejs, which are the newest at build
+time. Debian and Raspberry Pi OS packages are the mirrors' current ones.
 
 `build.sh` honours `PIGEN_DIR` (pi-gen checkout, default
-`pi-gen/.pi-gen`), `PIGEN_REF` (pi-gen branch, default `arm64`) and
+`pi-gen/.pi-gen`), `PIGEN_REF` (pi-gen commit or branch, default
+`PIGEN_COMMIT`) and
 `CONTINUE=1` (resume an existing `pigen_work` container instead of
 removing it).
 

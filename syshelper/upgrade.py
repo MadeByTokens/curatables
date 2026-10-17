@@ -372,9 +372,14 @@ def curatables_update(params: dict):
             raise HelperError(f"The release file says it is version {version_of(new) or '?'}, not {target}.")
         job.log("Installing its Python packages (this takes a few minutes; kids can keep watching)")
         rc = runner.stream(["python3", "-m", "venv", str(new / ".venv")], job.log, timeout=600)
+        pip = [str(new / ".venv" / "bin" / "python"), "-m", "pip", "install", "--no-input"]
+        # The release's exact, hash-checked versions first (when it has
+        # them); requirements.txt then adds what the lock leaves out (yt-dlp).
+        if rc == 0 and (new / "requirements.lock").is_file():
+            rc = runner.stream(pip + ["--require-hashes", "-r", str(new / "requirements.lock")],
+                               job.log, timeout=3600)
         if rc == 0:
-            rc = runner.stream([str(new / ".venv" / "bin" / "python"), "-m", "pip", "install", "--no-input",
-                                "-r", str(new / "requirements.txt")], job.log, timeout=3600)
+            rc = runner.stream(pip + ["-r", str(new / "requirements.txt")], job.log, timeout=3600)
         if rc != 0:
             shutil.rmtree(new, ignore_errors=True)
             raise HelperError("Installing the new version's packages failed. Nothing was changed.")
