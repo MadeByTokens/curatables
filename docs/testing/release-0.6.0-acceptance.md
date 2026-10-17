@@ -398,6 +398,30 @@ checked again.
 SSH was on after setup only because this box has it turned on for
 deploys; the image ships with it off.
 
+### Fifth pass: three more kids on other devices
+
+Same box and data, three new kids:
+- **Ben:** picture PIN, reactions only, on a tablet.
+- **Sofia:** Spanish, Big & clear, every permission, on a 360 px phone.
+- **Noah:** two channels only, comments switched off mid-session, on a
+  landscape tablet.
+
+The parent also used a whole-channel add, Free up files, deleting a
+channel with its videos moved, exports and a stricter word list. No
+console or server errors. The fixes were deployed and checked again on
+the box.
+
+| | Severity | Finding | Fix |
+|-|----------|---------|-----|
+| F42 | Major | Freed videos (by Free up files or the automatic freeing) vanished from every kid's home, channels and search, though the parent was told they stay listed | `edb4c69` |
+| F43 | Minor | Spanish kid menu: Search and Find new both "Buscar" | `9a2f14d` |
+| F44 | Minor | A kid's Stats page counted other kids' reactions | `f8bc7bb` |
+| F45 | Minor | Re-sending a file the box had silently opened the existing video | `7d2dc9b` |
+| F46 | Minor | Big & clear menu on a 360 px phone hid Help and Switch past the edge | `50aa297` |
+| F47 | Minor | A request for a video YouTube won't serve waited like any other; its lookup error wasn't recognised | `69df494` |
+| F48 | Minor | A Find new channel page of long videos showed a dozen and no More | `97e77c5` |
+| – | Polish | Dashboard badge cut off with long titles; "Freed 0.0 GB"; no confirmation after adding, saving or deleting a kid or hiding a video; reassigning into a kid's channel; a 640x540 empty preview player and "pressWatch"; the add result at a POST URL; "Me Encanta"; Find new controls filling a phone; no "What I sent" for uploads; blocked titles in the kid's history; small PIN pictures on tablets; requests without the kid's note; defaults letting a 28-minute battle video through | `60cd9a1`, `97cd8a5`, `9b8ab82`, `041404f`, `74143dc`, `1a21252`, `50871ea`, `e2d0a0a`, `865cd31`, `dd467bd`, `4ba797a`, `f451b9c`, `3c80e43` |
+
 ### Open
 
 - **The journal is kept in memory** (on purpose: it spares the SD card),
