@@ -1,4 +1,5 @@
 {% extends "parent/base.html" %}
+{% block title %}{% if profile %}Edit kid{% else %}New kid{% endif %} · curatables{% endblock %}
 {% block content %}
 <h1>{% if profile %}Edit Profile{% else %}Create Profile{% endif %}</h1>
 

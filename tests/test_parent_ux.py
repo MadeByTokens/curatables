@@ -172,3 +172,19 @@ def test_a_missing_parent_page_says_so_without_claiming_an_error(authed_client):
     assert page.status_code == 404
     assert "Page not found" in page.text and "There is no page at this address" in page.text
     assert "unexpected error" not in page.text and "logged" not in page.text
+
+
+def test_parent_pages_have_their_own_title_and_one_main(authed_client):
+    import re
+    seen = {}
+    for path in ("/parent/", "/parent/content", "/parent/add", "/parent/upload",
+                 "/parent/channels/", "/parent/profiles", "/parent/stats",
+                 "/parent/settings", "/parent/requests", "/parent/help", "/parent/storage"):
+        page = authed_client.get(path, follow_redirects=True).text
+        found = re.search(r"<title>(.*?)</title>", page, re.S)
+        assert found, (path, page[:300])
+        title = found.group(1).strip()
+        assert title.endswith("· curatables"), (path, title)
+        assert title not in seen, (path, seen.get(title))
+        seen[title] = path
+        assert page.count("<main") == 1, path
