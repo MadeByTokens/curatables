@@ -102,24 +102,43 @@ class StatsService:
 
     def top_videos(self, window: str, profile_id: int | None = None,
                    limit: int = 10) -> list[dict]:
+        """Videos opened, finished or reacted to in the window: most
+        finished first, then most opened, then most reacted to."""
         since = self._since_date(window)
-        rows = self.event_repo.top_videos_by_completions(
-            profile_id=profile_id, since=since, limit=limit)
-        video_ids = [r["video_id"] for r in rows if r.get("video_id")]
-        reaction_map = self.reaction_repo.counts_for_videos(video_ids)
-        for r in rows:
+        rows = {r["video_id"]: r for r in self.event_repo.video_activity(
+            profile_id=profile_id, since=since)}
+        for vid in self.reaction_repo.video_ids_since(profile_id=profile_id, since=since):
+            if vid not in rows:
+                video = self.video_repo.get(vid)
+                rows[vid] = {"video_id": vid, "plays": 0, "secs": 0, "opens": 0,
+                             "video_title": video.title if video else None}
+        reaction_map = self.reaction_repo.counts_for_videos(list(rows))
+        for r in rows.values():
             r["reactions"] = reaction_map.get(r["video_id"], {})
-        return rows
+        ranked = sorted(rows.values(), key=lambda r: (
+            -r["plays"], -r["opens"], -sum(r["reactions"].values()),
+            r["video_title"] or ""))
+        return ranked[:limit]
 
     def per_profile_summary(self, window: str) -> list[dict]:
+        """Every kid, with zeros for a kid who did nothing in the window."""
         since = self._since_date(window)
-        rows = self.event_repo.stats_per_profile(since=since)
-        for r in rows:
-            pid = r["profile_id"]
-            r["reaction_count"] = self.reaction_repo.count_by_profile(
-                pid, since=since)
-            r["comment_count"] = self.comment_repo.count_by_profile(
-                pid, since=since)
+        watched = {r["profile_id"]: r for r in self.event_repo.stats_per_profile(since=since)}
+        rows = []
+        for p in self.profile_repo.list():
+            if p.id is None:
+                continue
+            w = watched.get(p.id, {})
+            rows.append({
+                "profile_id": p.id,
+                "profile_name": p.display_name or p.name,
+                "avatar": p.avatar or "default",
+                "completions": w.get("completions", 0),
+                "secs": w.get("secs", 0),
+                "reaction_count": self.reaction_repo.count_by_profile(p.id, since=since),
+                "comment_count": self.comment_repo.count_by_profile(p.id, since=since),
+            })
+        rows.sort(key=lambda r: (-r["completions"], r["profile_name"].lower()))
         return rows
 
     def video_detail(self, video_id: str, viewer: ViewerContext,

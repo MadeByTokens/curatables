@@ -123,3 +123,46 @@ class TestDashboardOverview:
         recent = authed_client.get("/parent/").text.split("Recently added")[1]
         assert "Uploaded ·" in recent and "Blender ·" in recent
         assert "no channel" not in recent
+
+
+class TestStatsPage:
+    def _seed(self, db):
+        videos = VideoRepository(db)
+        for vid, title in (("zoo", "Me at the zoo"), ("snail", "Garden snail race"),
+                           ("volcano", "Baking soda volcano")):
+            videos.insert(Video(video_id=vid, title=title, original_title=title,
+                                download_status="ready"))
+        profiles = ProfileRepository(db)
+        theo = profiles.create(Profile(name="theo", display_name="Theo"))
+        lia = profiles.create(Profile(name="lia", display_name="Lia"))
+        maya = profiles.create(Profile(name="maya", display_name="Maya"))
+        events = EventRepository(db)
+        events.insert_raw("video_view", "zoo", theo)
+        events.insert_raw("video_complete", "zoo", theo, '{"watch_seconds": 19}')
+        events.insert_raw("video_view", "volcano", maya)
+        ReactionRepository(db).upsert(lia, "snail", "heart")
+        CommentRepository(db).create("volcano", "Legal!", maya)
+        return theo, lia, maya
+
+    def test_every_kid_has_a_row(self, db):
+        self._seed(db)
+        rows = {r["profile_name"]: r for r in _mk_stats(db).per_profile_summary("all")}
+        assert list(rows) == ["Theo", "Lia", "Maya"]
+        assert rows["Lia"]["reaction_count"] == 1 and rows["Lia"]["completions"] == 0
+        assert rows["Maya"]["comment_count"] == 1
+
+    def test_top_videos_include_opened_and_reacted(self, db):
+        _theo, lia, _maya = self._seed(db)
+        top = _mk_stats(db).top_videos("all")
+        assert [v["video_id"] for v in top] == ["zoo", "volcano", "snail"]
+        assert (top[0]["plays"], top[0]["opens"], top[0]["secs"]) == (1, 1, 19)
+        assert top[2]["reactions"] == {"heart": 1}
+        assert [v["video_id"] for v in _mk_stats(db).top_videos("all", profile_id=lia)] == ["snail"]
+
+    def test_window_leaves_out_older_activity(self, db):
+        self._seed(db)
+        db.execute("UPDATE events SET timestamp = datetime('now', '-30 days')")
+        db.execute("UPDATE reactions SET created_at = datetime('now', '-30 days')")
+        db.commit()
+        assert _mk_stats(db).top_videos("7d") == []
+        assert {r["profile_name"] for r in _mk_stats(db).per_profile_summary("7d")} == {"Theo", "Lia", "Maya"}

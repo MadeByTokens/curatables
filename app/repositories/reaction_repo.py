@@ -58,6 +58,19 @@ class ReactionRepository(BaseRepository):
             params.append(since)
         return int(self.db.execute(sql, params).fetchone()["n"])
 
+    def video_ids_since(self, profile_id: int | None = None,
+                        since: str | None = None) -> list[str]:
+        """Videos that got a reaction in the window."""
+        sql = "SELECT DISTINCT video_id FROM reactions WHERE 1 = 1"
+        params: list = []
+        if profile_id is not None:
+            sql += " AND profile_id = ?"
+            params.append(profile_id)
+        if since:
+            sql += " AND created_at >= ?"
+            params.append(since)
+        return [r["video_id"] for r in self.db.execute(sql, params).fetchall()]
+
     def list_for_video_with_profiles(self, video_id: str) -> list[dict]:
         rows = self.db.execute(
             "SELECT r.emoji, "

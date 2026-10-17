@@ -62,16 +62,19 @@ class EventRepository(BaseRepository):
             params.append(since)
         return int(self.db.execute(sql, params).fetchone()["total"])
 
-    def top_videos_by_completions(self, profile_id: int | None = None,
-                                  since: str | None = None,
-                                  limit: int = 10) -> list[dict]:
+    def video_activity(self, profile_id: int | None = None,
+                       since: str | None = None) -> list[dict]:
+        """Per video: completions ("plays"), seconds in them and opens."""
         sql = ("SELECT e.video_id, "
-               "COUNT(*) as plays, "
-               "COALESCE(SUM(json_extract(e.data_json, '$.watch_seconds')), 0) as secs, "
+               "SUM(e.event_type = 'video_complete') as plays, "
+               "COALESCE(SUM(CASE WHEN e.event_type = 'video_complete' "
+               "THEN json_extract(e.data_json, '$.watch_seconds') END), 0) as secs, "
+               "SUM(e.event_type = 'video_view') as opens, "
                "v.title as video_title "
                "FROM events e "
                "LEFT JOIN videos v ON e.video_id = v.video_id "
-               "WHERE e.event_type = 'video_complete'")
+               "WHERE e.event_type IN ('video_complete', 'video_view') "
+               "AND e.video_id IS NOT NULL")
         params: list = []
         if profile_id is not None:
             sql += " AND e.profile_id = ?"
@@ -79,10 +82,8 @@ class EventRepository(BaseRepository):
         if since:
             sql += " AND e.timestamp >= ?"
             params.append(since)
-        sql += " GROUP BY e.video_id ORDER BY plays DESC LIMIT ?"
-        params.append(limit)
-        rows = self.db.execute(sql, params).fetchall()
-        return [dict(r) for r in rows]
+        sql += " GROUP BY e.video_id"
+        return [dict(r) for r in self.db.execute(sql, params).fetchall()]
 
     def stats_per_profile(self, since: str | None = None) -> list[dict]:
         sql = ("SELECT e.profile_id, "
