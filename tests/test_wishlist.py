@@ -656,3 +656,9 @@ def test_review_leaves_out_a_video_the_library_already_has(app, authed_client, b
     page = authed_client.post("/parent/add", data={"url": "https://youtu.be/aaaaaaaaaaa"}).text
     assert "Already in your library, so left out" in page and "My counting song (Songs)" in page
     assert "nothing new to add" in page and "watched_aaaaaaaaaaa" not in page
+
+
+def test_search_says_it_looks_in_the_kids_own_videos(app, client, backend):
+    _kid(app, client, "wren", search_mode="curated")
+    page = client.get("/search").text
+    assert "Search my videos" in page and "Find new videos" not in page
