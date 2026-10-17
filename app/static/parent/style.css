@@ -123,7 +123,6 @@ th {
 .btn-secondary:hover { background: #444; }
 .btn-danger { background: #b42318; }
 .btn-danger:hover { background: #8f1c13; }
-.btn-primary { background: #07c; }
 .btn-active { background: var(--accent); color: #fff; }
 
 [hidden] { display: none !important; }

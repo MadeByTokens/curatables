@@ -19,7 +19,7 @@
         {% if p.allow_wishlist %}&middot; Can ask for new videos{% endif %}
       </div>
       <div class="actions">
-        <a href="/parent/profiles/{{ p.id }}/edit" class="btn btn-sm btn-primary">Edit</a>
+        <a href="/parent/profiles/{{ p.id }}/edit" class="btn btn-sm">Edit</a>
         <form method="POST" action="/parent/profiles/{{ p.id }}/delete"
               data-confirm="Delete {{ p.display_name or p.name }}? Their comments, reactions, tags and video requests go too. Channels they made stay, as yours.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

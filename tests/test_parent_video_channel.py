@@ -83,3 +83,16 @@ def test_content_list_names_channels_not_internal_ids(app, authed_client):
     zoo = page[page.index("Me at the zoo"):]
     assert "No channel" in zoo and "from jawed" in zoo and "Waiting for your OK" in zoo
     assert 'id="bulk-actions"' in page
+
+
+def test_channels_page_counts_and_hides_export_for_empty(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    animals = ChannelRepository(conn).create("Animals")
+    ChannelRepository(conn).create("Bedtime")
+    VideoRepository(conn).insert(Video(video_id="yt_z", title="z", original_title="z",
+                                       download_status="ready", channel_id=animals))
+    page = authed_client.get("/parent/channels/").text
+    assert "1 video\n" in page or "1 video<" in page or "1 video " in page
+    assert "video(s)" not in page
+    assert "No videos yet" in page
+    assert page.count("export?format=ytc") == 1
