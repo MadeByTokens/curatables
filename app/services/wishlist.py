@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable
 
-from app.backends.base import ChannelHit, VideoBackend, VideoMetadata
+from app.backends.base import BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
 from app.config import Config
 from app.repositories.video_repo import VideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
@@ -78,6 +78,18 @@ def _contains_word(text: str, word: str) -> bool:
     return re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text, re.IGNORECASE) is not None
 
 
+def blocked_word_in(words: list, text: str) -> str | None:
+    """The first of the parent's blocked words found in text, if any."""
+    for word in words:
+        word = str(word).strip()
+        if word and _contains_word(text, word):
+            return word
+    return None
+
+
+_CANNOT_ADD = (BackendErrorType.VIDEO_UNAVAILABLE, BackendErrorType.AGE_RESTRICTED)
+
+
 class WishlistService:
     def __init__(self, backend: VideoBackend, repo: WishlistRepository,
                  video_repo: VideoRepository, thumbnails: ThumbnailService,
@@ -89,11 +101,7 @@ class WishlistService:
         self.rules = config.wishlist
 
     def blocked_word_in(self, text: str) -> str | None:
-        for word in self.rules.blocked_words:
-            word = str(word).strip()
-            if word and _contains_word(text, word):
-                return word
-        return None
+        return blocked_word_in(self.rules.blocked_words, text)
 
     def passes(self, meta: VideoMetadata) -> bool:
         """The parent's rules for a single result."""
@@ -143,7 +151,7 @@ class WishlistService:
                 continue
             video_id = make_video_id(meta.extractor, meta.video_id)
             status = asked.get(video_id, "new")
-            if status == "rejected":
+            if status in ("rejected", "unavailable"):
                 continue
             if status == "new" and self.video_repo.get(video_id) is not None:
                 status = "in_library"
@@ -244,6 +252,11 @@ class WishlistService:
             return
         meta = GATE.video(item.raw_id, lambda: self.backend.fetch_video_info(item.url))
         if meta is None:
+            # Private, removed or region-locked: nothing the parent could
+            # add, so say so instead of leaving it waiting.
+            error = getattr(self.backend, "last_error", None)
+            if error is not None and error.error_type in _CANNOT_ADD:
+                self.repo.decide(request_id, "unavailable")
             return
         self.repo.fill_details(request_id, meta)
         if not self.passes(meta):

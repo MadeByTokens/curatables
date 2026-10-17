@@ -1292,6 +1292,13 @@ input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; 
     padding: 8px 0;
     border-bottom: 1px solid #ddd;
 }
+.wishlist-mine-hidden {
+    display: block;
+    background: #eee;
+    font-size: 30px;
+    line-height: 54px;
+    text-align: center;
+}
 .wishlist-mine-thumb {
     float: left;
     width: 96px;
