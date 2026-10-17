@@ -12,7 +12,7 @@
     <label for="wq" class="sr-only">{{ _("What do you want to watch?") }}</label>
     <input type="search" id="wq" name="q" value="{{ query }}" autocomplete="off"
            maxlength="100" placeholder="{{ _('What do you want to watch?') }}" class="search-input">
-    <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> {{ _("Search") }}</button>
+    <button type="submit" class="search-btn"><span aria-hidden="true">&#128269;</span> <span class="search-btn-label">{{ _("Search") }}</span></button>
     <fieldset class="wishlist-modes">
       <legend class="sr-only">{{ _("Look for") }}</legend>
       <input type="radio" id="mode-videos" name="mode" value="videos" class="sr-only"{% if mode != "channels" %} checked{% endif %}>
