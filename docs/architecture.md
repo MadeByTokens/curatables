@@ -118,8 +118,11 @@ HTTP exceptions. Services worth knowing about:
 
 - **`ContentService`** (`content.py`) — add/list/search/moderate videos, the
   visibility policy, download orchestration, rehydrating evicted videos.
-- **`StorageService`** (`storage.py`) — file layout, the free-space guard,
-  downloads through the backend, cache eviction.
+- **`StorageService`** (`storage.py`) — file layout, the free-space guard
+  (with **`SpaceWatch`**, `disk_space.py`; see [Free space](#free-space)),
+  downloads through the backend, cache eviction and **Free up files**.
+- **`ClockService`** (`clock.py`) and `family_time.py` — the box's clock
+  and the family's day (see [The clock](#the-clock)).
 - **`DownloadQueue`** (`download_queue.py`) — the shared download worker
   pool (see [Downloads](#downloads)).
 - **`MediaNormalizer`** (`normalize.py`) + **`MediaProbeService`** — the
@@ -246,6 +249,7 @@ migrations must be idempotent and safe on existing data.
 | `0011_wishlist.py` | `profiles.allow_wishlist` and `wishlist_requests`. |
 | `0012_imports.py` | `videos.origin`, `origin_ref`, `source_path`, `episode_key`; the `import_jobs` table. |
 | `0013_wishlist_details.py` | `wishlist_requests` keeps YouTube's title, description, upload date and views, plus the kid's own title, description and channel (`target_channel_id`). |
+| `0014_play_counts.py` | `videos.play_count` (kid plays, kept for good; backfilled from `video_play` events) and an index on `events(event_type, timestamp)`. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
@@ -301,8 +305,10 @@ Every video is kept unless the parent turns on **Freeing up space**
 days are evicted. Every play sets `videos.last_played_at`; age is
 `COALESCE(last_played_at, cached_at)`.
 
-- The maintenance loop runs the eviction; nothing else deletes videos,
-  and a full disk never does. Instead `storage_report.disk_level` turns
+- The maintenance loop runs the eviction, and the parent's bulk **Free up
+  files** on Content evicts the videos they ticked (`StorageService.free_files`,
+  which also takes **Keep forever** ones; uploads are skipped). Nothing
+  else deletes video files, and a full disk never does. Instead `storage_report.disk_level` turns
   `warning` at `storage.low_space_percent` free (15) and `blocked` below
   `min_free_disk_bytes`, and the dashboard lists the ways out
   (`parent/_low_space.html`).
@@ -480,9 +486,39 @@ calls, in order:
 
 The maintenance loop wakes every `storage.cache_cleanup_interval_minutes`
 (default 60; 0 disables it), re-reads the config, and on a worker thread
-evicts expired cache videos (only when `storage.cache_days` > 0; see
-[Cache eviction](#cache-eviction)) and deletes usage events older than
-`storage.events_retention_days` (default 365; 0 keeps them).
+evicts expired cache videos (only when `storage.cache_days` > 0 and the
+clock can be trusted, see [The clock](#the-clock); see
+[Cache eviction](#cache-eviction)), deletes usage events older than
+`storage.events_retention_days` (default 365; 0 keeps them), and removes
+upload and import leftovers in `uploads/.tmp` that nothing touched for
+`UPLOAD_IDLE_HOURS` (24; a folder's age is its newest file).
+
+### Free space
+
+`StorageService.check_can_write` refuses work that would not fit before it
+starts. While files are written, `disk_space.SpaceWatch` re-measures the
+videos drive every few seconds: yt-dlp downloads (a progress hook), ffmpeg
+conversions (`run_ffmpeg`), import copies and parent tus upload pieces stop
+before free space drops under `min_free_disk_bytes`, remove their partial
+files and raise `InsufficientDiskSpace` (shown as `[disk_full]`). A
+conversion first checks the copy will fit. `scripts/backup.sh` refuses to
+run when its output folder (the SD card) would keep less than `MIN_FREE_MB`,
+and `storage_report.get_system_disk_status` puts a warning on the dashboard
+when the card holding the data dir is low.
+
+### The clock
+
+The Pi has no battery-backed clock: after a power cut it starts from the
+time systemd-timesyncd saved and catches up when NTP reaches the internet.
+`ClockService` (`app/services/clock.py`) asks the root helper
+(`clock_status`) whether NTP has synchronized. While it has not, the page
+layouts load `static/js/clock.js`, which posts the device's time to
+`/api/clock`; for a signed-in kid or parent the helper's `set_clock` steps
+the clock forward (never back, at most 400 days) and saves it for the next
+boot. Cache eviction trusts the clock only after NTP or a parent's device
+set it. A parent's browser also reports its time zone once
+(`server.timezone`); `family_time.py` turns the family's midnight into the
+UTC text the stats compare with stored timestamps.
 
 Everything in this module opens its own SQLite connection.
 
@@ -513,8 +549,8 @@ From outermost to innermost:
 4. **`SessionMiddleware`** — signed cookie, `SameSite=Strict`.
 5. **`CSRFMiddleware`** — validates the per-session token on POST/PUT/
    PATCH/DELETE, except a short audited list in `app/middleware/csrf.py`
-   (exactly `/parent/setup`; login, profile select/PIN, `/api/log` and
-   parent tus uploads by prefix). Exempt requests must not carry a
+   (exactly `/parent/setup`; login, profile select/PIN, `/api/log`,
+   `/api/clock` and parent tus uploads by prefix). Exempt requests must not carry a
    cross-site `Origin`. A token in a header is checked without reading
    the body; otherwise a plain form is read whole (the body limit keeps
    it small), a multipart upload only until its token field (at most
@@ -622,6 +658,11 @@ the system Python, standard library only).
   it twice; if the box doesn't connect, it goes back to the previous
   connection. `/run/curatables-wifi-test` tells `nm-wired-only.sh` to
   stay out of the way meanwhile.
+- **Clock.** `clock_status` reports whether NTP has synchronized;
+  `set_clock` runs `date -u -s @<epoch>` only while it has not, only
+  forward and by at most 400 days, then touches
+  `/var/lib/systemd/timesync/clock` (and runs `fake-hwclock save` where
+  installed) so the next boot starts from it.
 - **SD-card recovery.** `curatables-recovery.service` and
   `curatables-diagnose.service` run `curatables-helper.py --reset-from-boot`
   and `--report-from-boot` at boot when `curatables-reset.txt` or
@@ -688,7 +729,10 @@ unplugged drive) without corruption or stuck state.
 2. **Atomic config writes.** `Config.save()` writes a `.tmp`, `fsync`s and
    renames.
 3. **`recover_from_crash`** (`app/db/schema.py`), on every start:
-   `downloading` → `pending`; `.part` files deleted; `ready` videos whose
+   `downloading` → `pending`; yt-dlp and conversion leftovers (`.part`,
+   `.part-Frag*`, `.ytdl`, `video.norm.*`) deleted, and a download that
+   finds its original already on disk converts it before it counts;
+   `ready` videos whose
    file is missing → `pending`. If most `ready` videos are missing at once
    (an unmounted external drive) it changes nothing and logs why; if the
    media folder itself is missing it skips the file checks altogether.

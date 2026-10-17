@@ -30,6 +30,7 @@ the spelling: a misspelled key has no effect.
 | `mdns_enabled` | `true` | Advertise the server as `curatables.local` on the network. |
 | `mdns_name` | `Curatables` | Name shown in Bonjour/Avahi browsers. |
 | `prometheus_enabled` | `false` | Expose counters at `/metrics` for Prometheus. |
+| `timezone` | empty | The family's time zone (an IANA name such as `America/Toronto`): where "today" starts in the stats and the "today/yesterday" dates. Times are stored in UTC and the Pi runs on UTC. Filled in from the parent's browser the first time they sign in; Settings → Time zone. Empty uses the box's own zone. |
 | `kid_language` | `en` | Language of the "Who's watching?" picker (`en`, `pt-BR`, `es`). Settings → Storage → Kid screen language. |
 | `allowed_hosts` | `[]` | Extra names the server answers to. It always answers to its hostname (with `.local`, `.lan`, `.home` and similar), `localhost` and IP addresses; other names are refused (DNS rebinding). |
 | `helper_socket` | `/run/curatables-helper/helper.sock` | Socket of the root system helper behind the Box pages (Pi image only). Without it, those pages say they only work on the Pi image. |
@@ -47,7 +48,7 @@ the spelling: a misspelled key has no effect.
 | `low_space_percent` | `15` | — | The dashboard and the storage page warn when the videos drive has this much free or less. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
 | `subtitle_langs` | `en` | Storage | Comma-separated language codes, `all`, or empty for none. |
-| `min_free_disk_bytes` | 2 GB | Advanced | New downloads and uploads are refused when free space would drop below this. Nothing is removed to make room. |
+| `min_free_disk_bytes` | 2 GB | Advanced | Downloads, conversions, imports and uploads are refused, or stopped part way with their partial files removed, before free space on the videos drive drops below this. Nothing is removed to make room. |
 | `max_download_bytes` | 4 GB | Advanced | Source files bigger than this are not downloaded. |
 | `max_concurrent_downloads` | `1` | Advanced | Downloads + conversions running at once. Keep `1` on a Raspberry Pi. |
 | `max_upload_bytes` | 10 GB | Advanced | Largest file a parent can upload. |

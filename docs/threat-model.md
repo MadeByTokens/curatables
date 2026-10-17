@@ -208,6 +208,10 @@ device per child (with device-level locking) rather than the PIN.
     `Origin` header names another site are refused.
   - `/api/log` — player telemetry; it records only `video_view` /
     `video_play` / `video_complete` from a kid who can see the video.
+  - `/api/clock` — a device's time while NTP has not synchronized, and a
+    parent browser's time zone. Pages with no session yet post it, so it
+    has no token; only a signed-in kid or parent counts, and the clock
+    only moves forward, by at most 400 days (see below).
   - `/parent/upload` — the vendored `tus-js-client` sends no token. This
     prefix also covers `/parent/upload/finalize/*`. These routes require
     a parent session; `SameSite=Strict` is what protects them.
@@ -265,7 +269,8 @@ keep the system patched.
 
 ### Re-downloads after eviction
 
-With **Freeing up space** on, videos nobody watched for a while are evicted and
+With **Freeing up space** on, or after **Free up files** on Content, videos
+are evicted and
 downloaded again from the approved URL when a kid taps them. The URL may
 now serve something else. When the re-downloaded file's length differs
 from the approved length by more than 10 s **and** 5 %, the video goes
@@ -451,6 +456,13 @@ What remains:
   as a confirmation on the box itself; until then the sandbox around the
   service (`ProtectSystem=strict`, `NoNewPrivileges`, the unprivileged
   user) is what keeps such code from running in the first place.
+- **The clock can be pushed ahead.** While NTP has not synchronized (no
+  internet), a signed-in kid's device with a wrong clock, or a
+  compromised service, can move the box's clock up to 400 days forward;
+  it never moves back until NTP corrects it. Sessions and rate-limit
+  windows then end early. Cache eviction, which deletes files by how
+  long ago they were watched, waits until NTP or a parent's device set
+  the clock.
 - The SD card's boot partition is trusted: `curatables-reset.txt` clears
   the parent password. Physical access to the card is treated as full
   access, as it is anyway (the card can simply be reflashed).

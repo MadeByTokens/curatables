@@ -117,8 +117,24 @@ ways out: move the videos to a bigger USB drive (**Box → Drives & backups →
 Use for videos**), turn on **Settings → Freeing up space** so videos nobody
 watched for a number of days you pick lose their files (they stay listed and
 download again when tapped; uploads and keep-forever videos are never
-touched), or delete what you don't need (**Storage** shows what uses the
-space). Below the hard minimum (2 GB) new downloads and uploads stop.
+touched), or pick what nobody watches: **Content** sorted by **Least
+watched** (or **Not watched for longest**, **Largest files**) shows how often
+each video was played and its size; tick some and press **Free up files**
+(the files go, the videos stay listed and download again when tapped) or
+**Delete**. Below the hard minimum (2 GB) downloads, imports and uploads
+stop, even ones already running, and remove what they had written.
+
+The box's own memory card (the system, the library's records and the
+nightly backups) gets its own warning on the dashboard when it has under
+1 GB or 10% free; nightly backups are skipped until there is room again.
+
+**The box's clock, or "today" in the stats, is wrong.**
+The Raspberry Pi has no battery-backed clock. After a power cut it starts
+from the last time it saved and catches up once it reaches the internet.
+Without internet, opening any page from a signed-in kid's or parent's
+device sets the clock from that device. "Today" starts at midnight in the
+family's time zone, filled in from your browser; change it in **Settings →
+Time zone**.
 
 **I already have a drive full of movies.**
 Don't format it. Plug it in, open **Box → Drives & backups** and press

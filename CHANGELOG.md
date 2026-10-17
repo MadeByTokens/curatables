@@ -15,6 +15,32 @@ The first release since v0.1.0. Boxes on v0.1.0 can't install it from
 the dashboard (that release only updates the downloader): flash the new
 image. Later releases install from **Box → Updates**.
 
+### Running for years: a full drive, a stale clock, power cuts
+
+**New for parents**
+- Content sorts by least watched, not watched for longest or largest
+  file, with each video's plays, last watch and size; **Free up files**
+  deletes the files of the ticked videos and keeps them listed.
+- Dashboard warning when the box's own memory card runs low.
+- **Settings → Time zone**: where "today" starts in the stats and dates.
+- Video requests: **Recently decided** lists the 20 latest decisions; a
+  list of more than 100 waiting says how many there are.
+
+**Fixes**
+- Downloads, conversions, imports and uploads stop cleanly before the
+  videos drive drops under its minimum free space; nightly backups never
+  fill the memory card.
+- Without internet after a power cut, a signed-in device's page sets the
+  box's clock; freeing up space waits for a trusted clock.
+- After a power cut mid-conversion, the leftovers are removed and the
+  video is converted again.
+- Abandoned uploads and import folders are removed after 24 hours idle.
+  Thumbnails and the drive backup copy are never left cut off.
+- Deleting a video deletes its comments and reactions; deleting a kid
+  deletes their pictures. Kid search stays quick in a big library; the
+  log file on the memory card leaves out per-request lines.
+- Kid help page tiles stay in level rows.
+
 ### Import from a drive
 
 **New for parents**
