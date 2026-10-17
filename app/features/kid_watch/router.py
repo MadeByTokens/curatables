@@ -23,6 +23,7 @@ COMMENTS_PER_PAGE = 20
 @router.get("/watch/{video_id}", response_class=HTMLResponse)
 def watch(request: Request, video_id: str,
           comments_page: int = Query(1, ge=1, alias="cp"),
+          already: int = Query(0),
           viewer: ViewerContext = Depends(get_viewer),
           content: ContentService = Depends(get_content_service),
           reactions: ReactionService = Depends(get_reaction_service),
@@ -76,4 +77,5 @@ def watch(request: Request, video_id: str,
         "comments_total_pages": comments_total_pages,
         "tags": tags,
         "next_episode": next_episode,
+        "already_here": bool(already),
     })

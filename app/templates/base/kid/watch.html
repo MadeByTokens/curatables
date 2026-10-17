@@ -3,6 +3,9 @@
 {% from "kid/_tag_chip.html" import tag_chip with context %}
 {% set kid = viewer and viewer.is_child %}
 {% block content %}
+{% if already_here %}
+<div class="wishlist-sent" role="status"><span aria-hidden="true">&#128161;</span> {{ _("This video was already here, so here it is.") }}</div>
+{% endif %}
 <div class="player-page" id="watch"
      data-video-id="{{ video.video_id }}"
      data-csrf="{{ csrf_token }}"

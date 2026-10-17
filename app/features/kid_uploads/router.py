@@ -197,7 +197,8 @@ async def kid_upload(request: Request,
         dup = e.video
         if (dup.channel_id in visible_by_id and dup.status == "active"
                 and dup.download_status == "ready"):
-            return done(f"/watch/{dup.video_id}")
+            # Say why the kid lands on a video they didn't just name.
+            return done(f"/watch/{dup.video_id}?already=1")
         return fail("This video is already here. Ask a grown-up to find it.", 409)
     except UploadError:
         return fail("Upload failed. Try again.", 400)
