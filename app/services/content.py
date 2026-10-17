@@ -89,6 +89,16 @@ class ContentService:
         allowed = set(visible)
         return [c for c in channels if c.id in allowed]
 
+    def channels_to_browse(self, viewer: ViewerContext) -> list[Channel]:
+        """The channel buttons a kid sees: channels with something to
+        watch, and the kid's own channels (they hold the kid's saved
+        videos). An empty channel can still be picked when asking for a
+        new video."""
+        with_videos = self.video_repo.channel_ids_with_ready()
+        return [c for c in self.channels_for_viewer(viewer)
+                if c.id in with_videos
+                or (viewer.profile_id and c.owner_profile_id == viewer.profile_id)]
+
     def get_video_for_viewer(self, video_id: str, viewer: ViewerContext) -> Video:
         """Get a video if the viewer is allowed to see it and it's ready."""
         video = self.get_video(video_id)

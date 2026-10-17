@@ -167,8 +167,13 @@ def test_help_lists_only_what_the_kid_can_do(app, allowed):
 def test_one_channel_needs_no_channel_buttons(app):
     conn, kid, _ = _setup(app)
     assert 'class="channel-nav"' not in kid.get("/").text
-    ChannelRepository(conn).create("Planes")
+    planes = ChannelRepository(conn).create("Planes")
     conn.commit()
+    # An empty channel is not offered either.
+    assert 'class="channel-nav"' not in kid.get("/").text
+    VideoRepository(conn).insert(Video(
+        video_id="yt_plane", title="Jumbo jet", original_title="Jumbo jet",
+        channel_id=planes, status="active", download_status="ready"))
     assert 'class="channel-nav"' in kid.get("/").text
 
 

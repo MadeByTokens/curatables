@@ -149,6 +149,13 @@ class VideoRepository(BaseRepository):
         ).fetchone()
         return int(row["cnt"])
 
+    def channel_ids_with_ready(self) -> set[int]:
+        """Channels that hold at least one video kids can watch."""
+        rows = self.db.execute(
+            "SELECT DISTINCT channel_id FROM videos WHERE status = 'active' "
+            "AND download_status = 'ready' AND channel_id IS NOT NULL").fetchall()
+        return {r["channel_id"] for r in rows}
+
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
                      limit: int = 24, offset: int = 0,
                      profile_id: int | None = None) -> builtins.list[Video]:
