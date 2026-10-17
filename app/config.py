@@ -94,10 +94,14 @@ class ParentConfig:
     linux_password_reset: bool = False
 
 
+# English, and the same ideas in Spanish and Portuguese, the other
+# languages of the kid screens.
 DEFAULT_WISHLIST_BLOCKED_WORDS = [
-    "horror", "scary", "creepy", "gore", "blood", "kill", "murder", "dead",
-    "gun", "guns", "weapon", "fight", "violent", "prank", "sexy", "nsfw",
-    "porn", "xxx", "drugs", "drunk", "beer", "18+",
+    "horror", "scary", "creepy", "spooky", "zombie", "gore", "blood", "kill",
+    "murder", "dead", "gun", "guns", "weapon", "fight", "violent", "prank",
+    "sexy", "nsfw", "porn", "xxx", "drugs", "drunk", "beer", "18+",
+    "terror", "miedo", "medo", "sangre", "sangue", "matar", "muerte", "morte",
+    "pelea", "briga", "arma", "armas",
 ]
 
 
@@ -109,7 +113,7 @@ class WishlistConfig:
     # Non-empty: only results from these channel names are shown.
     allowed_channels: list[str] = field(default_factory=list)
     max_results: int = 12
-    max_duration_minutes: int = 30
+    max_duration_minutes: int = 20
 
 
 @dataclass
