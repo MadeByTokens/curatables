@@ -50,6 +50,9 @@ class ChannelService:
     def get(self, channel_id: int) -> Channel | None:
         return self.channel_repo.get(channel_id)
 
+    def get_by_name(self, name: str) -> Channel | None:
+        return self.channel_repo.get_by_name(name)
+
     def create(self, name: str, description: str = "") -> int:
         return self.channel_repo.create(name, description)
 
