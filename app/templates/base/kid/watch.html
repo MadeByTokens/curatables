@@ -71,7 +71,7 @@
 
   {% if kid and viewer.allow_tags %}
   <div id="tags" class="tags-row">
-    <span class="tags-label"><span aria-hidden="true">&#127991;</span> {{ _("Tags:") }}</span>
+    <span class="tags-label"><span aria-hidden="true">&#127991;&#65039;</span> {{ _("Tags:") }}</span>
     <span id="tag-list">{% for t in tags %}{{ tag_chip(t, video.video_id, csrf_token) }}{% endfor %}</span>
     <form id="tag-add-form" method="POST" action="/video/{{ video.video_id }}/tags/add" class="d-ib ml-4" data-xhr="tag-add">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
