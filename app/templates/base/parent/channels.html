@@ -4,7 +4,7 @@
 {% if notice %}<div class="flash" role="status">{{ notice }}</div>{% endif %}
 
 <p class="page-intro">
-  <a href="/parent/channels/import" class="btn btn-sm btn-secondary">&#128228; Import shared channel</a>
+  <a href="/parent/channels/import" class="btn btn-sm btn-secondary">&#128229; Import shared channel</a>
 </p>
 
 <div class="p-16 r-6 mb-24 mw-500 panel-muted">
@@ -37,10 +37,11 @@
       <div class="desc">{{ ch.description }}</div>
       {% endif %}
       <div class="meta">
-        {{ count }} video(s)
+        {% if count %}{{ count }} video{{ "s" if count != 1 }}{% else %}No videos yet: kids don&rsquo;t see it{% endif %}
       </div>
       <div class="actions">
-        <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm btn-primary">Edit</a>
+        <a href="/parent/channels/{{ ch.id }}/edit" class="btn btn-sm">Edit</a>
+        {% if count %}
         <span class="export-group">
           <a href="/parent/channels/{{ ch.id }}/export?format=ytc"
              class="btn btn-sm btn-secondary" title="Machine-readable format for import into another Curatables">Export .ytc</a>
@@ -49,6 +50,7 @@
           <a href="/parent/channels/{{ ch.id }}/export?format=pdf"
              class="btn btn-sm btn-secondary" title="Printable PDF">.pdf</a>
         </span>
+        {% endif %}
         <details class="delete-details">
           <summary class="btn btn-sm btn-danger">Delete&hellip;</summary>
           <form method="POST" action="/parent/channels/{{ ch.id }}/delete"

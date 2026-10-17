@@ -132,7 +132,8 @@
   <div class="form-group">
     <label for="allowed_channels">Only show these channels (one per line, optional)</label>
     <textarea id="allowed_channels" name="allowed_channels" rows="4" class="w-100" placeholder="Sesame Street&#10;Numberblocks">{{ config.wishlist.allowed_channels|join("\n") }}</textarea>
-    <small class="muted">Channel names exactly as YouTube shows them. Empty = any channel. Applies to channel search too.</small>
+    <small class="muted">Channel names exactly as YouTube shows them. Empty = any channel. Applies to channel search too.
+      For younger kids this is safer than a word list: titles that get past the words can still be wild.</small>
   </div>
   <div class="form-group">
     <label for="max_duration_minutes">Longest video shown (minutes)</label>

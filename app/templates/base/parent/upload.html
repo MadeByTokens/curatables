@@ -1,9 +1,9 @@
 {% extends "parent/base.html" %}
 {% block content %}
-<h1>Upload Video</h1>
+<h1>Upload a video</h1>
 
 <p class="muted-2 mw-600">
-  Upload a video file from this computer. Large files over a flaky
+  Upload a video file from this computer, one at a time. Large files over a flaky
   connection are fine — the upload will resume if it's interrupted.
   Maximum file size: {{ "%.1f"|format(max_upload_bytes / 1073741824) }} GB.
 </p>
