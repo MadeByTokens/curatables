@@ -35,8 +35,9 @@ def list_channels(request: Request,
             profile = profiles_svc.get(owner_id)
             if profile is not None:
                 owner_names[owner_id] = profile.display_name or profile.name
-    # Plain list of channels for the delete-reassign dropdown.
-    all_channels = [ch for ch, _ in channels_with_counts]
+    # Where a deleted channel's videos can go: the family's channels, not a
+    # kid's own (only that kid would see them there).
+    all_channels = [ch for ch, _ in channels_with_counts if not ch.owner_profile_id]
     return request.app.state.templates.TemplateResponse(request, "parent/channels.html", {
         "request": request,
         "channels_with_counts": channels_with_counts,
@@ -115,7 +116,9 @@ def delete_channel(request: Request, channel_id: int,
         if candidate == channel_id:
             # Refuse self-reassignment; fall through to orphan behavior.
             reassign_id = None
-        elif channels_svc.get(candidate) is not None:
-            reassign_id = candidate
+        else:
+            target = channels_svc.get(candidate)
+            if target is not None and not target.owner_profile_id:
+                reassign_id = candidate
     channels_svc.delete(channel_id, reassign_to=reassign_id)
     return RedirectResponse(url="/parent/channels/?notice=deleted", status_code=302)
