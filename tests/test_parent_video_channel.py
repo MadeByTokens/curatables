@@ -66,3 +66,20 @@ def test_unhiding_says_unhid(app, authed_client):
                                        download_status="ready", status="hidden"))
     resp = authed_client.post("/parent/content/yt_h/activate", follow_redirects=True)
     assert "Unhid &#34;Hidden one&#34;. It has no channel" in resp.text
+
+
+def test_content_list_names_channels_not_internal_ids(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    animals = ChannelRepository(conn).create("Animals")
+    VideoRepository(conn).insert(Video(video_id="up_e892a1", title="Garden snail race",
+                                       original_title="g", download_status="ready", channel_id=animals))
+    VideoRepository(conn).insert(Video(video_id="youtube_jNQXAC9IVRw", title="Me at the zoo",
+                                       original_title="z", download_status="ready", channel_name="jawed",
+                                       status="review"))
+    page = authed_client.get("/parent/content").text
+    assert "<small>up_e892a1</small>" not in page and "<small>youtube_jNQXAC9IVRw</small>" not in page
+    snail = page[page.index("Garden snail race"):page.index("Garden snail race") + 400]
+    assert "Animals" in snail and "&middot; from" not in snail
+    zoo = page[page.index("Me at the zoo"):]
+    assert "No channel" in zoo and "from jawed" in zoo and "Waiting for your OK" in zoo
+    assert 'id="bulk-actions"' in page
