@@ -38,6 +38,7 @@
     <tr>
       <th>#</th>
       <th>Video</th>
+      <th>Opened</th>
       <th>Completed</th>
       <th>Time</th>
       <th>Reactions</th>
@@ -48,6 +49,7 @@
     <tr>
       <td>{{ loop.index }}</td>
       <td>{% if v.video_title %}<a href="/parent/content/{{ v.video_id }}">{{ v.video_title }}</a>{% else %}<span class="muted">A video that was deleted</span>{% endif %}</td>
+      <td>{{ v.opens }}</td>
       <td>{{ v.plays }}</td>
       <td>{{ (v.secs // 60) }}m</td>
       <td>
@@ -61,7 +63,7 @@
   </tbody>
 </table>
 {% else %}
-<p class="muted">No completed videos in this window.</p>
+<p class="muted">No videos opened or reacted to in this window.</p>
 {% endif %}
 
 <h2 class="mt-32">Recent Reactions</h2>
