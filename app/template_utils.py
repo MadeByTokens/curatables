@@ -116,6 +116,16 @@ def local_time(value: str | None, today: date | None = None, lang: str = "en",
     return f"{friendly_date(local.strftime('%Y-%m-%d'), today, lang, tz)} {local:%H:%M}"
 
 
+def clock_duration(seconds: int | None) -> str:
+    """A video length as the player shows it: '1:23', '5:13:05'."""
+    if not seconds:
+        return ""
+    seconds = int(seconds)
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
+
+
 def register_filters(templates: Jinja2Templates,
                      timezone_name: Callable[[], str] = lambda: "") -> None:
     @pass_context
@@ -135,6 +145,7 @@ def register_filters(templates: Jinja2Templates,
     templates.env.globals["timezones"] = lambda: sorted(available_timezones())
     templates.env.filters["friendly_download_error"] = friendly_download_error
     templates.env.filters["excerpt"] = excerpt
+    templates.env.filters["duration"] = clock_duration
     templates.env.globals["asset_v"] = _asset_version()
     templates.env.globals["kid_themes"] = [key for key, _label in THEME_CHOICES if key != "base"]
 
