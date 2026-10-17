@@ -3,7 +3,8 @@ name: Build Pi image
 # Builds the Raspberry Pi appliance image with pi-gen (in Docker, via
 # qemu ARM emulation). Heavy job (~30-60 min, several GB) so it does NOT
 # run on every push: trigger it by hand, or it runs automatically when a
-# GitHub Release is published and attaches the .img.xz as a release asset.
+# GitHub Release is published and attaches the image to it as
+# curatables-<version>-raspberry-pi.img.xz plus its .sha256.
 on:
   workflow_dispatch: {}
   release:
@@ -65,9 +66,25 @@ jobs:
           path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error
 
-      # On a published release, attach the image as a downloadable asset.
+      # On a published release, name the image after the version (pi-gen
+      # names it after the build date) and add its checksum, so parents
+      # can tell which file on the release page to download.
+      - name: Name the release image
+        if: github.event_name == 'release'
+        id: release_image
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          IMG: ${{ steps.artifact.outputs.path }}
+        run: |
+          out="curatables-${TAG#v}-raspberry-pi.img.xz"
+          mv "$IMG" "$out"
+          sha256sum "$out" > "$out.sha256"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+
       - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.artifact.outputs.path }}
+          files: |
+            ${{ steps.release_image.outputs.path }}
+            ${{ steps.release_image.outputs.path }}.sha256

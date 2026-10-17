@@ -31,9 +31,11 @@ You don't need to type any commands. The
 [parents' guide](docs/parents-guide.md) explains every step in more
 detail, for Windows, Mac and phone users.
 
-1. **Download the image.** Get the newest `…-curatables.img.xz` file from
-   the project's [Releases page](https://github.com/MadeByTokens/curatables/releases/latest).
-   This file is everything the box needs, ready-made.
+1. **Download the image.** On the newest
+   [release](https://github.com/MadeByTokens/curatables/releases/latest),
+   under **Assets**, download `curatables-<version>-raspberry-pi.img.xz`
+   (about 900 MB). This file is everything the box needs, ready-made; the
+   other files are the source code. Don't unzip it.
    ([details](docs/parents-guide.md#1-put-curatables-on-the-sd-card))
 2. **Write it to the SD card** with
    [Raspberry Pi Imager](https://www.raspberrypi.com/software/), a free
