@@ -3,6 +3,7 @@ progress page for the system helper's background tasks."""
 
 import shutil
 import time
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -13,6 +14,7 @@ from app.dependencies import get_auth_service, get_config, get_system_helper, re
 from app.models import ViewerContext
 from app.services import updates
 from app.services.auth import MIN_PASSWORD_LENGTH, AuthService
+from app.services.family_time import family_zone
 from app.services.system_helper import (
     SAME_AS_PARENT, HelperFailed, HelperUnavailable, SystemHelper,
 )
@@ -405,6 +407,12 @@ def diagnostics_page(request: Request,
         return unavailable_page(request)
     result, error = _try(helper, "diagnostics")
     checks = (result or {}).get("checks", []) + _app_checks(config)
+    for c in checks:
+        # The helper reports the clock in UTC (right for the report file);
+        # the page says it the way the family reads every other time.
+        if c.get("id") == "clock" and c.get("status") == "ok":
+            now = datetime.now(timezone.utc).astimezone(family_zone(config.server.timezone))
+            c["detail"] = f"{now:%Y-%m-%d %H:%M} ({now.tzname()}). Set from the internet."
     order = {"fail": 0, "warn": 1, "ok": 2}
     return request.app.state.templates.TemplateResponse(request, "parent/system_diagnostics.html", {
         "request": request, "checks": sorted(checks, key=lambda c: order.get(c["status"], 3)),
