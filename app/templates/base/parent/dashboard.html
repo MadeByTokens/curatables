@@ -199,7 +199,9 @@
           <div class="meta">
             <div class="title-line">
               <a href="/parent/content/{{ v.video_id }}">{{ v.title }}</a>
-              {% if v.download_status == 'ready' %}
+              {% if v.status == 'review' %}
+                <span class="badge badge-pending">waiting for your OK</span>
+              {% elif v.download_status == 'ready' %}
                 <span class="badge badge-ready">ready</span>
               {% elif v.download_status == 'downloading' %}
                 <span class="badge badge-downloading">downloading</span>

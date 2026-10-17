@@ -166,3 +166,14 @@ class TestStatsPage:
         db.commit()
         assert _mk_stats(db).top_videos("7d") == []
         assert {r["profile_name"] for r in _mk_stats(db).per_profile_summary("7d")} == {"Theo", "Lia", "Maya"}
+
+
+def test_dashboard_marks_a_kid_upload_waiting_for_approval(app, authed_client):
+    from app.dependencies import get_db
+    conn = next(app.dependency_overrides[get_db]())
+    VideoRepository(conn).insert(Video(video_id="up_d", title="My drawing", original_title="My drawing",
+                                       download_status="ready", status="review"))
+    page = authed_client.get("/parent/").text
+    recent = page.split("Recently added")[1]
+    assert "waiting for your OK" in recent
+    assert "badge-ready" not in recent
