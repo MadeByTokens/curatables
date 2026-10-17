@@ -26,6 +26,9 @@ install -d -o curatables -g curatables "${DATA}"
 # --- python venv + deps ------------------------------------------------
 python3 -m venv "${ROOT}/.venv"
 "${ROOT}/.venv/bin/pip" install --upgrade pip
+# Exact, hash-checked versions first; then requirements.txt adds only what
+# the lock leaves out (yt-dlp, which must be the newest).
+"${ROOT}/.venv/bin/pip" install --require-hashes -r "${ROOT}/requirements.lock"
 "${ROOT}/.venv/bin/pip" install -r "${ROOT}/requirements.txt"
 
 # --- deno (system-wide, on PATH for the service) -----------------------

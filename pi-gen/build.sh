@@ -14,7 +14,7 @@
 #
 # Env overrides:
 #   PIGEN_DIR   where to clone pi-gen      (default: pi-gen/.pi-gen)
-#   PIGEN_REF   pi-gen branch to build     (default: arm64)
+#   PIGEN_REF   pi-gen commit (or branch) to build (default: PIGEN_COMMIT)
 #
 # 64-bit images come from pi-gen's `arm64` branch, not from ARCH in
 # config: pi-gen's build.sh hard-sets ARCH after sourcing config. Its
@@ -26,7 +26,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${HERE}/.." && pwd)"
 PIGEN_DIR="${PIGEN_DIR:-${HERE}/.pi-gen}"
-PIGEN_REF="${PIGEN_REF:-arm64}"
+# pi-gen's arm64 branch at the commit this release was built and tested
+# with, so two builds of one commit start from the same base system. Move
+# it on purpose, and test the image, to take a newer pi-gen.
+PIGEN_COMMIT=d346cd53562b3c6b4f94c9155175f814258c456d
+PIGEN_REF="${PIGEN_REF:-${PIGEN_COMMIT}}"
 
 say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
@@ -54,14 +58,18 @@ if ! command -v qemu-aarch64 >/dev/null 2>&1; then
 	say "Shimmed qemu-aarch64 -> $(readlink "${SHIM}/qemu-aarch64")"
 fi
 
-# 1. Fetch pi-gen.
-if [ ! -d "${PIGEN_DIR}" ]; then
-	say "Cloning pi-gen (${PIGEN_REF}) into ${PIGEN_DIR}"
-	git clone --depth 1 --branch "${PIGEN_REF}" \
-		https://github.com/RPi-Distro/pi-gen "${PIGEN_DIR}"
-else
-	say "Reusing existing pi-gen checkout at ${PIGEN_DIR}"
+# 1. Fetch pi-gen at PIGEN_REF (an existing checkout is moved to it).
+if [ ! -d "${PIGEN_DIR}/.git" ]; then
+	[ ! -e "${PIGEN_DIR}" ] || die "${PIGEN_DIR} exists but is not a git checkout; remove it"
+	git init -q "${PIGEN_DIR}"
+	git -C "${PIGEN_DIR}" remote add origin https://github.com/RPi-Distro/pi-gen
 fi
+if [ "$(git -C "${PIGEN_DIR}" rev-parse HEAD 2>/dev/null || true)" != "${PIGEN_REF}" ]; then
+	say "Fetching pi-gen ${PIGEN_REF}"
+	git -C "${PIGEN_DIR}" fetch -q --depth 1 origin "${PIGEN_REF}"
+	git -C "${PIGEN_DIR}" checkout -q --detach FETCH_HEAD
+fi
+say "pi-gen at $(git -C "${PIGEN_DIR}" rev-parse --short HEAD)"
 
 # 2. Stage the committed source (HEAD, without pi-gen/) into the custom
 #    stage. Only tracked files go in: never local notes, caches or build

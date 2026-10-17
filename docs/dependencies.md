@@ -69,7 +69,11 @@ use Python's built-in `sqlite3` module (online backup API).
 
 ## 3. Python runtime dependencies
 
-Authoritative list lives in `requirements.txt`. Rationale for each:
+Authoritative list lives in `requirements.txt` (version ranges). The Pi
+image and its in-place updates install the exact versions in
+`requirements.lock` (hash-checked, Python 3.13 on 64-bit ARM) and then
+`requirements.txt`, which adds only yt-dlp and yt-dlp-ejs, the newest at
+the time. Rationale for each:
 
 | Package | Purpose | What breaks without it |
 |---|---|---|
@@ -436,7 +440,9 @@ entries are worse than missing ones. Rules:
 
 1. When you add a dep to `requirements.txt`, add a row to
    [§3 Python runtime dependencies](#3-python-runtime-dependencies)
-   with its rationale and the graceful-degradation story.
+   with its rationale and the graceful-degradation story, and regenerate
+   `requirements.lock` (the command is in its header;
+   `tests/test_requirements_lock.py` fails until it matches).
 2. When you add a new subprocess or system binary call, add a row to
    [§2 Base OS / system binaries](#2-base-os--system-binaries) and
    update `run.py:check_dependencies` so missing installs are caught
