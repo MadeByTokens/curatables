@@ -96,3 +96,18 @@ def test_channels_page_counts_and_hides_export_for_empty(app, authed_client):
     assert "video(s)" not in page
     assert "No videos yet" in page
     assert page.count("export?format=ytc") == 1
+
+
+def test_freeing_files_reports_sizes_kids_can_follow(app, authed_client):
+    conn = next(app.dependency_overrides[get_db]())
+    ch = ChannelRepository(conn).create("Facts")
+    VideoRepository(conn).insert(Video(video_id="yt_f", title="Facts", original_title="f",
+                                       download_status="ready", channel_id=ch, storage_mode="cache"))
+    VideoRepository(conn).update("yt_f", file_size=3 * 1024 ** 2)
+    VideoRepository(conn).insert(Video(video_id="up_f", title="Mine", original_title="m",
+                                       download_status="ready", channel_id=ch, storage_mode="uploaded"))
+    page = authed_client.post("/parent/content/bulk", data={
+        "action": "free", "video_ids": ["yt_f", "up_f"], "page": "1"}, follow_redirects=True).text
+    assert "Freed 3 MB from 1 video;" in page
+    assert "1 left as they are: only videos downloaded from a website can be freed" in page
+    assert "file freed: downloads again when a kid opens it" in page

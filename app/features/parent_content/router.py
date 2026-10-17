@@ -337,6 +337,13 @@ def delete(request: Request, video_id: str,
     return RedirectResponse(url="/parent/content", status_code=302)
 
 
+def _size(num_bytes: int) -> str:
+    """'1.4 GB', or '3 MB' below a gigabyte."""
+    if num_bytes >= 1024 ** 3:
+        return f"{num_bytes / 1024 ** 3:.1f} GB"
+    return f"{max(1, round(num_bytes / 1024 ** 2))} MB" if num_bytes else "0 MB"
+
+
 def _redirect_with_flash(page: int, message: str, flash_type: str = "success",
                          status: str = "", sort: str = ""):
     url = f"/parent/content?page={page}&flash={quote(message)}&flash_type={flash_type}"
@@ -405,11 +412,13 @@ async def bulk_action(request: Request,
     if action == "free":
         report = content.free_files(video_ids)
         skipped = len(video_ids) - report.evicted_count
-        message = (f"Freed {report.freed_bytes / 1024 ** 3:.1f} GB from "
-                   f"{report.evicted_count} video(s); they download again when a kid taps them.")
+        n = report.evicted_count
+        message = (f"Freed {_size(report.freed_bytes)} from {n} video{'s' if n != 1 else ''}; "
+                   "they stay on the kids' screens and download again when opened."
+                   if n else "No files were freed.")
         if skipped:
-            message += (f" {skipped} skipped: uploads, and videos that are not"
-                        " downloaded, have no files to free.")
+            message += (f" {skipped} left as they are: only videos downloaded from a website"
+                        " can be freed (uploads and imports can't be downloaded again).")
         return _redirect_with_flash(page, message, **keep)
 
     return _redirect_with_flash(page, f"Unknown action '{action}'.", "error")
