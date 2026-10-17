@@ -6,7 +6,7 @@
 {% include "_icons.html" %}
 {% set parent_page = true %}
 {% include "_clock.html" %}
-<title>{% block title %}curatables - Parent Dashboard{% endblock %}</title>
+<title>{% block title %}curatables{% endblock %}</title>
 <link rel="stylesheet" href="/static/parent/style.css?v={{ asset_v }}">
 <script src="/static/parent/app.js?v={{ asset_v }}" defer></script>
 {% block head %}{% endblock %}
@@ -39,7 +39,7 @@
     </form>
   </span>
 </header>
-<div class="container">
+<main id="main" class="container">
 {% if media_missing() and not request.url.path.startswith("/parent/system/drives") %}
 <div class="flash flash-error" role="alert">The videos drive is not connected, so kids see a
   "videos are resting" screen and nothing new can be stored.
@@ -48,6 +48,6 @@
 {% set box_notice = box_notices.get(request.query_params.get("notice", "")) %}
 {% if box_notice %}<div class="flash mw-500" role="status">{{ box_notice }}</div>{% endif %}
 {% block content %}{% endblock %}
-</div>
+</main>
 </body>
 </html>
