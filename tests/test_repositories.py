@@ -146,3 +146,32 @@ class TestVideoSearch:
         pages = [[v.video_id for v in repo.search_ready("park", limit=2, offset=o)]
                  for o in (0, 2, 4, 6)]
         assert pages == [["v01", "v03"], ["v05", "v07"], ["v09", "v11"], []]
+
+    def test_search_ignores_accents_and_case(self, db):
+        repo = VideoRepository(db)
+        repo.insert(_make_video("v1", title="Vulcão de bicarbonato"))
+        repo.insert(_make_video("v2", title="ÉCOLE"))
+        assert [v.video_id for v in repo.search_ready("vulcao")] == ["v1"]
+        assert [v.video_id for v in repo.search_ready("VULCÃO")] == ["v1"]
+        assert [v.video_id for v in repo.search_ready("école")] == ["v2"]
+
+    def test_search_uses_one_kids_own_title_and_tags(self, db):
+        from app.repositories.override_repo import ProfileVideoOverrideRepository
+        from app.repositories.tag_repo import TagRepository
+        repo = VideoRepository(db)
+        repo.insert(_make_video("v1", title="Baking soda volcano"))
+        maya = ProfileRepository(db).create(Profile(name="maya"))
+        theo = ProfileRepository(db).create(Profile(name="theo"))
+        ProfileVideoOverrideRepository(db).upsert(maya, "v1", title="Vulcão de bicarbonato")
+        tags = TagRepository(db)
+        tags.add_to_video(maya, "v1", tags.get_or_create("ciência"))
+
+        def ids(q, pid):
+            return [v.video_id for v in repo.search_ready(q, profile_id=pid)]
+        assert ids("vulcao", maya) == ["v1"]
+        assert ids("ciencia", maya) == ["v1"]
+        # Another kid's names and tags stay theirs.
+        assert ids("vulcao", theo) == []
+        assert ids("ciencia", theo) == []
+        assert ids("volcano", theo) == ["v1"]
+        assert ids("vulcao", None) == []

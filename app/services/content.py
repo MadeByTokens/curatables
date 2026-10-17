@@ -129,7 +129,8 @@ class ContentService:
         offset = (page - 1) * per_page
         return self.video_repo.search_ready(
             query, channel_ids=self.visible_channel_ids(viewer),
-            limit=per_page, offset=offset)
+            limit=per_page, offset=offset,
+            profile_id=viewer.profile_id if viewer.is_child else None)
 
     def fetch_previews_for_urls(self, urls: list[str]) -> tuple[list[VideoMetadata], list[str]]:
         """Fetch metadata previews for a shared-curation import.
