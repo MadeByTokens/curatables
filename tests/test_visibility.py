@@ -207,3 +207,15 @@ def test_empty_channels_are_not_offered_to_kids(app):
 
     _video(conn, "yt_moon", bedtime, "Goodnight moon")
     assert f'/channel/{bedtime}"' in kid.get("/").text
+
+
+def test_freed_videos_stay_listed_for_kids(app):
+    conn = _conn(app)
+    ch = ChannelRepository(conn).create("Facts")
+    _video(conn, "yt_facts", ch, "Five facts")
+    VideoRepository(conn).mark_evicted("yt_facts")
+    kid = _as_kid(app, _kid(conn, "sol"))
+    for path in ("/", f"/channel/{ch}", "/search?q=facts"):
+        page = kid.get(path).text
+        assert 'href="/watch/yt_facts"' in page, path
+    assert "Takes a moment to start" in kid.get("/").text

@@ -9,6 +9,10 @@
     <a href="/watch/{{ v.video_id }}">
       <span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt=""></span>
       <span class="video-title">{{ v.title }}</span>
+      {% if v.download_status == 'evicted' %}
+      {# Its file was freed to save space; it downloads again on opening. #}
+      <span class="card-wait"><span aria-hidden="true">&#8987;</span> {{ _("Takes a moment to start") }}</span>
+      {% endif %}
       {% if reaction_counts and emojis and reaction_counts.get(v.video_id) %}
       <span class="card-reactions">
         {% for name, cnt in reaction_counts[v.video_id].items() if name in emojis %}

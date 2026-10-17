@@ -958,6 +958,13 @@ video:focus {
     }
 }
 
+.card-wait {
+    display: block;
+    padding: 0 10px 8px;
+    font-size: 14px;
+    color: #555;
+}
+
 .card-reactions {
     display: block;
     padding: 0 10px 8px;

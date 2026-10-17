@@ -32,7 +32,7 @@ class ProfileChannelVideoRepository(BaseRepository):
             "SELECT pcv.video_id FROM profile_channel_videos pcv "
             "JOIN videos v ON pcv.video_id = v.video_id "
             "WHERE pcv.profile_id = ? AND pcv.channel_id = ? "
-            "AND v.status = 'active' AND v.download_status = 'ready' "
+            "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted') "
             "ORDER BY pcv.position, pcv.added_at DESC "
             "LIMIT ? OFFSET ?",
             (profile_id, channel_id, limit, offset),
@@ -45,7 +45,7 @@ class ProfileChannelVideoRepository(BaseRepository):
             "SELECT COUNT(*) as n FROM profile_channel_videos pcv "
             "JOIN videos v ON pcv.video_id = v.video_id "
             "WHERE pcv.profile_id = ? AND pcv.channel_id = ? "
-            "AND v.status = 'active' AND v.download_status = 'ready'",
+            "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')",
             (profile_id, channel_id),
         ).fetchone()
         return int(row["n"])
