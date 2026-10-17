@@ -9,6 +9,7 @@ import time
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, Response
 
+from app.constants import AVATAR_EMOJIS
 from app.dependencies import (
     require_parent, get_channel_service, get_content_service, get_import_job_repo,
     get_stats_service, get_wishlist_repo,
@@ -48,6 +49,7 @@ def dashboard(request: Request,
             "setup": setup,
             "kid_url": kid_address(request),
             "wishlist_pending": wishlist.count_pending(),
+            "avatars": AVATAR_EMOJIS,
             "imports_active": imports.count_active(),
             "search": _search_notice(),
             **overview,

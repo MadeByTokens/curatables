@@ -82,8 +82,7 @@
     {% endif %}
     {% if wishlist_pending %}
     <li>
-      <strong>{{ wishlist_pending }} video request{% if wishlist_pending != 1 %}s{% endif %} from your kids</strong> —
-      <a href="/parent/requests">review them</a>
+      <a href="/parent/requests"><strong>{{ wishlist_pending }} video request{% if wishlist_pending != 1 %}s{% endif %} from your kids</strong> — review them</a>
     </li>
     {% endif %}
     {% if attention.awaiting_review %}
@@ -157,7 +156,11 @@
     {% for k in per_kid %}
     {% set p = k.profile %}
     <div class="kid-card">
-      <div class="avatar">{{ (p.display_name or p.name)[:1]|upper }}</div>
+      {% if p.avatar in avatars and p.avatar != 'default' %}
+      <div class="avatar avatar-emoji" aria-hidden="true">{{ avatars[p.avatar] }}</div>
+      {% else %}
+      <div class="avatar" aria-hidden="true">{{ (p.display_name or p.name)[:1]|upper }}</div>
+      {% endif %}
       <div class="info">
         <div class="name">{{ p.display_name or p.name }}</div>
         <div class="summary">
@@ -263,7 +266,7 @@
   <div class="shortcut-grid">
     <a href="/parent/content">Browse all content</a>
     <a href="/parent/add">Add from URL</a>
-    <a href="/parent/upload">Upload files</a>
+    <a href="/parent/upload">Upload a video</a>
     <a href="/parent/channels/">Channels</a>
     <a href="/parent/profiles">Kids</a>
     <a href="/parent/stats">Full stats</a>

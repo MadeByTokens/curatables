@@ -347,6 +347,10 @@ label {
   align-items: center;
   justify-content: center;
 }
+.kid-card .avatar-emoji {
+  background: #eef4f3;
+  font-size: 30px;
+}
 .kid-card .info {
   min-width: 0;
   flex: 1;
