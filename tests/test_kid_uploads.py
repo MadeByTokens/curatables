@@ -434,6 +434,22 @@ class TestKidUploadRoutes:
         assert location.endswith("?already=1")
         assert "This video was already here" in client.get(location).text
 
+    def test_upload_page_lists_what_the_kid_sent(self, client, app, authed_client):
+        alice = _make_kid_in_app(app, "alice")
+        family = _make_channel_in_app(app, "Family")
+        _login_kid(client, app, alice)
+        with patch("app.services.uploads.MediaProbeService.validate",
+                   return_value=ProbeResult(codec_name="h264", width=320,
+                                            height=240, duration_seconds=1.0,
+                                            container="mov")):
+            with patch("app.services.uploads.ThumbnailService.extract_frame",
+                       return_value=None):
+                client.post("/upload", data={"channel_id": str(family), "title": "My song"},
+                            files={"file": ("song.mp4", b"q" * 200, "video/mp4")})
+        page = client.get("/upload").text
+        sent = page[page.index("What I sent"):]
+        assert "My song" in sent and "Waiting" in sent
+
     def test_review_upload_hidden_from_sibling_until_approved(
             self, client, app, authed_client):
         alice = _make_kid_in_app(app, "alice")

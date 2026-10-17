@@ -114,6 +114,17 @@ class EventRepository(BaseRepository):
             video_ids).fetchall()
         return {r["video_id"]: r["name"] for r in rows}
 
+    def kid_upload_history(self, profile_id: int, limit: int = 8) -> list[dict]:
+        """The kid's latest uploads, newest first: video_id and the title
+        they gave it."""
+        rows = self.db.execute(
+            "SELECT video_id, MAX(timestamp) AS at, "
+            "json_extract(data_json, '$.title') AS title FROM events "
+            "WHERE event_type = 'video_uploaded_by_kid' AND profile_id = ? "
+            "AND video_id IS NOT NULL GROUP BY video_id ORDER BY at DESC LIMIT ?",
+            (profile_id, limit)).fetchall()
+        return [dict(r) for r in rows]
+
     def last_watched_video_id(self, profile_id: int) -> str | None:
         """ID of the video this profile most recently opened or completed."""
         row = self.db.execute(
