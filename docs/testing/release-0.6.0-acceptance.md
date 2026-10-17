@@ -352,6 +352,22 @@ first nightly backup, and Diagnostics right after setup (F15).
   Diagnostics is all green right after setup (F15), and that
   `curatables.local` answers on the first try after a restart.
 
+### The pinned build
+
+- **Image** `image_2026-10-17-curatables.img.xz` from `d1a313b`, built
+  with pi-gen pinned at `d346cd5` and the Python packages from
+  `requirements.lock` (SHA-256
+  `62bdce7245925f84e26ec45c83a811e90d0a313e5dc9de9abed0bd2ea679dd99`),
+  checked in a chroot: all 445 shipped files match the commit, the
+  systemd units match the repo, `/etc/rpi-issue` names pi-gen
+  `d346cd5`, all 29 locked packages are installed at their pinned
+  versions, `run.py --check` passes, the admin account is locked until
+  setup, and no private files or passwords are included; the setup
+  page, the redirects to it and the static files work, with no server
+  errors.
+- **The release** carries GitHub's own build of the tagged commit; check
+  that image the same way before announcing it.
+
 ### Open
 
 - **The journal is kept in memory** (on purpose: it spares the SD card),
