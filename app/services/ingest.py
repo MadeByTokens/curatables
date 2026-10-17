@@ -88,7 +88,8 @@ class IngestService:
             return path, probe, None
         norm = normalizer.normalize(path, on_progress=on_progress, cancel=cancel,
                                     audio_index=audio_index,
-                                    burn_subtitle_index=burn_subtitle_index)
+                                    burn_subtitle_index=burn_subtitle_index,
+                                    space=self.storage.space_watch())
         if norm.action in ("transcode", "remux"):
             try:
                 probe = self.probe.probe(norm.path)

@@ -13,7 +13,20 @@
     if (action === 'delete') {
       return confirm('Delete ' + picked.length + ' video(s)? This removes the files on disk.');
     }
+    if (action === 'free') {
+      return confirm('Free the files of ' + picked.length + ' video(s)? They stay listed and ' +
+                     'download again when a kid taps them.');
+    }
     return true;
+  }
+
+  // Sorting applies as soon as an option is picked; the button is only
+  // for browsers without scripts.
+  var sort = document.querySelector('select.js-autosubmit');
+  if (sort) {
+    sort.addEventListener('change', function () { sort.form.submit(); });
+    var sortButton = sort.form.querySelector('.js-hide');
+    if (sortButton) sortButton.hidden = true;
   }
 
   if (form) {

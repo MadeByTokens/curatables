@@ -1,0 +1,5 @@
+{# Hands the device's time (and, on parent pages, its time zone) to the box when it needs them. #}
+{% set on_parent_page = parent_page is defined %}
+{% if clock_wanted(on_parent_page) or (on_parent_page and timezone_wanted()) %}
+<script src="/static/js/clock.js?v={{ asset_v }}" defer></script>
+{% endif %}

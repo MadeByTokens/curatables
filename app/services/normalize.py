@@ -25,6 +25,7 @@ from pathlib import Path
 from app.services.ffmpeg_runner import (
     CancelToken, Cancelled, ProgressCallback, Stalled, run_ffmpeg, tail_log,
 )
+from app.services.disk_space import InsufficientDiskSpace, SpaceWatch
 from app.services.media_probe import MediaProbeService, ProbeError, ProbeResult
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,8 @@ class MediaNormalizer:
 
     def normalize(self, path: Path, *, on_progress: ProgressCallback | None = None,
                   cancel: CancelToken | None = None, audio_index: int | None = None,
-                  burn_subtitle_index: int | None = None) -> NormalizeResult:
+                  burn_subtitle_index: int | None = None,
+                  space: SpaceWatch | None = None) -> NormalizeResult:
         """Normalize ``path`` in place; the result lives at ``<dir>/video.mp4``.
 
         Never raises on media problems — a file that can't be probed or
@@ -97,13 +99,14 @@ class MediaNormalizer:
         download/upload still completes rather than vanishing. Callers
         should use ``result.path`` as the canonical file afterwards.
 
-        Raises Cancelled when ``cancel`` fires; the partial output is
-        removed first and the input is left as it was.
+        Raises Cancelled when ``cancel`` fires, and InsufficientDiskSpace
+        when ``space`` trips; the partial output is removed first and the
+        input is left as it was.
         """
         target = path.with_name("video.mp4")
         result = self.convert(path, path.with_name("video.norm.mp4"), on_progress=on_progress,
                               cancel=cancel, audio_index=audio_index,
-                              burn_subtitle_index=burn_subtitle_index)
+                              burn_subtitle_index=burn_subtitle_index, space=space)
         if result.action not in ("remux", "transcode"):
             return result
         # Success: drop the original if it was a different container
@@ -116,7 +119,8 @@ class MediaNormalizer:
 
     def convert(self, src: Path, out: Path, *, on_progress: ProgressCallback | None = None,
                 cancel: CancelToken | None = None, audio_index: int | None = None,
-                burn_subtitle_index: int | None = None) -> NormalizeResult:
+                burn_subtitle_index: int | None = None,
+                space: SpaceWatch | None = None) -> NormalizeResult:
         """Write a baseline copy of ``src`` to ``out``; ``src`` is never
         modified. With action ``none`` nothing is written and the result
         path is ``src``; with ``skipped`` nothing is left at ``out``.
@@ -139,14 +143,18 @@ class MediaNormalizer:
             return NormalizeResult(path=src, action="none", reason="already baseline",
                                    kind="none")
 
+        if space is not None:
+            # The copy needs about as much room as the source.
+            needed = SpaceWatch(space.path, space.min_free + src.stat().st_size, every=0)
+            needed.check()
         args = self._ffmpeg_args(src, info, plan, audio_index, burn_subtitle_index)
         log_path = out.with_name(out.name + ".log")
         args.append(str(out))
         started = time.monotonic()
         try:
             code = run_ffmpeg(args, duration=info.duration_seconds, log_path=log_path,
-                              on_progress=on_progress, cancel=cancel)
-        except Cancelled:
+                              on_progress=on_progress, cancel=cancel, space=space)
+        except (Cancelled, InsufficientDiskSpace):
             out.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
             raise
@@ -164,6 +172,10 @@ class MediaNormalizer:
         wall = time.monotonic() - started
 
         if code != 0 or not out.exists():
+            if space is not None and not space.ok():
+                out.unlink(missing_ok=True)
+                log_path.unlink(missing_ok=True)
+                raise InsufficientDiskSpace(space.message())
             detail = tail_log(log_path, 300)
             logger.warning("normalize: ffmpeg %s failed for %s (exit %s): %s",
                            plan.action, src, code, detail)

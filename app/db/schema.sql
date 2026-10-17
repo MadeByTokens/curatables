@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS videos (
     keep_forever    INTEGER NOT NULL DEFAULT 0,
     -- last_played_at drives least-recently-watched cache eviction.
     last_played_at  TEXT,
+    play_count      INTEGER NOT NULL DEFAULT 0,  -- kid plays, kept for good
     -- Imported from a drive: where it came from, and the file it was.
     origin          TEXT NOT NULL DEFAULT '',   -- movie | youtube | web | home
     origin_ref      TEXT NOT NULL DEFAULT '',   -- Wikidata / TMDB / YouTube id
@@ -223,6 +224,7 @@ CREATE INDEX IF NOT EXISTS idx_channels_owner ON channels(owner_profile_id);
 CREATE INDEX IF NOT EXISTS idx_events_profile ON events(profile_id);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_video ON events(video_id);
+CREATE INDEX IF NOT EXISTS idx_events_type_time ON events(event_type, timestamp);
 CREATE INDEX IF NOT EXISTS idx_profile_channels ON profile_channels(profile_id);
 CREATE INDEX IF NOT EXISTS idx_reactions_video ON reactions(video_id);
 CREATE INDEX IF NOT EXISTS idx_comments_video ON comments(video_id);

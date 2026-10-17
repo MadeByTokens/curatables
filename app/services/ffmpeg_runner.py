@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from app.services.disk_space import InsufficientDiskSpace, SpaceWatch
+
 STALL_SECONDS = 120.0
 _SPEED_WINDOW = 60.0
 _POLL = 0.5
@@ -150,12 +152,13 @@ def run_ffmpeg(args: list[str], *, duration: float, log_path: Path,
                on_progress: ProgressCallback | None = None,
                cancel: CancelToken | None = None,
                stall_seconds: float = STALL_SECONDS,
-               phase: str = "convert") -> int:
+               phase: str = "convert",
+               space: SpaceWatch | None = None) -> int:
     """Run ``args`` (starting with the ffmpeg binary) to completion.
 
-    Returns ffmpeg's exit code. Raises Cancelled or Stalled after the
-    process group has been stopped and reaped; the caller deletes any
-    partial output. ``duration`` is the input length in seconds, used
+    Returns ffmpeg's exit code. Raises Cancelled, Stalled, or
+    InsufficientDiskSpace (when ``space`` trips) after the process group
+    has been stopped and reaped; the caller deletes any partial output. ``duration`` is the input length in seconds, used
     for the fraction and the time left.
     """
     if cancel is not None:
@@ -185,6 +188,9 @@ def run_ffmpeg(args: list[str], *, duration: float, log_path: Path,
             if cancel is not None and cancel.cancelled:
                 _stop_group(proc)
                 raise Cancelled()
+            if space is not None and not space.ok():
+                _stop_group(proc)
+                raise InsufficientDiskSpace(space.message())
             if stalled_for > stall_seconds:
                 _stop_group(proc)
                 raise Stalled(f"no progress for {int(stalled_for)} s")

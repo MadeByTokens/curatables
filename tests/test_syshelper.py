@@ -818,3 +818,30 @@ def test_a_failed_nightly_backup_gets_its_own_advice(fake):
     checks = {c["id"]: c for c in diagnostics.check_services()}
     assert checks["backup"]["status"] == "warn" and "Back up now" in checks["backup"]["fix"]
     assert "units" not in checks
+
+
+# --- clock ----------------------------------------------------------------------
+
+def test_the_clock_is_stepped_forward_while_ntp_has_not_synced(fake):
+    fake.on(["timedatectl"], out="no\n")
+    ahead = int(time.time()) + 3 * 86400
+    assert system.set_clock({"epoch": ahead})["set"] is True
+    assert fake.ran("date", "-u", "-s", f"@{ahead}")
+    assert fake.ran("fake-hwclock", "save")
+
+
+def test_the_clock_is_left_alone_once_ntp_synced(fake):
+    fake.on(["timedatectl"], out="yes\n")
+    assert system.set_clock({"epoch": int(time.time()) + 86400}) == {
+        "set": False, "reason": "synchronized"}
+    assert not fake.ran("date")
+
+
+def test_the_clock_never_goes_back_or_years_ahead(fake):
+    fake.on(["timedatectl"], out="no\n")
+    assert system.set_clock({"epoch": int(time.time()) - 86400})["set"] is False
+    with pytest.raises(HelperError):
+        system.set_clock({"epoch": int(time.time()) + 5 * 365 * 86400})
+    with pytest.raises(HelperError):
+        system.set_clock({"epoch": "tomorrow"})
+    assert not fake.ran("date")

@@ -41,6 +41,23 @@ def get_disk_status_brief(media_dir: Path, min_free_bytes: int, low_percent: int
             "status": disk_level(usage.free, usage.total, min_free_bytes, low_percent)}
 
 
+# The SD card holds the system, the database and the nightly backups;
+# under this much free space the box itself starts to fail.
+SYSTEM_MIN_FREE_BYTES = 1 * _GB
+SYSTEM_LOW_PERCENT = 10
+
+
+def get_system_disk_status(data_dir: Path, media_dir: Path) -> dict | None:
+    """Free space on the card that holds the database, or None when that
+    is the videos drive itself (already covered by get_disk_status_brief)."""
+    try:
+        if data_dir.stat().st_dev == media_dir.stat().st_dev:
+            return None
+    except OSError:
+        pass
+    return get_disk_status_brief(data_dir, SYSTEM_MIN_FREE_BYTES, SYSTEM_LOW_PERCENT)
+
+
 @dataclass
 class DiskReport:
     total_bytes: int

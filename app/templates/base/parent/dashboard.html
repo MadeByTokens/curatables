@@ -33,8 +33,9 @@
 {% endif %}
 
 {% set ds = disk_status() %}
+{% set sd = system_disk_status() %}
 
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') %}
+{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') or (sd and sd.status in ('blocked', 'warning')) %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
@@ -49,6 +50,15 @@
         ({{ "%.1f"|format(ds.free_gb) }} GB). Nothing is removed on its own; you can:
       {% endif %}
       {% include "parent/_low_space.html" %}
+    </li>
+    {% endif %}
+
+    {% if sd and sd.status in ('blocked', 'warning') %}
+    <li>
+      <strong>The box's memory card is {% if sd.status == 'blocked' %}almost full{% else %}getting full{% endif %}</strong>
+      — {{ "%.1f"|format(sd.free_gb) }} GB free ({{ sd.free_percent }}%). It holds the system, the
+      library's records and the nightly backups; when it fills up the box stops working properly.
+      Nightly backups are skipped until there is room again.
     </li>
     {% endif %}
 

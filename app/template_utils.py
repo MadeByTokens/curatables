@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from typing import Callable
+from zoneinfo import available_timezones
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -14,23 +16,31 @@ from app.i18n import (
     LANGUAGES, context_language, gettext, jinja_gettext, jinja_language, js_messages,
 )
 from app.models import ViewerContext
+from app.services.family_time import family_today, family_zone
 
 _TEMPLATES_ROOT = os.path.join(os.path.dirname(__file__), "templates", "base")
 
 _templates: Jinja2Templates | None = None
 
 
-def friendly_date(value: str | None, today: date | None = None, lang: str = "en") -> str:
+def friendly_date(value: str | None, today: date | None = None, lang: str = "en",
+                  tz: str = "") -> str:
     """'today', 'yesterday', 'N days ago' or the date, from a
     'YYYY-MM-DD[ HH:MM:SS]' string. Pre-readers and early readers cope
-    far better with these than with raw timestamps."""
+    far better with these than with raw timestamps. A value with a time
+    is stored UTC and is counted in the family's zone `tz`."""
     if not value:
         return ""
+    text = str(value)
     try:
-        day = datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+        if len(text) >= 19:
+            stamp = datetime.strptime(text[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            day = stamp.astimezone(family_zone(tz)).date()
+        else:
+            day = datetime.strptime(text[:10], "%Y-%m-%d").date()
     except ValueError:
-        return str(value)
-    delta = ((today or date.today()) - day).days
+        return text
+    delta = ((today or family_today(tz)) - day).days
     if delta <= 0:
         return gettext(lang, "today")
     if delta == 1:
@@ -92,17 +102,18 @@ def excerpt(text: str | None, limit: int) -> str:
     return (cut[:space] if space > 0 else cut).rstrip() + "…"
 
 
-@pass_context
-def _friendly_date_filter(ctx, value: str | None) -> str:
-    return friendly_date(value, lang=context_language(ctx))
+def register_filters(templates: Jinja2Templates,
+                     timezone_name: Callable[[], str] = lambda: "") -> None:
+    @pass_context
+    def _friendly_date_filter(ctx, value: str | None) -> str:
+        return friendly_date(value, lang=context_language(ctx), tz=timezone_name())
 
-
-def register_filters(templates: Jinja2Templates) -> None:
     templates.env.filters["friendly_date"] = _friendly_date_filter
     templates.env.globals["_"] = jinja_gettext
     templates.env.globals["page_language"] = jinja_language
     templates.env.globals["js_messages"] = js_messages
     templates.env.globals["kid_languages"] = LANGUAGES
+    templates.env.globals["timezones"] = lambda: sorted(available_timezones())
     templates.env.filters["friendly_download_error"] = friendly_download_error
     templates.env.filters["excerpt"] = excerpt
     templates.env.globals["asset_v"] = _asset_version()

@@ -57,7 +57,8 @@ from app.services.media_fs import capped, media_missing
 from app.services.metrics import MetricsService
 from app.services.qr import qr_available
 from app.services.search_gate import GATE
-from app.services.storage_report import get_disk_status_brief
+from app.services.storage_report import get_disk_status_brief, get_system_disk_status
+from app.services.clock import ClockService
 from app.services.system_helper import SystemHelper
 from app.template_utils import register_filters
 from app.web import kid_address
@@ -117,6 +118,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     )
     app.state.csrf = csrf_service
     app.state.system_helper = SystemHelper(config.server.helper_socket)
+    app.state.clock = ClockService(app.state.system_helper)
 
     def _csrf_context(request):
         """Every template gets a csrf_token for its forms."""
@@ -129,13 +131,17 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         context_processors=[_csrf_context],
     )
     app.state.templates = templates
-    register_filters(templates)
+    register_filters(templates, timezone_name=lambda: config.server.timezone)
     templates.env.globals["box_notices"] = BOX_NOTICES
     templates.env.globals["media_missing"] = lambda: media_missing(config.storage.media_path)
     # Read on every render, so the free-space chip in the parent topnav is current.
     templates.env.globals["disk_status"] = lambda: get_disk_status_brief(
         config.media_dir, config.storage.min_free_disk_bytes, config.storage.low_space_percent
     )
+    templates.env.globals["clock_wanted"] = lambda parent=False: app.state.clock.wants_browser_time(parent)
+    templates.env.globals["timezone_wanted"] = lambda: not config.server.timezone
+    templates.env.globals["system_disk_status"] = lambda: get_system_disk_status(
+        config.data_dir, config.media_dir)
     templates.env.globals["embed_url_for"] = embed_url_for
     templates.env.globals["qr_available"] = qr_available
     templates.env.globals["kid_address"] = kid_address

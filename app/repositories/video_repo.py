@@ -20,9 +20,18 @@ class VideoRepository(BaseRepository):
             return None
         return self._to_model(row)
 
+    # Orders for the parent's content list. Least watched first helps the
+    # parent pick videos to remove when the drive fills up.
+    SORTS = {
+        "newest": "added_at DESC, id DESC",
+        "least_played": "play_count ASC, COALESCE(last_played_at, added_at) ASC, id ASC",
+        "unwatched_longest": "COALESCE(last_played_at, added_at) ASC, id ASC",
+        "largest": "COALESCE(file_size, 0) DESC, id DESC",
+    }
+
     def list(self, status: str | None = "active",
              channel_id: int | None = None,
-             limit: int = 30, offset: int = 0) -> list[Video]:
+             limit: int = 30, offset: int = 0, sort: str = "newest") -> list[Video]:
         clauses = []
         params: list = []
         if status is not None:
@@ -38,7 +47,8 @@ class VideoRepository(BaseRepository):
 
         params.extend([limit, offset])
         rows = self.db.execute(
-            f"SELECT * FROM videos {where} ORDER BY added_at DESC LIMIT ? OFFSET ?",
+            f"SELECT * FROM videos {where} ORDER BY {self.SORTS.get(sort, self.SORTS['newest'])} "
+            "LIMIT ? OFFSET ?",
             params,
         ).fetchall()
         return [self._to_model(r) for r in rows]
@@ -235,11 +245,11 @@ class VideoRepository(BaseRepository):
     }
 
     def list_filtered(self, filter_name: str, limit: int = 30,
-                      offset: int = 0) -> builtins.list[Video]:
+                      offset: int = 0, sort: str = "newest") -> builtins.list[Video]:
         where = self.LIST_FILTERS[filter_name]
         rows = self.db.execute(
             f"SELECT * FROM videos WHERE {where} "
-            "ORDER BY added_at DESC LIMIT ? OFFSET ?",
+            f"ORDER BY {self.SORTS.get(sort, self.SORTS['newest'])} LIMIT ? OFFSET ?",
             (limit, offset),
         ).fetchall()
         return [self._to_model(r) for r in rows]
@@ -298,7 +308,8 @@ class VideoRepository(BaseRepository):
 
     def touch_played(self, video_id: str) -> None:
         self.db.execute(
-            "UPDATE videos SET last_played_at = datetime('now') WHERE video_id = ?",
+            "UPDATE videos SET last_played_at = datetime('now'), "
+            "play_count = play_count + 1 WHERE video_id = ?",
             (video_id,),
         )
         self.db.commit()
@@ -398,6 +409,7 @@ class VideoRepository(BaseRepository):
             file_size=d.get("file_size", 0),
             keep_forever=bool(d.get("keep_forever", 0)),
             last_played_at=d.get("last_played_at"),
+            play_count=d.get("play_count") or 0,
             origin=d.get("origin") or "",
             origin_ref=d.get("origin_ref") or "",
             source_path=d.get("source_path") or "",

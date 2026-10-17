@@ -96,14 +96,16 @@ def startup_jobs(config: Config, metrics=None) -> None:
         logger.warning("Upload sweep at startup failed (continuing)", exc_info=True)
 
 
-def _maintenance_pass(config: Config, importer=None):
+def _maintenance_pass(config: Config, importer=None, clock=None):
     """One sweep: evict cache videos nobody watched for cache_days, drop
     usage events older than events_retention_days, and remove upload and
-    import leftovers untouched for UPLOAD_IDLE_HOURS."""
+    import leftovers untouched for UPLOAD_IDLE_HOURS. Eviction waits while
+    the clock may be behind (see ClockService), since it measures ages."""
     conn = create_connection(get_db_path(config.data_dir))
     try:
         report = None
-        if config.storage.cache_days > 0 and not media_missing(config.storage.media_path):
+        if (config.storage.cache_days > 0 and not media_missing(config.storage.media_path)
+                and (clock is None or clock.trusted())):
             storage = StorageService(config.media_dir,
                                      min_free_bytes=config.storage.min_free_disk_bytes)
             report = storage.evict_expired(VideoRepository(conn), config.storage.cache_days)
@@ -140,7 +142,8 @@ async def maintenance_loop(app: FastAPI, config: Config) -> None:
                 continue
             try:
                 report, pruned = await asyncio.to_thread(
-                    _maintenance_pass, config, app.state.import_worker)
+                    _maintenance_pass, config, app.state.import_worker,
+                    getattr(app.state, "clock", None))
                 if report is not None and report.evicted_count:
                     logger.info("cache sweep: evicted %d videos, freed %d bytes",
                                 report.evicted_count, report.freed_bytes)

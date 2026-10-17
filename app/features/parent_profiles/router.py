@@ -4,9 +4,12 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
-from app.dependencies import require_parent, get_profile_service, get_content_service
+from app.dependencies import (
+    require_parent, get_profile_service, get_content_service, get_kid_library_service,
+)
 from app.services.profiles import ProfileService
 from app.services.content import ContentService
+from app.services.kid_library import KidLibraryService
 from app.models import ViewerContext
 from app.constants import (
     AVATAR_CHOICES, AVATAR_EMOJIS, PICTURE_PIN_LENGTH, PIN_PICTURES, PIN_STYLE_CHOICES,
@@ -172,6 +175,8 @@ async def edit_submit(request: Request, profile_id: int,
 @router.post("/{profile_id}/delete")
 def delete_profile(request: Request, profile_id: int,
                    viewer: ViewerContext = Depends(require_parent),
-                   profiles_svc: ProfileService = Depends(get_profile_service)):
+                   profiles_svc: ProfileService = Depends(get_profile_service),
+                   kid_lib: KidLibraryService = Depends(get_kid_library_service)):
     profiles_svc.delete(profile_id)
+    kid_lib.delete_profile_files(profile_id)
     return RedirectResponse(url="/parent/profiles", status_code=302)
