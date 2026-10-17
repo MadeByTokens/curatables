@@ -113,7 +113,7 @@ their files are deleted but they stay in the library and download again when a k
           <details class="fs-12 muted-3"><summary>Details</summary>{{ v.download_error }}</details>
           {% endif %}
         {% elif v.download_status == 'evicted' %}
-          <span title="Cache expired; re-downloads on next play" class="muted">&#128465; evicted</span>
+          <span class="muted">&#128465; file freed: downloads again when a kid opens it</span>
         {% else %}
           <span class="status-pending">&#8987; pending</span>
         {% endif %}
