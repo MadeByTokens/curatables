@@ -96,15 +96,22 @@ class ReactionRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def counts_for_videos(self, video_ids: list[str]) -> dict[str, dict[str, int]]:
-        """Bulk fetch {video_id: {emoji: count}} for multiple videos."""
+    def counts_for_videos(self, video_ids: list[str],
+                          profile_id: int | None = None) -> dict[str, dict[str, int]]:
+        """Bulk fetch {video_id: {emoji: count}} for multiple videos; with
+        profile_id, only that kid's reactions."""
         if not video_ids:
             return {}
         placeholders = ",".join("?" for _ in video_ids)
+        params: list = list(video_ids)
+        mine = ""
+        if profile_id is not None:
+            mine = "AND profile_id = ? "
+            params.append(profile_id)
         rows = self.db.execute(
             f"SELECT video_id, emoji, COUNT(*) as cnt FROM reactions "
-            f"WHERE video_id IN ({placeholders}) GROUP BY video_id, emoji",
-            video_ids,
+            f"WHERE video_id IN ({placeholders}) {mine}GROUP BY video_id, emoji",
+            params,
         ).fetchall()
         result: dict[str, dict[str, int]] = {}
         for r in rows:

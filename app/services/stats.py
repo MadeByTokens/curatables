@@ -112,7 +112,7 @@ class StatsService:
                 video = self.video_repo.get(vid)
                 rows[vid] = {"video_id": vid, "plays": 0, "secs": 0, "opens": 0,
                              "video_title": video.title if video else None}
-        reaction_map = self.reaction_repo.counts_for_videos(list(rows))
+        reaction_map = self.reaction_repo.counts_for_videos(list(rows), profile_id=profile_id)
         for r in rows.values():
             r["reactions"] = reaction_map.get(r["video_id"], {})
         ranked = sorted(rows.values(), key=lambda r: (
