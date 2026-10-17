@@ -39,8 +39,17 @@ Once the box is set up, the picture guides show every everyday screen:
 
 ## 1. Put Curatables on the SD card
 
-1. Download the image (`image_…-curatables.img.xz`) from the project's
-   **Releases** page on GitHub. You don't need to unzip it.
+1. Open the newest
+   [release](https://github.com/MadeByTokens/curatables/releases/latest)
+   on GitHub and, under **Assets**, download
+   `curatables-<version>-raspberry-pi.img.xz` (about 900 MB). The other
+   files there are the source code; you don't need them. Don't unzip
+   the image.
+
+   *Optional check:* the `.sha256` file next to it holds the image's
+   SHA-256 checksum. On Windows, `certutil -hashfile <image file> SHA256`
+   in a Command Prompt prints the image's checksum; on a Mac or Linux,
+   `shasum -a 256 <image file>`. The two should match.
 2. Install **Raspberry Pi Imager** from
    [raspberrypi.com/software](https://www.raspberrypi.com/software/) and
    open it.
