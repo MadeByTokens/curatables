@@ -344,6 +344,39 @@ body {
     margin-top: 3px;
 }
 
+/* Phones: the whole menu on one short row, so videos start near the top
+   (a two- or three-row menu took 40-60% of the screen). A theme with
+   bigger buttons scrolls the row sideways inside the header, never the
+   page. */
+@media (max-width: 480px) {
+    .header {
+        padding: 6px 4px;
+    }
+    .header h1 {
+        font-size: 18px;
+    }
+    .header-nav {
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .header-btn {
+        min-width: 44px;
+        min-height: 48px;
+        padding: 4px 3px;
+        margin: 1px 0;
+    }
+    .header-btn-icon {
+        font-size: 20px;
+    }
+    .header-btn-label {
+        font-size: 10px;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+}
+
 /* Help page: big icon + short caption tiles for pre-readers */
 .help-page {
     max-width: 720px;
