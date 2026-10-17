@@ -73,7 +73,12 @@ cartoon is ready in a minute or two.
 
 **Content** lists every video with how its download is going. The tabs
 along the top show only those still waiting for your OK, still
-downloading, failed or hidden.
+downloading, failed or hidden. **Sort by** puts the least watched, the
+ones not watched for longest or the largest files first; each video
+shows how often it was played, when it was last watched and its size.
+Tick some to move, hide or delete them, or press **Free up files** to
+make room: their files go, they stay listed and download again when a
+kid taps them.
 
 ![The Content page with six videos](img/parent-content.webp)
 
@@ -125,7 +130,9 @@ Everything here works on your phone too.
 filled in with the name, description and channel your kid chose. Watch
 it, change anything you like and add it. Your kid's request then says
 **Yes! Watch**. **Not this one** turns it down, and that kid won't see
-it in their searches again.
+it in their searches again. The page lists the oldest 100 requests
+waiting (and says how many more there are), with your 20 latest
+decisions below.
 
 **Comments:** when a kid writes a comment, open the video from the
 dashboard or **Content** to read it, reply or delete it. Your reply
@@ -153,8 +160,9 @@ for each video and each kid.
 ## 7. Settings
 
 **Settings** holds the choices for the whole box: storage and picture
-quality, freeing up space when the disk gets full, updates, the rules
-for video requests, importing from a drive, and your parent password.
+quality, the family's time zone (where "today" starts in the stats),
+freeing up space when the disk gets full, updates, the rules for video
+requests, importing from a drive, and your parent password.
 Most families never need to change them.
 
 ![The top of the Settings page](img/parent-settings.webp)

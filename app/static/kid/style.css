@@ -393,10 +393,8 @@ body {
     }
 }
 
-/* Floated tiles of different heights (a caption on two lines) snag on
-   each other and leave holes, stranding the last tile on its own row. A
-   wrapping flex row keeps the tiles of a row the same height and centres
-   a short last row; the floats stay for browsers without flexbox. */
+/* Tiles of a row share one height (floats of different heights snag)
+   and a short last row is centred; floats are the fallback. */
 .help-grid {
     display: -webkit-flex;
     display: flex;

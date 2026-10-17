@@ -80,7 +80,10 @@ atomically; `cp` races with the writer.
 Each run writes `curatables-YYYY-MM-DD-HHMMSS.db` and
 `curatables-YYYY-MM-DD-HHMMSS.config.json` (mode 0600, it contains the
 password hash and session secret). The newest 14 pairs are kept
-(`RETAIN=N` to change).
+(`RETAIN=N` to change). The script never fills the card it writes to: it
+stops with an error when the output folder would keep less than
+`MIN_FREE_MB` (default 1024) plus the database's size free, and the
+dashboard warns when the SD card is low.
 
 ## Daily automated backup (systemd timer)
 
