@@ -1151,6 +1151,13 @@ noscript .pin-key-go { width: 180px; display: block; margin: 16px auto; }
 .pin-dots-pictures { font-size: 40px; min-height: 56px; }
 .pin-pad-pictures .pin-key-picture { font-size: 44px; }
 .pin-pad-pictures .pin-key-back { margin-left: 33.5%; }
+/* Tablets: the pad grows with the screen, so the pictures are the
+   biggest thing on the page for a small child's finger. */
+@media (min-width: 600px) {
+    .pin-pad { max-width: 420px; }
+    .pin-key { min-height: 88px; }
+    .pin-pad-pictures .pin-key-picture { font-size: 60px; }
+}
 
 /* Wishlist: find new videos and ask a grown-up */
 .wishlist-title, .page-title { margin: 0 0 4px; }

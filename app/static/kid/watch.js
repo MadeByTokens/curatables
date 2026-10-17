@@ -184,6 +184,13 @@
       post(form.action, body, function (xhr) {
         if (xhr.status === 200) { insertComment(xhr.responseText); }
         field.value = '';
+        // A thread's reply box folds back behind its Reply button.
+        var id = form.getAttribute('data-reply-form');
+        var opener = id && document.querySelector('button[data-reply-for="' + id + '"]');
+        if (opener) {
+          addClass(form, 'd-none');
+          removeClass(opener, 'd-none');
+        }
       });
     },
     'tag-add': function (form) {
