@@ -3,6 +3,15 @@
   var addBtn = document.getElementById('add-btn');
   var hint = document.getElementById('add-btn-hint');
   var boxes = form.querySelectorAll('.watched-cb');
+  var channelSelect = document.getElementById('channel_id');
+  var newChannel = document.getElementById('new_channel_name');
+
+  // A channel, a new channel name, or "none" picked on purpose: an
+  // unthinking Add would otherwise give the kids a video they can't find.
+  function channelChosen() {
+    return (channelSelect && channelSelect.value !== '') ||
+      (newChannel && newChannel.value.trim() !== '');
+  }
 
   var progress = document.getElementById('review-progress');
   var count = document.getElementById('review-count');
@@ -20,13 +29,15 @@
       }
     }
     var left = boxes.length - watched;
-    addBtn.disabled = watched === 0;
+    addBtn.disabled = watched === 0 || !channelChosen();
     addBtn.textContent = watched === 0 || left === 0
       ? 'Add ' + boxes.length + ' video(s)'
       : 'Add ' + watched + ' watched video(s)';
     if (hint) {
-      hint.hidden = left === 0;
-      if (watched > 0) {
+      hint.hidden = left === 0 && channelChosen();
+      if (!channelChosen()) {
+        hint.textContent = 'Choose a channel above (or "none").';
+      } else if (watched > 0) {
         hint.textContent = left + ' not watched yet will be left out.';
       }
     }
@@ -57,6 +68,8 @@
   for (var i = 0; i < boxes.length; i++) {
     boxes[i].addEventListener('change', refreshGate);
   }
+  if (channelSelect) { channelSelect.addEventListener('change', refreshGate); }
+  if (newChannel) { newChannel.addEventListener('input', refreshGate); }
 
   // Several videos share one player: each Watch button loads its video
   // there, as an iframe when the site can be embedded (data-embed) and

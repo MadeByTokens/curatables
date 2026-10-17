@@ -308,7 +308,7 @@ class TestMultiSourceAddConfirm:
             "source_url": original_url,
             "source_title": "Test",
             "resolution": "360p",
-            "channel_id": "",
+            "channel_id": "none",
             "new_channel_name": "",
             "video_ids": vid,
             f"extractor_{vid}": extractor,

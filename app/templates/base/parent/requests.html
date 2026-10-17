@@ -1,6 +1,7 @@
 {% extends "parent/base.html" %}
 {% block content %}
 <h1>Video requests</h1>
+{% if notice %}<div class="flash" role="status">{{ notice }}</div>{% endif %}
 <p class="muted">Videos your kids asked for on their <strong>Find new</strong> page. Nothing is
 downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview with the name,
 description and channel the kid chose; watch it and change anything you like. <strong>Not this one</strong> hides it from that kid's

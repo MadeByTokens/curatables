@@ -16,14 +16,22 @@ from app.services.wishlist import WishlistService
 
 router = APIRouter(prefix="/parent/requests", tags=["parent-requests"])
 
+# Messages the page shows after returning with ?notice=<key>.
+NOTICES = {
+    "added": "Added. It is downloading now; the Content tab shows its progress.",
+    "rejected": "Done. That video won't be offered to that kid again.",
+}
+
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
 def requests_page(request: Request,
+                  notice: str = "",
                   viewer: ViewerContext = Depends(require_parent),
                   repo: WishlistRepository = Depends(get_wishlist_repo)):
     return request.app.state.templates.TemplateResponse(request, "parent/requests.html", {
         "request": request,
+        "notice": NOTICES.get(notice),
         "pending": repo.list_by_status("pending"),
         "pending_total": repo.count_pending(),
         "decided": repo.list_decided(),
@@ -37,6 +45,7 @@ def reject_request(request_id: int,
     item = repo.get(request_id)
     if item is not None and item.status == "pending":
         repo.decide(request_id, "rejected")
+        return RedirectResponse(url="/parent/requests?notice=rejected", status_code=303)
     return RedirectResponse(url="/parent/requests", status_code=303)
 
 

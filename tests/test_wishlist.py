@@ -303,11 +303,30 @@ def test_adding_the_video_approves_the_request(app, client, authed_client, backe
             "url_type": "video", "source_url": "https://www.youtube.com/watch?v=aaaaaaaaaaa",
             "source_title": "Counting to ten", "video_ids": "aaaaaaaaaaa",
             "extractor_aaaaaaaaaaa": "youtube", "watched_aaaaaaaaaaa": "1",
+            "channel_id": "none", "from_request": "1",
         })
-    assert resp.status_code == 200
+    # Back to the list, for the next request.
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/parent/requests?notice=added"
+    assert "It is downloading now" in authed_client.get(resp.headers["location"]).text
     repo = WishlistRepository(_conn(app))
     assert repo.list_by_status("pending") == []
     assert repo.list_by_status("approved")[0].video_id == "youtube_aaaaaaaaaaa"
+
+
+def test_adding_needs_a_channel_chosen_on_purpose(app, client, authed_client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    form = {
+        "url_type": "video", "source_url": "https://www.youtube.com/watch?v=aaaaaaaaaaa",
+        "source_title": "Counting to ten", "video_ids": "aaaaaaaaaaa",
+        "extractor_aaaaaaaaaaa": "youtube", "watched_aaaaaaaaaaa": "1", "channel_id": "",
+    }
+    resp = authed_client.post("/parent/add/confirm", data=form)
+    assert resp.status_code == 400 and "Pick a channel" in resp.text
+    assert WishlistRepository(_conn(app)).list_by_status("approved") == []
+    review = authed_client.get(f"/parent/requests/{WishlistRepository(_conn(app)).list_by_status('pending')[0].id}/review").text
+    assert '<option value="">Choose a channel' in review and 'name="from_request"' in review
 
 
 def test_other_kids_cannot_see_a_siblings_requests(app, client, backend):

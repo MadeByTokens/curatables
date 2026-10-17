@@ -154,6 +154,10 @@ async def add_confirm(request: Request,
     source_title = form_str(form, "source_title", "Unknown")
 
     try:
+        if not form_str(form, "channel_id") and not form_str(form, "new_channel_name").strip():
+            # The page keeps Add disabled until one is chosen ("none"
+            # counts); this catches a browser without JS.
+            raise ContentError('Pick a channel for the video, or choose "none".')
         channel_id = content.resolve_channel(
             form_str(form, "channel_id"),
             form_str(form, "new_channel_name"),
@@ -221,6 +225,9 @@ async def add_confirm(request: Request,
     if unreviewed:
         msg += (f" {unreviewed} skipped because the \"I have already fully watched this video\" "
                 f"box was not ticked.")
+    if added and form_str(form, "from_request"):
+        # Approving a kid's request: back to the list, for the next one.
+        return RedirectResponse(url="/parent/requests?notice=added", status_code=303)
     return templates.TemplateResponse(request, "parent/add.html", {
         "request": request, "error": None, "success": msg,
     })
