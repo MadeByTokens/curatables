@@ -94,6 +94,9 @@
         form.method = "POST";
         form.action = "/parent/upload/finalize/" + encodeURIComponent(token);
         document.body.appendChild(form);
+        // The bytes are in: leaving for the finalize page must not trip
+        // the beforeunload guard below.
+        currentUpload = null;
         form.submit();
       },
     };

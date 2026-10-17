@@ -697,6 +697,13 @@ class TestUploadPagePolish:
         resp = _upload_page_with_script(authed_client)
         assert b"beforeunload" in resp.content
 
+    def test_finalize_clears_the_guard_before_leaving(self, authed_client):
+        # Otherwise the page's own finalize navigation asks "Leave site?",
+        # and "Stay" leaves the upload unfinished.
+        js = authed_client.get("/static/parent/upload.js").text
+        success = js[js.index("onSuccess"):]
+        assert success.index("currentUpload = null") < success.index("form.submit()")
+
     def test_page_contains_ios_preparing_state(self, authed_client):
         resp = _upload_page_with_script(authed_client)
         # The preparing state must show on the file-pick change event.
