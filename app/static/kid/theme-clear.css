@@ -27,3 +27,11 @@
   @media (min-width: 600px) { .video-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (min-width: 900px) { .video-grid { grid-template-columns: repeat(3, 1fr); } }
 }
+/* Phones: these bigger buttons wrap to a second row rather than hiding
+   Help and Switch past the edge of a one-row menu. */
+@media (max-width: 480px) {
+  .header-nav { white-space: normal; overflow-x: visible; }
+  .header-btn { min-width: 56px; padding: 4px 2px; }
+  .header-btn-icon { font-size: 28px; }
+  .header-btn-label { font-size: 14px; }
+}
