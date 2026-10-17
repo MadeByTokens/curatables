@@ -86,6 +86,8 @@ class StatsService:
             "kpis_today": kpis_today,
             "per_kid": per_kid,
             "recent_videos": recent_videos,
+            "recent_uploaders": self.event_repo.kid_uploaders(
+                [v.video_id for v in recent_videos]),
             "recent_comments": recent_comments,
         }
 

@@ -101,6 +101,19 @@ class EventRepository(BaseRepository):
         sql += " GROUP BY e.profile_id ORDER BY completions DESC"
         return [dict(r) for r in self.db.execute(sql, params).fetchall()]
 
+    def kid_uploaders(self, video_ids: list[str]) -> dict[str, str]:
+        """{video_id: kid's name} for videos a kid uploaded (while the
+        upload event is still kept)."""
+        if not video_ids:
+            return {}
+        placeholders = ",".join("?" for _ in video_ids)
+        rows = self.db.execute(
+            "SELECT e.video_id, COALESCE(NULLIF(p.display_name, ''), p.name) as name "
+            "FROM events e JOIN profiles p ON p.id = e.profile_id "
+            f"WHERE e.event_type = 'video_uploaded_by_kid' AND e.video_id IN ({placeholders})",
+            video_ids).fetchall()
+        return {r["video_id"]: r["name"] for r in rows}
+
     def last_watched_video_id(self, profile_id: int) -> str | None:
         """ID of the video this profile most recently opened or completed."""
         row = self.db.execute(
