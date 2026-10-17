@@ -29,7 +29,7 @@ _tags = require_kid_feature("allow_tags")
 def _build_home_context(videos, content, reactions, viewer, page, total,
                         current_channel_id=None):
     total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
-    channels = content.channels_for_viewer(viewer)
+    channels = content.channels_to_browse(viewer)
     video_ids = [v.video_id for v in videos]
     bulk_counts = reactions.get_bulk_counts(video_ids) if video_ids else {}
     return {
@@ -310,7 +310,7 @@ def tag_videos(request: Request, tag_name: str,
     bulk_counts = reactions.get_bulk_counts(video_ids) if video_ids else {}
     return render_kid_template(request, viewer, "kid/home.html", {
         "videos": videos,
-        "channels": content.channels_for_viewer(viewer),
+        "channels": content.channels_to_browse(viewer),
         "page": page,
         "total_pages": total_pages,
         "reaction_counts": bulk_counts,

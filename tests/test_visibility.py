@@ -80,6 +80,7 @@ def test_kid_nav_hides_non_whitelisted_channels(app):
     also = channels.create("Boats")
     channels.create("Secret Grownup Channel")
     _video(conn, "yt_train", allowed, "Train clip")
+    _video(conn, "yt_boat", also, "Boat clip")
     pid = _kid(conn, "dan", allowed=[allowed, also])
 
     kid = _as_kid(app, pid)
@@ -189,3 +190,20 @@ def test_kid_search_shows_and_finds_the_kids_own_title(app):
     assert "Vulcão de bicarbonato" in found
     assert "Vulcão de bicarbonato" in kid.get("/search?q=volcano").text
     assert "Baking soda volcano" not in kid.get("/search?q=volcano").text
+
+
+def test_empty_channels_are_not_offered_to_kids(app):
+    conn = _conn(app)
+    channels = ChannelRepository(conn)
+    animals = channels.create("Animals")
+    science = channels.create("Science")
+    bedtime = channels.create("Bedtime")
+    _video(conn, "yt_zoo", animals, "Me at the zoo")
+    _video(conn, "yt_volcano", science, "Volcano")
+    pid = _kid(conn, "lia")
+    kid = _as_kid(app, pid)
+    home = kid.get("/").text
+    assert f'/channel/{animals}"' in home and f'/channel/{bedtime}"' not in home
+
+    _video(conn, "yt_moon", bedtime, "Goodnight moon")
+    assert f'/channel/{bedtime}"' in kid.get("/").text
