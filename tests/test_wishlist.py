@@ -715,3 +715,18 @@ def test_kid_history_hides_a_turned_down_title_with_a_blocked_word(app, client, 
     app.state.config.wishlist.blocked_words = ["spooky"]
     page = client.get("/wishlist").text
     assert "Spooky night" not in page and "A video" in page
+
+
+def test_a_channel_full_of_filtered_videos_still_offers_more(app, client, backend):
+    _kid(app, client)
+    long_ones = [_meta(f"l{i:010d}", f"Compilation {i}", duration=7200) for i in range(44)]
+    short_ones = [_meta(f"s{i:010d}", f"Short {i}") for i in range(4)]
+
+    def listing(url, max_results=50):
+        backend.queries.append(("channel", max_results))
+        return "Kids TV", (short_ones + long_ones)[:max_results]
+    backend.fetch_channel_videos = listing
+    page = client.get("/wishlist/channel/UC" + "a" * 22).text
+    assert backend.queries[-1] == ("channel", 48)
+    assert page.count('class="wishlist-ask-btn"') == 4
+    assert "&amp;page=2" in page

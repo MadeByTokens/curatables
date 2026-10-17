@@ -131,8 +131,8 @@ class WishlistService:
         except SearchRefused as e:
             raise WishlistError(e.kind) from None
 
-    def _want(self, page: int) -> int:
-        return min(self.rules.max_results * page * 2, MAX_FETCH)
+    def _want(self, page: int, factor: int = 2) -> int:
+        return min(self.rules.max_results * page * factor, MAX_FETCH)
 
     def _paged(self, items: list, page: int, sort: str, name) -> tuple[list, bool]:
         per_page = self.rules.max_results
@@ -205,13 +205,19 @@ class WishlistService:
         except SearchRefused as e:
             raise WishlistError(e.kind) from None
         url = f"https://www.youtube.com/channel/{channel_id}/videos"
-        found = self._fetch(profile_id, ("channel", channel_id), self._want(page),
+        # A channel listing is cheap, and the rules can drop many of its
+        # videos (long compilations, say), so fetch more per page than a
+        # search does.
+        want = self._want(page, factor=4)
+        found = self._fetch(profile_id, ("channel", channel_id), want,
                             lambda n: self.backend.fetch_channel_videos(url, max_results=n)[1])
         # A channel listing names the channel once; every entry carries it.
         name = found[0].channel if found else ""
         if not name or not self.channel_allowed(name):
             raise WishlistError("gone")
         results, has_more = self._videos(profile_id, found, page, sort)
+        # A full listing means the channel has more than was fetched.
+        has_more = has_more or (len(found) >= want and want < MAX_FETCH and page < MAX_PAGES)
         return WishlistPage(results=results, page=page, has_more=has_more, title=name)
 
     def ask(self, profile_id: int, raw_id: str) -> tuple[int, bool]:
