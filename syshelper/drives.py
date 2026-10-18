@@ -23,7 +23,6 @@ from syshelper.settings import SETTINGS
 
 LIBRARY = "curatables-library"
 MEDIA_SUBDIRS = ("videos", "uploads", "thumbnails", "channels")
-FAT_LIMIT = 4 * 1024 ** 3 - 1
 FS_NAMES = {"exfat": "exFAT", "ntfs": "NTFS", "vfat": "FAT32", "ext4": "ext4"}
 USABLE = {"exfat", "ntfs", "vfat", "ext4"}
 BASIC_DATA = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"

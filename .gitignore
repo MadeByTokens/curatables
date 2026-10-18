@@ -35,6 +35,8 @@ htmlcov/
 # Claude Code per-project state. settings.local.json holds personal
 # allowlists (paths, shell commands) that should never be committed.
 .claude/
+# Personal per-project notes.
+CLAUDE.local.md
 
 # OS
 .DS_Store
