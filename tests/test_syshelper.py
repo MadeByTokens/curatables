@@ -403,6 +403,8 @@ def test_device_names_are_checked(fake, device):
 
 def test_format_partitions_then_makes_an_exfat_filesystem(fake, monkeypatch):
     monkeypatch.setattr(drives.time, "sleep", lambda s: None)
+    # The box has mkfs.exfat; the machine running the tests may not.
+    monkeypatch.setattr(drives.shutil, "which", lambda name, path=None: f"/usr/sbin/{name}")
     fake.on(["lsblk"], out=_lsblk(_usb("sda", "ntfs", mountpoint="/media/x")))
     work = drives.drive_format({"disk": "/dev/sda", "fstype": "exfat", "label": "KIDS", "confirm": "ERASE"})
     assert work(FakeJob()) == {"partition": "/dev/sda1"}
