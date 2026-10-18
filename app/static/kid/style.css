@@ -1408,3 +1408,14 @@ a.wishlist-mine-title { color: inherit; }
     .wishlist-modes .wishlist-pill,
     .wishlist-sorts .wishlist-pill { font-size: 15px; padding: 0 12px; }
 }
+
+/* Deleting a kid's own channel: a plain link on the edit page, then a
+   page that asks first. */
+.channel-delete-link { color: #b00020; font-weight: bold; }
+.channel-delete-btn {
+    min-height: 44px;
+    padding: 12px 24px;
+    font-family: inherit;
+    color: #fff;
+    background: #b00020;
+}

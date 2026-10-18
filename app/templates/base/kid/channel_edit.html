@@ -3,13 +3,14 @@
 {% block content %}
 <div class="mw-600 mx-auto p-16">
   <h2>{{ _("Edit Channel") }}</h2>
+  {% if error %}<div class="upload-error" role="alert">{{ _(error) }}</div>{% endif %}
 
   <form method="POST" action="/channel/{{ channel.id }}/edit" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="mb-16">
       <label for="name" class="d-block fw-bold mb-4">{{ _("Name") }}</label>
       <input type="text" id="name" name="name" maxlength="64"
-             value="{{ channel.name }}" class="w-100 p-8 fs-15 bd-ccc r-4 bb">
+             value="{{ typed_name or channel.name }}" class="w-100 p-8 fs-15 bd-ccc r-4 bb">
     </div>
 
     <div class="mb-16">
@@ -43,5 +44,6 @@
       <a href="/channel/{{ channel.id }}" class="on-dark r-4 no-underline fs-15 cancel-link">{{ _("Cancel") }}</a>
     </div>
   </form>
+  <p class="mt-24"><a href="/channel/{{ channel.id }}/delete" class="channel-delete-link">{{ _("Delete this channel") }}</a></p>
 </div>
 {% endblock %}

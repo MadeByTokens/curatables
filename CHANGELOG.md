@@ -18,6 +18,9 @@ code already called itself 0.5.0).
   for it (with Customize videos and own channels on), or suggest one's
   name to the parent. The video's Customize page makes a channel too,
   not only Upload.
+- A kid can delete their own channel (it asks first). Videos they
+  uploaded to it stay in the library with no channel, for the parent.
+  Renaming to a name already in use says so.
 
 **For parents**
 - Video requests: **Remove** drops a request without turning the video

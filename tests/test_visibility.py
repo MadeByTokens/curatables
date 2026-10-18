@@ -240,3 +240,39 @@ def test_kid_makes_a_channel_from_the_video_edit_page(app):
     resp = kid.post("/video/yt_song/edit", data={"title": "", "channel_" + str(mine.id): "1",
                                                  "new_channel": "Di's"})
     assert resp.status_code == 400 and "already used" in resp.text
+
+
+def test_kid_deletes_only_their_own_channel(app):
+    conn = _conn(app)
+    channels = ChannelRepository(conn)
+    pid, other = _kid(conn, "eve"), _kid(conn, "fay")
+    mine = channels.create("Eve's", owner_profile_id=pid)
+    theirs = channels.create("Fay's", owner_profile_id=other)
+    ours = channels.create("Cartoons")
+    _video(conn, "yt_upload", mine, "My film")
+    kid = _as_kid(app, pid)
+
+    page = kid.get(f"/channel/{mine}/delete").text
+    assert "Delete Eve&#39;s?" in page and "go to a grown-up" in page
+    for cid in (theirs, ours):
+        assert kid.get(f"/channel/{cid}/delete").headers["location"] == "/"
+        kid.post(f"/channel/{cid}/delete")
+        assert channels.get(cid) is not None
+
+    assert kid.post(f"/channel/{mine}/delete").headers["location"] == "/"
+    assert channels.get(mine) is None
+    video = VideoRepository(conn).get("yt_upload")
+    assert video is not None and video.channel_id is None
+
+
+def test_kid_renaming_to_a_taken_name_says_so(app):
+    conn = _conn(app)
+    pid = _kid(conn, "gus")
+    mine = ChannelRepository(conn).create("Gus's", owner_profile_id=pid)
+    ChannelRepository(conn).create("Cartoons")
+    kid = _as_kid(app, pid)
+    resp = kid.post(f"/channel/{mine}/edit", data={"name": "Cartoons", "color": "#123abc"})
+    assert resp.status_code == 400 and "already used" in resp.text
+    assert ChannelRepository(conn).get(mine).name == "Gus's"
+    kid.post(f"/channel/{mine}/edit", data={"name": " Gus   films ", "color": "#123abc"})
+    assert ChannelRepository(conn).get(mine).name == "Gus films"

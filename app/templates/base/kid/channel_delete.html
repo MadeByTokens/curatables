@@ -1,0 +1,15 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="mw-600 mx-auto p-16 ta-c">
+  <h2>{{ _("Delete {name}?", name=channel.name) }}</h2>
+  <p>{{ _("The channel goes away. Videos you saved in it are still on Home.") }}</p>
+  {% if uploads %}
+  <p>{{ _("Videos you uploaded to it go to a grown-up, who keeps them safe.") }}</p>
+  {% endif %}
+  <form method="POST" action="/channel/{{ channel.id }}/delete" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="channel-delete-btn bd-none r-4 fs-15 clickable">{{ _("Yes, delete it") }}</button>
+  </form>
+  <a href="/channel/{{ channel.id }}/edit" class="accent-bg on-dark r-4 no-underline fs-15 cancel-link">{{ _("No, keep it") }}</a>
+</div>
+{% endblock %}

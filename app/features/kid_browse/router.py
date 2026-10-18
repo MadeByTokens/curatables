@@ -267,6 +267,45 @@ def channel_edit_page(request: Request, channel_id: int,
     })
 
 
+def _own_channel(channels_svc: ChannelService, viewer: ViewerContext, channel_id: int):
+    channel = channels_svc.get(channel_id)
+    if channel is None or channel.owner_profile_id != viewer.profile_id:
+        return None
+    return channel
+
+
+@router.get("/channel/{channel_id}/delete", response_class=HTMLResponse)
+def channel_delete_page(request: Request, channel_id: int,
+                        viewer: ViewerContext = Depends(_customize),
+                        channels_svc: ChannelService = Depends(get_channel_service),
+                        content: ContentService = Depends(get_content_service)):
+    """Are you sure? A page, not a dialog, so it reads the same on every
+    tablet."""
+    channel = _own_channel(channels_svc, viewer, channel_id)
+    if channel is None:
+        return RedirectResponse(url="/", status_code=302)
+    return render_kid_template(request, viewer, "kid/channel_delete.html", {
+        "channel": channel,
+        "uploads": content.video_repo.count(status=None, channel_id=channel_id),
+    })
+
+
+@router.post("/channel/{channel_id}/delete")
+def channel_delete(request: Request, channel_id: int,
+                   viewer: ViewerContext = Depends(_customize),
+                   channels_svc: ChannelService = Depends(get_channel_service),
+                   events: EventService = Depends(get_event_service)):
+    """Only the kid who made it. Videos saved into it just leave it;
+    videos uploaded into it stay in the library with no channel, for
+    the parent to place."""
+    channel = _own_channel(channels_svc, viewer, channel_id)
+    if channel is not None:
+        channels_svc.delete(channel_id)
+        events.log("channel_deleted", profile_id=viewer.profile_id,
+                   data={"channel_id": channel_id, "name": channel.name})
+    return RedirectResponse(url="/", status_code=302)
+
+
 @router.post("/channel/{channel_id}/edit")
 async def channel_edit_save(request: Request, channel_id: int,
                             viewer: ViewerContext = Depends(_customize),
@@ -276,9 +315,14 @@ async def channel_edit_save(request: Request, channel_id: int,
         return RedirectResponse(url="/", status_code=302)
 
     form = await request.form()
-    name = form_str(form, "name").strip()[:64] or channel.name
+    name = " ".join(form_str(form, "name").split())[:64] or channel.name
     if channels_svc.name_taken(name, channel_id):
-        name = channel.name
+        response = render_kid_template(request, viewer, "kid/channel_edit.html", {
+            "channel": channel, "error": "That name is already used. Try another one.",
+            "typed_name": name,
+        })
+        response.status_code = 400
+        return response
     description = form_str(form, "description").strip()[:1000]
     color = form_str(form, "color").strip()
     if not valid_color(color):
