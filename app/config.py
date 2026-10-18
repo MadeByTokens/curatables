@@ -22,7 +22,7 @@ class ServerConfig:
     # Language of the kid screens before a kid is picked (profile picker);
     # each profile has its own.
     kid_language: str = "en"
-    # The family's time zone (IANA name, e.g. "America/Toronto"): where
+    # The family's time zone (IANA name, e.g. "America/New_York"): where
     # "today" starts in the stats. Times are stored in UTC. Empty until
     # a parent's browser reports it; changeable in Settings.
     timezone: str = ""

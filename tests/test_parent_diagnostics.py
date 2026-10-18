@@ -33,7 +33,7 @@ def test_checks_are_shown_problems_first_with_fixes(authed_client, helper):
 def test_the_clock_is_shown_in_the_family_zone(app, authed_client, helper):
     helper.responses["diagnostics"]["checks"].append(
         {"id": "clock", "title": "Clock", "status": "ok", "detail": "2026-10-17 12:58 UTC", "fix": ""})
-    app.state.config.server.timezone = "America/Toronto"
+    app.state.config.server.timezone = "America/New_York"
     page = authed_client.get("/parent/system/diagnostics").text
     assert "UTC" not in page
     assert "(EDT)" in page or "(EST)" in page

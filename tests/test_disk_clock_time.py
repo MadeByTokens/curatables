@@ -277,24 +277,24 @@ def test_the_beacon_records_a_parents_time_zone_once(app, client, authed_client)
     app.state.config.server.timezone = ""
     client.post("/api/clock", data={"now": "0", "tz": "Europe/Lisbon"})
     assert app.state.config.server.timezone == ""  # not a parent
-    authed_client.post("/api/clock", data={"now": "0", "tz": "America/Toronto"})
-    assert app.state.config.server.timezone == "America/Toronto"
+    authed_client.post("/api/clock", data={"now": "0", "tz": "America/New_York"})
+    assert app.state.config.server.timezone == "America/New_York"
     authed_client.post("/api/clock", data={"now": "0", "tz": "Asia/Tokyo"})
-    assert app.state.config.server.timezone == "America/Toronto"
+    assert app.state.config.server.timezone == "America/New_York"
 
 
 def test_today_starts_at_the_familys_midnight():
-    assert utc_start_of(date(2026, 10, 16), "America/Toronto") == "2026-10-16 04:00:00"
-    late_evening = datetime(2026, 10, 17, 2, 30, tzinfo=timezone.utc)  # 22:30 in Toronto
-    assert since_days_ago(0, "America/Toronto", now=late_evening) == "2026-10-16 04:00:00"
+    assert utc_start_of(date(2026, 10, 16), "America/New_York") == "2026-10-16 04:00:00"
+    late_evening = datetime(2026, 10, 17, 2, 30, tzinfo=timezone.utc)  # 22:30 in New York
+    assert since_days_ago(0, "America/New_York", now=late_evening) == "2026-10-16 04:00:00"
     assert not valid_timezone("../../etc/passwd") and not valid_timezone("Mars/Base")
 
 
 def test_dates_are_shown_in_the_familys_day():
     today = date(2026, 10, 16)
-    # 01:30 UTC on the 17th is still the 16th in Toronto.
-    assert friendly_date("2026-10-17 01:30:00", today, tz="America/Toronto") == "today"
-    assert friendly_date("2026-10-16 03:30:00", today, tz="America/Toronto") == "yesterday"
+    # 01:30 UTC on the 17th is still the 16th in New York.
+    assert friendly_date("2026-10-17 01:30:00", today, tz="America/New_York") == "today"
+    assert friendly_date("2026-10-16 03:30:00", today, tz="America/New_York") == "yesterday"
 
 
 def test_settings_change_the_time_zone(app, authed_client):
@@ -339,7 +339,7 @@ def test_the_log_file_leaves_out_access_lines(tmp_path):
 def test_stored_times_show_in_the_familys_day_and_time():
     from app.template_utils import local_time
     today = date(2026, 10, 16)
-    assert local_time("2026-10-16 22:36:14", today, tz="America/Toronto") == "today 18:36"
-    assert local_time("2026-10-17T00:40:09.5+00:00", today, tz="America/Toronto") == "today 20:40"
-    assert local_time("2026-09-01T13:10:00Z", today, tz="America/Toronto") == "1 Sep 2026 09:10"
+    assert local_time("2026-10-16 22:36:14", today, tz="America/New_York") == "today 18:36"
+    assert local_time("2026-10-17T00:40:09.5+00:00", today, tz="America/New_York") == "today 20:40"
+    assert local_time("2026-09-01T13:10:00Z", today, tz="America/New_York") == "1 Sep 2026 09:10"
     assert local_time("", today) == ""
