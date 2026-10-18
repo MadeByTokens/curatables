@@ -26,7 +26,7 @@
     <label>Library location</label>
     <div><code>{{ config.storage.path }}</code></div>
     <small class="muted">Where videos, thumbnails and the database live.
-      {% if request.app.state.system_helper.available %}To keep the videos on a USB drive, use <a href="/parent/system/drives">Box → Drives</a>.{% else %}See "Move Data Directory" under Advanced, or docs/deployment.md for an external drive.{% endif %}</small>
+      {% if request.app.state.system_helper.available %}To keep the videos on a USB drive, use <a href="/parent/system/drives">Box → Drives &amp; backups</a>.{% else %}See "Move Data Directory" under Advanced, or docs/deployment.md for an external drive.{% endif %}</small>
   </div>
 
   <fieldset class="form-group">
@@ -154,7 +154,7 @@
   <p class="fs-13 muted-2">
     Folders the <a href="/parent/import">Import</a> page may show video files from.
     {% if request.app.state.system_helper.available %}<strong>Import from it</strong> on
-    <a href="/parent/system/drives">Box → Drives</a> adds a USB drive here for you.{% else %}On a
+    <a href="/parent/system/drives">Box → Drives &amp; backups</a> adds a USB drive here for you.{% else %}On a
     Raspberry Pi, <code>setup-external-drive.sh --media-only</code> adds the drive here for you.{% endif %}
     The library's own folder is never listed.
   </p>
@@ -322,7 +322,7 @@
     This server runs as a system service with a fixed library location, so the
     library can't be moved from here.
     {% if request.app.state.system_helper.available %}To put the videos on a USB drive, plug it
-    in and press <strong>Use for videos</strong> on <a href="/parent/system/drives">Box → Drives</a>.{% else %}To
+    in and press <strong>Use for videos</strong> on <a href="/parent/system/drives">Box → Drives &amp; backups</a>.{% else %}To
     put it on an external drive, plug the drive in and run
     <code>sudo /opt/curatables/scripts/setup-external-drive.sh /dev/sdX1</code>
     (see docs/deployment.md, "Media on an external drive").{% endif %}

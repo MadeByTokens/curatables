@@ -91,7 +91,7 @@
   <div class="card mb-8 comment-card">
     <div class="d-flex jc-sb ai-c">
       <div>
-        <strong>{{ c.author_name }}{% if c.is_parent_user %} (Parent){% endif %}</strong>
+        <strong>{{ c.author_name }}{% if c.is_parent_user and c.author_name != "Parent" %} (Parent){% endif %}</strong>
         <span class="muted fs-12 ml-8">{{ c.created_at|local_time }}</span>
       </div>
       <form method="POST" action="/parent/comments/{{ c.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" data-confirm="Delete this comment and its replies?" class="d-inline">
@@ -112,7 +112,7 @@
     <div class="ml-24 mt-8 r-4 reply-box">
       <div class="d-flex jc-sb ai-c">
         <div>
-          <strong>{{ reply.author_name }}{% if reply.is_parent_user %} (Parent){% endif %}</strong>
+          <strong>{{ reply.author_name }}{% if reply.is_parent_user and reply.author_name != "Parent" %} (Parent){% endif %}</strong>
           <span class="muted fs-12 ml-8">{{ reply.created_at|local_time }}</span>
         </div>
         <form method="POST" action="/parent/comments/{{ reply.id }}/delete?referer=/parent/content/{{ video.video_id }}%23comments" data-confirm="Delete this comment?" class="d-inline">
