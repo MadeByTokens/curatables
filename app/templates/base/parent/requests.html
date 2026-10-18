@@ -6,7 +6,7 @@
 <p class="muted">Videos your kids asked for on their <strong>Find new</strong> page. Nothing is
 downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview with the name,
 description and channel the kid chose; watch it and change anything you like. <strong>Not this one</strong> hides it from that kid's
-searches for good.</p>
+searches for good; <strong>Remove</strong> just drops the request, and the kid can ask again.</p>
 
 {% if pending %}
   {% if pending_total > pending|length %}
@@ -24,7 +24,7 @@ searches for good.</p>
         &middot; {{ w.channel }}
         {% if w.duration %}&middot; {{ w.duration|duration }}{% endif %}
       </div>
-      <div class="meta">For: {% if w.target_channel_id in channel_names %}<strong>{{ channel_names[w.target_channel_id] }}</strong>{% else %}you to pick a channel{% endif %}</div>
+      <div class="meta">For: {% if w.target_channel_id in channel_names %}<strong>{{ channel_names[w.target_channel_id] }}</strong>{% elif w.suggested_channel %}a new channel, <strong>{{ w.suggested_channel }}</strong>{% else %}you to pick a channel{% endif %}</div>
       {% if w.description %}<div class="desc">&ldquo;{{ w.description }}&rdquo;</div>{% endif %}
       <div class="actions">
         <a href="/parent/requests/{{ w.id }}/review" class="btn btn-sm">Review &amp; add</a>
@@ -32,6 +32,10 @@ searches for good.</p>
               data-confirm="Hide this video from {{ w.profile_name }}'s searches?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-sm btn-secondary">Not this one</button>
+        </form>
+        <form method="POST" action="/parent/requests/{{ w.id }}/remove">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-secondary">Remove</button>
         </form>
         <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a>
       </div>
@@ -49,7 +53,13 @@ searches for good.</p>
   <li>{% if w.status == "approved" %}&#9989; Added{% elif w.status == "unavailable" %}&#128683; YouTube won't serve it (private, removed or restricted){% else %}&#10006; Not this one{% endif %}
     &middot; {% if w.status == "approved" %}<a href="/parent/content/{{ w.video_id }}">{{ w.title }}</a>{% else %}{{ w.title }}{% endif %}
     &middot; <span class="muted">{{ w.profile_name }}</span>
-    &middot; <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a></li>
+    &middot; <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a>
+    {% if w.status == "rejected" %}
+    <form method="POST" action="/parent/requests/{{ w.id }}/remove" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-secondary">Let {{ w.profile_name }} ask again</button>
+    </form>
+    {% endif %}</li>
   {% endfor %}
 </ul>
 {% endif %}

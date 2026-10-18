@@ -178,9 +178,11 @@ They get a **Find new** page that searches YouTube videos or channels
 through Curatables and shows only results that pass your rules
 (Settings → Video requests). Tapping **Ask** sends it to **Video requests** (linked from
 the dashboard and the Kids page), and the child can then give it their own name and
-description and pick one of their channels (or leave the choice to you: then **Add**
-waits until you pick a channel, or "none"). You watch it, change what you like and add
-it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
+description and pick one of their channels, make a new one of their own (with
+**Customize videos and own channels** on; otherwise the name is a suggestion for you),
+or leave the choice to you: then **Add** waits until you pick a channel, or "none".
+The child can take a request back, and you can **Remove** one without turning the video
+down. You watch it, change what you like and add it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
 saved when the child asked, without asking YouTube again. Nothing downloads before you
 add it. See [safety-model.md](safety-model.md) for what the child sees
 in the meantime. Searches are cached and rate-limited, so a child

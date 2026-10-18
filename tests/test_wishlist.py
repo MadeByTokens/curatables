@@ -111,10 +111,10 @@ def _conn(app):
     return next(app.dependency_overrides[get_db]())
 
 
-def _kid(app, client, name="wren", wishlist=True, search_mode="disabled"):
+def _kid(app, client, name="wren", wishlist=True, search_mode="disabled", **features):
     svc = ProfileService(ProfileRepository(_conn(app)))
     pid = svc.create(name=name, display_name=name.title(), allow_wishlist=wishlist,
-                     search_mode=search_mode)
+                     search_mode=search_mode, **features)
     assert client.post("/profiles/select", data={"profile_id": pid}).status_code == 302
     return pid
 
@@ -205,6 +205,95 @@ def test_kid_names_the_video_and_parent_reviews_without_youtube(app, client, aut
     assert f'value="{songs}" selected' in review
     assert 'name="original_title_aaaaaaaaaaa" value="Counting to ten"' in review
     assert "On YouTube: Counting to ten" in authed_client.get("/parent/requests").text
+
+
+def test_kid_takes_back_a_request_and_can_ask_again(app, client, backend):
+    pid = _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert "Oops, don&#39;t ask" in client.get(f"/wishlist/asked/{item.id}").text
+    listed = client.get("/wishlist").text
+    assert f'action="/wishlist/asked/{item.id}/cancel"' in listed
+
+    _kid(app, client, "otto")
+    client.post(f"/wishlist/asked/{item.id}/cancel")
+    assert WishlistRepository(_conn(app)).get(item.id) is not None
+
+    client.post("/profiles/select", data={"profile_id": pid})
+    resp = client.post(f"/wishlist/asked/{item.id}/cancel",
+                       data={"back": "/wishlist?q=songs&mode=videos"})
+    assert resp.headers["location"] == f"/wishlist?q=songs&mode=videos#ask-{item.raw_id}"
+    assert WishlistRepository(_conn(app)).get(item.id) is None
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "What I asked for" not in page
+    assert 'name="raw_id" value="aaaaaaaaaaa"' in page
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    assert len(WishlistRepository(_conn(app)).list_by_status("pending")) == 1
+
+
+def test_parent_removes_a_request_without_turning_it_down(app, client, authed_client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    client.post("/wishlist/ask", data={"raw_id": "eeeeeeeeeee"})
+    repo = WishlistRepository(_conn(app))
+    first, second = repo.list_by_status("pending")
+    resp = authed_client.post(f"/parent/requests/{first.id}/remove")
+    assert resp.headers["location"] == "/parent/requests?notice=removed"
+    assert repo.get(first.id) is None
+
+    authed_client.post(f"/parent/requests/{second.id}/reject")
+    assert "Let Wren ask again" in authed_client.get("/parent/requests").text
+    authed_client.post(f"/parent/requests/{second.id}/remove")
+    assert repo.get(second.id) is None
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert 'name="raw_id" value="aaaaaaaaaaa"' in page
+    assert 'name="raw_id" value="eeeeeeeeeee"' in page
+
+
+def test_kid_makes_a_channel_for_the_video(app, client, authed_client, backend):
+    pid = _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    repo = WishlistRepository(_conn(app))
+    item = repo.list_by_status("pending")[0]
+    client.post(f"/wishlist/asked/{item.id}", data={"new_channel": "  My   Songs "})
+    from app.repositories.channel_repo import ChannelRepository
+    channel = ChannelRepository(_conn(app)).get_by_name("My Songs")
+    assert channel is not None and channel.owner_profile_id == pid
+    assert repo.get(item.id).target_channel_id == channel.id
+    assert "<strong>My Songs</strong>" in authed_client.get("/parent/requests").text
+    review = authed_client.get(f"/parent/requests/{item.id}/review").text
+    assert f'value="{channel.id}" selected' in review
+
+    # The same name again picks that channel instead of failing.
+    client.post(f"/wishlist/asked/{item.id}", data={"new_channel": "my songs"})
+    assert repo.get(item.id).target_channel_id == channel.id
+
+    otto = ProfileService(ProfileRepository(_conn(app))).create(name="otto")
+    ChannelRepository(_conn(app)).create("Taken", owner_profile_id=otto)
+    client.post("/wishlist/ask", data={"raw_id": "eeeeeeeeeee"})
+    other = [w for w in repo.list_by_status("pending") if w.id != item.id][0]
+    resp = client.post(f"/wishlist/asked/{other.id}", data={"new_channel": "Taken",
+                                                            "title": "Shapes!"})
+    assert resp.status_code == 400 and "already used" in resp.text
+    assert 'value="Taken"' in resp.text
+    assert repo.get(other.id).title == "Shapes!"
+
+
+def test_kid_without_channels_of_their_own_suggests_one(app, client, authed_client, backend):
+    _kid(app, client, allow_customize=False)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    repo = WishlistRepository(_conn(app))
+    item = repo.list_by_status("pending")[0]
+    assert "Or ask for a new channel" in client.get(f"/wishlist/asked/{item.id}").text
+    client.post(f"/wishlist/asked/{item.id}", data={"new_channel": "Counting"})
+    from app.repositories.channel_repo import ChannelRepository
+    assert ChannelRepository(_conn(app)).get_by_name("Counting") is None
+    item = repo.get(item.id)
+    assert (item.target_channel_id, item.suggested_channel) == (None, "Counting")
+    assert "a new channel, <strong>Counting</strong>" in authed_client.get("/parent/requests").text
+    review = authed_client.get(f"/parent/requests/{item.id}/review").text
+    assert 'name="new_channel_name" placeholder="New channel name..."\n             value="Counting"' in review
 
 
 def test_kid_choices_are_checked(app, client, backend):

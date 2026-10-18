@@ -133,7 +133,14 @@ on your phone too.
 filled in with the name, description and channel your kid chose. Watch
 it, change anything you like and add it. Your kid's request then says
 **Yes! Watch**. **Not this one** turns it down, and that kid won't see
-it in their searches again. The page lists the oldest 100 requests
+it in their searches again; **Let (name) ask again** under **Recently
+decided** takes that back. **Remove** just drops a request (one tapped by
+mistake, say), and your kid can ask for it again later. A kid who can
+make their own channels (**Customize videos and own channels**) can make
+one for the video when asking; any other kid can only suggest a name,
+and you see it as "For: a new channel" and filled in under **Or create
+new channel**. Your kid can also take back a request before you decide.
+The page lists the oldest 100 requests
 waiting (and says how many more there are), with your 20 latest
 decisions below. If YouTube won't serve a video (it was removed or is
 age-restricted), the request says so and your kid sees "Can't get this

@@ -30,6 +30,7 @@ class WishlistRequest:
     upload_date: str = ""
     view_count: int = 0
     target_channel_id: int | None = None
+    suggested_channel: str = ""
     profile_name: str = ""
 
     @property
@@ -80,11 +81,19 @@ class WishlistRepository(BaseRepository):
         return self._to_model(row) if row else None
 
     def choose(self, request_id: int, title: str, description: str,
-               target_channel_id: int | None) -> None:
-        """The kid's own title, description and channel for a request."""
+               target_channel_id: int | None, suggested_channel: str = "") -> None:
+        """The kid's own title, description and channel for a request: one
+        of their channels, or the name of a new one for the parent to make."""
         self.db.execute(
-            "UPDATE wishlist_requests SET title = ?, description = ?, target_channel_id = ? "
-            "WHERE id = ?", (title, description, target_channel_id, request_id))
+            "UPDATE wishlist_requests SET title = ?, description = ?, target_channel_id = ?, "
+            "suggested_channel = ? WHERE id = ?",
+            (title, description, target_channel_id, suggested_channel, request_id))
+        self.db.commit()
+
+    def remove(self, request_id: int) -> None:
+        """Forget a request, as if it was never made: the video can be
+        asked for again."""
+        self.db.execute("DELETE FROM wishlist_requests WHERE id = ?", (request_id,))
         self.db.commit()
 
     def get(self, request_id: int) -> WishlistRequest | None:

@@ -9,6 +9,22 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**For kids**
+- A request can be taken back ("Oops, don't ask"), and the video asked
+  for again later.
+- When asking for a video, a kid can make a new channel of their own
+  for it (with Customize videos and own channels on), or suggest one's
+  name to the parent. The video's Customize page makes a channel too,
+  not only Upload.
+
+**For parents**
+- Video requests: **Remove** drops a request without turning the video
+  down, and **Let (name) ask again** takes back a **Not this one**.
+- A kid's suggested channel name is filled in as the new channel on
+  Review & add.
+
 ## v0.6.0
 
 The first release since v0.1.0. Boxes on v0.1.0 can't install it from

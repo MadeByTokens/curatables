@@ -80,8 +80,10 @@ the best match, the newest or A to Z first.
 
 ![Find new: looking for Caminandes](img/kid-find-new.webp)
 
-You can give it a name, say what it is about and pick a channel. Or just
-tap **Send**.
+You can give it a name, say what it is about and pick a channel, or
+type the name of a new channel to make one for it. Or just tap **Send**.
+Tapped **Ask** by mistake? **Oops, don't ask** takes it back, and so does
+**Don't ask** next to it in **What I asked for**.
 
 ![Mia names her video The spy and the barber and picks Cartoons](img/kid-ask.webp)
 
@@ -101,7 +103,8 @@ one is going. If the box already has that video, it opens it for you.
 ![Uploading My drawing to Mia's Films](img/kid-upload.webp)
 
 **Customize** on a video gives it your own name, words and picture. Only
-you see them.
+you see them. Tick your channels to put the video in them, or type a name
+to make a new channel with it.
 
 ![Customize a video](img/kid-customize.webp)
 
