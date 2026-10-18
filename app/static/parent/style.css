@@ -843,3 +843,4 @@ td .btn { white-space: nowrap; }
 .ytdlp-sponsor:hover { background: #9a3412; }
 @media (max-width: 500px) { .ytdlp-thanks { flex-direction: column; gap: 6px; } }
 .channel-pick { padding-left: 26px; }
+.downloads-bar form { margin: 0 12px 0 6px; }

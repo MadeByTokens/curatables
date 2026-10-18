@@ -17,6 +17,7 @@ from pathlib import Path
 from app.backends.base import VideoBackend
 from app.models import Video
 from app.services.disk_space import InsufficientDiskSpace, SpaceWatch
+from app.services.ffmpeg_runner import CancelToken
 from app.services.media_fs import DRIVE_MISSING, TOO_BIG_FOR_FAT, file_size_limit
 from app.services.normalize import MediaNormalizer
 
@@ -210,12 +211,15 @@ class StorageService:
 
     def download(self, video_id: str, url: str,
                  resolution: str = "720p",
-                 subtitle_langs: str = "all") -> Path | None:
+                 subtitle_langs: str = "all",
+                 cancel: CancelToken | None = None) -> Path | None:
         """Download a video via the backend. Thread-safe with per-video locking.
 
         `video_id` is the composite storage key (used for filesystem
         path + per-video lock); `url` is the canonical source URL
-        that actually gets handed to the backend.
+        that actually gets handed to the backend. When `cancel` fires
+        the download or conversion ends early (None, or Cancelled from
+        the conversion) and its files are left for the caller.
         """
         lock = self._get_lock(video_id)
 
@@ -229,7 +233,8 @@ class StorageService:
                 # original here; converting a file that is already
                 # baseline only probes it.
                 if self.normalizer is not None:
-                    existing = self.normalizer.normalize(existing, space=self.space_watch()).path
+                    existing = self.normalizer.normalize(
+                        existing, space=self.space_watch(), cancel=cancel).path
                 return existing
 
             allowed, reason = self.check_can_write()
@@ -253,15 +258,18 @@ class StorageService:
                 resolution=height,
                 subtitle_langs=sub_list,
                 max_filesize=self.max_download_bytes,
-                keep_going=space.ok,
+                keep_going=(space.ok if cancel is None
+                            else lambda: space.ok() and not cancel.cancelled),
             )
+            if cancel is not None and cancel.cancelled:
+                return None
             if path is None and not space.ok():
                 # Stopped (or failed) because the drive filled up: drop
                 # the partial download, which can be gigabytes.
                 self._remove_partial_download(video_id)
                 raise InsufficientDiskSpace(space.message())
             if path and self.normalizer is not None:
-                path = self.normalizer.normalize(path, space=space).path
+                path = self.normalizer.normalize(path, space=space, cancel=cancel).path
             return path
         finally:
             lock.release()
@@ -269,6 +277,10 @@ class StorageService:
     def space_watch(self) -> SpaceWatch:
         """A watch that trips when the videos drive falls under its minimum."""
         return SpaceWatch(self.media_dir, self.min_free_bytes)
+
+    def remove_partial_download(self, video_id: str) -> None:
+        """What a stopped download left: partial pieces and subtitles."""
+        self._remove_partial_download(video_id)
 
     def _remove_partial_download(self, video_id: str) -> None:
         vdir = self.video_dir(video_id)

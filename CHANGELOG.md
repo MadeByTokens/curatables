@@ -34,6 +34,10 @@ code already called itself 0.5.0).
   down, and **Let (name) ask again** takes back a **Not this one**.
 - A kid's suggested channel name is filled in as the new channel on
   Review & add.
+- Downloads can be paused (the partial file is kept, also across a
+  restart, and Resume carries on) or stopped (its files go; the video
+  stays listed with Download again), one at a time, ticked together, or
+  all at once from the Content page.
 - Per kid, requests for videos from the YouTube channels on the allowed
   list can be added without review, into a channel the parent picks
   (Kids → Edit). They still pass every other rule, re-checked against

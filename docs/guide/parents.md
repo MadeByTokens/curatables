@@ -72,13 +72,20 @@ cartoon is ready in a minute or two.
 ![Added: the video downloads in the background](img/parent-added.webp)
 
 **Content** lists every video with how its download is going. The tabs
-along the top show only those still waiting for your OK, still
-downloading, failed or hidden. **Sort by** puts the least watched, the
+along the top show only those still waiting for your OK, downloads
+(waiting, running, paused or stopped), failed or hidden. **Sort by** puts the least watched, the
 ones not watched for longest or the largest files first; each video
 shows how often it was played, when it was last watched and its size.
 Tick some to move, hide or delete them, or press **Free up files** to
 make room: their files go, but they stay on the kids' screens, marked
 "Takes a moment to start", and download again when a kid taps them.
+
+A download waiting or running has **Pause** and **Stop**. Pause keeps
+what it got so far (even across a restart) and **Resume** carries on
+from there. Stop deletes it and leaves the video listed, with **Download
+again**. Ticked videos can be paused, resumed or stopped together, and
+while downloads run the page offers **Pause all** and **Resume all**,
+handy after adding a long playlist.
 
 ![The Content page with six videos](img/parent-content.webp)
 

@@ -41,7 +41,7 @@ _SAFE_VIDEO_ID = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
 CONTENT_FILTERS = [
     ("", "All"),
     ("review", "Waiting for your OK"),
-    ("pending", "Downloading"),
+    ("pending", "Downloads"),
     ("error", "Failed"),
     ("hidden", "Hidden"),
 ]
@@ -83,6 +83,7 @@ def content_list(request: Request,
         "content_filters": CONTENT_FILTERS,
         "sort": sort,
         "content_sorts": CONTENT_SORTS,
+        "downloads": content.download_counts(),
         "flash": flash or None,
         "flash_type": flash_type or "success",
     })
@@ -336,6 +337,38 @@ def retry(request: Request, video_id: str,
     return RedirectResponse(url="/parent/content?status=pending", status_code=302)
 
 
+@router.post("/content/{video_id}/pause")
+def pause(request: Request, video_id: str,
+          viewer: ViewerContext = Depends(require_parent),
+          content: ContentService = Depends(get_content_service)):
+    content.pause_download(video_id)
+    return RedirectResponse(url="/parent/content?status=pending", status_code=302)
+
+
+@router.post("/content/{video_id}/stop")
+def stop(request: Request, video_id: str,
+         viewer: ViewerContext = Depends(require_parent),
+         content: ContentService = Depends(get_content_service)):
+    content.stop_download(video_id)
+    return RedirectResponse(url="/parent/content?status=pending", status_code=302)
+
+
+@router.post("/content/downloads/pause-all")
+def pause_all(request: Request,
+              viewer: ViewerContext = Depends(require_parent),
+              content: ContentService = Depends(get_content_service)):
+    n = content.pause_all_downloads()
+    return _redirect_with_flash(1, f"Paused {n} download{'s' if n != 1 else ''}.", status="pending")
+
+
+@router.post("/content/downloads/resume-all")
+def resume_all(request: Request,
+               viewer: ViewerContext = Depends(require_parent),
+               content: ContentService = Depends(get_content_service)):
+    n = content.resume_all_downloads()
+    return _redirect_with_flash(1, f"Resumed {n} download{'s' if n != 1 else ''}.", status="pending")
+
+
 @router.post("/content/{video_id}/delete")
 def delete(request: Request, video_id: str,
            viewer: ViewerContext = Depends(require_parent),
@@ -415,6 +448,16 @@ async def bulk_action(request: Request,
             content.delete_video(vid)
         return _redirect_with_flash(
             page, f"Deleted {len(video_ids)} video(s).", **keep)
+
+    if action in ("pause", "resume", "stop"):
+        do = {"pause": content.pause_download, "resume": content.retry_download,
+              "stop": content.stop_download}[action]
+        n = sum(do(vid) for vid in video_ids)
+        done = {"pause": "Paused", "resume": "Resumed", "stop": "Stopped"}[action]
+        message = f"{done} {n} download{'s' if n != 1 else ''}."
+        if n < len(video_ids):
+            message += f" {len(video_ids) - n} left as they are (not downloading)."
+        return _redirect_with_flash(page, message, **keep)
 
     if action == "free":
         report = content.free_files(video_ids)

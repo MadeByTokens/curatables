@@ -16,7 +16,7 @@ class Video:
     thumbnail_url: str = ""
     thumbnail_type: str = "original"
     status: str = "active"
-    download_status: str = "pending"   # "pending" | "downloading" | "ready" | "error" | "evicted"
+    download_status: str = "pending"   # "pending" | "downloading" | "paused" | "stopped" | "ready" | "error" | "evicted"
     download_error: str = ""
     storage_mode: str = "cache"
     resolution: str = "720p"

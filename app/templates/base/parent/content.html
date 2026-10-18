@@ -25,6 +25,24 @@
 their files are deleted but they stay in the library and download again when a kid taps them.
 <strong>Delete</strong> removes them altogether.</p>
 {% endif %}
+{% if downloads.active or downloads.paused %}
+<div class="flash flash-info downloads-bar">
+  {% if downloads.active %}
+  <span>{{ downloads.active }} download{{ "s" if downloads.active != 1 }} waiting or running.</span>
+  <form method="POST" action="/parent/content/downloads/pause-all" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-sm btn-secondary">Pause all</button>
+  </form>
+  {% endif %}
+  {% if downloads.paused %}
+  <span>{{ downloads.paused }} paused.</span>
+  <form method="POST" action="/parent/content/downloads/resume-all" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-sm">Resume all</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
 <div id="refresh-notice" class="flash flash-info" hidden>
   Downloads have finished. <a href="">Refresh the list</a>
 </div>
@@ -55,6 +73,9 @@ their files are deleted but they stay in the library and download again when a k
     <button type="submit" name="action" value="move" class="btn btn-sm">Move</button>
     <button type="submit" name="action" value="hide" class="btn btn-sm btn-secondary">Hide</button>
     <button type="submit" name="action" value="unhide" class="btn btn-sm btn-secondary">Unhide</button>
+    <button type="submit" name="action" value="pause" class="btn btn-sm btn-secondary">Pause downloads</button>
+    <button type="submit" name="action" value="resume" class="btn btn-sm btn-secondary">Resume downloads</button>
+    <button type="submit" name="action" value="stop" class="btn btn-sm btn-secondary">Stop downloads</button>
     <button type="submit" name="action" value="free" class="btn btn-sm btn-secondary"
             title="Delete the files but keep the videos listed; they download again when a kid taps them">Free up files</button>
     <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">Delete</button>
@@ -112,6 +133,10 @@ their files are deleted but they stay in the library and download again when a k
           {% if v.download_error %}
           <details class="fs-12 muted-3"><summary>Details</summary>{{ v.download_error }}</details>
           {% endif %}
+        {% elif v.download_status == 'paused' %}
+          <span class="status-pending">&#9208; paused: Resume carries on where it stopped</span>
+        {% elif v.download_status == 'stopped' %}
+          <span class="muted">&#9209; stopped: not downloaded</span>
         {% elif v.download_status == 'evicted' %}
           <span class="muted">&#128465; file freed: downloads again when a kid opens it</span>
         {% else %}
@@ -123,10 +148,23 @@ their files are deleted but they stay in the library and download again when a k
       </div>
       <div class="actions">
         <a href="/parent/content/{{ v.video_id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
-        {% if v.download_status == 'error' and v.storage_mode != 'uploaded' %}
+        {% if v.download_status in ('error', 'paused', 'stopped') and v.storage_mode != 'uploaded' %}
         <form method="POST" action="/parent/content/{{ v.video_id }}/retry">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="btn btn-sm">Retry</button>
+          <button type="submit" class="btn btn-sm">{{ {"error": "Retry", "paused": "Resume", "stopped": "Download again"}[v.download_status] }}</button>
+        </form>
+        {% endif %}
+        {% if v.download_status in ('pending', 'downloading') %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/pause">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-secondary">Pause</button>
+        </form>
+        {% endif %}
+        {% if v.download_status in ('pending', 'downloading', 'paused') %}
+        <form method="POST" action="/parent/content/{{ v.video_id }}/stop"
+              data-confirm="Stop downloading {{ v.title }}? What it got so far is deleted; it stays in the list to download again later.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-secondary">Stop</button>
         </form>
         {% endif %}
         {% if v.status == 'active' %}
