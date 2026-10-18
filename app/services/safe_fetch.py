@@ -69,6 +69,9 @@ def _connect(host: str, port: int, timeout: float | None) -> socket.socket:
             last = e
             continue
         sock.settimeout(timeout)
+        # A saved error's traceback holds this frame and so the socket;
+        # drop it or the socket outlives its caller until the next gc.
+        last = None
         return sock
     raise last or OSError(f"Cannot connect to {host}")
 

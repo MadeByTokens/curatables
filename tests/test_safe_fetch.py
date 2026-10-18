@@ -123,9 +123,15 @@ def test_unreachable_ipv6_falls_back_quickly(monkeypatch):
 
     monkeypatch.setattr(safe_fetch, "resolve_public", fake)
     started = time.monotonic()
+    sock = None
     try:
-        assert safe_fetch._connect("x.test", port, 15).getpeername()[0] == "127.0.0.1"
+        sock = safe_fetch._connect("x.test", port, 15)
+        assert sock.getpeername()[0] == "127.0.0.1"
     finally:
+        # The test server answers one connection at a time: close ours
+        # or shutdown() waits forever on a request that never comes.
+        if sock:
+            sock.close()
         server.shutdown()
     assert time.monotonic() - started < safe_fetch.CONNECT_TIMEOUT + 2
 
@@ -142,3 +148,22 @@ def test_resolver_orders_ipv4_first(monkeypatch):
 def test_thumbnail_service_refuses_lan_url(tmp_path):
     from app.services.thumbnails import ThumbnailService
     assert ThumbnailService(tmp_path).download("v1", "http://192.168.200.1/x.jpg") is None
+
+
+def test_connected_socket_is_freed_when_the_caller_drops_it(monkeypatch):
+    import gc
+    import weakref
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    port = listener.getsockname()[1]
+    monkeypatch.setattr(safe_fetch, "resolve_public", lambda host, p: [
+        (socket.AF_INET6, ("100::1", port, 0, 0)), (socket.AF_INET, ("127.0.0.1", port))])
+    monkeypatch.setattr(safe_fetch, "CONNECT_TIMEOUT", 0.5)
+    gc.disable()
+    try:
+        ref = weakref.ref(safe_fetch._connect("x.test", port, 5))
+        assert ref() is None
+    finally:
+        gc.enable()
+        listener.close()
