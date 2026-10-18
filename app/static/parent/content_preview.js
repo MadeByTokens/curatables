@@ -17,6 +17,10 @@
   var count = document.getElementById('review-count');
   var nextBtn = document.getElementById('next-unwatched');
 
+  function count(n, noun) {
+    return n + ' ' + noun + (n === 1 ? '' : 's');
+  }
+
   function refreshGate() {
     var watched = 0;
     for (var i = 0; i < boxes.length; i++) {
@@ -31,8 +35,8 @@
     var left = boxes.length - watched;
     addBtn.disabled = watched === 0 || !channelChosen();
     addBtn.textContent = watched === 0 || left === 0
-      ? 'Add ' + boxes.length + ' video(s)'
-      : 'Add ' + watched + ' watched video(s)';
+      ? 'Add ' + count(boxes.length, 'video')
+      : 'Add ' + count(watched, 'watched video');
     if (hint) {
       hint.hidden = left === 0 && channelChosen();
       if (!channelChosen()) {

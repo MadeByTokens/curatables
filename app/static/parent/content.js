@@ -3,6 +3,10 @@
   var all = document.getElementById('select-all');
   var boxSelector = 'input[form="bulk-form"][name="video_ids"]';
 
+  function count(n) {
+    return n + (n === 1 ? ' video' : ' videos');
+  }
+
   function confirmBulk(button) {
     var action = button && button.name === 'action' ? button.value : '';
     var picked = document.querySelectorAll(boxSelector + ':checked');
@@ -11,10 +15,10 @@
       return false;
     }
     if (action === 'delete') {
-      return confirm('Delete ' + picked.length + ' video(s)? This removes the files on disk.');
+      return confirm('Delete ' + count(picked.length) + '? This removes the files on disk.');
     }
     if (action === 'free') {
-      return confirm('Free the files of ' + picked.length + ' video(s)? They stay listed and ' +
+      return confirm('Free the files of ' + count(picked.length) + '? They stay listed and ' +
                      'download again when a kid taps them.');
     }
     return true;
