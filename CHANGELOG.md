@@ -21,6 +21,8 @@ code already called itself 0.5.0).
 - A kid can delete their own channel (it asks first). Videos they
   uploaded to it stay in the library with no channel, for the parent.
   Renaming to a name already in use says so.
+- An upload still waiting for the parent can be taken back ("Don't
+  send"): the video and its files are deleted.
 
 **For parents**
 - Video requests: **Remove** drops a request without turning the video

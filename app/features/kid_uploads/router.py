@@ -127,6 +127,22 @@ def create_kid_channel(request: Request,
     return RedirectResponse(url=f"/upload?selected={channel.id}", status_code=302)
 
 
+@router.post("/upload/sent/{video_id}/cancel")
+def take_back_upload(request: Request, video_id: str,
+                     viewer: ViewerContext = Depends(_uploads),
+                     events: EventService = Depends(get_event_service),
+                     content: ContentService = Depends(get_content_service)):
+    """The kid takes back an upload still waiting for a grown-up: the
+    video and its files go."""
+    video = content.video_repo.get(video_id)
+    if (video is not None and video.status == "review"
+            and events.event_repo.kid_uploaded(viewer.kid_id, video_id)):
+        content.delete_video(video_id)
+        events.log("kid_upload_taken_back", video_id=video_id, profile_id=viewer.profile_id,
+                   data={"title": video.title})
+    return RedirectResponse(url="/upload", status_code=303)
+
+
 @router.post("/upload")
 async def kid_upload(request: Request,
                      channel_id: int = Form(...),

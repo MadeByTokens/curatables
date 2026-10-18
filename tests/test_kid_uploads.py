@@ -606,3 +606,54 @@ class TestSettingsMaxKidUpload:
         for name in ("max_download_gb", "min_free_disk_gb", "max_upload_gb", "max_kid_upload_gb"):
             value = re.search(rf'name="{name}"\s+value="([^"]+)"', page).group(1)
             assert re.fullmatch(r"\d+\.\d", value), (name, value)
+
+
+class TestTakeBackUpload:
+    def _upload(self, client, channel_id, content=b"t" * 200):
+        with patch("app.services.uploads.MediaProbeService.validate",
+                   return_value=ProbeResult(codec_name="h264", width=320,
+                                            height=240, duration_seconds=1.0,
+                                            container="mov")):
+            with patch("app.services.uploads.ThumbnailService.extract_frame",
+                       return_value=None):
+                return client.post("/upload", data={"channel_id": str(channel_id), "title": "Oops"},
+                                   files={"file": ("oops.mp4", content, "video/mp4")})
+
+    def test_kid_takes_back_a_waiting_upload(self, client, app):
+        from app.dependencies import get_db
+        conn = next(app.dependency_overrides[get_db]())
+        alice = _make_kid_in_app(app, "alice")
+        bob = _make_kid_in_app(app, "bob")
+        family = _make_channel_in_app(app, "Family")
+        _login_kid(client, app, alice)
+        self._upload(client, family)
+        video_id = conn.execute("SELECT video_id FROM videos").fetchone()["video_id"]
+        page = client.get("/upload").text
+        assert f'action="/upload/sent/{video_id}/cancel"' in page
+
+        _login_kid(client, app, bob)
+        client.post(f"/upload/sent/{video_id}/cancel")
+        assert VideoRepository(conn).get(video_id) is not None
+
+        _login_kid(client, app, alice)
+        resp = client.post(f"/upload/sent/{video_id}/cancel")
+        assert resp.headers["location"] == "/upload"
+        assert VideoRepository(conn).get(video_id) is None
+        page = client.get("/upload").text
+        assert "What I sent" not in page and "Not this time" not in page
+
+        # Sent again later: listed again.
+        self._upload(client, family)
+        assert "Oops" in client.get("/upload").text.split("What I sent")[1]
+
+    def test_approved_upload_cannot_be_taken_back(self, client, app):
+        from app.dependencies import get_db
+        conn = next(app.dependency_overrides[get_db]())
+        alice = _make_kid_in_app(app, "alice")
+        family = _make_channel_in_app(app, "Family")
+        _login_kid(client, app, alice)
+        self._upload(client, family)
+        video_id = conn.execute("SELECT video_id FROM videos").fetchone()["video_id"]
+        VideoRepository(conn).update(video_id, status="active")
+        client.post(f"/upload/sent/{video_id}/cancel")
+        assert VideoRepository(conn).get(video_id) is not None
