@@ -175,13 +175,25 @@ Most families never need to change them.
 
 ## 8. Looking after the box
 
-**Box** in the menu looks after the box itself. Its four pages are
-explained in more detail in the
-[parents' guide](../parents-guide.md#4-the-box-pages).
+**Box** in the menu looks after the box itself, on four pages. USB
+drives are covered in the
+[parents' guide](../parents-guide.md#5-usb-drives-for-more-videos).
 
-**Login, network & power** shows how the box is connected. It is also
-where you switch Wi-Fi, change the box's Linux login password, turn SSH
-on or off, and restart or shut down the box.
+**Login, network & power** shows how the box is connected, and is where
+you:
+
+- **Switch Wi-Fi.** Press **Look for networks**, then **Use this** next
+  to yours, type its password and press **Switch Wi-Fi**. The box tries
+  the new network first and goes back to the old one if it can't
+  connect, so a typo can't lock you out. If you're on Wi-Fi yourself,
+  the page may drop for a moment.
+- **Change the Linux login password** or **turn SSH on or off**. Both ask
+  for your parent password again.
+- **Restart Curatables**, **Reconnect network** or **Restart the box**.
+  Restarting fixes most "it's stuck" moments.
+- **Shut down** the box before unplugging it. Unplug once the green light
+  stops flickering (about 20 seconds); to turn it on again, unplug it for
+  a few seconds and plug it back in.
 
 ![Box: login, network and power](img/parent-box.webp)
 
@@ -197,10 +209,17 @@ back, after asking.
 
 ![Box: drives and backups, with one backup](img/parent-backups.webp)
 
-**Updates** installs a new Curatables version, updates the video
-downloader (try it first when YouTube videos stop downloading) and
-installs system updates. Security updates install by themselves every
-day.
+**Updates** keeps the box current without touching the SD card:
+
+- **Update to …** installs a new Curatables version from GitHub, keeping
+  every video, kid and setting. The new version is prepared while the old
+  one keeps running, so kids only lose about a minute. If it doesn't
+  start, the box goes back to the old one by itself, and **Go back to …**
+  undoes an update you don't like.
+- **Update the downloader** when YouTube videos stop downloading.
+- **Update system packages** installs the operating system's updates.
+  Security updates also install by themselves every day. If the page
+  says a restart is needed, restart the box when nobody is watching.
 
 ![Box: updates](img/parent-updates.webp)
 

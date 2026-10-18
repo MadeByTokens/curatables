@@ -124,61 +124,21 @@ open it again.
 
 ### Your first video and your first kid
 
-1. **Make a channel or two.** A channel is a shelf of videos, like
-   "Animals" or "Bedtime". Open **Channels** in the parent menu and
-   create one.
-2. **Add a video.** Open **+ Add** and paste a link to a video, a whole
-   channel or a playlist. Watch each video in the preview, tick **I have
-   already fully watched this video**, pick its channel and press
-   **Add** (it waits until a channel is picked). "None" is allowed,
-   but a video with no channel is hidden from the kids. It then
-   downloads and is converted so it plays on older tablets too; on a
-   Raspberry Pi 4 that takes a few minutes. **Content → Downloading**
-   shows how it's going.
-3. **Make a profile for each kid.** Open **Kids → Add a kid**, give
-   it a name and a picture, and choose what the child may do. A new
-   profile can watch and react, nothing more, and sees every channel
-   until you tick only some. A PIN is optional.
-4. **Set up the tablet.** On the kid's tablet, open the kid address
-   shown on the **Kids** page (or scan its QR code with the camera) and
-   add it to the home screen (on an iPad, use Safari; see the
-   [FAQ](faq.md#getting-connected)). To keep your child inside it, see
-   [What you still need to do on the device](safety-model.md#what-you-still-need-to-do-on-the-device).
-
-The dashboard's **Help** page has more tips.
+Making a channel, adding a video, making a profile for each kid and
+setting up their tablet are in
+[Curatables in pictures: for parents](guide/parents.md#2-make-a-channel),
+one screen at a time. A new video downloads and is converted so it plays
+on older tablets too; on a Raspberry Pi 4 that takes a few minutes, and
+**Content → Downloading** shows how it's going. The dashboard's **Help**
+page has more tips.
 
 ## 4. The Box pages
 
-**Box** in the parent menu manages the box itself:
-
-- **Login, network & power** shows how the box is connected and lets you:
-  - **Switch Wi-Fi.** Press *Look for networks*, then *Use this* next to
-    yours, type its
-    password and press *Switch Wi-Fi*. The box tries the new network
-    first and **goes back to the old one if it can't connect**, so a
-    typo can't lock you out. If you're on Wi-Fi yourself, the page may
-    drop for a moment.
-  - **Change the Linux login password** or **turn SSH on or off** (both
-    ask for your parent password again).
-  - **Restart Curatables**, **Reconnect network** or **Restart the box**.
-    Restarting fixes most "it's stuck" moments.
-  - **Shut down** the box. Use it before unplugging, and unplug once the
-    green light stops flickering (about 20 seconds). To turn the box on
-    again, unplug it for a few seconds and plug it back in.
-- **Drives & backups** is described in the next two sections.
-- **Updates** keeps the box current without touching the SD card:
-  - **Update to …** installs a new Curatables version from GitHub. All
-    videos, kids and settings are kept. The new version is prepared while
-    the old one keeps running; kids only lose about a minute. If it
-    doesn't start, the box goes back to the old one by itself, and
-    **Go back to …** undoes an update you don't like (keeping today's
-    videos, kids and settings whenever it can).
-  - **Update the downloader** when YouTube videos stop downloading.
-  - **Update system packages** installs the operating system's updates.
-    Security updates also install by themselves every day. If the page
-    says a restart is needed, restart the box when nobody is watching.
-- **Diagnostics** checks everything and says what to do (see
-  [Something's wrong](#7-somethings-wrong)).
+**Box** in the parent menu looks after the box itself: switching Wi-Fi,
+the Linux login and SSH, restarting and shutting down, updates and
+diagnostics. Each page is shown and explained in
+[Curatables in pictures → Looking after the box](guide/parents.md#8-looking-after-the-box).
+USB drives and backups are in the next two sections.
 
 ## 5. USB drives for more videos
 
