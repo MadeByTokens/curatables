@@ -5,8 +5,16 @@
 {% macro comment_node(comment, video_id, viewer, csrf_token) %}
 <div class="comment{% if comment.parent_comment_id %} reply{% endif %}" data-comment-id="{{ comment.id }}"{% if comment.parent_comment_id %} data-parent-id="{{ comment.parent_comment_id }}"{% endif %}>
   <div class="comment-author">{% if comment.is_parent_user %}<span aria-hidden="true">&#129489;</span> {% endif %}{{ _(comment.author_name) if comment.is_parent_user else comment.author_name }}</div>
+  {% if comment.deleted %}
+  <div class="comment-body comment-deleted">{{ _("Comment deleted") }}</div>
+  {% else %}
   <div class="comment-body">{{ comment.body }}</div>
-  <div class="comment-meta">{{ comment.created_at|friendly_date }}</div>
+  {% endif %}
+  <div class="comment-meta">{{ comment.created_at|friendly_date }}{% if comment.edited_at and not comment.deleted %} &middot; {{ _("edited") }}{% endif %}
+    {% if viewer and viewer.is_child and comment.profile_id == viewer.profile_id and not comment.is_parent_user and not comment.deleted %}
+    &middot; <a href="/comment/{{ comment.id }}/edit" class="comment-edit-link"><span aria-hidden="true">&#9999;&#65039;</span> {{ _("Change") }}</a>
+    {% endif %}
+  </div>
   {% if not comment.parent_comment_id %}
   <div class="replies" data-replies-for="{{ comment.id }}">
     {% for reply in comment.replies %}{{ comment_node(reply, video_id, viewer, csrf_token) }}{% endfor %}

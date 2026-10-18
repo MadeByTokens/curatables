@@ -46,6 +46,29 @@ class CommentRepository(BaseRepository):
         self.db.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
         self.db.commit()
 
+    def edit(self, comment_id: int, body: str) -> None:
+        self.db.execute(
+            "UPDATE comments SET body = ?, edited_at = datetime('now') WHERE id = ?",
+            (body, comment_id))
+        self.db.commit()
+
+    def delete_by_author(self, comment_id: int, profile_id: int) -> None:
+        """The author deletes their comment. A thread others replied to
+        keeps a placeholder, so their replies stay; the author's own
+        replies in it go."""
+        self.db.execute(
+            "DELETE FROM comments WHERE parent_comment_id = ? AND profile_id = ? "
+            "AND is_parent_user = 0", (comment_id, profile_id))
+        others = self.db.execute(
+            "SELECT 1 FROM comments WHERE parent_comment_id = ? LIMIT 1",
+            (comment_id,)).fetchone()
+        if others:
+            self.db.execute(
+                "UPDATE comments SET body = '', deleted = 1 WHERE id = ?", (comment_id,))
+        else:
+            self.db.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+        self.db.commit()
+
     def get_by_id(self, comment_id: int) -> Comment | None:
         row = self.db.execute(
             _SELECT_WITH_AUTHOR + "WHERE c.id = ?",
@@ -143,6 +166,7 @@ class CommentRepository(BaseRepository):
             "FROM comments c "
             "LEFT JOIN profiles p ON c.profile_id = p.id "
             "LEFT JOIN videos v ON v.video_id = c.video_id "
+            "WHERE c.deleted = 0 "
             "ORDER BY c.created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
@@ -170,7 +194,7 @@ class CommentRepository(BaseRepository):
         rows = self.db.execute(
             "SELECT c.*, v.title AS video_title FROM comments c "
             "LEFT JOIN videos v ON v.video_id = c.video_id "
-            "WHERE c.profile_id = ? ORDER BY c.created_at DESC LIMIT ?",
+            "WHERE c.profile_id = ? AND c.deleted = 0 ORDER BY c.created_at DESC LIMIT ?",
             (profile_id, limit),
         ).fetchall()
         return [self._to_model(r) for r in rows]
@@ -185,6 +209,8 @@ class CommentRepository(BaseRepository):
             parent_comment_id=d.get("parent_comment_id"),
             is_parent_user=d.get("is_parent_user", 0),
             created_at=d.get("created_at", ""),
+            edited_at=d.get("edited_at"),
+            deleted=d.get("deleted") or 0,
             author_name=d.get("author_name", ""),
             video_title=d.get("video_title") or "",
         )

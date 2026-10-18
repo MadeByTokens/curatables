@@ -23,6 +23,9 @@ code already called itself 0.5.0).
   Renaming to a name already in use says so.
 - An upload still waiting for the parent can be taken back ("Don't
   send"): the video and its files are deleted.
+- Kids change or delete their own comments. A changed comment says
+  "edited" (with the time for the parent); a deleted one others replied
+  to stays as a placeholder, so their replies remain.
 
 **For parents**
 - Video requests: **Remove** drops a request without turning the video

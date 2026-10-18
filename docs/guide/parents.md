@@ -157,7 +157,10 @@ one".
 
 **Comments:** when a kid writes a comment, open the video from the
 dashboard or **Content** to read it, reply or delete it. Your reply
-shows to the kid as coming from "Parent".
+shows to the kid as coming from "Parent". Kids can change or delete
+their own comments: a changed one says "(edited)" with the time, and a
+deleted one that has replies stays as "Deleted by (name)" so the replies
+keep their place.
 
 ![Replying to Mia's comment from a phone](img/parent-comments-phone.webp)
 

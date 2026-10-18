@@ -119,7 +119,9 @@ CREATE TABLE IF NOT EXISTS comments (
     parent_comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
     is_parent_user INTEGER DEFAULT 0,
     body       TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    edited_at  TEXT,                        -- the author changed it
+    deleted    INTEGER NOT NULL DEFAULT 0   -- the author deleted it; others replied
 );
 
 CREATE TABLE IF NOT EXISTS events (
