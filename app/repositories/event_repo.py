@@ -116,14 +116,26 @@ class EventRepository(BaseRepository):
 
     def kid_upload_history(self, profile_id: int, limit: int = 8) -> list[dict]:
         """The kid's latest uploads, newest first: video_id and the title
-        they gave it."""
+        they gave it. One the kid took back since is left out."""
         rows = self.db.execute(
             "SELECT video_id, MAX(timestamp) AS at, "
-            "json_extract(data_json, '$.title') AS title FROM events "
+            "json_extract(data_json, '$.title') AS title FROM events u "
             "WHERE event_type = 'video_uploaded_by_kid' AND profile_id = ? "
-            "AND video_id IS NOT NULL GROUP BY video_id ORDER BY at DESC LIMIT ?",
+            "AND video_id IS NOT NULL GROUP BY video_id "
+            "HAVING MAX(id) > COALESCE((SELECT MAX(c.id) FROM events c "
+            "WHERE c.event_type = 'kid_upload_taken_back' AND c.profile_id = u.profile_id "
+            "AND c.video_id = u.video_id), 0) "
+            "ORDER BY at DESC LIMIT ?",
             (profile_id, limit)).fetchall()
         return [dict(r) for r in rows]
+
+    def kid_uploaded(self, profile_id: int, video_id: str) -> bool:
+        """Whether this kid uploaded the video (a duplicate of a video
+        already here logs nothing, so it never counts)."""
+        row = self.db.execute(
+            "SELECT 1 FROM events WHERE event_type = 'video_uploaded_by_kid' "
+            "AND profile_id = ? AND video_id = ? LIMIT 1", (profile_id, video_id)).fetchone()
+        return row is not None
 
     def last_watched_video_id(self, profile_id: int) -> str | None:
         """ID of the video this profile most recently opened or completed."""

@@ -101,7 +101,7 @@ box have it.
 **Upload** sends a video from the tablet. You can make your own channel
 for it first. A video for your own channel is there straight away; one
 for another channel waits for a grown-up. **What I sent** shows how each
-one is going. If the box already has that video, it opens it for you.
+one is going; **Don't send** takes back one that is still waiting. If the box already has that video, it opens it for you.
 
 ![Uploading My drawing to Mia's Films](img/kid-upload.webp)
 
