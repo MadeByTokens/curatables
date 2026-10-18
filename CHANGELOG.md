@@ -9,7 +9,11 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.7.0
+
+Undo and cancel everywhere, and more say for kids over their channels
+and requests. Boxes on v0.6.0 install it from **Box → Updates**; it
+adds three database migrations, applied on the first start.
 
 **For kids**
 - A request can be taken back ("Oops, don't ask"), and the video asked
