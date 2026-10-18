@@ -147,8 +147,9 @@ Edit). When that kid taps **Send**, a video from a YouTube channel on
 your **allowed list** (Settings → Video requests) that passes your
 other rules downloads straight into that channel, with your kid's name
 and description. It is listed as "Added automatically" under **Recently
-decided**. Anything else still waits for you, and with an empty allowed
-list nothing is added this way.
+decided**, where **Remove from library** takes it back: the video is
+deleted and turned down for that kid. Anything else still waits for
+you, and with an empty allowed list nothing is added this way.
 The page lists the oldest 100 requests
 waiting (and says how many more there are), with your 20 latest
 decisions below. If YouTube won't serve a video (it was removed or is

@@ -444,6 +444,33 @@ def test_requests_from_allowed_channels_are_added_straight_away(app, client, aut
     assert "Added automatically" in authed_client.get("/parent/requests").text
 
 
+def test_parent_takes_back_an_auto_added_video(app, client, authed_client, backend):
+    from unittest.mock import patch
+    app.state.config.wishlist.allowed_channels = ["Kids TV"]
+    _full_details(backend)
+    pid, into = _auto_kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    item = repo.list_by_status("pending")[0]
+    other = _kid(app, client, "otto")
+    other_id = repo.add(other, item.video_id, item.metadata(), item.url)
+    with patch("app.services.content.ContentService._start_download"):
+        client.post("/profiles/select", data={"profile_id": pid})
+        client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+    assert repo.get(other_id).status == "approved"
+    page = authed_client.get("/parent/requests").text
+    assert f'action="/parent/requests/{item.id}/undo-auto"' in page
+    assert f'action="/parent/requests/{other_id}/undo-auto"' not in page
+
+    resp = authed_client.post(f"/parent/requests/{item.id}/undo-auto")
+    assert resp.headers["location"] == "/parent/requests?notice=undone"
+    assert VideoRepository(_conn(app)).get(item.video_id) is None
+    assert repo.get(item.id).status == "rejected"
+    assert repo.get(other_id).status == "pending"
+    authed_client.post(f"/parent/requests/{other_id}/undo-auto")
+    assert repo.get(other_id).status == "pending"
+
+
 def test_requests_wait_without_an_allowed_list_or_with_a_blocked_word(app, client, backend):
     from unittest.mock import patch
     _full_details(backend, description="a big spider")

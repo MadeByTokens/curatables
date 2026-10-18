@@ -35,7 +35,8 @@ code already called itself 0.5.0).
 - Per kid, requests for videos from the YouTube channels on the allowed
   list can be added without review, into a channel the parent picks
   (Kids → Edit). They still pass every other rule, re-checked against
-  YouTube's full details.
+  YouTube's full details. **Remove from library** next to "Added
+  automatically" deletes the video and turns the request down.
 
 ## v0.6.0
 
