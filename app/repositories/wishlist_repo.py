@@ -161,6 +161,14 @@ class WishlistRepository(BaseRepository):
         self.db.commit()
         return cur.rowcount
 
+    def reopen_approved(self, video_id: str) -> int:
+        """Approved requests for a video that left the library wait again."""
+        cur = self.db.execute(
+            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0 "
+            "WHERE video_id = ? AND status = 'approved'", (video_id,))
+        self.db.commit()
+        return cur.rowcount
+
     def mark_auto_added(self, request_id: int) -> None:
         self.db.execute("UPDATE wishlist_requests SET auto_added = 1 WHERE id = ?", (request_id,))
         self.db.commit()

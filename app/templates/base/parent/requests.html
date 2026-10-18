@@ -54,6 +54,13 @@ searches for good; <strong>Remove</strong> just drops the request, and the kid c
     &middot; {% if w.status == "approved" %}<a href="/parent/content/{{ w.video_id }}">{{ w.title }}</a>{% else %}{{ w.title }}{% endif %}
     &middot; <span class="muted">{{ w.profile_name }}</span>
     &middot; <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a>
+    {% if w.status == "approved" and w.auto_added %}
+    <form method="POST" action="/parent/requests/{{ w.id }}/undo-auto" class="d-inline"
+          data-confirm="Delete {{ w.title }} from the library and turn it down for {{ w.profile_name }}?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-secondary">Remove from library</button>
+    </form>
+    {% endif %}
     {% if w.status == "rejected" %}
     <form method="POST" action="/parent/requests/{{ w.id }}/remove" class="d-inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

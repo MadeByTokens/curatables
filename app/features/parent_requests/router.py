@@ -21,6 +21,7 @@ NOTICES = {
     "added": "Added. It is downloading now; the Content tab shows its progress.",
     "rejected": "Done. That video won't be offered to that kid again.",
     "removed": "Removed. The kid can ask for that video again.",
+    "undone": "Removed from the library and turned down for that kid.",
     "unavailable": "YouTube won't serve that video (private, removed or restricted), so it can't be added.",
 }
 
@@ -64,6 +65,23 @@ def remove_request(request_id: int,
         repo.remove(request_id)
         return RedirectResponse(url="/parent/requests?notice=removed", status_code=303)
     return RedirectResponse(url="/parent/requests", status_code=303)
+
+
+@router.post("/{request_id}/undo-auto")
+def undo_auto_added(request_id: int,
+                    viewer: ViewerContext = Depends(require_parent),
+                    repo: WishlistRepository = Depends(get_wishlist_repo),
+                    content: ContentService = Depends(get_content_service)):
+    """Take back a video added without review: it leaves the library and
+    this request is turned down, so it can't come back the same way.
+    Other kids' requests it answered wait for the parent again."""
+    item = repo.get(request_id)
+    if item is None or item.status != "approved" or not item.auto_added:
+        return RedirectResponse(url="/parent/requests", status_code=303)
+    content.delete_video(item.video_id)
+    repo.decide(request_id, "rejected")
+    repo.reopen_approved(item.video_id)
+    return RedirectResponse(url="/parent/requests?notice=undone", status_code=303)
 
 
 @router.get("/{request_id}/review", response_class=HTMLResponse)
