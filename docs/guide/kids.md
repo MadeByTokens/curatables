@@ -87,6 +87,9 @@ Tapped **Ask** by mistake? **Oops, don't ask** takes it back, and so does
 
 ![Mia names her video The spy and the barber and picks Cartoons](img/kid-ask.webp)
 
+Sometimes a grown-up lets a video come straight away: then it says
+**Yes! It is on its way**.
+
 **What I asked for** shows how it's going. When a grown-up says yes, it
 says **Yes! Watch**. **Can't get this one** means YouTube won't let the
 box have it.

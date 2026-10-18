@@ -30,7 +30,10 @@ is [threat-model.md](threat-model.md).
   plays or downloads: tapping **Ask** puts the video in your
   **Video requests** inbox, where you watch it like any other video
   before adding it. **Not this one** hides it from that child's
-  searches for good. Be aware that the child sees the titles and
+  searches for good. A parent can let one child's requests skip that
+  review, into a channel the parent picks, but only for videos from
+  YouTube channels on the allowed list by name that pass every other
+  rule, checked against YouTube's full description first. Be aware that the child sees the titles and
   pictures of the results before you do, and YouTube's own SafeSearch
   is not applied, so for a younger child keep the word list strict or
   allow only channels you trust.

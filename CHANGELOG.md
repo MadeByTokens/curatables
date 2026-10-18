@@ -24,6 +24,10 @@ code already called itself 0.5.0).
   down, and **Let (name) ask again** takes back a **Not this one**.
 - A kid's suggested channel name is filled in as the new channel on
   Review & add.
+- Per kid, requests for videos from the YouTube channels on the allowed
+  list can be added without review, into a channel the parent picks
+  (Kids → Edit). They still pass every other rule, re-checked against
+  YouTube's full details.
 
 ## v0.6.0
 

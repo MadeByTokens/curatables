@@ -25,7 +25,9 @@
     <span class="wishlist-looking-icon" aria-hidden="true">&#128301;</span>
     <span class="wishlist-looking-text">{{ _("Looking…") }}</span>
   </div>
-  {% if asked %}
+  {% if auto_added %}
+  <div class="wishlist-sent" role="status"><span aria-hidden="true">&#127881;</span> {{ _("Yes! It is on its way. It will be ready to watch soon.") }}</div>
+  {% elif asked %}
   <div class="wishlist-sent" role="status"><span aria-hidden="true">&#128236;</span> {{ _("Asked! A grown-up will look at it.") }}</div>
   {% endif %}
   {% if error %}

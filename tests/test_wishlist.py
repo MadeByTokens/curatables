@@ -404,6 +404,88 @@ def test_adding_the_video_approves_the_request(app, client, authed_client, backe
     assert repo.list_by_status("approved")[0].video_id == "youtube_aaaaaaaaaaa"
 
 
+def _full_details(backend, description=""):
+    """YouTube's full lookup: it always carries an upload date."""
+    from dataclasses import replace
+    plain = backend.fetch_video_info
+    backend.fetch_video_info = lambda url: (
+        lambda m: m and replace(m, upload_date="20240101", description=description))(plain(url))
+
+
+def _auto_kid(app, client, **kw):
+    from app.repositories.channel_repo import ChannelRepository
+    into = ChannelRepository(_conn(app)).create("From YouTube")
+    return _kid(app, client, auto_add_channel_id=into, **kw), into
+
+
+def test_requests_from_allowed_channels_are_added_straight_away(app, client, authed_client, backend):
+    from unittest.mock import patch
+    app.state.config.wishlist.allowed_channels = ["Kids TV"]
+    _full_details(backend)
+    pid, into = _auto_kid(app, client)
+    from app.repositories.channel_repo import ChannelRepository
+    own = ChannelRepository(_conn(app)).create("Wren's", owner_profile_id=pid)
+    client.get("/wishlist", params={"q": "songs"})
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    repo = WishlistRepository(_conn(app))
+    item = repo.list_by_status("pending")[0]
+    with patch("app.services.content.ContentService._start_download") as download:
+        resp = client.post(f"/wishlist/asked/{item.id}", data={
+            "title": "My counting", "description": "Numbers!", "channel_id": str(own)})
+    assert resp.headers["location"] == f"/wishlist?asked=auto#ask-{item.raw_id}"
+    assert download.call_count == 1
+    video = VideoRepository(_conn(app)).get("youtube_aaaaaaaaaaa")
+    assert (video.channel_id, video.title, video.description) == (into, "My counting", "Numbers!")
+    item = repo.get(item.id)
+    assert item.status == "approved" and item.auto_added
+    assert "It is on its way" in client.get(resp.headers["location"]).text
+    from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
+    assert ProfileChannelVideoRepository(_conn(app)).channels_for_video(pid, item.video_id) == [own]
+    assert "Added automatically" in authed_client.get("/parent/requests").text
+
+
+def test_requests_wait_without_an_allowed_list_or_with_a_blocked_word(app, client, backend):
+    from unittest.mock import patch
+    _full_details(backend, description="a big spider")
+    _auto_kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    item = repo.list_by_status("pending")[0]
+    with patch("app.services.content.ContentService.add_video") as add:
+        resp = client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+        assert resp.headers["location"].endswith("asked=1#ask-aaaaaaaaaaa")
+        assert repo.get(item.id).status == "pending"
+
+        app.state.config.wishlist.allowed_channels = ["Kids TV"]
+        app.state.config.wishlist.blocked_words = ["spider"]
+        client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+        assert repo.get(item.id).status == "pending"
+        conn = _conn(app)
+        conn.execute("UPDATE wishlist_requests SET upload_date = '' WHERE id = ?", (item.id,))
+        conn.commit()
+        client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+    assert add.call_count == 0
+    assert repo.get(item.id).status == "rejected"
+
+
+def test_parent_sets_where_requests_go(app, authed_client):
+    from app.repositories.channel_repo import ChannelRepository
+    channels = ChannelRepository(_conn(app))
+    into = channels.create("From YouTube")
+    pid = ProfileService(ProfileRepository(_conn(app))).create(name="ivy", display_name="Ivy")
+    kids = channels.create("Ivy's", owner_profile_id=pid)
+    form = authed_client.get(f"/parent/profiles/{pid}/edit").text
+    assert f'<option value="{into}">Yes, into From YouTube</option>' in form
+    assert f'value="{kids}">Yes, into' not in form
+    assert "Your allowed list is empty" in form
+    authed_client.post(f"/parent/profiles/{pid}/edit", data={
+        "display_name": "Ivy", "auto_add_channel_id": str(into)})
+    assert ProfileRepository(_conn(app)).get(pid).auto_add_channel_id == into
+    authed_client.post(f"/parent/profiles/{pid}/edit", data={
+        "display_name": "Ivy", "auto_add_channel_id": str(kids)})
+    assert ProfileRepository(_conn(app)).get(pid).auto_add_channel_id is None
+
+
 def test_adding_needs_a_channel_chosen_on_purpose(app, client, authed_client, backend):
     _kid(app, client)
     client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})

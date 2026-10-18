@@ -182,7 +182,9 @@ description and pick one of their channels, make a new one of their own (with
 **Customize videos and own channels** on; otherwise the name is a suggestion for you),
 or leave the choice to you: then **Add** waits until you pick a channel, or "none".
 The child can take a request back, and you can **Remove** one without turning the video
-down. You watch it, change what you like and add it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
+down. Per kid, you can let videos from the YouTube channels on your allowed list skip the
+review and go straight into a channel you pick (Kids → Edit → **Add their video requests
+without asking me**). You watch it, change what you like and add it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
 saved when the child asked, without asking YouTube again. Nothing downloads before you
 add it. See [safety-model.md](safety-model.md) for what the child sees
 in the meantime. Searches are cached and rate-limited, so a child

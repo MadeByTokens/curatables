@@ -27,9 +27,10 @@ def _choice(value, choices, default: str) -> str:
     return value if value in allowed else default
 
 
-def _profile_fields(form) -> dict:
+def _profile_fields(form, content: ContentService) -> dict:
     """channel_access: "all" channels, "some" (the ticked channel_ids) or
-    "none" (only the kid's own channels). Ticking a channel means "some"."""
+    "none" (only the kid's own channels). Ticking a channel means "some".
+    auto_add_channel_id: one of the parent's channels, or none."""
     channel_ids = [int(x) for x in form.getlist("channel_ids") if x.isdigit()]
     access = form.get("channel_access")
     if access == "none":
@@ -45,8 +46,16 @@ def _profile_fields(form) -> dict:
         "search_mode": _choice(form.get("search_mode"), SEARCH_CHOICES, "disabled"),
         "channels_restricted": access != "all",
         "allowed_channel_ids": channel_ids,
+        "auto_add_channel_id": _auto_add_channel(form_str(form, "auto_add_channel_id"), content),
         **{field: form.get(field) == "1" for field, _l, _d in FEATURE_SWITCHES},
     }
+
+
+def _auto_add_channel(value: str, content: ContentService) -> int | None:
+    if not value.isdigit():
+        return None
+    ours = {c.id for c in content.list_channels() if not c.owner_profile_id}
+    return int(value) if int(value) in ours else None
 
 
 def _read_pin(form) -> tuple[str, str, str | None]:
@@ -81,6 +90,7 @@ def _render_form(request: Request, content: ContentService, profile=None,
         "picture_pin_length": PICTURE_PIN_LENGTH,
         "selected_channel_ids": (profile.allowed_channel_ids or []) if profile else [],
         "feature_switches": FEATURE_SWITCHES,
+        "allowed_youtube_channels": request.app.state.config.wishlist.allowed_channels,
         "error": error,
     }, status_code=status_code)
 
@@ -134,7 +144,7 @@ async def create_submit(request: Request,
         display_name=display_name,
         pin=pin,
         pin_style=pin_style,
-        **_profile_fields(form),
+        **_profile_fields(form, content),
     )
     return RedirectResponse(url="/parent/profiles?notice=added", status_code=302)
 
@@ -171,7 +181,7 @@ async def edit_submit(request: Request, profile_id: int,
     # friendly display_name is editable from the form.
     fields = {
         "display_name": form_str(form, "display_name").strip() or profile.display_name,
-        **_profile_fields(form),
+        **_profile_fields(form, content),
     }
     if removing:
         fields["pin"] = ""

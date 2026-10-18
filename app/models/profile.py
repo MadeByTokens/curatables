@@ -24,6 +24,9 @@ class Profile:
     allow_upload: bool = True
     auto_subtitles: bool = True
     allow_wishlist: bool = False
+    # Requests from the parent's allowed YouTube channels skip review
+    # and go straight into this channel (None: every request waits).
+    auto_add_channel_id: int | None = None
 
 
 FEATURE_SWITCHES = (

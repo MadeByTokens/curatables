@@ -116,6 +116,13 @@ class WishlistService:
             return False
         return self.channel_allowed(meta.channel)
 
+    def may_skip_review(self, meta: VideoMetadata) -> bool:
+        """Whether a request may be added without the parent watching it:
+        it passes the rules and its YouTube channel is on the allowed list
+        by name (an empty list lets none through)."""
+        allowed = {c.strip().lower() for c in self.rules.allowed_channels if c.strip()}
+        return meta.channel.strip().lower() in allowed and self.passes(meta)
+
     def channel_allowed(self, name: str) -> bool:
         if self.blocked_word_in(name):
             return False

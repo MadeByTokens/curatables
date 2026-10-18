@@ -31,6 +31,7 @@ class WishlistRequest:
     view_count: int = 0
     target_channel_id: int | None = None
     suggested_channel: str = ""
+    auto_added: int = 0
     profile_name: str = ""
 
     @property
@@ -159,6 +160,10 @@ class WishlistRepository(BaseRepository):
             "WHERE video_id = ? AND status = 'pending'", (video_id,))
         self.db.commit()
         return cur.rowcount
+
+    def mark_auto_added(self, request_id: int) -> None:
+        self.db.execute("UPDATE wishlist_requests SET auto_added = 1 WHERE id = ?", (request_id,))
+        self.db.commit()
 
     @staticmethod
     def _to_model(row) -> WishlistRequest:
