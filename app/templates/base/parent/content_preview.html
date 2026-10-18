@@ -72,7 +72,7 @@
     <div class="form-group">
       <label for="new_channel_name">Or create new channel</label>
       <input type="text" id="new_channel_name" name="new_channel_name" placeholder="New channel name..."
-             value="{{ import_context.new_channel_name if import_context and not import_context.target_channel_id else '' }}">
+             value="{{ import_context.new_channel_name if import_context and not import_context.target_channel_id else (wish.suggested_channel if wish and not wish.target_channel_id else '') }}">
       <small class="muted">If filled, this overrides the selection above.</small>
     </div>
   </div>

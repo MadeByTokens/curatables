@@ -20,6 +20,7 @@ router = APIRouter(prefix="/parent/requests", tags=["parent-requests"])
 NOTICES = {
     "added": "Added. It is downloading now; the Content tab shows its progress.",
     "rejected": "Done. That video won't be offered to that kid again.",
+    "removed": "Removed. The kid can ask for that video again.",
     "unavailable": "YouTube won't serve that video (private, removed or restricted), so it can't be added.",
 }
 
@@ -49,6 +50,19 @@ def reject_request(request_id: int,
     if item is not None and item.status == "pending":
         repo.decide(request_id, "rejected")
         return RedirectResponse(url="/parent/requests?notice=rejected", status_code=303)
+    return RedirectResponse(url="/parent/requests", status_code=303)
+
+
+@router.post("/{request_id}/remove")
+def remove_request(request_id: int,
+                   viewer: ViewerContext = Depends(require_parent),
+                   repo: WishlistRepository = Depends(get_wishlist_repo)):
+    """Drop a request without turning the video down: a waiting one
+    asked by mistake, or a "Not this one" the parent takes back."""
+    item = repo.get(request_id)
+    if item is not None and item.status in ("pending", "rejected"):
+        repo.remove(request_id)
+        return RedirectResponse(url="/parent/requests?notice=removed", status_code=303)
     return RedirectResponse(url="/parent/requests", status_code=303)
 
 

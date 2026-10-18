@@ -1338,6 +1338,21 @@ input:focus + .wishlist-pill { outline: 3px solid #1f7a70; outline-offset: 2px; 
 .wishlist-ask-channels label.wishlist-pill { display: inline-block; margin: 4px 4px 0 0; font-size: 17px; }
 .wishlist-send-btn { margin-top: 22px; }
 a.wishlist-mine-title { color: inherit; }
+.wishlist-cancel-form { margin: 14px 0 0; text-align: center; }
+.wishlist-mine-cancel { display: inline; margin: 0; }
+.wishlist-cancel-btn {
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 17px;
+    font-family: inherit;
+    font-weight: bold;
+    color: #444;
+    background: #eee;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.wishlist-mine-item .wishlist-cancel-btn { min-height: 0; margin-left: 6px; padding: 6px 12px; font-size: 16px; }
 
 /* Kid file picker (_file_picker.html): the real input is hidden but
    still focusable, and its label is the button. */

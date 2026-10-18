@@ -7,9 +7,10 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
     get_reaction_service, get_kid_library_service, get_channel_service,
-    require_kid_feature,
+    get_event_service, require_kid_feature,
 )
 from app.services.content import ContentService, VideoNotFound
+from app.services.events import EventService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
 from app.services.kid_library import KidLibraryService
@@ -140,7 +141,8 @@ async def video_edit_save(request: Request, video_id: str,
                           viewer: ViewerContext = Depends(_customize),
                           content: ContentService = Depends(get_content_service),
                           kid_lib: KidLibraryService = Depends(get_kid_library_service),
-                          channels_svc: ChannelService = Depends(get_channel_service)):
+                          channels_svc: ChannelService = Depends(get_channel_service),
+                          events: EventService = Depends(get_event_service)):
     content.get_video_for_viewer(video_id, viewer)
     form = await request.form()
 
@@ -168,13 +170,36 @@ async def video_edit_save(request: Request, video_id: str,
     kid_lib.sync_tags(viewer.kid_id, video_id, tag_names)
 
     kid_channels = channels_svc.visible_to_kid(viewer.kid_id)
-    owned_ids = [c.id for c in kid_channels
-                 if c.id is not None and c.owner_profile_id == viewer.profile_id]
-    for ch_id in owned_ids:
+    owned = [c for c in kid_channels
+             if c.id is not None and c.owner_profile_id == viewer.profile_id]
+    for ch_id in [c.id for c in owned if c.id is not None]:
         if form.get(f"channel_{ch_id}"):
             kid_lib.bookmark_video(viewer.kid_id, ch_id, video_id)
         else:
             kid_lib.unbookmark_video(viewer.kid_id, ch_id, video_id)
+
+    # A new channel of the kid's own, with this video in it.
+    new_name = " ".join(form_str(form, "new_channel").split())
+    if new_name:
+        same = next((c for c in owned if c.name.casefold() == new_name.casefold()), None)
+        try:
+            channel = same or channels_svc.create_for_kid(new_name, owner_profile_id=viewer.kid_id)
+        except ValueError as e:
+            response = render_kid_template(request, viewer, "kid/video_edit.html", {
+                "video": content.get_video_for_viewer(video_id, viewer),
+                "overrides": kid_lib.get_overrides(viewer.kid_id, video_id),
+                "tags": kid_lib.tags_for_video(viewer.kid_id, video_id),
+                "kid_channels": kid_channels,
+                "bookmarked_channel_ids": kid_lib.channels_for_video(viewer.kid_id, video_id),
+                "channel_error": str(e), "new_channel": new_name,
+            })
+            response.status_code = 400
+            return response
+        if same is None:
+            events.log("channel_created", profile_id=viewer.profile_id,
+                       data={"channel_id": channel.id, "name": channel.name})
+        if channel.id is not None:
+            kid_lib.bookmark_video(viewer.kid_id, channel.id, video_id)
 
     return RedirectResponse(url=f"/watch/{video_id}", status_code=302)
 

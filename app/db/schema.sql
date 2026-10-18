@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     upload_date   TEXT NOT NULL DEFAULT '',
     view_count    INTEGER NOT NULL DEFAULT 0,
     target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
+    suggested_channel TEXT NOT NULL DEFAULT '',  -- a new channel's name the kid suggests
     UNIQUE (profile_id, video_id)
 );
 

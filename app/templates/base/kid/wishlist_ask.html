@@ -5,6 +5,7 @@
   <p class="wishlist-intro">{{ _("Make it yours: give it a name, say what it is about and pick a channel. Or just tap Send.") }}</p>
   <img src="/wishlist/thumb/{{ item.video_id }}" alt="" class="wishlist-ask-thumb">
   <p class="wishlist-meta">{{ item.channel }}</p>
+  {% if error %}<div class="wishlist-error" role="alert">{{ _(error) }}</div>{% endif %}
   <form method="POST" action="/wishlist/asked/{{ item.id }}" class="wishlist-ask-details">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="back" value="{{ back }}">
@@ -23,7 +24,14 @@
       {% endfor %}
     </fieldset>
     {% endif %}
+    <label for="ask-new-channel">{% if viewer.allow_customize %}{{ _("Or make a new channel for it") }}{% else %}{{ _("Or ask for a new channel") }}{% endif %}</label>
+    <input type="text" id="ask-new-channel" name="new_channel" value="{{ new_channel }}" maxlength="{{ channel_name_max }}" autocomplete="off" placeholder="{{ _('e.g. My Drawings') }}">
     <button type="submit" class="wishlist-ask-btn wishlist-send-btn"><span aria-hidden="true">&#9993;&#65039;</span> {{ _("Send") }}</button>
+  </form>
+  <form method="POST" action="/wishlist/asked/{{ item.id }}/cancel" class="wishlist-cancel-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <button type="submit" class="wishlist-cancel-btn"><span aria-hidden="true">&#10006;</span> {{ _("Oops, don't ask") }}</button>
   </form>
 </div>
 {% endblock %}

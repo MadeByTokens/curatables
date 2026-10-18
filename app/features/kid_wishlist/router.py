@@ -8,12 +8,13 @@ from starlette.concurrency import run_in_threadpool
 from starlette.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
-    get_content_service, get_event_service, get_thumbnail_service, get_wishlist_repo,
-    get_wishlist_service, require_kid_feature,
+    get_channel_service, get_content_service, get_event_service, get_thumbnail_service,
+    get_wishlist_repo, get_wishlist_service, require_kid_feature,
 )
 from app.i18n import gettext
 from app.models import ViewerContext
 from app.repositories.wishlist_repo import WishlistRepository
+from app.services.channels import ChannelService
 from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.images import image_extension
@@ -30,6 +31,7 @@ _SEEN_KEY = "wishlist_seen"
 _SEEN_MAX = 96
 TITLE_MAX = 200
 DESCRIPTION_MAX = 1000
+CHANNEL_NAME_MAX = 64
 _IMAGE_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
                 ".gif": "image/gif"}
 
@@ -181,6 +183,21 @@ def _own_pending(repo: WishlistRepository, viewer: ViewerContext, request_id: in
     return item
 
 
+def _ask_page(request: Request, viewer: ViewerContext, item, back: str,
+              content: ContentService, error: str = "", new_channel: str = "",
+              status_code: int = 200):
+    response = render_kid_template(request, viewer, "kid/wishlist_ask.html", {
+        "item": item, "back": _back(back), "nav_active": "wishlist",
+        "my_channels": content.channels_for_viewer(viewer),
+        "description": item.description[:DESCRIPTION_MAX],
+        "title_max": TITLE_MAX, "description_max": DESCRIPTION_MAX,
+        "channel_name_max": CHANNEL_NAME_MAX,
+        "error": error, "new_channel": new_channel or item.suggested_channel,
+    })
+    response.status_code = status_code
+    return response
+
+
 @router.get("/wishlist/asked/{request_id}", response_class=HTMLResponse)
 def wishlist_asked(request: Request, request_id: int,
                    back: str = Query("/wishlist"),
@@ -190,12 +207,7 @@ def wishlist_asked(request: Request, request_id: int,
     item = _own_pending(repo, viewer, request_id)
     if item is None:
         return RedirectResponse(url="/wishlist", status_code=303)
-    return render_kid_template(request, viewer, "kid/wishlist_ask.html", {
-        "item": item, "back": _back(back), "nav_active": "wishlist",
-        "my_channels": content.channels_for_viewer(viewer),
-        "description": item.description[:DESCRIPTION_MAX],
-        "title_max": TITLE_MAX, "description_max": DESCRIPTION_MAX,
-    })
+    return _ask_page(request, viewer, item, back, content)
 
 
 @router.post("/wishlist/asked/{request_id}")
@@ -203,21 +215,63 @@ def wishlist_choose(request: Request, request_id: int,
                     title: str = Form(""),
                     description: str = Form(""),
                     channel_id: str = Form(""),
+                    new_channel: str = Form(""),
                     back: str = Form("/wishlist"),
                     viewer: ViewerContext = Depends(_wishlist),
                     repo: WishlistRepository = Depends(get_wishlist_repo),
-                    content: ContentService = Depends(get_content_service)):
+                    content: ContentService = Depends(get_content_service),
+                    channels_svc: ChannelService = Depends(get_channel_service),
+                    events: EventService = Depends(get_event_service)):
     item = _own_pending(repo, viewer, request_id)
     if item is not None:
-        visible = {c.id for c in content.channels_for_viewer(viewer)}
+        mine = content.channels_for_viewer(viewer)
+        visible = {c.id for c in mine}
         target = int(channel_id) if channel_id.isdigit() and int(channel_id) in visible else None
         title = " ".join(title.split())[:TITLE_MAX]
         if not title or title == " ".join(item.title.split())[:TITLE_MAX]:
             title = item.title
         description = description.strip()[:DESCRIPTION_MAX]
-        repo.choose(request_id, title, description, target)
+        # A new channel's name wins over the picked one. A kid who may
+        # make channels gets their own now; any other kid suggests it.
+        name = " ".join(new_channel.split())[:CHANNEL_NAME_MAX]
+        suggested = ""
+        error = ""
+        if name:
+            same = next((c for c in mine if c.name.casefold() == name.casefold()), None)
+            if same is not None:
+                target = same.id
+            elif viewer.allow_customize:
+                try:
+                    created = channels_svc.create_for_kid(name, owner_profile_id=viewer.kid_id)
+                    target = created.id
+                    events.log("channel_created", profile_id=viewer.profile_id,
+                               data={"channel_id": created.id, "name": created.name})
+                except ValueError as e:
+                    error = str(e)
+            else:
+                target, suggested = None, name
+        repo.choose(request_id, title, description, target, suggested)
+        if error:
+            return _ask_page(request, viewer, repo.get(request_id), back, content,
+                             error=error, new_channel=name, status_code=400)
     spot = f"#ask-{quote(item.raw_id, safe='')}" if item is not None else ""
     return RedirectResponse(url=_with_asked(_back(back)) + spot, status_code=303)
+
+
+@router.post("/wishlist/asked/{request_id}/cancel")
+def wishlist_cancel(request: Request, request_id: int,
+                    back: str = Form("/wishlist"),
+                    viewer: ViewerContext = Depends(_wishlist),
+                    repo: WishlistRepository = Depends(get_wishlist_repo),
+                    events: EventService = Depends(get_event_service)):
+    """The kid changed their mind (or tapped Ask by mistake): the request
+    goes, and the video can be asked for again."""
+    item = _own_pending(repo, viewer, request_id)
+    if item is not None:
+        repo.remove(request_id)
+        events.log("wishlist_cancel", video_id=item.video_id, profile_id=viewer.profile_id)
+    spot = f"#ask-{quote(item.raw_id, safe='')}" if item is not None else ""
+    return RedirectResponse(url=_back(back) + spot, status_code=303)
 
 
 @router.get("/wishlist/thumb/{video_id}")

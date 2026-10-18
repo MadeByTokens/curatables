@@ -112,6 +112,11 @@
       {% elif w.status == "pending" %}
       <a href="/wishlist/asked/{{ w.id }}?back={{ here|urlencode }}" class="wishlist-mine-title">{{ w.title }} <span aria-hidden="true">&#9999;&#65039;</span></a>
       <span class="wishlist-badge"><span aria-hidden="true">&#8987;</span> {{ _("Waiting") }}</span>
+      <form method="POST" action="/wishlist/asked/{{ w.id }}/cancel" class="wishlist-mine-cancel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="back" value="{{ here }}">
+        <button type="submit" class="wishlist-badge wishlist-cancel-btn"><span aria-hidden="true">&#10006;</span> {{ _("Don't ask") }}</button>
+      </form>
       {% elif w.status == "approved" %}
       <span class="wishlist-mine-title">{{ w.title }}</span>
       <a href="/watch/{{ w.video_id }}" class="wishlist-badge wishlist-badge-yes"><span aria-hidden="true">&#9989;</span> {{ _("Yes! Watch") }}</a>

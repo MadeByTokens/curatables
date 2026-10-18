@@ -219,3 +219,24 @@ def test_freed_videos_stay_listed_for_kids(app):
         page = kid.get(path).text
         assert 'href="/watch/yt_facts"' in page, path
     assert "Takes a moment to start" in kid.get("/").text
+
+
+def test_kid_makes_a_channel_from_the_video_edit_page(app):
+    conn = _conn(app)
+    songs = ChannelRepository(conn).create("Songs")
+    _video(conn, "yt_song", songs, "A song")
+    pid = _kid(conn, "cy")
+    other = _kid(conn, "di")
+    ChannelRepository(conn).create("Di's", owner_profile_id=other)
+    kid = _as_kid(app, pid)
+    assert 'name="new_channel"' in kid.get("/video/yt_song/edit").text
+
+    resp = kid.post("/video/yt_song/edit", data={"title": "", "new_channel": " Best  songs "})
+    assert resp.status_code == 302
+    mine = ChannelRepository(conn).get_by_name("Best songs")
+    assert mine is not None and mine.owner_profile_id == pid
+    assert "A song" in kid.get(f"/channel/{mine.id}").text
+
+    resp = kid.post("/video/yt_song/edit", data={"title": "", "channel_" + str(mine.id): "1",
+                                                 "new_channel": "Di's"})
+    assert resp.status_code == 400 and "already used" in resp.text
