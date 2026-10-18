@@ -354,11 +354,12 @@ first nightly backup, and Diagnostics right after setup (F15).
 
 ### The pinned build
 
-- **Image** `image_2026-10-17-curatables.img.xz` from `d1a313b`, built
-  with pi-gen pinned at `d346cd5` and the Python packages from
-  `requirements.lock` (SHA-256
-  `62bdce7245925f84e26ec45c83a811e90d0a313e5dc9de9abed0bd2ea679dd99`),
-  checked in a chroot: all 445 shipped files match the commit, the
+- **Image** `image_2026-10-17-curatables.img.xz` (SHA-256
+  `62bdce7245925f84e26ec45c83a811e90d0a313e5dc9de9abed0bd2ea679dd99`)
+  from `fe21fdd`, built with pi-gen pinned at `d346cd5` and the Python
+  packages from `requirements.lock`, checked in a chroot: all 445
+  shipped files match the commit (`requirements.lock` only up to the
+  comment lines naming the constraints file), the
   systemd units match the repo, `/etc/rpi-issue` names pi-gen
   `d346cd5`, all 29 locked packages are installed at their pinned
   versions, `run.py --check` passes, the admin account is locked until
