@@ -8,6 +8,8 @@
   var bar = document.getElementById('bar');
   var status = document.getElementById('status');
   var startBtn = document.getElementById('start-btn');
+  var stopBtn = document.getElementById('stop-btn');
+  var xhr = null;
 
   function humanMB(n) {
     return Math.round(n / 1048576) + ' MB';
@@ -16,6 +18,23 @@
   function show(el) {
     el.className = el.className.replace(/(^|\s)d-none(\s|$)/, ' ');
   }
+
+  function hide(el) {
+    if (!/(^|\s)d-none(\s|$)/.test(el.className)) { el.className += ' d-none'; }
+  }
+
+  // Stop while the file is still on its way. The form keeps the title
+  // and channel, so the kid can pick another video or send it again.
+  stopBtn.onclick = function () {
+    if (!xhr) { return; }
+    var stopping = xhr;
+    xhr = null;
+    stopping.abort();
+    hide(stopBtn);
+    startBtn.disabled = false;
+    bar.value = 0;
+    setStatus(kidT('Stopped. Pick another video, or tap Send it again.'));
+  };
 
   function setStatus(msg) {
     show(progressWrap);
@@ -40,37 +59,44 @@
     setStatus(kidT('Sending...'));
 
     var fd = new FormData(form);
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/upload', true);
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    var mine = new XMLHttpRequest();
+    xhr = mine;
+    show(stopBtn);
+    mine.open('POST', '/upload', true);
+    mine.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
-    if (xhr.upload) {
-      xhr.upload.onprogress = function (evt) {
+    if (mine.upload) {
+      mine.upload.onprogress = function (evt) {
+        if (xhr !== mine) { return; }
         if (evt.lengthComputable) {
           var pct = Math.floor((evt.loaded / evt.total) * 100);
           bar.value = pct;
+          // All sent: the box is getting it ready, too late to stop.
+          if (pct >= 100) { hide(stopBtn); }
           setStatus(pct < 100 ? kidT('Sending: {pct}%', {pct: pct}) : kidT('Getting it ready...'));
         }
       };
     }
 
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) { return; }
+    mine.onreadystatechange = function () {
+      if (mine.readyState !== 4 || xhr !== mine) { return; }
+      xhr = null;
+      hide(stopBtn);
       startBtn.disabled = false;
       var data = null;
-      try { data = JSON.parse(xhr.responseText); } catch (err) {}
+      try { data = JSON.parse(mine.responseText); } catch (err) {}
       if (data && data.redirect) {
         window.location = data.redirect;
       } else if (data && data.error) {
         setStatus(data.error);
-      } else if (xhr.status === 413) {
+      } else if (mine.status === 413) {
         setStatus(kidT('This video is too big. Ask a grown-up to help.'));
       } else {
         setStatus(kidT('That didn\u2019t work. Try again.'));
       }
     };
 
-    xhr.send(fd);
+    mine.send(fd);
     return false;
   };
 })();

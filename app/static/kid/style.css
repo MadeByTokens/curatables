@@ -1421,3 +1421,18 @@ a.wishlist-mine-title { color: inherit; }
 }
 .comment-deleted { color: #777; font-style: italic; }
 .comment-edit-link { color: inherit; font-weight: bold; }
+
+.upload-cancel { display: inline-block; margin: 16px 0 0 12px; color: #555; font-size: 16px; }
+.upload-stop {
+    margin-top: 10px;
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: bold;
+    color: #fff;
+    background: #b00020;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}

@@ -32,6 +32,7 @@ JS_MESSAGES = (
     "That didn’t work. Try again.",
     "Too many in a row. Wait a minute, then try again.",
     "That didn’t work. Ask a grown-up to reload the page.",
+    "Stopped. Pick another video, or tap Send it again.",
 )
 """Strings the kid scripts show; sent to the page translated (see
 kid/_shell.html and static/kid/i18n.js)."""

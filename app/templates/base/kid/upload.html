@@ -31,10 +31,12 @@
   {{ file_picker("file", "file", "video/*", _("Choose a video"), required=true) }}
 
   <button type="submit" class="upload-btn" id="start-btn">{{ _("Send it") }}</button>
+  <a href="/" class="upload-cancel">{{ _("Cancel") }}</a>
 
   <div class="upload-progress d-none" id="progress-wrap">
     <progress id="bar" value="0" max="100"></progress>
     <div id="status" class="upload-status"></div>
+    <button type="button" class="upload-stop d-none" id="stop-btn"><span aria-hidden="true">&#9632;</span> {{ _("Stop") }}</button>
   </div>
 </form>
 

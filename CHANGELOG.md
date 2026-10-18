@@ -23,6 +23,8 @@ code already called itself 0.5.0).
   Renaming to a name already in use says so.
 - An upload still waiting for the parent can be taken back ("Don't
   send"): the video and its files are deleted.
+- Stop while an upload is sending: the title and channel stay, so the
+  kid can pick another file. Cancel leaves the Upload page.
 - Kids change or delete their own comments. A changed comment says
   "edited" (with the time for the parent); a deleted one others replied
   to stays as a placeholder, so their replies remain.
