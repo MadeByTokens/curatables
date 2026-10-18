@@ -41,7 +41,6 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     tile(64, glyph).save(OUT / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
     tile(180, glyph).convert("RGB").save(OUT / "apple-touch-icon.png", optimize=True)
-    tile(192, glyph).save(OUT / "icon-192.png", optimize=True)
     print("Wrote", ", ".join(sorted(p.name for p in OUT.iterdir())))
 
 

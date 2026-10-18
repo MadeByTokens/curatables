@@ -76,11 +76,6 @@ def power() -> dict:
     return out
 
 
-@action("power_status")
-def power_status(params: dict) -> dict:
-    return power()
-
-
 # The Pi has no battery-backed clock: after a power cut it starts from the
 # time last saved (systemd-timesyncd's clock file, or fake-hwclock where
 # installed), and stays there until NTP reaches the internet.

@@ -102,7 +102,7 @@ def test_every_registered_action_is_one_we_know_about():
     assert set(ACTIONS) >= {
         "account_status", "account_password_matches", "account_set_password", "ssh_set",
         "wifi_status", "wifi_scan", "wifi_set", "restart_curatables", "reboot", "restart_network",
-        "power_status", "drives_list", "drive_use_for_videos", "drive_back_to_sd", "drive_eject",
+        "drives_list", "drive_use_for_videos", "drive_back_to_sd", "drive_eject",
         "drive_reconnect", "drive_repair", "drive_format", "drive_open_for_import",
         "drive_delete_sd_copy", "diagnostics", "diagnostics_report"}
 
