@@ -250,6 +250,8 @@ migrations must be idempotent and safe on existing data.
 | `0012_imports.py` | `videos.origin`, `origin_ref`, `source_path`, `episode_key`; the `import_jobs` table. |
 | `0013_wishlist_details.py` | `wishlist_requests` keeps YouTube's title, description, upload date and views, plus the kid's own title, description and channel (`target_channel_id`). |
 | `0014_play_counts.py` | `videos.play_count` (kid plays, kept for good; backfilled from `video_play` events) and an index on `events(event_type, timestamp)`. |
+| `0015_wishlist_suggested_channel.py` | `wishlist_requests.suggested_channel`: a new channel's name suggested by a kid who can't make channels. |
+| `0016_wishlist_auto_add.py` | `profiles.auto_add_channel_id` (requests from allowed YouTube channels go straight there) and `wishlist_requests.auto_added`. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
@@ -461,15 +463,27 @@ Any other id is looked up before recording. The kid is then offered
 `/wishlist/asked/<id>`, where they can give the request their own name
 and description and pick one of their visible channels
 (`WishlistRepository.choose`); YouTube's original title and description
-are kept next to them (migration 0013). The kid never sees YouTube's
-description, which is often an advert with links.
+are kept next to them (migration 0013), or type a new channel's name:
+a kid-owned channel made at once with `allow_customize`, otherwise
+`suggested_channel` for the parent. `POST /wishlist/asked/<id>/cancel`
+deletes a pending request, so the video can be asked for again. The kid
+never sees YouTube's description, which is often an advert with links.
+
+When the kid sends the request and their profile has
+`auto_add_channel_id`, `_auto_add` in `kid_wishlist/router.py` fetches
+YouTube's full details if only the search result is stored, then adds
+the video into that channel (the kid's own picked channel gets a
+bookmark) if `WishlistService.may_skip_review` holds: the rules pass and
+the YouTube channel is on `wishlist.allowed_channels` by name. An empty
+list lets nothing through. The request is marked approved and
+`auto_added`.
 
 The parent's inbox is `app/features/parent_requests/`. **Review** opens
 the normal Review & add page (`parent/content_preview.html`) filled from
 the stored row, with the kid's choices pre-filled and editable; it asks
 YouTube nothing. Nothing downloads until the parent adds it. **Not this
 one** marks the request rejected, which hides that video from the kid's
-searches. A request whose video YouTube won't serve (unavailable or
+searches; **Remove** deletes a pending or rejected request instead. A request whose video YouTube won't serve (unavailable or
 age-restricted) is marked `unavailable`: the parent sees "YouTube won't
 serve it" and the kid "Can't get this one".
 

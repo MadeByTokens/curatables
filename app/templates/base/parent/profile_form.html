@@ -104,6 +104,23 @@
     {% endfor %}
   </fieldset>
 
+  {% set own_channels = channels | rejectattr('owner_profile_id') | list %}
+  {% if own_channels %}
+  <div class="form-group">
+    <label for="auto_add_channel_id">Add their video requests without asking me</label>
+    <select id="auto_add_channel_id" name="auto_add_channel_id">
+      <option value="">No, I review each one</option>
+      {% for ch in own_channels %}
+      <option value="{{ ch.id }}"{% if profile and profile.auto_add_channel_id == ch.id %} selected{% endif %}>Yes, into {{ ch.name }}</option>
+      {% endfor %}
+    </select>
+    <small class="muted d-block">Only for videos from the YouTube channels on your
+      <a href="/parent/settings#settings-wishlist">allowed list</a> that pass all your other rules;
+      everything else still waits in Video requests. Pick a channel this kid can see.
+      {% if not allowed_youtube_channels %}<strong>Your allowed list is empty, so nothing is added this way.</strong>{% endif %}</small>
+  </div>
+  {% endif %}
+
   {% if channels %}
   {% set access = "all" if not (profile and profile.channels_restricted) else ("some" if selected_channel_ids else "none") %}
   <fieldset class="form-group">

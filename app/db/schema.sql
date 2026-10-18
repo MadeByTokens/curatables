@@ -92,7 +92,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     auto_subtitles  INTEGER NOT NULL DEFAULT 1,
     pin_style   TEXT NOT NULL DEFAULT 'digits',  -- 'digits' | 'pictures'
     language    TEXT NOT NULL DEFAULT 'en',      -- kid screens, see app/i18n
-    allow_wishlist  INTEGER NOT NULL DEFAULT 0
+    allow_wishlist  INTEGER NOT NULL DEFAULT 0,
+    -- Requests from allowed YouTube channels go straight into this channel.
+    auto_add_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (
@@ -180,6 +182,7 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     view_count    INTEGER NOT NULL DEFAULT 0,
     target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
     suggested_channel TEXT NOT NULL DEFAULT '',  -- a new channel's name the kid suggests
+    auto_added    INTEGER NOT NULL DEFAULT 0,   -- added without the parent's review
     UNIQUE (profile_id, video_id)
 );
 

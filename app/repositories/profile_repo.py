@@ -43,13 +43,14 @@ class ProfileRepository(BaseRepository):
     def create(self, profile: Profile) -> int:
         cur = self.db.execute(
             "INSERT INTO profiles (name, display_name, pin, pin_style, language, avatar, "
-            "theme, search_mode, channels_restricted, "
+            "theme, search_mode, channels_restricted, auto_add_channel_id, "
             + ", ".join(FEATURE_FIELDS) + ") "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?" + ", ?" * len(FEATURE_FIELDS) + ")",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?" + ", ?" * len(FEATURE_FIELDS) + ")",
             (profile.name, profile.display_name, profile.pin, profile.pin_style,
              profile.language,
              profile.avatar, profile.theme, profile.search_mode,
              int(profile.channels_restricted or bool(profile.allowed_channel_ids)),
+             profile.auto_add_channel_id,
              *(int(bool(getattr(profile, f))) for f in FEATURE_FIELDS)),
         )
         profile_id = self._new_id(cur)
@@ -60,7 +61,7 @@ class ProfileRepository(BaseRepository):
 
     _UPDATABLE_FIELDS = {
         "name", "display_name", "pin", "pin_style", "language", "avatar", "theme",
-        "search_mode",
+        "search_mode", "auto_add_channel_id",
         "channels_restricted", *FEATURE_FIELDS,
     }
 
@@ -121,6 +122,7 @@ class ProfileRepository(BaseRepository):
             search_mode=d.get("search_mode", "disabled"),
             created_at=d.get("created_at", ""),
             channels_restricted=bool(d.get("channels_restricted", 0)),
+            auto_add_channel_id=d.get("auto_add_channel_id"),
             **self._features(d),
         )
 

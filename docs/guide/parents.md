@@ -140,6 +140,15 @@ make their own channels (**Customize videos and own channels**) can make
 one for the video when asking; any other kid can only suggest a name,
 and you see it as "For: a new channel" and filled in under **Or create
 new channel**. Your kid can also take back a request before you decide.
+
+To skip the review for channels you trust, pick a channel under **Add
+their video requests without asking me** on the kid's page (Kids →
+Edit). When that kid taps **Send**, a video from a YouTube channel on
+your **allowed list** (Settings → Video requests) that passes your
+other rules downloads straight into that channel, with your kid's name
+and description. It is listed as "Added automatically" under **Recently
+decided**. Anything else still waits for you, and with an empty allowed
+list nothing is added this way.
 The page lists the oldest 100 requests
 waiting (and says how many more there are), with your 20 latest
 decisions below. If YouTube won't serve a video (it was removed or is

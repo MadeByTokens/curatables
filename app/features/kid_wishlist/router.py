@@ -8,8 +8,9 @@ from starlette.concurrency import run_in_threadpool
 from starlette.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
-    get_channel_service, get_content_service, get_event_service, get_thumbnail_service,
-    get_wishlist_repo, get_wishlist_service, require_kid_feature,
+    get_channel_service, get_content_service, get_event_service, get_kid_library_service,
+    get_profile_service, get_thumbnail_service, get_wishlist_repo, get_wishlist_service,
+    require_kid_feature,
 )
 from app.i18n import gettext
 from app.models import ViewerContext
@@ -17,7 +18,10 @@ from app.repositories.wishlist_repo import WishlistRepository
 from app.services.channels import ChannelService
 from app.services.content import ContentService
 from app.services.events import EventService
+from app.services.ids import make_video_id
 from app.services.images import image_extension
+from app.services.kid_library import KidLibraryService
+from app.services.profiles import ProfileService
 from app.services.thumbnails import ThumbnailService
 from app.services.wishlist import (
     SORTS, WishlistError, WishlistService, blocked_word_in, fill_details_later,
@@ -61,8 +65,8 @@ def _back(value: str) -> str:
     return "/wishlist"
 
 
-def _with_asked(url: str) -> str:
-    return url + ("&" if "?" in url else "?") + "asked=1"
+def _with_asked(url: str, how: str = "1") -> str:
+    return url + ("&" if "?" in url else "?") + f"asked={how}"
 
 
 def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository, **ctx):
@@ -77,7 +81,7 @@ def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository, *
         "query": "", "mode": "videos", "sort": "", "sorts": (), "results": [],
         "channels": [], "page": 1, "has_more": False, "base": "",
         "channel_id": "", "channel_title": "",
-        "error": None, "error_kind": "", "asked": False,
+        "error": None, "error_kind": "", "asked": False, "auto_added": False,
         "my_requests": mine,
         "hidden_requests": hidden,
         "nav_active": "wishlist",
@@ -105,7 +109,7 @@ async def wishlist_page(request: Request,
     mode = mode if mode in ("videos", "channels") else "videos"
     sort = sort if sort in SORTS[mode] else SORTS[mode][0]
     ctx: dict = {"query": query, "mode": mode, "sort": sort, "sorts": SORTS[mode],
-                 "asked": asked == "1",
+                 "asked": asked == "1", "auto_added": asked == "auto",
                  "base": f"/wishlist?q={quote_plus(query)}&mode={mode}"}
     if query:
         try:
@@ -221,8 +225,12 @@ def wishlist_choose(request: Request, request_id: int,
                     repo: WishlistRepository = Depends(get_wishlist_repo),
                     content: ContentService = Depends(get_content_service),
                     channels_svc: ChannelService = Depends(get_channel_service),
+                    profiles: ProfileService = Depends(get_profile_service),
+                    service: WishlistService = Depends(get_wishlist_service),
+                    kid_lib: KidLibraryService = Depends(get_kid_library_service),
                     events: EventService = Depends(get_event_service)):
     item = _own_pending(repo, viewer, request_id)
+    how = "1"
     if item is not None:
         mine = content.channels_for_viewer(viewer)
         visible = {c.id for c in mine}
@@ -254,8 +262,47 @@ def wishlist_choose(request: Request, request_id: int,
         if error:
             return _ask_page(request, viewer, repo.get(request_id), back, content,
                              error=error, new_channel=name, status_code=400)
+        profile = profiles.get(viewer.kid_id)
+        into = profile.auto_add_channel_id if profile else None
+        if into is not None and _auto_add(request_id, into, viewer, repo, content,
+                                          channels_svc, service, kid_lib):
+            how = "auto"
+            events.log("wishlist_auto_added", video_id=item.video_id,
+                       profile_id=viewer.profile_id, data={"channel_id": into})
     spot = f"#ask-{quote(item.raw_id, safe='')}" if item is not None else ""
-    return RedirectResponse(url=_with_asked(_back(back)) + spot, status_code=303)
+    return RedirectResponse(url=_with_asked(_back(back), how) + spot, status_code=303)
+
+
+def _auto_add(request_id: int, into: int, viewer: ViewerContext, repo: WishlistRepository,
+              content: ContentService, channels_svc: ChannelService,
+              service: WishlistService, kid_lib: KidLibraryService) -> bool:
+    """Add a sent request to the library straight away, into the channel
+    the parent set for this kid, if its YouTube channel is on the allowed
+    list. YouTube's full details are fetched first when only the search
+    result is stored, so the rules see the description too. A kid's own
+    channel they picked gets the video as well."""
+    channel = channels_svc.get(into)
+    if channel is None or channel.owner_profile_id is not None:
+        return False
+    item = repo.get(request_id)
+    if item is not None and item.status == "pending" and not item.has_details:
+        service.fill_details(request_id)
+        item = repo.get(request_id)
+    if item is None or item.status != "pending" or not item.has_details:
+        return False
+    meta = item.metadata()
+    if not service.may_skip_review(meta):
+        return False
+    source_id = content.create_source("video", meta.extractor, meta.video_id,
+                                      meta.title, item.url)
+    content.add_video(meta, source_id=source_id, channel_id=into,
+                      title_override=item.title, description_override=item.description)
+    repo.approve_video(make_video_id(meta.extractor, meta.video_id))
+    repo.mark_auto_added(request_id)
+    picked = channels_svc.get(item.target_channel_id) if item.target_channel_id else None
+    if picked is not None and picked.id is not None and picked.owner_profile_id == viewer.profile_id:
+        kid_lib.bookmark_video(viewer.kid_id, picked.id, item.video_id)
+    return True
 
 
 @router.post("/wishlist/asked/{request_id}/cancel")
