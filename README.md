@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/img/banner.jpeg" alt="Curatables: the self-hosted, ad-free video server for kids. A parent adds videos from a laptop, a Raspberry Pi box on a bookshelf keeps them, and a child watches them on a tablet." width="100%">
+</p>
+
 # curatables
 
 Curatables is a small box you keep at home so your kids can watch **only
