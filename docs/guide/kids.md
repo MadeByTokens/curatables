@@ -107,7 +107,9 @@ one is going. If the box already has that video, it opens it for you.
 
 **Customize** on a video gives it your own name, words and picture. Only
 you see them. Tick your channels to put the video in them, or type a name
-to make a new channel with it.
+to make a new channel with it. On your own channel, the pencil lets you
+rename it or **Delete this channel**. Videos you uploaded to it go to a
+grown-up.
 
 ![Customize a video](img/kid-customize.webp)
 
