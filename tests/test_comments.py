@@ -195,3 +195,64 @@ def test_one_reply_box_per_thread(app):
     page = kid.get("/watch/vthread").text
     assert page.count('name="parent_comment_id"') == 2
     assert page.count("comment-reply-open") == 2
+
+
+def _kid_with_video(app, video_id):
+    from fastapi.testclient import TestClient
+    from app.dependencies import get_db
+    conn = next(app.dependency_overrides[get_db]())
+    _mk_video(conn, video_id)
+    ch = ChannelRepository(conn).create(f"Ch {video_id}")
+    conn.execute("UPDATE videos SET channel_id = ? WHERE video_id = ?", (ch, video_id))
+    conn.commit()
+    repo = ProfileRepository(conn)
+    pid = repo.create(Profile(name=f"k{video_id}", display_name="Kim"))
+    sib = repo.create(Profile(name=f"s{video_id}", display_name="Sib"))
+    kid = TestClient(app, follow_redirects=False)
+    kid.post("/profiles/select", data={"profile_id": pid})
+    return conn, kid, pid, sib
+
+
+def test_kid_changes_their_own_comment(app):
+    conn, kid, pid, sib = _kid_with_video(app, "vedit")
+    mine = _seed_comment(conn, "vedit", "helo", profile_id=pid, is_parent_user=0)
+    theirs = _seed_comment(conn, "vedit", "hi", profile_id=sib, is_parent_user=0)
+    parents = _seed_comment(conn, "vedit", "nice", is_parent_user=1)
+    page = kid.get("/watch/vedit").text
+    assert f'href="/comment/{mine}/edit"' in page
+    assert f'href="/comment/{theirs}/edit"' not in page and f'href="/comment/{parents}/edit"' not in page
+
+    assert 'helo</textarea>' in kid.get(f"/comment/{mine}/edit").text
+    resp = kid.post(f"/comment/{mine}/edit", data={"body": " hello "})
+    assert resp.headers["location"] == "/watch/vedit#comments"
+    comment = CommentRepository(conn).get_by_id(mine)
+    assert comment.body == "hello" and comment.edited_at
+    assert "edited" in kid.get("/watch/vedit").text
+
+    for other in (theirs, parents):
+        assert kid.get(f"/comment/{other}/edit").headers["location"] == "/"
+        kid.post(f"/comment/{other}/edit", data={"body": "mine now"})
+        kid.post(f"/comment/{other}/delete")
+        assert CommentRepository(conn).get_by_id(other).body != "mine now"
+    kid.post(f"/comment/{mine}/edit", data={"body": "   "})
+    assert CommentRepository(conn).get_by_id(mine).body == "hello"
+
+
+def test_deleting_keeps_other_peoples_replies(app):
+    conn, kid, pid, sib = _kid_with_video(app, "vdel")
+    repo = CommentRepository(conn)
+    lone = _seed_comment(conn, "vdel", "oops", profile_id=pid, is_parent_user=0)
+    my_reply = _seed_comment(conn, "vdel", "me too", parent_comment_id=lone,
+                             profile_id=pid, is_parent_user=0)
+    kid.post(f"/comment/{lone}/delete")
+    assert repo.get_by_id(lone) is None and repo.get_by_id(my_reply) is None
+
+    top = _seed_comment(conn, "vdel", "secret", profile_id=pid, is_parent_user=0)
+    reply = _seed_comment(conn, "vdel", "answer", parent_comment_id=top, is_parent_user=1)
+    kid.post(f"/comment/{top}/delete")
+    kept = repo.get_by_id(top)
+    assert kept.deleted and kept.body == "" and repo.get_by_id(reply) is not None
+    page = kid.get("/watch/vdel").text
+    assert "Comment deleted" in page and "secret" not in page and "answer" in page
+    assert kid.get(f"/comment/{top}/edit").headers["location"] == "/"
+    assert all(c.id != top for c in repo.list_recent())

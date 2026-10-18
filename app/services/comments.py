@@ -121,3 +121,26 @@ class CommentService:
     def delete(self, comment_id: int) -> None:
         """Delete a comment and its replies."""
         self.comment_repo.delete(comment_id)
+
+    def own_comment(self, comment_id: int, viewer: ViewerContext) -> Comment | None:
+        """The kid's own comment, which they may change or delete."""
+        comment = self.comment_repo.get_by_id(comment_id)
+        if (comment is None or comment.is_parent_user or comment.deleted
+                or not viewer.is_child or comment.profile_id != viewer.profile_id):
+            return None
+        return comment
+
+    def edit_own(self, comment_id: int, body: str, viewer: ViewerContext) -> bool:
+        comment = self.own_comment(comment_id, viewer)
+        body = body.strip()
+        if comment is None or not body or len(body) > MAX_COMMENT_LENGTH:
+            return False
+        if body != comment.body:
+            self.comment_repo.edit(comment_id, body)
+        return True
+
+    def delete_own(self, comment_id: int, viewer: ViewerContext) -> Comment | None:
+        comment = self.own_comment(comment_id, viewer)
+        if comment is not None and viewer.profile_id is not None:
+            self.comment_repo.delete_by_author(comment_id, viewer.profile_id)
+        return comment

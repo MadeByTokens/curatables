@@ -1,0 +1,19 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="mw-600 mx-auto p-16">
+  <h2>{{ _("Change my comment") }}</h2>
+  <form method="POST" action="/comment/{{ comment.id }}/edit">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="body" class="sr-only">{{ _("Comment") }}</label>
+    <textarea id="body" name="body" rows="4" maxlength="500" required class="w-100 p-8 fs-15 bd-ccc r-4 bb ff-sans">{{ comment.body }}</textarea>
+    <div class="d-flex gap-8 mt-12">
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn">{{ _("Save") }}</button>
+      <a href="/watch/{{ comment.video_id }}#comments" class="on-dark r-4 no-underline fs-15 cancel-link">{{ _("Cancel") }}</a>
+    </div>
+  </form>
+  <form method="POST" action="/comment/{{ comment.id }}/delete" class="mt-24">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="channel-delete-btn bd-none r-4 fs-15 clickable">{{ _("Delete my comment") }}</button>
+  </form>
+</div>
+{% endblock %}

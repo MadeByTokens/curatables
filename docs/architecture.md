@@ -252,6 +252,7 @@ migrations must be idempotent and safe on existing data.
 | `0014_play_counts.py` | `videos.play_count` (kid plays, kept for good; backfilled from `video_play` events) and an index on `events(event_type, timestamp)`. |
 | `0015_wishlist_suggested_channel.py` | `wishlist_requests.suggested_channel`: a new channel's name suggested by a kid who can't make channels. |
 | `0016_wishlist_auto_add.py` | `profiles.auto_add_channel_id` (requests from allowed YouTube channels go straight there) and `wishlist_requests.auto_added`. |
+| `0017_comment_edits.py` | `comments.edited_at` and `comments.deleted` (a kid's own comment changed, or deleted while others' replies stay). |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),

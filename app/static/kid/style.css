@@ -1419,3 +1419,5 @@ a.wishlist-mine-title { color: inherit; }
     color: #fff;
     background: #b00020;
 }
+.comment-deleted { color: #777; font-style: italic; }
+.comment-edit-link { color: inherit; font-weight: bold; }

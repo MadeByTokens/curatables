@@ -99,7 +99,7 @@
         <button type="submit" class="btn btn-sm btn-danger">Delete</button>
       </form>
     </div>
-    <div class="my-6">{{ c.body }}</div>
+    <div class="my-6">{% if c.deleted %}<em class="muted">Deleted by {{ c.author_name }}</em>{% else %}{{ c.body }}{% endif %}{% if c.edited_at and not c.deleted %} <span class="muted fs-12">(edited {{ c.edited_at|local_time }})</span>{% endif %}</div>
 
     <form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mt-6">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -120,7 +120,7 @@
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
       </div>
-      <div class="mt-4">{{ reply.body }}</div>
+      <div class="mt-4">{{ reply.body }}{% if reply.edited_at %} <span class="muted fs-12">(edited {{ reply.edited_at|local_time }})</span>{% endif %}</div>
 
       <form method="POST" action="/parent/content/{{ video.video_id }}/comment" class="mt-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

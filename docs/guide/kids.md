@@ -47,6 +47,7 @@ short wait.
 
 **Tap a face to say how you liked it.** You can put a word on the video
 to find it again, and write a comment. A grown-up may write back.
+**Change** under your comment fixes the words or deletes it.
 
 ![Watching Caminandes 3: faces, a tag and a comment](img/kid-watch.webp)
 
