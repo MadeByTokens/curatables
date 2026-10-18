@@ -42,8 +42,8 @@ the spelling: a misspelled key has no effect.
 | `path` | data dir | (read-only) | Where everything lives. Set by `--data-dir`. |
 | `media_path` | empty | (read-only) | Where videos, uploads, thumbnails and channel pictures live, if not inside `path`. Set by `setup-external-drive.sh --media-only`, so the media can be on an exFAT, NTFS or FAT32 drive while the database stays on the SD card. If it is set and missing, the server starts without it: kids see a "videos are resting" screen and nothing is stored. |
 | `import_roots` | `[]` | Import from a drive | Folders the [Import](getting-started.md#import-videos-already-on-a-drive) page may list video files from. The library's own folders are never listed. |
-| `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives | USB drives opened with *Import from it* are mounted in folders here; each mounted one is an import folder too. |
-| `drive_backups` | `false` | Box → Drives | Also copy each nightly backup to `<media_path>/backups` on the videos drive. |
+| `drive_mounts_dir` | `/mnt/curatables-drives` | Box → Drives & backups | USB drives opened with *Import from it* are mounted in folders here; each mounted one is an import folder too. |
+| `drive_backups` | `false` | Box → Drives & backups | Also copy each nightly backup to `<media_path>/backups` on the videos drive. |
 | `cache_days` | `0` | Settings → Freeing up space | A downloaded video nobody watched for this many days loses its file; it stays listed and downloads again when next tapped. Uploads, imported files and **Keep forever** videos are never removed. `0`, the default, keeps every video. This is the only setting that removes video files. |
 | `low_space_percent` | `15` | — | The dashboard and the storage page warn when the videos drive has this much free or less. |
 | `default_resolution` | `720p` | Storage | `360p`, `480p`, `720p` or `1080p`. Videos are always converted to at most 720p for playback. |
