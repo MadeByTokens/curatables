@@ -211,6 +211,8 @@
                 <span class="badge badge-downloading">downloading</span>
               {% elif v.download_status == 'error' %}
                 <span class="badge badge-error">error</span>
+              {% elif v.download_status in ('paused', 'stopped') %}
+                <span class="badge badge-pending">{{ v.download_status }}</span>
               {% else %}
                 <span class="badge badge-pending">pending</span>
               {% endif %}

@@ -293,7 +293,7 @@ class TestLongUse:
             def __init__(self):
                 self.seen = []
 
-            def normalize(self, path, space=None):
+            def normalize(self, path, space=None, cancel=None):
                 self.seen.append(path.name)
                 target = path.with_name("video.mp4")
                 path.replace(target)

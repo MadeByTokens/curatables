@@ -15,12 +15,17 @@ from app.services.video_source import VideoSourceService, ParsedURL
 from app.services.thumbnails import ThumbnailService
 from app.services.storage import StorageService, InsufficientDiskSpace
 from app.services.download_queue import get_download_queue
+from app.services import download_control
+from app.services.ffmpeg_runner import Cancelled
 from app.services.ids import make_video_id
 from app.services.search_gate import GATE
 from app.db.connection import create_connection, get_db_path
 from app.services.metrics import MetricsService
 
 logger = logging.getLogger(__name__)
+
+# Downloads the parent paused (partial file kept) or stopped.
+PAUSED_OR_STOPPED = ("paused", "stopped")
 
 
 class ContentError(Exception):
@@ -185,13 +190,54 @@ class ContentService:
         return self.video_repo.download_statuses(video_ids)
 
     def retry_download(self, video_id: str) -> bool:
-        """Queue a failed download again. Returns False if the video is
-        not in the error state."""
+        """Queue a failed, paused or stopped download again (a paused one
+        carries on from its partial file). Returns False for any other
+        state."""
         video = self.video_repo.get(video_id)
-        if video is None or video.download_status != "error" or video.storage_mode == "uploaded":
+        if (video is None or video.storage_mode == "uploaded"
+                or video.download_status not in ("error", *PAUSED_OR_STOPPED)):
             return False
+        download_control.clear(video_id)
         self.video_repo.update(video_id, download_status="pending", download_error="")
         self._start_download(video_id, video.original_url, video.resolution)
+        return True
+
+    def pause_download(self, video_id: str) -> bool:
+        """Pause a waiting or running download; its partial file stays."""
+        video = self.video_repo.get(video_id)
+        if video is None or video.download_status not in ("pending", "downloading"):
+            return False
+        if video.download_status == "downloading":
+            download_control.request(video_id, download_control.PAUSE)
+        # A running job sees the flag at its next progress tick and ends
+        # paused; one still queued sees the status when it starts.
+        self.video_repo.update(video_id, download_status="paused", download_error="")
+        return True
+
+    def pause_all_downloads(self) -> int:
+        return sum(self.pause_download(v)
+                   for v in self.video_repo.ids_by_download_status("pending", "downloading"))
+
+    def resume_all_downloads(self) -> int:
+        return sum(self.retry_download(v)
+                   for v in self.video_repo.ids_by_download_status("paused"))
+
+    def download_counts(self) -> dict[str, int]:
+        """How many downloads wait or run ("active") and how many are paused."""
+        return {"active": len(self.video_repo.ids_by_download_status("pending", "downloading")),
+                "paused": len(self.video_repo.ids_by_download_status("paused"))}
+
+    def stop_download(self, video_id: str) -> bool:
+        """Stop a download for good: its partial files go, the video
+        stays listed so it can be downloaded again."""
+        video = self.video_repo.get(video_id)
+        if video is None or video.download_status not in ("pending", "downloading", "paused"):
+            return False
+        if video.download_status == "downloading":
+            download_control.request(video_id, download_control.STOP)
+        else:
+            self.storage.remove_partial_download(video_id)
+        self.video_repo.update(video_id, download_status="stopped", download_error="")
         return True
 
     # --- Writing ---
@@ -327,14 +373,29 @@ class ContentService:
         storage = self.storage
         try:
             approved = repo.get(video_id)
-            if approved is None:
+            if approved is None or approved.download_status in PAUSED_OR_STOPPED:
+                # Paused or stopped while it waited in the queue.
+                download_control.clear(video_id)
                 return
             repo.update(video_id, download_status="downloading")
-            path = storage.download(
-                video_id, original_url, resolution,
-                subtitle_langs=self.config.storage.subtitle_langs)
+            try:
+                path = storage.download(
+                    video_id, original_url, resolution,
+                    subtitle_langs=self.config.storage.subtitle_langs,
+                    cancel=download_control.RequestToken(video_id))
+            except Cancelled:
+                path = None
             if repo.get(video_id) is None:
+                download_control.clear(video_id)
                 storage.delete_video_files(Video(video_id=video_id, title="", original_title=""))
+                return
+            asked = download_control.take(video_id)
+            if asked == download_control.STOP:
+                storage.remove_partial_download(video_id)
+                repo.update(video_id, download_status="stopped", download_error="")
+                return
+            if asked == download_control.PAUSE and not path:
+                repo.update(video_id, download_status="paused", download_error="")
                 return
             if path:
                 fields = {

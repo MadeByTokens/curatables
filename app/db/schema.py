@@ -47,11 +47,14 @@ def recover_from_crash(conn: sqlite3.Connection, media_dir: Path) -> None:
 
     # Partial files left behind by yt-dlp, and a conversion the power cut
     # stopped (video.norm.mp4 and its log); nothing is downloading or
-    # converting yet, so none of these is in use.
+    # converting yet, so none of these is in use. A download the parent
+    # paused keeps its partial file, to carry on from there.
+    paused = {r["video_id"] for r in conn.execute(
+        "SELECT video_id FROM videos WHERE download_status = 'paused'").fetchall()}
     videos_dir = media_dir / "videos"
     if videos_dir.exists():
         for vdir in videos_dir.iterdir():
-            if not vdir.is_dir():
+            if not vdir.is_dir() or vdir.name in paused:
                 continue
             for f in vdir.iterdir():
                 if (f.suffix in (".part", ".ytdl") or ".part-Frag" in f.name

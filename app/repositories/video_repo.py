@@ -270,7 +270,7 @@ class VideoRepository(BaseRepository):
     LIST_FILTERS = {
         "review": "status = 'review'",
         "hidden": "status = 'hidden'",
-        "pending": "download_status IN ('pending', 'downloading')",
+        "pending": "download_status IN ('pending', 'downloading', 'paused', 'stopped')",
         "error": "download_status = 'error'",
     }
 
@@ -289,6 +289,13 @@ class VideoRepository(BaseRepository):
         row = self.db.execute(
             f"SELECT COUNT(*) AS cnt FROM videos WHERE {where}").fetchone()
         return int(row["cnt"])
+
+    def ids_by_download_status(self, *statuses: str) -> builtins.list[str]:
+        marks = ", ".join("?" for _ in statuses)
+        rows = self.db.execute(
+            f"SELECT video_id FROM videos WHERE download_status IN ({marks}) "
+            "ORDER BY added_at, video_id", statuses).fetchall()
+        return [r["video_id"] for r in rows]
 
     def download_statuses(self, video_ids: builtins.list[str]) -> dict[str, str]:
         if not video_ids:
