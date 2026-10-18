@@ -134,7 +134,7 @@ def test_playlist_preview_shows_review_progress(authed_client):
     assert 'id="review-progress" data-total="3"' in resp.text
     assert 'id="next-unwatched"' in resp.text
     js = authed_client.get("/static/parent/content_preview.js").text
-    assert "watched video(s)" in js
+    assert "'watched video'" in js and "video(s)" not in js
 
 
 def test_settings_page_has_section_nav(authed_client):

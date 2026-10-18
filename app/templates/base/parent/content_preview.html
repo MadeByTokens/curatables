@@ -6,7 +6,7 @@
 <p><strong>{{ wish.profile_name }}</strong> asked for this video{% if wish.title != wish.original_title or wish.description or wish.target_channel_id %}
   and chose the name, description{% if wish.target_channel_id %} and channel{% endif %} below. Change anything you like{% endif %}.</p>
 {% else %}
-<p>{{ videos|length }} video{{ "s" if videos|length != 1 }} from {{ url_type }}: <strong>{{ source_title }}</strong>
+<p>{% if url_type == "video" %}<strong>{{ source_title }}</strong>{% else %}{{ videos|length }} video{{ "s" if videos|length != 1 }} from {{ url_type }}: <strong>{{ source_title }}</strong>{% endif %}
   {%- if videos|length >= 50 and url_type in ("channel", "playlist") %}.
   Only the {{ "newest" if url_type == "channel" else "first" }} 50 are listed; add older ones by their own link{% endif %}</p>
 {% endif %}
@@ -165,7 +165,7 @@
 
   <div class="mt-24">
     <button type="submit" id="add-btn" class="btn" disabled>
-      Add {{ new_videos|length }} video(s)
+      Add {{ new_videos|length }} video{{ "s" if new_videos|length != 1 }}
     </button>
     <a href="{{ '/parent/requests' if wish else '/parent/add' }}" class="ml-12">Cancel</a>
     <div id="add-btn-hint" class="d-ib ml-12 muted fs-13">
