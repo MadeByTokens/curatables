@@ -32,6 +32,8 @@ code already called itself 0.5.0).
 **For parents**
 - Video requests: **Remove** drops a request without turning the video
   down, and **Let (name) ask again** takes back a **Not this one**.
+  Both can be undone with **Put back** under Recently decided; if the
+  kid asks again, the same request waits again.
 - A kid's suggested channel name is filled in as the new channel on
   Review & add.
 - Downloads can be paused (the partial file is kept, also across a

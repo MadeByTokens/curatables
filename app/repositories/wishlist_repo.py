@@ -1,4 +1,8 @@
-"""Kid video requests (the wishlist): pending → approved | rejected."""
+"""Kid video requests (the wishlist): pending → approved | rejected.
+
+The parent can also set one aside without deciding: `removed` (it was
+pending) or `allowed_again` (it was rejected). The kid sees neither and
+may ask again; Put back restores what it was."""
 
 from __future__ import annotations
 
@@ -49,6 +53,11 @@ class WishlistRequest:
             thumbnail_url=self.thumbnail_url, extractor=self.extractor, original_url=self.url)
 
 
+# Set aside by the parent: what Put back restores each one to.
+SET_ASIDE = {"removed": "pending", "allowed_again": "rejected"}
+_HIDDEN_FROM_KID = "w.status NOT IN ('removed', 'allowed_again')"
+
+
 class WishlistRepository(BaseRepository):
 
     _SELECT = (
@@ -58,7 +67,8 @@ class WishlistRepository(BaseRepository):
 
     def add(self, profile_id: int, video_id: str, meta: VideoMetadata, url: str) -> int:
         """Record a pending request and return its id; asking again for the
-        same video keeps the first request."""
+        same video keeps the first request (one the parent set aside
+        waits again)."""
         self.db.execute(
             "INSERT OR IGNORE INTO wishlist_requests (profile_id, video_id, extractor, "
             "raw_id, title, original_title, description, original_description, channel, "
@@ -67,6 +77,10 @@ class WishlistRepository(BaseRepository):
             (profile_id, video_id, meta.extractor, meta.video_id, meta.title, meta.title,
              "", meta.description, meta.channel, meta.duration,
              meta.upload_date, meta.view_count, url, meta.thumbnail_url))
+        self.db.execute(
+            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, "
+            "created_at = datetime('now') WHERE profile_id = ? AND video_id = ? "
+            "AND status IN ('removed', 'allowed_again')", (profile_id, video_id))
         self.db.commit()
         row = self.db.execute(
             "SELECT id FROM wishlist_requests WHERE profile_id = ? AND video_id = ?",
@@ -91,9 +105,31 @@ class WishlistRepository(BaseRepository):
             (title, description, target_channel_id, suggested_channel, request_id))
         self.db.commit()
 
+    def set_aside(self, request_id: int) -> None:
+        """The parent drops a pending request, or takes back a rejection,
+        without deleting it: the kid may ask again, and Put back undoes it."""
+        self.db.execute(
+            "UPDATE wishlist_requests SET status = CASE status WHEN 'pending' THEN 'removed' "
+            "ELSE 'allowed_again' END, decided_at = datetime('now') "
+            "WHERE id = ? AND status IN ('pending', 'rejected')", (request_id,))
+        self.db.commit()
+
+    def put_back(self, request_id: int) -> str | None:
+        """Undo set_aside. Returns the status restored, if any."""
+        item = self.get(request_id)
+        if item is None or item.status not in SET_ASIDE:
+            return None
+        status = SET_ASIDE[item.status]
+        self.db.execute(
+            "UPDATE wishlist_requests SET status = ?, "
+            "decided_at = CASE WHEN ? = 'pending' THEN NULL ELSE datetime('now') END "
+            "WHERE id = ?", (status, status, request_id))
+        self.db.commit()
+        return status
+
     def remove(self, request_id: int) -> None:
-        """Forget a request, as if it was never made: the video can be
-        asked for again."""
+        """Forget a request, as if it was never made (the kid taking back
+        their own): the video can be asked for again."""
         self.db.execute("DELETE FROM wishlist_requests WHERE id = ?", (request_id,))
         self.db.commit()
 
@@ -105,13 +141,14 @@ class WishlistRepository(BaseRepository):
     def statuses_for(self, profile_id: int) -> dict[str, str]:
         """video_id → status of everything this kid has asked for."""
         rows = self.db.execute(
-            "SELECT video_id, status FROM wishlist_requests WHERE profile_id = ?",
-            (profile_id,)).fetchall()
+            "SELECT video_id, status FROM wishlist_requests w WHERE profile_id = ? "
+            f"AND {_HIDDEN_FROM_KID}", (profile_id,)).fetchall()
         return {r["video_id"]: r["status"] for r in rows}
 
     def list_for_profile(self, profile_id: int, limit: int = 50) -> builtins.list[WishlistRequest]:
         rows = self.db.execute(
-            f"{self._SELECT} WHERE w.profile_id = ? ORDER BY w.created_at DESC, w.id DESC LIMIT ?",
+            f"{self._SELECT} WHERE w.profile_id = ? AND {_HIDDEN_FROM_KID} "
+            "ORDER BY w.created_at DESC, w.id DESC LIMIT ?",
             (profile_id, limit)).fetchall()
         return [self._to_model(r) for r in rows]
 
@@ -122,9 +159,10 @@ class WishlistRepository(BaseRepository):
         return [self._to_model(r) for r in rows]
 
     def list_decided(self, limit: int = 20) -> builtins.list[WishlistRequest]:
-        """Approved and rejected requests, the latest decision first."""
+        """Decided and set-aside requests, the latest first."""
         rows = self.db.execute(
-            f"{self._SELECT} WHERE w.status IN ('approved', 'rejected', 'unavailable') "
+            f"{self._SELECT} WHERE w.status IN ('approved', 'rejected', 'unavailable', "
+            "'removed', 'allowed_again') "
             "ORDER BY w.decided_at DESC, w.id DESC LIMIT ?",
             (limit,)).fetchall()
         return [self._to_model(r) for r in rows]

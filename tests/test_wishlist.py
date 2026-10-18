@@ -240,15 +240,53 @@ def test_parent_removes_a_request_without_turning_it_down(app, client, authed_cl
     first, second = repo.list_by_status("pending")
     resp = authed_client.post(f"/parent/requests/{first.id}/remove")
     assert resp.headers["location"] == "/parent/requests?notice=removed"
-    assert repo.get(first.id) is None
+    assert repo.get(first.id).status == "removed"
 
     authed_client.post(f"/parent/requests/{second.id}/reject")
     assert "Let Wren ask again" in authed_client.get("/parent/requests").text
     authed_client.post(f"/parent/requests/{second.id}/remove")
-    assert repo.get(second.id) is None
+    assert repo.get(second.id).status == "allowed_again"
     page = client.get("/wishlist", params={"q": "songs"}).text
     assert 'name="raw_id" value="aaaaaaaaaaa"' in page
     assert 'name="raw_id" value="eeeeeeeeeee"' in page
+    assert "What I asked for" not in page
+
+
+def test_a_removed_request_can_be_put_back(app, client, authed_client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    client.post("/wishlist/ask", data={"raw_id": "eeeeeeeeeee"})
+    repo = WishlistRepository(_conn(app))
+    first, second = repo.list_by_status("pending")
+    client.post(f"/wishlist/asked/{first.id}", data={"title": "My counting", "description": "Numbers!"})
+    authed_client.post(f"/parent/requests/{first.id}/remove")
+    authed_client.post(f"/parent/requests/{second.id}/reject")
+    authed_client.post(f"/parent/requests/{second.id}/remove")
+    decided = authed_client.get("/parent/requests").text.split("Recently decided")[1]
+    assert "Removed" in decided and "Allowed to ask again" in decided
+    assert decided.count("/put-back") == 2
+
+    resp = authed_client.post(f"/parent/requests/{first.id}/put-back")
+    assert resp.headers["location"] == "/parent/requests?notice=put-back"
+    item = repo.get(first.id)
+    assert (item.status, item.title, item.description) == ("pending", "My counting", "Numbers!")
+    authed_client.post(f"/parent/requests/{second.id}/put-back")
+    assert repo.get(second.id).status == "rejected"
+    assert "Not this time" in client.get("/wishlist").text
+    authed_client.post(f"/parent/requests/{first.id}/put-back")
+    assert repo.get(first.id).status == "pending"
+
+
+def test_the_kid_asking_again_reuses_a_removed_request(app, client, authed_client, backend):
+    _kid(app, client)
+    client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    repo = WishlistRepository(_conn(app))
+    item = repo.list_by_status("pending")[0]
+    authed_client.post(f"/parent/requests/{item.id}/remove")
+    resp = client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+    assert resp.headers["location"].startswith(f"/wishlist/asked/{item.id}?")
+    assert repo.get(item.id).status == "pending"
+    assert len(repo.list_for_profile(item.profile_id)) == 1
 
 
 def test_kid_makes_a_channel_for_the_video(app, client, authed_client, backend):

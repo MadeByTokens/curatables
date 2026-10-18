@@ -6,7 +6,7 @@
 <p class="muted">Videos your kids asked for on their <strong>Find new</strong> page. Nothing is
 downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview with the name,
 description and channel the kid chose; watch it and change anything you like. <strong>Not this one</strong> hides it from that kid's
-searches for good; <strong>Remove</strong> just drops the request, and the kid can ask again.</p>
+searches for good; <strong>Remove</strong> just drops the request, and the kid can ask again; <strong>Put back</strong>, in the list of decisions below, undoes it.</p>
 
 {% if pending %}
   {% if pending_total > pending|length %}
@@ -50,7 +50,7 @@ searches for good; <strong>Remove</strong> just drops the request, and the kid c
 <h2 class="mt-40">Recently decided</h2>
 <ul class="requests-decided">
   {% for w in decided %}
-  <li>{% if w.status == "approved" %}&#9989; Added{% if w.auto_added %} automatically{% endif %}{% elif w.status == "unavailable" %}&#128683; YouTube won't serve it (private, removed or restricted){% else %}&#10006; Not this one{% endif %}
+  <li>{% if w.status == "approved" %}&#9989; Added{% if w.auto_added %} automatically{% endif %}{% elif w.status == "unavailable" %}&#128683; YouTube won't serve it (private, removed or restricted){% elif w.status == "removed" %}&#8617;&#65039; Removed{% elif w.status == "allowed_again" %}&#8617;&#65039; Allowed to ask again{% else %}&#10006; Not this one{% endif %}
     &middot; {% if w.status == "approved" %}<a href="/parent/content/{{ w.video_id }}">{{ w.title }}</a>{% else %}{{ w.title }}{% endif %}
     &middot; <span class="muted">{{ w.profile_name }}</span>
     &middot; <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a>
@@ -59,6 +59,12 @@ searches for good; <strong>Remove</strong> just drops the request, and the kid c
           data-confirm="Delete {{ w.title }} from the library and turn it down for {{ w.profile_name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="btn btn-sm btn-secondary">Remove from library</button>
+    </form>
+    {% endif %}
+    {% if w.status in ("removed", "allowed_again") %}
+    <form method="POST" action="/parent/requests/{{ w.id }}/put-back" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-secondary">Put back</button>
     </form>
     {% endif %}
     {% if w.status == "rejected" %}
