@@ -36,11 +36,13 @@ is [threat-model.md](threat-model.md).
   allow only channels you trust.
 - **Re-downloaded videos are checked.** Every video is kept unless you
   turn on **Freeing up space** in Settings. Then a video
-  nobody watched for a while is removed and downloaded again the next
-  time someone taps it. If the length of the new copy is clearly
+  nobody watched for a while loses its file; it stays on the kids'
+  screens, marked "Takes a moment to start", and downloads again the
+  next time someone taps it. If the length of the new copy is clearly
   different from the one you approved, it goes back to "waiting for
-  your OK" instead of playing. Mark favourites **keep forever** to avoid
-  re-downloads entirely.
+  your OK" instead of playing. Mark favourites **keep forever** so Freeing up
+  space never removes them (a manual **Free up files** on Content still
+  can).
 
 ## Keeping it simple for your child
 

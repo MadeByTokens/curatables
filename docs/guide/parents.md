@@ -77,8 +77,8 @@ downloading, failed or hidden. **Sort by** puts the least watched, the
 ones not watched for longest or the largest files first; each video
 shows how often it was played, when it was last watched and its size.
 Tick some to move, hide or delete them, or press **Free up files** to
-make room: their files go, they stay listed and download again when a
-kid taps them.
+make room: their files go, but they stay on the kids' screens, marked
+"Takes a moment to start", and download again when a kid taps them.
 
 ![The Content page with six videos](img/parent-content.webp)
 
@@ -94,11 +94,12 @@ choose:
 
 - **A PIN**, if you want one: four to six numbers, or three pictures for a
   kid who doesn't read numbers yet. Leave it empty for no PIN.
-- **Language** and **theme**: Playful, Calm, or Big & clear (larger text,
-  stronger colours).
+- **Language** and **theme**: Default, Playful, Calm, or Big & clear
+  (larger text, stronger colours).
 - **What they may do.** A new profile can watch and react, nothing more.
   Tick more when you're ready: a search box, comments, tags, their own
-  channels and uploads, or asking for new videos.
+  channels and uploads, asking for new videos, or subtitles that turn on
+  by themselves.
 - **Which channels they see**: all of them, only the ones you tick, or
   none of yours (only channels they make themselves).
 
@@ -122,7 +123,9 @@ or App pinning on Android; see the
 A kid with **Ask for new videos** switched on can look for videos on
 YouTube and ask for one. Nothing is downloaded until you add it. The
 dashboard puts requests at the top, under **Needs your attention**.
-Everything here works on your phone too.
+Each request shows the name and note your kid wrote, the channel they
+picked ("For: Cartoons") and YouTube's own title. Everything here works
+on your phone too.
 
 ![Video requests on a phone: Mia asked for Llama Drama](img/parent-requests-phone.webp)
 
@@ -132,7 +135,9 @@ it, change anything you like and add it. Your kid's request then says
 **Yes! Watch**. **Not this one** turns it down, and that kid won't see
 it in their searches again. The page lists the oldest 100 requests
 waiting (and says how many more there are), with your 20 latest
-decisions below.
+decisions below. If YouTube won't serve a video (it was removed or is
+age-restricted), the request says so and your kid sees "Can't get this
+one".
 
 **Comments:** when a kid writes a comment, open the video from the
 dashboard or **Content** to read it, reply or delete it. Your reply
@@ -143,7 +148,8 @@ shows to the kid as coming from "Parent".
 ## 6. Day to day
 
 The **dashboard** shows today at a glance: what each kid watched, new
-comments and reactions, what was added, and anything that needs you
+comments and reactions, what was added (and by whom: a kid's upload
+says "Uploaded by Mia · in Mia's Films"), and anything that needs you
 (requests, failed downloads, a drive that's getting full).
 
 ![The dashboard during the day](img/parent-dashboard.webp)
@@ -217,5 +223,7 @@ The videos in these pictures are free films, used under their licences:
 - *Big Buck Bunny* by the Blender Foundation,
   [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 - *NASA | Tour of the Moon* by NASA's Goddard Space Flight Center.
+- *Agent 327: Operation Barbershop* by Blender Animation Studio,
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (its picture only, in the kids' guide).
 
 The family is made up.

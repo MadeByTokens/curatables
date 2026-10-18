@@ -36,8 +36,10 @@ Or tap your numbers, then ✓. Got it wrong? Just try again.
 
 ## Home
 
-**Home shows all your videos.** Tap a channel at the top to see only
-those. **Tap a picture to watch it.**
+**Home shows all your videos.** If you have more than one channel, tap
+one at the top to see only those. **Tap a picture to watch it.** A video
+marked "Takes a moment to start" has to download first; it plays after a
+short wait.
 
 ![Mia's home with six videos](img/kid-home.webp)
 
@@ -71,24 +73,30 @@ another one.
 ## Asking for a new video
 
 **Find new** looks on YouTube. **Tap Ask** on a video you like. A
-grown-up watches it first. "Already here" means you have it.
+grown-up watches it first. "Already here" means you have it. Tap
+**Channels** to look for a whole channel instead, then open one and tap
+**More** to see more of its videos. The buttons above the results put
+the best match, the newest or A to Z first.
 
 ![Find new: looking for Caminandes](img/kid-find-new.webp)
 
 You can give it a name, say what it is about and pick a channel. Or just
 tap **Send**.
 
-![Mia names her video Llama Drama and picks Cartoons](img/kid-ask.webp)
+![Mia names her video The spy and the barber and picks Cartoons](img/kid-ask.webp)
 
 **What I asked for** shows how it's going. When a grown-up says yes, it
-says **Yes! Watch**.
+says **Yes! Watch**. **Can't get this one** means YouTube won't let the
+box have it.
 
 ![What I asked for: Yes! Watch](img/kid-asked.webp)
 
 ## Your own videos
 
 **Upload** sends a video from the tablet. You can make your own channel
-for it first.
+for it first. A video for your own channel is there straight away; one
+for another channel waits for a grown-up. **What I sent** shows how each
+one is going. If the box already has that video, it opens it for you.
 
 ![Uploading My drawing to Mia's Films](img/kid-upload.webp)
 

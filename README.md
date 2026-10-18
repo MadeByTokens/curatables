@@ -60,7 +60,7 @@ detail, for Windows, Mac and phone users.
    video in the preview, tick that you've seen all of it and pick a
    channel (a "shelf" of videos). It downloads and gets ready to play.
    ([details](docs/parents-guide.md#your-first-video-and-your-first-kid))
-7. **Give a kid their profile.** Go to **Kids → Create Profile**, pick a
+7. **Give a kid their profile.** Go to **Kids → Add a kid**, pick a
    name and a picture, and choose what they may do. Then open the kid
    address on their tablet (the Kids page has a QR code to scan).
    ([details](docs/parents-guide.md#your-first-video-and-your-first-kid))
@@ -86,7 +86,8 @@ The full, plain-language explanation is in
 - **Rules for each child**: which channels they see, an optional PIN
   (numbers or three pictures), a language (English, Portuguese or
   Spanish), a theme (including a large-text, high-contrast one), and
-  switches for reactions, comments, uploads, search and subtitles. New
+  switches for reactions, comments, tags, uploads, customizing, search
+  and subtitles. New
   profiles start with "watch and react" only.
 - **Ask for new videos** (off until you switch it on): a kid searches
   YouTube through the box, sees only results that pass your rules, and
