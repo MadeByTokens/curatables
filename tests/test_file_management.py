@@ -464,6 +464,28 @@ class TestRelocationService:
         assert (target / "config.json").exists()
         assert svc.config.storage.path == str(target)
 
+    def test_a_move_that_fails_midway_leaves_everything_as_it_was(self, db, tmp_path):
+        source = tmp_path / "src"
+        (source / "videos" / "abc").mkdir(parents=True)
+        (source / "videos" / "abc" / "video.mp4").write_bytes(b"fake mp4")
+        (source / "db").mkdir()
+        (source / "db" / "curatables.db").write_bytes(b"fake db")
+        target = tmp_path / "dest"
+        svc = self._make_service(db, source)
+
+        def half_copy(src, dst, **kw):
+            (Path(dst) / "videos").mkdir(parents=True)
+            raise OSError(28, "No space left on device")
+        with patch("app.services.relocation.os.rename", side_effect=OSError(18, "cross-device")), \
+             patch("app.services.relocation.shutil.copytree", side_effect=half_copy), \
+             patch("app.services.relocation.shutil.disk_usage",
+                   return_value=_Usage(100 * _GB, 10 * _GB, 90 * _GB)):
+            with pytest.raises(RelocationError, match="Nothing was changed"):
+                svc.move(str(target))
+        assert not target.exists()
+        assert (source / "videos" / "abc" / "video.mp4").exists()
+        assert svc.config.storage.path == str(source)
+
     def test_restart_follows_pointer_left_at_old_location(self, db, tmp_path, monkeypatch):
         from app.config import load_config
         source = tmp_path / "src"
@@ -495,7 +517,7 @@ class TestRelocationRoute:
 
         with patch("app.services.relocation.shutil.disk_usage",
                    return_value=_Usage(100 * _GB, 10 * _GB, 90 * _GB)):
-            with patch("app.services.relocation.shutil.move") as mock_move:
+            with patch("app.services.relocation.RelocationService._copy_then_switch") as mock_move:
                 with patch.object(Config, "save") as mock_save:
                     resp = authed_client.post(
                         "/parent/settings/move-data",

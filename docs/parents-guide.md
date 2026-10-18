@@ -163,7 +163,10 @@ matters:
 3. Press **Use for videos**. The box copies the videos already on the SD
    card to a `curatables-library` folder on the drive and uses it from
    then on. Anything else on the drive is left alone. This can take a
-   while; the progress page updates by itself.
+   while; the progress page updates by itself and shows how much is
+   copied. **Cancel** while it copies stops it: the partial copy is
+   deleted, so it takes no space, and the videos stay on the SD card. A
+   copy that fails is undone the same way.
 4. Once it's done, the page offers to **delete the old copy** on the SD
    card to free the space.
 

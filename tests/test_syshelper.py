@@ -3,6 +3,7 @@ drives and diagnostics, with every system command faked."""
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -37,7 +38,9 @@ class FakeRunner:
                 return res(argv) if callable(res) else res
         return Result(0, "", "")
 
-    def stream(self, argv, on_line, *, timeout=0, env=None):
+    def stream(self, argv, on_line, *, timeout=0, env=None, stop=None, on_tick=None, every=0):
+        if on_tick is not None:
+            on_tick()
         result = self.run(argv)
         for line in result.out.splitlines():
             on_line(line)
@@ -53,6 +56,9 @@ class FakeRunner:
 class FakeJob:
     def __init__(self):
         self.messages = []
+        self.cancellable = False
+        self.cancel_requested = False
+        self.progress = ""
 
     def log(self, message):
         self.messages.append(message)
@@ -853,3 +859,117 @@ def test_the_clock_never_goes_back_or_years_ahead(fake):
     with pytest.raises(HelperError):
         system.set_clock({"epoch": "tomorrow"})
     assert not fake.ran("date")
+
+
+# --- a copy that fails or is cancelled leaves nothing behind -------------------
+
+def _library(root, files=3):
+    lib = root / "curatables-library" / "videos" / "a"
+    lib.mkdir(parents=True)
+    for i in range(files):
+        (lib / f"f{i}").write_bytes(b"x" * 100)
+    return root / "curatables-library"
+
+
+def test_a_cancelled_copy_is_removed_and_says_nothing_switched(fake, tmp_path):
+    from syshelper.errors import JobCancelled
+    src = _library(tmp_path / "old")
+    dst = tmp_path / "new" / "curatables-library"
+    dst.parent.mkdir()
+    job = FakeJob()
+
+    def copy(argv):
+        assert job.cancellable
+        (dst / "half").write_bytes(b"x")
+        job.cancel_requested = True     # the parent pressed Cancel meanwhile
+        return Result(-9, "", "")
+    fake.on(["cp"], fn=copy)
+    with pytest.raises(JobCancelled, match="Nothing was switched"):
+        drives._copy_library(job, src, dst, True)
+    assert not dst.exists() and not (tmp_path / "new" / "curatables-library.incomplete").exists()
+    assert not job.cancellable
+
+
+def test_a_failed_copy_is_removed(fake, tmp_path):
+    src = _library(tmp_path / "old")
+    dst = tmp_path / "new" / "curatables-library"
+    dst.parent.mkdir()
+    fake.on(["cp"], fn=lambda argv: (dst / "one").write_bytes(b"x") and Result(1, "", "No space"))
+    with pytest.raises(HelperError, match="partial copy was removed"):
+        drives._copy_library(FakeJob(), src, dst, True)
+    assert list(dst.parent.iterdir()) == []
+
+
+def test_a_finished_copy_reports_progress_and_drops_its_marker(fake, tmp_path):
+    src = _library(tmp_path / "old")
+    dst = tmp_path / "new" / "curatables-library"
+    dst.parent.mkdir()
+    job = FakeJob()
+    seen = []
+
+    def copy(argv):
+        seen.append((tmp_path / "new" / "curatables-library.incomplete").exists())
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+        return Result(0, "", "")
+    fake.on(["cp"], fn=copy)
+    drives._copy_library(job, src, dst, True)
+    assert seen == [True]
+    assert not (tmp_path / "new" / "curatables-library.incomplete").exists()
+    assert (dst / "videos" / "a" / "f2").exists()
+
+
+def test_a_drive_with_an_unfinished_copy_is_copied_again(fake, monkeypatch):
+    SETTINGS.fstab_path.write_text(f"UUID=OLD-0000 {SETTINGS.media_mount} exfat nofail 0 0\n")
+    (SETTINGS.media_mount / "curatables-library").mkdir(parents=True)
+    fake.on(["lsblk"], out=_lsblk(_usb("sdb", "exfat", uuid="NEW-1111", label="BIG")))
+    fake.on(["findmnt"], fn=lambda argv: Result(0, "/dev/sda1\n") if str(SETTINGS.media_mount) in argv
+            else Result(0, ""))
+    trial = SETTINGS.socket_path.parent / "new-drive"
+    half = trial / "curatables-library"
+    half.mkdir(parents=True)
+    (half / "half-a-video").write_bytes(b"x")
+    (trial / "curatables-library.incomplete").write_text("")
+    copies = []
+    monkeypatch.setattr(drives, "_copy_library", lambda job, src, dst, *a, **k: copies.append(
+        list(dst.iterdir()) if dst.exists() else []))
+    monkeypatch.setattr(drives, "_run_setup_script", lambda job, device: None)
+    job = FakeJob()
+    drives.drive_use_for_videos({"device": "/dev/sdb1"})(job)
+    assert copies == [[]]
+    assert any("never finished" in m for m in job.messages)
+
+
+def test_a_running_copy_can_be_cancelled_through_the_helper(monkeypatch):
+    import threading
+    from syshelper.jobs import Jobs
+    jobs = Jobs()
+    monkeypatch.setattr(server, "JOBS", jobs)
+    go = threading.Event()
+
+    def work(job):
+        job.cancellable = True
+        go.set()
+        while not job.cancel_requested:
+            time.sleep(0.01)
+        from syshelper.errors import JobCancelled
+        raise JobCancelled("Cancelled. Undone.")
+    job = jobs.start("drive_back_to_sd", "Moving", work)
+    assert go.wait(5)
+    assert server.handle({"action": "job_cancel", "params": {"id": job.id}})["result"]["cancelling"]
+    for _ in range(500):
+        if job.state != "running":
+            break
+        time.sleep(0.01)
+    assert job.state == "cancelled" and job.error == "Cancelled. Undone."
+
+
+def test_a_step_that_cannot_be_undone_ignores_cancel():
+    from syshelper.jobs import Job
+    job = Job("drive_format", "Formatting")
+    assert not job.request_cancel() and not job.cancel_requested
+
+
+def test_stream_kills_a_silent_command_when_asked_to_stop():
+    started = time.monotonic()
+    rc = runner.stream(["sleep", "30"], lambda line: None, stop=lambda: True, every=0.05)
+    assert rc != 0 and time.monotonic() - started < 10

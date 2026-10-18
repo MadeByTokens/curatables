@@ -16,12 +16,15 @@ import time
 from pathlib import Path
 
 from syshelper import runner, safefs, system
-from syshelper.errors import HelperError
+from syshelper.errors import HelperError, JobCancelled
 from syshelper.jobs import Job
 from syshelper.registry import action, text
 from syshelper.settings import SETTINGS
 
 LIBRARY = "curatables-library"
+# Next to a library being copied until the copy is complete, so a copy
+# that was cut short is never taken for a finished one.
+INCOMPLETE = ".incomplete"
 MEDIA_SUBDIRS = ("videos", "uploads", "thumbnails", "channels")
 FS_NAMES = {"exfat": "exFAT", "ntfs": "NTFS", "vfat": "FAT32", "ext4": "ext4"}
 USABLE = {"exfat", "ntfs", "vfat", "ext4"}
@@ -250,11 +253,23 @@ def _run_setup_script(job: Job, device: str) -> None:
     def on_line(line: str) -> None:
         lines.append(line)
         job.log(line[4:] if line.startswith("==> ") else line)
+        # The script undoes everything if stopped while it copies, and
+        # nothing after that.
+        if line.startswith("==> Copying "):
+            job.cancellable = True
+        elif line.startswith("==> The copy is complete") or line.startswith("ERROR"):
+            job.cancellable = False
 
     rc = runner.stream([str(script), "--media-only", device], on_line,
                        env={"CURATABLES_DATA": str(SETTINGS.data_dir),
                             "CURATABLES_USER": SETTINGS.service_user,
-                            "CURATABLES_MEDIA_MOUNT": str(SETTINGS.media_mount)})
+                            "CURATABLES_MEDIA_MOUNT": str(SETTINGS.media_mount)},
+                       stop=lambda: job.cancel_requested)
+    job.cancellable = False
+    if rc != 0 and job.cancel_requested:
+        runner.run(["systemctl", "start", "curatables.service"], timeout=120)
+        raise JobCancelled("Cancelled. Nothing was switched; the videos are still on the "
+                           "SD card, and the partial copy was removed.")
     if rc != 0:
         errors = [line for line in lines if line.startswith("ERROR")]
         runner.run(["systemctl", "start", "curatables.service"], timeout=120)
@@ -280,24 +295,55 @@ def _as_service_user(argv: list[str]) -> list[str]:
     return ["runuser", "-u", SETTINGS.service_user, "--", *argv]
 
 
+def _incomplete_marker(dst: Path) -> Path:
+    return dst.with_name(dst.name + INCOMPLETE)
+
+
 def _copy_library(job: Job, src: Path, dst: Path, same_owners: bool, *, as_service_user: bool = False) -> None:
+    """Copy the library into a new, empty dst. The parent can cancel
+    while it copies; a cancelled or failed copy is removed again, so it
+    takes no space and is never mistaken for a finished one."""
     files, size = _tree_stats(src)
     free = shutil.disk_usage(dst.parent).free
     if free < size + 512 * 1024 ** 2:
         raise HelperError(f"The new drive has {_gb(free)} free but the videos need {_gb(size)}.")
     job.log(f"Copying {files} files ({_gb(size)}). This can take a long time; leave the box on.")
     copy = ["cp", "-R", "--preserve=timestamps", f"{src}/.", str(dst)]
+    marker = _incomplete_marker(dst)
+    marker.write_text("A copy of the videos was started here and has not finished.\n")
     if as_service_user:
         runner.run(_as_service_user(["mkdir", "-p", str(dst)]))
         copy = _as_service_user(copy)
     else:
         dst.mkdir(parents=True, exist_ok=True)
-    rc = runner.stream(copy, job.log)
-    runner.run(["sync"], timeout=3600)
-    copied_files, copied_size = _tree_stats(dst)
-    if rc != 0 or copied_files < files or (same_owners and copied_size < size):
-        raise HelperError(f"The copy is incomplete ({copied_files} of {files} files). "
-                          "Nothing was switched; the videos are still on the old drive.")
+    used_before = shutil.disk_usage(dst).used
+
+    def tick() -> None:
+        done = max(0, shutil.disk_usage(dst).used - used_before)
+        job.progress = f"Copied {_gb(min(done, size))} of {_gb(size)}"
+
+    job.cancellable = True
+    try:
+        rc = runner.stream(copy, job.log, stop=lambda: job.cancel_requested, on_tick=tick)
+        job.cancellable = False
+        if job.cancel_requested:
+            raise JobCancelled("Cancelled. Nothing was switched; the videos are still "
+                               "where they were, and the partial copy was removed.")
+        runner.run(["sync"], timeout=3600)
+        copied_files, copied_size = _tree_stats(dst)
+        if rc != 0 or copied_files < files or (same_owners and copied_size < size):
+            raise HelperError(f"The copy is incomplete ({copied_files} of {files} files). "
+                              "Nothing was switched; the videos are still on the old drive, "
+                              "and the partial copy was removed.")
+    except Exception:
+        job.cancellable = False
+        job.log("Removing the partial copy, so it takes no space")
+        shutil.rmtree(dst, ignore_errors=True)
+        marker.unlink(missing_ok=True)
+        raise
+    finally:
+        job.progress = ""
+    marker.unlink(missing_ok=True)
 
 
 def _gb(n: int) -> str:
@@ -367,6 +413,10 @@ def _move_to(job: Job, device: str, part: dict) -> None:
                           + " Try Repair on it first.")
     try:
         target = trial / LIBRARY
+        if _incomplete_marker(target).exists():
+            job.log("The new drive has a copy that never finished; it is copied again")
+            shutil.rmtree(target, ignore_errors=True)
+            _incomplete_marker(target).unlink(missing_ok=True)
         if target.exists() and any(target.iterdir()):
             job.log("The new drive already has a curatables-library; it will be used as it is")
         else:
@@ -412,6 +462,7 @@ def drive_back_to_sd(params: dict):
             staging = SETTINGS.data_dir / ".from-drive"
             if staging.exists():
                 shutil.rmtree(staging)
+            _incomplete_marker(staging).unlink(missing_ok=True)
             _copy_library(job, lib, staging, True, as_service_user=True)
             for sub in MEDIA_SUBDIRS:
                 src, dst = staging / sub, SETTINGS.data_dir / sub
