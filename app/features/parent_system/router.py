@@ -238,6 +238,17 @@ def job_json(job_id: str,
     return JSONResponse(job)
 
 
+@router.post("/jobs/{job_id}/cancel")
+def job_cancel(request: Request, job_id: str, back: str = Form("/parent/system"),
+               viewer: ViewerContext = Depends(require_parent),
+               helper: SystemHelper = Depends(get_system_helper)):
+    """Ask a running task to stop; only a step that can be undone (a
+    copy) takes it, and the task then cleans up after itself."""
+    _try(helper, "job_cancel", id=job_id)
+    return RedirectResponse(url=f"/parent/system/jobs/{quote(job_id)}?back={quote(_safe_back(back))}",
+                            status_code=303)
+
+
 @router.get("/jobs/{job_id}", response_class=HTMLResponse)
 def job_page(request: Request, job_id: str, back: str = "/parent/system",
              viewer: ViewerContext = Depends(require_parent),

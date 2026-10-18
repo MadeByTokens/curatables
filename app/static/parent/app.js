@@ -85,15 +85,19 @@
     var url = poll.getAttribute('data-job-poll');
     var state = poll.getAttribute('data-job-state');
     var count = parseInt(poll.getAttribute('data-job-count') || '0', 10);
+    var cancellable = poll.getAttribute('data-job-cancellable') === '1';
+    var progress = document.querySelector('[data-job-progress]');
     var tick = function () {
       get(url, function (status, body) {
         if (status === 200) {
           try {
             var job = JSON.parse(body);
-            if (job.state !== state || (job.messages || []).length !== count) {
+            if (job.state !== state || (job.messages || []).length !== count ||
+                (state === 'running' && !!job.cancellable !== cancellable)) {
               location.reload();
               return;
             }
+            if (progress) { progress.textContent = job.progress || ''; }
           } catch (e) { /* keep polling */ }
         }
         setTimeout(tick, 2000);

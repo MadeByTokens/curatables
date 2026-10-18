@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -25,6 +26,18 @@ _HEADROOM_BYTES = 100 * 1024 * 1024  # 100 MB for DB, logs, config
 
 class RelocationError(Exception):
     """Raised when the data directory move cannot safely proceed."""
+
+
+def _tree_stats(root: Path) -> tuple[int, int]:
+    """(files, bytes) under root, not following links."""
+    files = size = 0
+    for dirpath, _dirs, names in os.walk(root):
+        for name in names:
+            path = Path(dirpath) / name
+            files += 1
+            if not path.is_symlink():
+                size += path.stat().st_size
+    return files, size
 
 
 class RelocationService:
@@ -131,7 +144,7 @@ class RelocationService:
             )
 
         logger.info("Relocating data directory from %s to %s", old_path, new_path)
-        shutil.move(str(old_path), str(new_path))
+        self._copy_then_switch(old_path, new_path)
 
         # get_db() reads config.data_dir per request, so updating the
         # in-memory config is enough to switch live requests over.
@@ -148,3 +161,34 @@ class RelocationService:
         logger.info("Relocation complete; config.json saved at %s",
                     new_path / "config.json")
         return new_path
+
+    @staticmethod
+    def _copy_then_switch(old_path: Path, new_path: Path) -> None:
+        """Move the tree without ever leaving half of it in each place.
+        On the same filesystem it is one rename. Otherwise it is copied
+        and checked first; a copy that fails is removed (it would only
+        take space), and the old tree is deleted only after the copy is
+        complete."""
+        created = not new_path.exists()
+        try:
+            os.rename(old_path, new_path)
+            return
+        except OSError:
+            pass   # another filesystem (or a target dir that exists): copy
+        try:
+            shutil.copytree(old_path, new_path, symlinks=True, dirs_exist_ok=not created)
+            if _tree_stats(new_path) != _tree_stats(old_path):
+                raise OSError("the copy does not match the original")
+        except OSError as e:
+            if created:
+                shutil.rmtree(new_path, ignore_errors=True)
+            else:
+                for entry in new_path.iterdir():
+                    if entry.is_dir() and not entry.is_symlink():
+                        shutil.rmtree(entry, ignore_errors=True)
+                    else:
+                        entry.unlink(missing_ok=True)
+            raise RelocationError(
+                f"The move did not finish ({e}). Nothing was changed: the library "
+                f"is still at {old_path}, and the partial copy was removed.") from e
+        shutil.rmtree(old_path, ignore_errors=True)

@@ -223,3 +223,32 @@ def test_crash_recovery_leaves_videos_alone_while_the_drive_is_missing(tmp_path,
     db.commit()
     recover_from_crash(db, tmp_path / "gone")
     assert db.execute("SELECT download_status FROM videos WHERE video_id='v1'").fetchone()[0] == "ready"
+
+
+def test_a_copy_shows_progress_and_can_be_cancelled(app, authed_client):
+    fake = FakeHelper(
+        job_status=lambda p: {"id": p["id"], "title": "Moving videos back to the SD card",
+                              "state": "running", "messages": ["Copying 3 files (1.0 GB)."],
+                              "error": "", "result": None, "cancellable": True,
+                              "cancelling": False, "progress": "Copied 0.4 of 1.0 GB"},
+        job_cancel=lambda p: {"id": p["id"], "state": "running", "cancelling": True})
+    app.state.system_helper = fake
+    app.state.config.parent.system_setup_done = True
+    page = authed_client.get("/parent/system/jobs/abc123?back=/parent/system/drives").text
+    assert "Copied 0.4 of 1.0 GB" in page and 'action="/parent/system/jobs/abc123/cancel"' in page
+    resp = authed_client.post("/parent/system/jobs/abc123/cancel", data={"back": "/parent/system/drives"})
+    assert resp.status_code == 303
+    assert resp.headers["location"].startswith("/parent/system/jobs/abc123?back=")
+    assert ("job_cancel", {"id": "abc123"}) in fake.calls
+
+
+def test_a_cancelled_task_says_what_was_undone(app, authed_client):
+    app.state.system_helper = FakeHelper(job_status=lambda p: {
+        "id": p["id"], "title": "Setting up the videos drive", "state": "cancelled",
+        "messages": ["Removing the partial copy, so it takes no space"],
+        "error": "Cancelled. Nothing was switched; the videos are still where they were.",
+        "result": None})
+    app.state.config.parent.system_setup_done = True
+    page = authed_client.get("/parent/system/jobs/abc123").text
+    assert "<strong>Cancelled.</strong>" in page and "Nothing was switched" in page
+    assert "/cancel" not in page

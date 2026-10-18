@@ -8,8 +8,20 @@
 <div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="unknown"></div>
 {% else %}
   {% if job.state == "running" %}
-  <div class="flash flash-info mw-500" role="status">Working&hellip; this page updates by itself.
-    The box keeps going even if you close it.</div>
+  <div class="flash flash-info mw-500" role="status">{% if job.cancelling %}Cancelling&hellip; the box is
+    undoing what it did so far.{% else %}Working&hellip; this page updates by itself.
+    The box keeps going even if you close it.{% endif %}
+    <div class="fs-14 mt-4" data-job-progress>{{ job.progress or "" }}</div></div>
+  {% if job.cancellable %}
+  <form method="POST" action="/parent/system/jobs/{{ job_id }}/cancel" class="mw-500"
+        data-confirm="Cancel? The copy made so far is deleted and nothing is switched.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <button type="submit" class="btn btn-secondary">Cancel</button>
+  </form>
+  {% endif %}
+  {% elif job.state == "cancelled" %}
+  <div class="flash mw-500" role="status"><strong>Cancelled.</strong> {{ job.error }}</div>
   {% elif job.state == "done" %}
   <div class="flash mw-500" role="status"><strong>Finished.</strong>
     {% if job.messages %}{{ job.messages[-1] }}{% endif %}</div>
@@ -26,7 +38,8 @@
   {% endif %}
   {% if job.state == "running" %}
   <div data-job-poll="/parent/system/jobs/{{ job_id }}.json" data-job-state="running"
-       data-job-count="{{ job.messages|length }}"></div>
+       data-job-count="{{ job.messages|length }}"
+       data-job-cancellable="{{ '1' if job.cancellable else '0' }}"></div>
   <noscript><p><a href="">Refresh</a> to see progress.</p></noscript>
   {% endif %}
 {% endif %}

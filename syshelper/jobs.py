@@ -13,7 +13,7 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from syshelper.errors import HelperError
+from syshelper.errors import HelperError, JobCancelled
 
 logger = logging.getLogger("curatables-helper")
 KEEP = 20
@@ -30,6 +30,21 @@ class Job:
         self.error = ""
         self.started = time.time()
         self.finished: float | None = None
+        # A step that can be stopped cleanly (a copy) sets cancellable;
+        # progress is a one-line "how far" for the page.
+        self.cancellable = False
+        self.progress = ""
+        self._cancel = threading.Event()
+
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel.is_set()
+
+    def request_cancel(self) -> bool:
+        if self.state != "running" or not self.cancellable:
+            return False
+        self._cancel.set()
+        return True
 
     def log(self, message: str) -> None:
         logger.info("%s: %s", self.action, message)
@@ -39,7 +54,10 @@ class Job:
     def as_dict(self) -> dict:
         return {"id": self.id, "action": self.action, "title": self.title, "state": self.state,
                 "messages": list(self.messages), "result": self.result, "error": self.error,
-                "started": self.started, "finished": self.finished}
+                "started": self.started, "finished": self.finished,
+                "cancellable": self.cancellable and not self.cancel_requested,
+                "cancelling": self.cancel_requested and self.state == "running",
+                "progress": self.progress}
 
 
 class Jobs:
@@ -68,6 +86,9 @@ class Jobs:
         try:
             job.result = fn(job)
             job.state = "done"
+        except JobCancelled as e:
+            job.error = str(e)
+            job.state = "cancelled"
         except HelperError as e:
             job.error = str(e)
             job.state = "failed"
@@ -76,6 +97,8 @@ class Jobs:
             job.error = f"Something unexpected went wrong ({type(e).__name__}). The diagnostics report has details."
             job.state = "failed"
         finally:
+            job.cancellable = False
+            job.progress = ""
             job.finished = time.time()
 
     def get(self, job_id: str) -> Job:

@@ -4,10 +4,41 @@
 # SVC_USER, DROPIN_DIR and the die/say helpers from that script.
 
 MNT="${CURATABLES_MEDIA_MOUNT:-/mnt/curatables-media}"
+FSTAB="${CURATABLES_FSTAB:-/etc/fstab}"
 LIB="$MNT/curatables-library"
 CONFIG="$DATA/config.json"
 MEDIA_DROPIN="$DROPIN_DIR/media-drive.conf"
 MEDIA_SUBDIRS=(videos uploads thumbnails channels)
+# Next to a library being copied until the copy is checked, so a copy cut
+# short is never taken for a finished one.
+INCOMPLETE="$MNT/curatables-library.incomplete"
+
+# Until the SD-card copy is moved aside, a failure or a cancel (SIGTERM
+# from the Drives page) undoes what this run did: the partial library,
+# the mount and the fstab line go, and the box is as it was.
+REWIND=1
+COPYING=0
+WE_MOUNTED=0
+FSTAB_BACKUP=""
+rewind() {
+    local status=$?
+    [ "$status" -ne 0 ] && [ "$REWIND" = 1 ] || return "$status"
+    if [ "$COPYING" = 1 ]; then
+        say "Removing the partial copy on the drive, so it takes no space"
+        rm -rf "$LIB" "$INCOMPLETE"
+    fi
+    if [ "$WE_MOUNTED" = 1 ]; then
+        umount "$MNT" 2>/dev/null || say "warning: could not unmount $MNT"
+    fi
+    if [ -n "$FSTAB_BACKUP" ]; then
+        cp "$FSTAB_BACKUP" "$FSTAB"
+        systemctl daemon-reload 2>/dev/null || true
+    fi
+    say "Nothing was switched; the videos are still on the SD card."
+    return "$status"
+}
+trap rewind EXIT
+trap 'exit 143' TERM INT
 
 SVC_UID="$(id -u "$SVC_USER")"
 SVC_GID="$(id -g "$SVC_USER")"
@@ -53,19 +84,27 @@ if ! mountpoint -q "$MNT"; then
     chattr +i "$MNT" 2>/dev/null || say "warning: could not make $MNT immutable"
 fi
 
-if ! grep -q "UUID=$UUID" /etc/fstab; then
+if ! grep -q "UUID=$UUID" "$FSTAB"; then
     say "Adding /etc/fstab entry ($MOUNT_FS at $MNT)"
-    cp /etc/fstab "/etc/fstab.before-curatables-$(date +%Y%m%d-%H%M%S)"
-    printf 'UUID=%s %s %s %s 0 %s\n' "$UUID" "$MNT" "$MOUNT_FS" "$MOUNT_OPTS" "$PASS" >> /etc/fstab
+    FSTAB_BACKUP="$FSTAB.before-curatables-$(date +%Y%m%d-%H%M%S)"
+    cp "$FSTAB" "$FSTAB_BACKUP"
+    printf 'UUID=%s %s %s %s 0 %s\n' "$UUID" "$MNT" "$MOUNT_FS" "$MOUNT_OPTS" "$PASS" >> "$FSTAB"
 fi
 systemctl daemon-reload 2>/dev/null || true
 if ! mountpoint -q "$MNT"; then
+    WE_MOUNTED=1
     mount "$MNT" || die "could not mount $DEV at $MNT ('dmesg | tail' says why). An NTFS drive Windows did not shut down cleanly must be checked in Windows first; an exFAT drive can be checked with: sudo fsck.exfat $DEV"
 fi
 
+if [ -e "$INCOMPLETE" ]; then
+    say "The drive has a copy that never finished; copying again"
+    rm -rf "$LIB" "$INCOMPLETE"
+fi
 if [ -d "$LIB" ] && [ -n "$(ls -A "$LIB" 2>/dev/null)" ]; then
     say "The drive already holds a curatables-library; using it as is."
 else
+    COPYING=1
+    : > "$INCOMPLETE"
     install -d -m 0750 "$LIB"
     NEED_KB=0
     for sub in "${MEDIA_SUBDIRS[@]}"; do
@@ -87,6 +126,9 @@ else
         [ "$FSTYPE" != ext4 ] || [ "$SRC_BYTES" = "$DST_BYTES" ] \
             || die "copy of $sub differs in size; the SD-card copy is untouched"
     done
+    rm -f "$INCOMPLETE"
+    COPYING=0
+    say "The copy is complete"
 fi
 # ext4 and ntfs3 both record who created a file, so what root copied
 # above must be handed to the service user. exFAT has no owners; its
@@ -96,6 +138,8 @@ if [ "$FSTYPE" != exfat ]; then
     chmod 0750 "$LIB"
 fi
 
+# From here on the SD-card copy moves aside: no more rewinding.
+REWIND=0
 KEEP="$DATA/media.before-external-$(date +%Y%m%d-%H%M%S)"
 for sub in "${MEDIA_SUBDIRS[@]}"; do
     if [ -d "$DATA/$sub" ]; then

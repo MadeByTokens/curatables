@@ -38,6 +38,12 @@ code already called itself 0.5.0).
   restart, and Resume carries on) or stopped (its files go; the video
   stays listed with Download again), one at a time, ticked together, or
   all at once from the Content page.
+- Moving the videos to a USB drive, from one drive to another, or back
+  to the SD card shows how much is copied and can be cancelled while it
+  copies. A cancelled or failed copy is deleted and nothing is switched;
+  a drive holding a copy that never finished gets a fresh copy instead
+  of being used as it is. The Settings move (installs without a fixed
+  data folder) copies and checks before deleting the old folder.
 - Per kid, requests for videos from the YouTube channels on the allowed
   list can be added without review, into a channel the parent picks
   (Kids → Edit). They still pass every other rule, re-checked against

@@ -44,6 +44,10 @@ def _dispatch(name: str, params: dict) -> Any:
         return {"pong": True}
     if name == "job_status":
         return JOBS.get(text(params, "id", max_len=32)).as_dict()
+    if name == "job_cancel":
+        job = JOBS.get(text(params, "id", max_len=32))
+        job.request_cancel()
+        return job.as_dict()
     if name == "jobs":
         return [j.as_dict() for j in JOBS.latest()]
     act = ACTIONS.get(name)
