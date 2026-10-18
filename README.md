@@ -59,11 +59,11 @@ detail, for Windows, Mac and phone users.
 6. **Add your first video.** Go to **+ Add**, paste a link, watch the
    video in the preview, tick that you've seen all of it and pick a
    channel (a "shelf" of videos). It downloads and gets ready to play.
-   ([details](docs/parents-guide.md#your-first-video-and-your-first-kid))
+   ([details](docs/guide/parents.md#3-add-a-video))
 7. **Give a kid their profile.** Go to **Kids → Add a kid**, pick a
    name and a picture, and choose what they may do. Then open the kid
    address on their tablet (the Kids page has a QR code to scan).
-   ([details](docs/parents-guide.md#your-first-video-and-your-first-kid))
+   ([details](docs/guide/parents.md#4-make-a-profile-for-each-kid))
 
 The dashboard's **Help** page has more tips. Wi-Fi, USB drives, backups
 and updates are all on the dashboard's **Box** pages.
