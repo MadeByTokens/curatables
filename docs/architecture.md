@@ -484,7 +484,9 @@ the normal Review & add page (`parent/content_preview.html`) filled from
 the stored row, with the kid's choices pre-filled and editable; it asks
 YouTube nothing. Nothing downloads until the parent adds it. **Not this
 one** marks the request rejected, which hides that video from the kid's
-searches; **Remove** deletes a pending or rejected request instead. A request whose video YouTube won't serve (unavailable or
+searches; **Remove** sets a pending or rejected request aside (`removed`,
+`allowed_again`), which the kid doesn't see and **Put back** undoes;
+asking again turns the same row back into a pending request. A request whose video YouTube won't serve (unavailable or
 age-restricted) is marked `unavailable`: the parent sees "YouTube won't
 serve it" and the kid "Can't get this one".
 

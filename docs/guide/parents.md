@@ -142,7 +142,9 @@ it, change anything you like and add it. Your kid's request then says
 **Yes! Watch**. **Not this one** turns it down, and that kid won't see
 it in their searches again; **Let (name) ask again** under **Recently
 decided** takes that back. **Remove** just drops a request (one tapped by
-mistake, say), and your kid can ask for it again later. A kid who can
+mistake, say), and your kid can ask for it again later. Neither deletes
+anything: both stay under **Recently decided**, where **Put back**
+returns the request as it was, with your kid's name and description. A kid who can
 make their own channels (**Customize videos and own channels**) can make
 one for the video when asking; any other kid can only suggest a name,
 and you see it as "For: a new channel" and filled in under **Or create
