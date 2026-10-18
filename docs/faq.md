@@ -101,7 +101,8 @@ the file from the card.
 **A kid sees "Getting your video ready…" for a long time.**
 Its file is not on the box, so it is downloading again. Videos are kept
 unless you turned on **Settings → Freeing up space**; then a video nobody
-watched for that many days loses its file and comes back when tapped. To
+watched for that many days loses its file; its picture stays, marked
+"Takes a moment to start", and the file comes back when tapped. To
 stop that for a favourite, tick **Keep forever** on its edit page, or set
 Freeing up space back to `0`.
 
@@ -134,7 +135,7 @@ from the last time it saved and catches up once it reaches the internet.
 Without internet, opening any page from a signed-in kid's or parent's
 device sets the clock from that device. "Today" starts at midnight in the
 family's time zone, filled in from your browser; change it in **Settings →
-Time zone**.
+Storage → Time zone**.
 
 **I already have a drive full of movies.**
 Don't format it. Plug it in, open **Box → Drives & backups** and press
@@ -162,9 +163,9 @@ and tags stay private). Accents and capitals don't matter, so "vulcao"
 finds "Vulcão".
 
 **Can each child have different rules?**
-Yes. Each profile has its own channels, PIN, theme and switches for
-reactions, comments, tags, customizing, uploads, search and automatic
-subtitles (**Kids → Edit**).
+Yes. Each profile has its own channels, PIN, language, theme and
+switches for reactions, comments, tags, customizing, uploads, search,
+asking for new videos and automatic subtitles (**Kids → Edit**).
 
 **A kid uploaded something. Who sees it?**
 In the kid's own channel: only that kid (and anyone you shared that

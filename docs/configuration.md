@@ -30,7 +30,7 @@ the spelling: a misspelled key has no effect.
 | `mdns_enabled` | `true` | Advertise the server as `curatables.local` on the network. |
 | `mdns_name` | `Curatables` | Name shown in Bonjour/Avahi browsers. |
 | `prometheus_enabled` | `false` | Expose counters at `/metrics` for Prometheus. |
-| `timezone` | empty | The family's time zone (an IANA name such as `America/Toronto`): where "today" starts in the stats and the "today/yesterday" dates. Times are stored in UTC and the Pi runs on UTC. Filled in from the parent's browser the first time they sign in; Settings → Time zone. Empty uses the box's own zone. |
+| `timezone` | empty | The family's time zone (an IANA name such as `America/New_York`): where "today" starts in the stats and the "today/yesterday" dates. Times are stored in UTC and the Pi runs on UTC. Filled in from the parent's browser the first time they sign in; Settings → Storage → Time zone. Empty uses the box's own zone. |
 | `kid_language` | `en` | Language of the "Who's watching?" picker (`en`, `pt-BR`, `es`). Settings → Storage → Kid screen language. |
 | `allowed_hosts` | `[]` | Extra names the server answers to. It always answers to its hostname (with `.local`, `.lan`, `.home` and similar), `localhost` and IP addresses; other names are refused (DNS rebinding). |
 | `helper_socket` | `/run/curatables-helper/helper.sock` | Socket of the root system helper behind the Box pages (Pi image only). Without it, those pages say they only work on the Pi image. |

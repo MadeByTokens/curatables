@@ -24,8 +24,7 @@ checkout. There are no LTS branches or backports: the fix is "update"
 **Do not open a public GitHub issue for security reports.** Public
 disclosure before a fix is ready puts every running install at risk.
 
-Email the maintainer at the address listed on the
-[`LICENSE`](LICENSE) file (`ricardo.azambuja@gmail.com`). PGP is
+Email the maintainer at `ricardo.azambuja@gmail.com`. PGP is
 not currently offered; if you need an encrypted channel, say so in
 your first message and we'll set one up.
 

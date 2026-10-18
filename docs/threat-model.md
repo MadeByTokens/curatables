@@ -276,7 +276,8 @@ now serve something else. When the re-downloaded file's length differs
 from the approved length by more than 10 s **and** 5 %, the video goes
 back to `status='review'` with a note. This is a length check only: a
 same-length replacement, or a video whose length is unknown or can't be
-probed, is not caught. Videos marked **keep forever** are never evicted.
+probed, is not caught. Videos marked **keep forever** are never evicted
+by **Freeing up space**; a manual **Free up files** frees them too.
 
 ### PIN bypass between siblings
 

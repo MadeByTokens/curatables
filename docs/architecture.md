@@ -262,7 +262,9 @@ Tables (see `schema.sql` for columns): `channels` (parent-created when
 `videos` carries two independent states: `status` (`active` / `hidden` /
 `review`, the parent's decision) and `download_status` (`pending` /
 `downloading` / `ready` / `error` / `evicted`, the file's state). The
-kid UI shows only `active` + `ready`.
+kid UI shows `active` videos that are `ready` or `evicted`; an evicted
+one carries a "Takes a moment to start" mark and downloads again when
+opened.
 
 ### Kid library personalization
 
@@ -338,8 +340,9 @@ uploads and imports, `MediaNormalizer` probes the file and leaves it alone
 that is H.264/AAC ≤720p30 with `+faststart`. It never raises on media
 problems: an unconvertible file keeps its original `.webm`/`.mkv`, which
 playback, size accounting and crash recovery all find. The yt-dlp format
-string prefers `avc1`+`mp4a`, so most ingests need only the remux. Design
-notes: [`history/ui-and-playback-plan.md`](history/ui-and-playback-plan.md).
+string prefers `avc1`+`mp4a`, so most ingests need only the remux. The
+plan it came from is kept in
+[`history/ui-and-playback-plan.md`](history/ui-and-playback-plan.md).
 
 The command maps exactly one video stream (skipping cover-art pictures)
 and one audio stream (the first, or the one the parent chose), and drops
@@ -466,7 +469,9 @@ the normal Review & add page (`parent/content_preview.html`) filled from
 the stored row, with the kid's choices pre-filled and editable; it asks
 YouTube nothing. Nothing downloads until the parent adds it. **Not this
 one** marks the request rejected, which hides that video from the kid's
-searches.
+searches. A request whose video YouTube won't serve (unavailable or
+age-restricted) is marked `unavailable`: the parent sees "YouTube won't
+serve it" and the kid "Can't get this one".
 
 ---
 
