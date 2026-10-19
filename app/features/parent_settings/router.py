@@ -111,13 +111,11 @@ def _lines(text: str, commas: bool = False) -> list[str]:
 @router.post("/settings/wishlist")
 def settings_save_wishlist(request: Request,
                            blocked_words: str = Form(""),
-                           allowed_channels: str = Form(""),
                            max_duration_minutes: int = Form(30),
                            max_results: int = Form(12),
                            viewer: ViewerContext = Depends(require_parent),
                            config: Config = Depends(get_config)):
     config.wishlist.blocked_words = _lines(blocked_words, commas=True)
-    config.wishlist.allowed_channels = _lines(allowed_channels)
     config.wishlist.max_duration_minutes = max(0, min(max_duration_minutes, 600))
     config.wishlist.max_results = max(1, min(max_results, 30))
     config.save()

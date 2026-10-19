@@ -122,19 +122,13 @@
     YouTube on their <strong>Find new</strong> page. The search runs on this server and the
     results go through these rules before the kid sees titles and pictures; nothing is
     downloaded until you add it from <a href="/parent/requests">Video requests</a>.
-    YouTube's own SafeSearch is not applied, so keep the word list strict, or list the
-    channels you trust.
+    YouTube's own SafeSearch is not applied, so keep the word list strict, or let kids
+    find only the <a href="/parent/trusted-channels">YouTube channels you trust</a>.
   </p>
   <div class="form-group">
     <label for="blocked_words">Hide results with these words (one per line)</label>
     <textarea id="blocked_words" name="blocked_words" rows="6" class="w-100">{{ config.wishlist.blocked_words|join("\n") }}</textarea>
     <small class="muted">Checked against the search words, titles, descriptions and channel names. A search containing one shows nothing.</small>
-  </div>
-  <div class="form-group">
-    <label for="allowed_channels">Only show these channels (one per line, optional)</label>
-    <textarea id="allowed_channels" name="allowed_channels" rows="4" class="w-100" placeholder="Sesame Street&#10;Numberblocks">{{ config.wishlist.allowed_channels|join("\n") }}</textarea>
-    <small class="muted">Channel names exactly as YouTube shows them. Empty = any channel. Applies to channel search too.
-      For younger kids this is safer than a word list: titles that get past the words can still be wild.</small>
   </div>
   <div class="form-group">
     <label for="max_duration_minutes">Longest video shown (minutes)</label>
@@ -147,6 +141,10 @@
   </div>
   <button type="submit" class="btn">Save rules</button>
 </form>
+<p class="mw-500 mt-20"><a href="/parent/trusted-channels"><strong>Trusted YouTube channels</strong></a>:
+  channels whose videos can be added without asking you, and that a kid can be limited to.
+  For younger kids, finding only trusted channels is safer than a word list: titles that get past
+  the words can still be wild.</p>
 
 <h2 class="mt-40" id="settings-import">Import from a drive</h2>
 <form method="POST" action="/parent/settings/imports" class="mw-500">

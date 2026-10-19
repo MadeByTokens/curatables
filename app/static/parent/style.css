@@ -844,3 +844,6 @@ td .btn { white-space: nowrap; }
 @media (max-width: 500px) { .ytdlp-thanks { flex-direction: column; gap: 6px; } }
 .channel-pick { padding-left: 26px; }
 .downloads-bar form { margin: 0 12px 0 6px; }
+.trusted-list { padding-left: 20px; }
+.trusted-list li { margin: 6px 0; }
+.trusted-list form { margin-left: 6px; }

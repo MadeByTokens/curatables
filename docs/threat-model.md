@@ -555,7 +555,8 @@ channel's videos; both filter by `config.wishlist`: blocked words
 (query, title, channel, description snippet; a query with one is
 refused before any request to YouTube, a blocked channel can't be
 opened by URL), an
-optional channel allowlist, a maximum duration, no live or upcoming
+an optional "only trusted channels" mode per kid (YouTube channel IDs,
+so a look-alike name doesn't pass), a maximum duration, no live or upcoming
 streams, YouTube ids only. Thumbnails are fetched by the server
 (`safe_fetch`) and served from `/wishlist/thumb/<id>` only for ids this
 profile was just shown or asked for (kept in the session under the
@@ -580,7 +581,7 @@ them. A video request stores what YouTube said about the video, next to the
 kid's choices, so the parent's review asks YouTube nothing.
 
 Residual: titles and thumbnails from an unfiltered search reach the
-kid before any human sees them; the word list and allowlist are the
+kid before any human sees them; the word list and trusted channels are the
 only filter (no SafeSearch, no classifier). Kid-written request names and
 descriptions reach the parent's review page as text, escaped by Jinja's
 autoescape like every other field.
@@ -622,7 +623,7 @@ autoescape like every other field.
 | Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
 | Re-download check compares length only | Low | Documented; use keep forever for favourites |
 | CSP allows inline style attributes and any https frame | Low | Accepted |
-| Wishlist: kids see titles and thumbnails of unfiltered YouTube search results (word list and channel allowlist only) | Medium | Documented; off by default per kid |
+| Wishlist: kids see titles and thumbnails of unfiltered YouTube search results (word list and trusted channels only) | Medium | Documented; off by default per kid |
 | Backups (DB + `config.json` with session secret) unencrypted | Low (0600, root/service user only) | Documented |
 | Relocation pointer config with a missing target reopens first-run setup | Low (non-systemd installs only) | Documented |
 | Wi-Fi PSK on the boot partition between flashing and the first boot | Low (physical access) | Mitigated; blanked once applied |

@@ -33,6 +33,7 @@ class VideoMetadata:
     extractor: str = ""       # from info["extractor_key"], lowercased
     original_url: str = ""    # from info["webpage_url"]
     is_live: bool = False     # live now or not started yet
+    channel_id: str = ""      # the platform's channel ID (YouTube: UC...), if known
 
 
 class BackendErrorType(Enum):
@@ -100,6 +101,10 @@ class VideoBackend(ABC):
 
     def search_channels(self, query: str, max_results: int = 12) -> list[ChannelHit]:
         """YouTube channels matching `query`."""
+        raise NotImplementedError
+
+    def find_channel(self, url: str) -> ChannelHit | None:
+        """The YouTube channel behind a channel or video link."""
         raise NotImplementedError
 
     @abstractmethod

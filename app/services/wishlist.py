@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable
 
 from app.backends.base import BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
 from app.config import Config
+from app.models import Profile
+from app.repositories.profile_repo import ProfileRepository
+from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.video_repo import VideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.ids import make_video_id
@@ -49,6 +52,17 @@ class WishlistError(Exception):
     def __init__(self, kind: str):
         super().__init__(KID_MESSAGES[kind])
         self.kind = kind
+
+
+@dataclass
+class KidRules:
+    """One kid's trusted YouTube channel IDs, and whether Find new shows
+    only those."""
+    trusted: set[str] = field(default_factory=set)
+    only_trusted: bool = False
+
+    def allows_channel(self, channel_id: str) -> bool:
+        return not self.only_trusted or channel_id in self.trusted
 
 
 @dataclass
@@ -99,12 +113,32 @@ class WishlistService:
         self.video_repo = video_repo
         self.thumbnails = thumbnails
         self.rules = config.wishlist
+        self.trusted = TrustedChannelRepository(repo.db)
+        self.profiles = ProfileRepository(repo.db)
 
     def blocked_word_in(self, text: str) -> str | None:
         return blocked_word_in(self.rules.blocked_words, text)
 
-    def passes(self, meta: VideoMetadata) -> bool:
-        """The parent's rules for a single result."""
+    def kid_rules(self, profile_id: int) -> KidRules:
+        """The kid's trusted channels; "only trusted channels" is theirs
+        if set, else the family's."""
+        profile = self.profiles.get(profile_id)
+        mode = profile.trusted_only if profile else "family"
+        only = mode == "on" if mode in ("on", "off") else self.rules.only_trusted_channels
+        return KidRules(self.trusted.ids_for(profile_id), bool(only))
+
+    def auto_add_into(self, profile: Profile | None) -> int | None:
+        """The channel this kid's requests from trusted channels go
+        straight into (theirs if set, else the family's), or None."""
+        if profile is None or profile.auto_add_mode == "off":
+            return None
+        if profile.auto_add_mode == "on":
+            return profile.auto_add_channel_id
+        return self.rules.auto_add_channel_id
+
+    def passes(self, meta: VideoMetadata, kid: KidRules | None = None) -> bool:
+        """The parent's rules for a single result, and the kid's trusted
+        channels when they may see only those."""
         if meta.is_live:
             return False
         if meta.extractor != "youtube" or not _YOUTUBE_ID.match(meta.video_id):
@@ -114,20 +148,16 @@ class WishlistService:
             return False
         if self.blocked_word_in(f"{meta.title}\n{meta.channel}\n{meta.description}"):
             return False
-        return self.channel_allowed(meta.channel)
+        return kid is None or kid.allows_channel(meta.channel_id)
 
-    def may_skip_review(self, meta: VideoMetadata) -> bool:
+    def may_skip_review(self, meta: VideoMetadata, kid: KidRules) -> bool:
         """Whether a request may be added without the parent watching it:
-        it passes the rules and its YouTube channel is on the allowed list
-        by name (an empty list lets none through)."""
-        allowed = {c.strip().lower() for c in self.rules.allowed_channels if c.strip()}
-        return meta.channel.strip().lower() in allowed and self.passes(meta)
+        it passes the rules and its YouTube channel, by ID, is one of the
+        kid's trusted channels."""
+        return bool(meta.channel_id) and meta.channel_id in kid.trusted and self.passes(meta, kid)
 
     def channel_allowed(self, name: str) -> bool:
-        if self.blocked_word_in(name):
-            return False
-        allowed = [c.strip().lower() for c in self.rules.allowed_channels if c.strip()]
-        return not allowed or name.strip().lower() in allowed
+        return not self.blocked_word_in(name)
 
     def _fetch(self, profile_id: int, key: tuple, want: int, call):
         def run(n):
@@ -149,12 +179,12 @@ class WishlistService:
             shown.sort(key=lambda x: name(x).casefold(), reverse=sort == "za")
         return shown, has_more
 
-    def _videos(self, profile_id: int, found: list[VideoMetadata], page: int,
+    def _videos(self, profile_id: int, kid: KidRules, found: list[VideoMetadata], page: int,
                 sort: str) -> tuple[list[WishlistResult], bool]:
         asked = self.repo.statuses_for(profile_id)
         results: list[WishlistResult] = []
         for meta in found:
-            if not self.passes(meta):
+            if not self.passes(meta, kid):
                 continue
             video_id = make_video_id(meta.extractor, meta.video_id)
             status = asked.get(video_id, "new")
@@ -181,6 +211,7 @@ class WishlistService:
             return WishlistPage(page=page)
         if self.blocked_word_in(query):
             raise WishlistError("rules")
+        kid = self.kid_rules(profile_id)
         try:
             GATE.tap(profile_id)
         except SearchRefused as e:
@@ -190,20 +221,22 @@ class WishlistService:
             hits = self._fetch(profile_id, ("channels", query.casefold()), want,
                                lambda n: self.backend.search_channels(query, max_results=n))
             ok = [WishlistChannel(h, f"ytchannel_{h.channel_id}") for h in hits
-                  if CHANNEL_ID.match(h.channel_id) and self.channel_allowed(h.name)]
+                  if CHANNEL_ID.match(h.channel_id) and self.channel_allowed(h.name)
+                  and kid.allows_channel(h.channel_id)]
             shown, has_more = self._paged(ok, page, sort, lambda c: c.hit.name)
             self.thumbnails.download_many([(c.thumb_id, c.hit.thumbnail_url) for c in shown])
             return WishlistPage(channels=shown, page=page, has_more=has_more)
         newest = sort == "newest"
         found = self._fetch(profile_id, ("videos", query.casefold(), newest), want,
                             lambda n: self.backend.search(query, max_results=n, newest_first=newest))
-        results, has_more = self._videos(profile_id, found, page, sort)
+        results, has_more = self._videos(profile_id, kid, found, page, sort)
         return WishlistPage(results=results, page=page, has_more=has_more)
 
     def channel(self, profile_id: int, channel_id: str, page: int = 1,
                 sort: str = "newest") -> WishlistPage:
         """A channel's latest videos, through the same rules."""
-        if not CHANNEL_ID.match(channel_id):
+        kid = self.kid_rules(profile_id)
+        if not CHANNEL_ID.match(channel_id) or not kid.allows_channel(channel_id):
             raise WishlistError("gone")
         page = min(max(page, 1), MAX_PAGES)
         sort = sort if sort in SORTS["channel"] else "newest"
@@ -218,11 +251,13 @@ class WishlistService:
         want = self._want(page, factor=4)
         found = self._fetch(profile_id, ("channel", channel_id), want,
                             lambda n: self.backend.fetch_channel_videos(url, max_results=n)[1])
-        # A channel listing names the channel once; every entry carries it.
+        # A channel listing names the channel once; every entry carries
+        # its name, and here its ID too.
+        found = [m if m.channel_id else replace(m, channel_id=channel_id) for m in found]
         name = found[0].channel if found else ""
         if not name or not self.channel_allowed(name):
             raise WishlistError("gone")
-        results, has_more = self._videos(profile_id, found, page, sort)
+        results, has_more = self._videos(profile_id, kid, found, page, sort)
         # A full listing means the channel has more than was fetched.
         has_more = has_more or (len(found) >= want and want < MAX_FETCH and page < MAX_PAGES)
         return WishlistPage(results=results, page=page, has_more=has_more, title=name)
@@ -240,6 +275,8 @@ class WishlistService:
             raise WishlistError("rejected")
         url = f"https://www.youtube.com/watch?v={raw_id}"
         known = self.repo.latest_for_video(video_id)
+        if known is not None and not known.youtube_channel_id:
+            known = None  # can't be checked against trusted channels
         partial = False
         meta: VideoMetadata | None
         if known is not None:
@@ -250,7 +287,7 @@ class WishlistService:
             found = self._fetch(profile_id, ("video", raw_id), 1, lambda n: [
                 m for m in [self.backend.fetch_video_info(url)] if m])
             meta = found[0] if found else None
-        if meta is None or not self.passes(meta):
+        if meta is None or not self.passes(meta, self.kid_rules(profile_id)):
             raise WishlistError("not_allowed")
         request_id = self.repo.add(profile_id, video_id, meta, meta.original_url or url)
         self.thumbnails.download(video_id, meta.thumbnail_url)
@@ -272,7 +309,7 @@ class WishlistService:
                 self.repo.decide(request_id, "unavailable")
             return
         self.repo.fill_details(request_id, meta)
-        if not self.passes(meta):
+        if not self.passes(meta, self.kid_rules(item.profile_id)):
             self.repo.decide(request_id, "rejected")
 
 

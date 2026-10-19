@@ -105,21 +105,52 @@
   </fieldset>
 
   {% set own_channels = channels | rejectattr('owner_profile_id') | list %}
-  {% if own_channels %}
-  <div class="form-group">
-    <label for="auto_add_channel_id">Add their video requests without asking me</label>
-    <select id="auto_add_channel_id" name="auto_add_channel_id">
-      <option value="">No, I review each one</option>
+  {% set auto_mode = profile.auto_add_mode if profile else "family" %}
+  {% set only_mode = profile.trusted_only if profile else "family" %}
+  {% set family_into = own_channels | selectattr('id', 'equalto', wishlist_rules.auto_add_channel_id) | first %}
+  <fieldset class="form-group" id="youtube-channels">
+    <legend>Trusted YouTube channels</legend>
+    <input type="hidden" name="youtube_section" value="1">
+    <small class="muted d-block mb-6">For <strong>Ask for new videos</strong>. Channels are matched by
+      their YouTube ID. The family list and settings are on
+      <a href="/parent/trusted-channels">Trusted YouTube channels</a>.</small>
+    <label for="trusted_only">On their Find new page</label>
+    <select id="trusted_only" name="trusted_only">
+      <option value="family"{% if only_mode not in ("on", "off") %} selected{% endif %}>Family setting (now: {% if wishlist_rules.only_trusted_channels %}only trusted channels{% else %}all of YouTube{% endif %})</option>
+      <option value="off"{% if only_mode == "off" %} selected{% endif %}>Search all of YouTube, through your rules</option>
+      <option value="on"{% if only_mode == "on" %} selected{% endif %}>Find only their trusted channels</option>
+    </select>
+    <label for="auto_add" class="mt-20">Their requests from trusted channels</label>
+    <select id="auto_add" name="auto_add">
+      <option value="family"{% if auto_mode not in ("on", "off") %} selected{% endif %}>Family setting (now: {% if family_into %}straight into {{ family_into.name }}{% else %}wait for me{% endif %})</option>
+      <option value="off"{% if auto_mode == "off" %} selected{% endif %}>Wait for me, like any other request</option>
       {% for ch in own_channels %}
-      <option value="{{ ch.id }}"{% if profile and profile.auto_add_channel_id == ch.id %} selected{% endif %}>Yes, into {{ ch.name }}</option>
+      <option value="{{ ch.id }}"{% if auto_mode == "on" and profile.auto_add_channel_id == ch.id %} selected{% endif %}>Go straight into {{ ch.name }}</option>
       {% endfor %}
     </select>
-    <small class="muted d-block">Only for videos from the YouTube channels on your
-      <a href="/parent/settings#settings-wishlist">allowed list</a> that pass all your other rules;
-      everything else still waits in Video requests. Pick a channel this kid can see.
-      {% if not allowed_youtube_channels %}<strong>Your allowed list is empty, so nothing is added this way.</strong>{% endif %}</small>
-  </div>
-  {% endif %}
+    <small class="muted d-block">Only videos that pass all your other rules; everything else waits in
+      Video requests. Pick a channel this kid can see.</small>
+    <p class="fw-normal mt-20 mb-6">Trusted for this kid:</p>
+    {% for ch in trusted_family %}
+    <input type="hidden" name="trusted_family_shown" value="{{ ch.channel_id }}">
+    <label class="fw-normal d-block">
+      <input type="checkbox" name="trusted_family" value="{{ ch.channel_id }}"{% if ch.channel_id not in trusted_off %} checked{% endif %}>
+      {{ ch.name }} <span class="muted fs-13">(every kid)</span>
+    </label>
+    {% endfor %}
+    {% for ch in trusted_extra %}
+    <label class="fw-normal d-block">
+      <input type="checkbox" name="trusted_extra" value="{{ ch.channel_id }}" checked>
+      {{ ch.name }} <span class="muted fs-13">(only this kid)</span>
+    </label>
+    {% endfor %}
+    {% if not trusted_family and not trusted_extra %}<small class="muted d-block">None yet.</small>{% endif %}
+    {% if trusted_family %}<small class="muted d-block">Untick one to leave it out for this kid.</small>{% endif %}
+    <label for="add_channel" class="mt-20">Add a channel for this kid only</label>
+    <input type="text" id="add_channel" name="add_channel" class="w-100" value="{{ add_channel }}"
+           placeholder="Channel link, @handle, channel ID, or a video link">
+    <small class="muted d-block">Added when you save.</small>
+  </fieldset>
 
   {% if channels %}
   {% set access = "all" if not (profile and profile.channels_restricted) else ("some" if selected_channel_ids else "none") %}

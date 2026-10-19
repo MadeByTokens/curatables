@@ -93,8 +93,12 @@ CREATE TABLE IF NOT EXISTS profiles (
     pin_style   TEXT NOT NULL DEFAULT 'digits',  -- 'digits' | 'pictures'
     language    TEXT NOT NULL DEFAULT 'en',      -- kid screens, see app/i18n
     allow_wishlist  INTEGER NOT NULL DEFAULT 0,
-    -- Requests from allowed YouTube channels go straight into this channel.
-    auto_add_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL
+    -- Requests from trusted YouTube channels go straight into this channel
+    -- when auto_add_mode is 'on'.
+    auto_add_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,
+    auto_add_mode TEXT NOT NULL DEFAULT 'family',  -- 'family' | 'off' | 'on'
+    -- Find new shows only trusted YouTube channels: 'family' | 'on' | 'off'.
+    trusted_only TEXT NOT NULL DEFAULT 'family'
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (
@@ -185,7 +189,25 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     target_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,  -- the kid's pick
     suggested_channel TEXT NOT NULL DEFAULT '',  -- a new channel's name the kid suggests
     auto_added    INTEGER NOT NULL DEFAULT 0,   -- added without the parent's review
+    youtube_channel_id TEXT NOT NULL DEFAULT '',  -- UC..., '' when not known
     UNIQUE (profile_id, video_id)
+);
+
+-- YouTube channels the parent trusts for every kid, by channel ID.
+CREATE TABLE IF NOT EXISTS trusted_youtube_channels (
+    channel_id TEXT PRIMARY KEY,             -- UC...
+    name       TEXT NOT NULL DEFAULT '',
+    added_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Per kid: trusted = 1 adds a channel for this kid only; trusted = 0
+-- switches a family channel off for this kid.
+CREATE TABLE IF NOT EXISTS profile_youtube_channels (
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    channel_id TEXT NOT NULL,
+    name       TEXT NOT NULL DEFAULT '',
+    trusted    INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (profile_id, channel_id)
 );
 
 -- One row per file imported from a drive: the wizard's draft, then the

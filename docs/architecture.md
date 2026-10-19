@@ -470,14 +470,33 @@ a kid-owned channel made at once with `allow_customize`, otherwise
 deletes a pending request, so the video can be asked for again. The kid
 never sees YouTube's description, which is often an advert with links.
 
-When the kid sends the request and their profile has
-`auto_add_channel_id`, `_auto_add` in `kid_wishlist/router.py` fetches
-YouTube's full details if only the search result is stored, then adds
-the video into that channel (the kid's own picked channel gets a
-bookmark) if `WishlistService.may_skip_review` holds: the rules pass and
-the YouTube channel is on `wishlist.allowed_channels` by name. An empty
-list lets nothing through. The request is marked approved and
-`auto_added`.
+Trusted YouTube channels are kept by channel ID (`UC...`):
+`trusted_youtube_channels` is the family list, and
+`profile_youtube_channels` holds per-kid rows that add a channel for
+one kid (`trusted = 1`) or switch a family one off for them
+(`trusted = 0`); `TrustedChannelRepository.ids_for` gives a kid's set.
+`WishlistService.kid_rules` combines it with "only trusted channels"
+(`profiles.trusted_only`: `family`, `on` or `off`, where `family`
+follows `wishlist.only_trusted_channels`). When that is on, video
+results, channel results and channel pages from other channels are
+hidden; a result without a channel ID counts as untrusted. Channel
+listings carry no per-video channel ID, so `WishlistService.channel`
+fills in the listing's own. The parent manages the lists on
+`/parent/trusted-channels` (`app/features/parent_trusted/`) and on the
+kid's form; `TrustedChannelService.lookup` turns a pasted ID, @handle,
+or channel or video link into an ID with one flat yt-dlp lookup
+(`find_channel`).
+
+When the kid sends the request, `WishlistService.auto_add_into` picks
+the channel it may go straight into: the kid's own
+(`auto_add_mode = 'on'` and `auto_add_channel_id`), none (`'off'`), or
+the family's `wishlist.auto_add_channel_id` (`'family'`). If there is
+one, `_auto_add` in `kid_wishlist/router.py` fetches YouTube's full
+details if only the search result is stored, then adds the video into
+that channel (the kid's own picked channel gets a bookmark) if
+`WishlistService.may_skip_review` holds: the rules pass and the video's
+YouTube channel ID is one of the kid's trusted channels. The request is
+marked approved and `auto_added`.
 
 The parent's inbox is `app/features/parent_requests/`. **Review** opens
 the normal Review & add page (`parent/content_preview.html`) filled from

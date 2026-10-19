@@ -1,0 +1,120 @@
+{% extends "parent/base.html" %}
+{% block title %}Trusted YouTube channels · curatables{% endblock %}
+{% block content %}
+<h1>Trusted YouTube channels</h1>
+{% if notice %}<div class="flash" role="status">{{ notice }}</div>{% endif %}
+{% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+<p class="muted">YouTube channels you trust, checked by their channel ID, so a look-alike channel
+with the same name doesn't count. Videos your kids ask for from these channels can go into the
+library without waiting for you, and a kid can be set to find only these channels on their
+<strong>Find new</strong> page. Every rule in <a href="/parent/settings#settings-wishlist">Settings → Video requests</a>
+(blocked words, length, no live streams) still applies.
+<a href="/parent/requests">Video requests</a> shows what was added without asking, and lets you take it back.</p>
+
+<h2 class="mt-40" id="family-settings">For the whole family</h2>
+<form method="POST" action="/parent/trusted-channels/settings" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <input type="checkbox" id="only_trusted" name="only_trusted" value="1" {% if config.wishlist.only_trusted_channels %}checked{% endif %}>
+    <label for="only_trusted" class="inline-label">Kids find only their trusted channels</label>
+    <small class="muted d-block">Off: kids search all of YouTube, through your rules. On: their
+      searches show only videos and channels from their trusted channels. Each kid can be set
+      differently (Kids → Edit).</small>
+  </div>
+  <div class="form-group">
+    <label for="auto_add_channel_id">Requests from trusted channels</label>
+    <select id="auto_add_channel_id" name="auto_add_channel_id">
+      <option value="">Wait for me, like any other request</option>
+      {% for ch in own_channels %}
+      <option value="{{ ch.id }}"{% if config.wishlist.auto_add_channel_id == ch.id %} selected{% endif %}>Go straight into {{ ch.name }}</option>
+      {% endfor %}
+    </select>
+    {% if not own_channels %}<small class="muted d-block">Make a channel on the <a href="/parent/channels">Channels</a> page first.</small>{% endif %}
+    <small class="muted d-block">Each kid can be set differently (Kids → Edit). Pick a channel the kids can see.</small>
+  </div>
+  <button type="submit" class="btn">Save</button>
+</form>
+
+<h2 class="mt-40" id="family-list">Trusted for every kid</h2>
+{% if family %}
+<ul class="trusted-list">
+  {% for ch in family %}
+  <li><a href="https://www.youtube.com/channel/{{ ch.channel_id }}" target="_blank" rel="noopener noreferrer">{{ ch.name }} &#8599;</a>
+    <span class="muted fs-13">{{ ch.channel_id }}</span>
+    <form method="POST" action="/parent/trusted-channels/remove" class="d-inline"
+          data-confirm="Stop trusting {{ ch.name }} for every kid?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="channel_id" value="{{ ch.channel_id }}">
+      <button type="submit" class="btn btn-sm btn-secondary">Remove</button>
+    </form></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">None yet. Add one below.</p>
+{% endif %}
+
+{% if kids %}
+<h2 class="mt-40" id="per-kid">Per kid</h2>
+<p class="muted fs-13">Change these on each kid's page (Kids → Edit).</p>
+<ul class="trusted-list">
+  {% for row in per_kid %}
+  {% set kid = row.kid %}
+  <li><strong>{{ kid.display_name or kid.name }}</strong>:
+    {% if kid.trusted_only == "on" %}finds only trusted channels{% elif kid.trusted_only == "off" %}searches all of YouTube{% else %}{% if config.wishlist.only_trusted_channels %}finds only trusted channels{% else %}searches all of YouTube{% endif %} (family setting){% endif %}
+    {% if row.extra %}&middot; also trusts {% for ch in row.extra %}{{ ch.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+    {% if row.off %}&middot; not {% for name in row.off %}{{ name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+    &middot; <a href="/parent/profiles/{{ kid.id }}/edit#youtube-channels">Edit</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<h2 class="mt-40" id="add">Add a channel</h2>
+<form method="POST" action="/parent/trusted-channels/add" class="mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="channel">Channel link, @handle, channel ID, or a link to one of its videos</label>
+    <input type="text" id="channel" name="channel" class="w-100" placeholder="https://www.youtube.com/@Numberblocks" required>
+  </div>
+  {% if kids %}
+  <div class="form-group">
+    <label for="add_for">For</label>
+    <select id="add_for" name="profile_id">
+      <option value="">Every kid</option>
+      {% for kid in kids %}<option value="{{ kid.id }}">Only {{ kid.display_name or kid.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <button type="submit" class="btn">Add</button>
+</form>
+
+<form method="GET" action="/parent/trusted-channels" class="mw-500 mt-20" id="find">
+  <div class="form-group">
+    <label for="find_q">Or search YouTube for a channel by name</label>
+    <input type="search" id="find_q" name="find" class="w-100" value="{{ find }}" placeholder="Numberblocks">
+  </div>
+  <button type="submit" class="btn btn-secondary">Search</button>
+</form>
+{% if find_error %}<p class="muted mt-16">{{ find_error }}</p>{% endif %}
+{% if hits %}
+<ul class="trusted-list mt-16">
+  {% for hit in hits %}
+  <li><a href="https://www.youtube.com/channel/{{ hit.channel_id }}" target="_blank" rel="noopener noreferrer">{{ hit.name }} &#8599;</a>
+    {% if hit.followers %}<span class="muted fs-13">{{ "{:,}".format(hit.followers) }} subscribers</span>{% endif %}
+    {% if hit.channel_id in trusted_ids %}<span class="muted fs-13">&middot; trusted for every kid</span>{% endif %}
+    <form method="POST" action="/parent/trusted-channels/add" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="channel_id" value="{{ hit.channel_id }}">
+      <input type="hidden" name="name" value="{{ hit.name }}">
+      <input type="hidden" name="back" value="/parent/trusted-channels?find={{ find|urlencode }}#find">
+      {% if kids %}
+      <select name="profile_id" aria-label="For">
+        <option value="">Every kid</option>
+        {% for kid in kids %}<option value="{{ kid.id }}">Only {{ kid.display_name or kid.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <button type="submit" class="btn btn-sm">Add</button>
+    </form></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

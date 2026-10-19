@@ -49,7 +49,7 @@ Background and plans for contributors. Not instructions.
 
 | Doc | Status |
 |-----|--------|
-| [design/filtered-search-and-proxy.md](design/filtered-search-and-proxy.md) | Kids' video requests with parent approval: built, with the word list, channel allowlist and length rules, but no classifier. A filtered real-time proxy: not built. |
+| [design/filtered-search-and-proxy.md](design/filtered-search-and-proxy.md) | Kids' video requests with parent approval: built, with the word list, trusted channels (by ID) and length rules, but no classifier. A filtered real-time proxy: not built. |
 | [design/import-from-drive.md](design/import-from-drive.md) | Media on a non-ext4 drive and the Import page: built. The Pi 4 hardware video encoder: not built. |
 | [design/v0.6-safety-agent.md](design/v0.6-safety-agent.md) | A local AI helper that pre-screens videos for the parent. Not built. |
 | [design/offline-web-pages.md](design/offline-web-pages.md) | Idea: offline web pages in the library. Not a commitment. |

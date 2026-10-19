@@ -25,18 +25,20 @@ is [threat-model.md](threat-model.md).
   for new videos** switched on (Kids → Edit), a child gets a **Find
   new** page: they type what they want, the server searches YouTube and
   shows the results that pass your rules (Settings → Video requests:
-  words to hide, channels to allow, a maximum length; live streams are
-  never shown). The tablet still never talks to YouTube, and nothing
+  words to hide, a maximum length; live streams are never shown; and,
+  if you choose, only the YouTube channels you trust for that child). The tablet still never talks to YouTube, and nothing
   plays or downloads: tapping **Ask** puts the video in your
   **Video requests** inbox, where you watch it like any other video
   before adding it. **Not this one** hides it from that child's
   searches for good. A parent can let one child's requests skip that
   review, into a channel the parent picks, but only for videos from
-  YouTube channels on the allowed list by name that pass every other
-  rule, checked against YouTube's full description first. Be aware that the child sees the titles and
+  YouTube channels the parent trusts for that child, matched by channel
+  ID (a look-alike channel with the same name doesn't count), that pass
+  every other rule, checked against YouTube's full description first.
+  Be aware that the child sees the titles and
   pictures of the results before you do, and YouTube's own SafeSearch
   is not applied, so for a younger child keep the word list strict or
-  allow only channels you trust.
+  let them find only the channels you trust.
 - **Re-downloaded videos are checked.** Every video is kept unless you
   turn on **Freeing up space** in Settings. Then a video
   nobody watched for a while loses its file; it stays on the kids'

@@ -24,9 +24,12 @@ class Profile:
     allow_upload: bool = True
     auto_subtitles: bool = True
     allow_wishlist: bool = False
-    # Requests from the parent's allowed YouTube channels skip review
-    # and go straight into this channel (None: every request waits).
+    # Requests from trusted YouTube channels skip review: "family" follows
+    # the family setting, "on" goes into auto_add_channel_id, "off" waits.
+    auto_add_mode: str = "family"
     auto_add_channel_id: int | None = None
+    # Find new shows only trusted YouTube channels: "family", "on" or "off".
+    trusted_only: str = "family"
 
 
 FEATURE_SWITCHES = (

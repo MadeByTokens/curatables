@@ -7,11 +7,13 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.dependencies import (
-    get_content_service, get_wishlist_repo, get_wishlist_service, require_parent,
+    get_content_service, get_trusted_channel_service, get_wishlist_repo, get_wishlist_service,
+    require_parent,
 )
 from app.models import ViewerContext
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.content import ContentService
+from app.services.trusted_channels import TrustedChannelService
 from app.services.wishlist import WishlistService
 
 router = APIRouter(prefix="/parent/requests", tags=["parent-requests"])
@@ -24,6 +26,7 @@ NOTICES = {
     "put-back": "Put back as it was.",
     "undone": "Removed from the library and turned down for that kid.",
     "unavailable": "YouTube won't serve that video (private, removed or restricted), so it can't be added.",
+    "trusted": "Channel trusted. Requests already waiting still need you; new ones follow the kid's settings for trusted channels.",
 }
 
 
@@ -33,12 +36,15 @@ def requests_page(request: Request,
                   notice: str = "",
                   viewer: ViewerContext = Depends(require_parent),
                   repo: WishlistRepository = Depends(get_wishlist_repo),
-                  content: ContentService = Depends(get_content_service)):
+                  content: ContentService = Depends(get_content_service),
+                  trusted: TrustedChannelService = Depends(get_trusted_channel_service)):
+    pending = repo.list_by_status("pending")
     return request.app.state.templates.TemplateResponse(request, "parent/requests.html", {
         "request": request,
         "channel_names": {c.id: c.name for c in content.list_channels()},
         "notice": NOTICES.get(notice),
-        "pending": repo.list_by_status("pending"),
+        "pending": pending,
+        "trusted_for": {pid: trusted.ids_for(pid) for pid in {w.profile_id for w in pending}},
         "pending_total": repo.count_pending(),
         "decided": repo.list_decided(),
     })

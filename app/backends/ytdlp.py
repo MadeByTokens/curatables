@@ -306,6 +306,23 @@ class YtdlpBackend(VideoBackend):
                                    thumb, int(e.get("channel_follower_count") or 0)))
         return hits
 
+    def find_channel(self, url: str) -> ChannelHit | None:
+        """One flat lookup: a channel link lists its uploads, a video
+        link is the video; both name the channel and its ID."""
+        if "/watch" not in url and "youtu.be/" not in url and "/shorts/" not in url:
+            url = url.rstrip("/")
+            if not url.endswith("/videos"):
+                url += "/videos"
+        if self._blocked(url):
+            return None
+        info = self._flat(url, 1)
+        if not info:
+            return None
+        cid = str(info.get("channel_id") or "")
+        if not _YOUTUBE_CHANNEL_ID.match(cid):
+            return None
+        return ChannelHit(cid, str(info.get("channel") or info.get("uploader") or ""))
+
     def download_video(self, url: str, output_dir: Path,
                        resolution: int = 720,
                        subtitle_langs: list[str] | None = None,
@@ -415,6 +432,7 @@ def _info_to_metadata(info: dict) -> VideoMetadata:
         extractor=extractor,
         original_url=info.get("webpage_url") or info.get("url") or "",
         is_live=_is_live(info),
+        channel_id=str(info.get("channel_id") or ""),
     )
 
 
@@ -478,5 +496,6 @@ def _entries_to_metadata(entries: list,
             extractor=extractor,
             original_url=e.get("webpage_url") or e.get("url") or "",
             is_live=_is_live(e),
+            channel_id=str(e.get("channel_id") or ""),
         ))
     return results
