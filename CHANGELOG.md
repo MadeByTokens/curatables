@@ -9,7 +9,15 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.8.0
+
+Trusted YouTube channels, for the whole family or one kid, and parent
+pages that are easier on a small phone. Boxes on v0.7.0 install it from
+**Box → Updates**; it adds one database migration, applied on the first
+start. The list of channel names under Settings → Video requests
+("Only show these channels") is replaced by trusted channels and not
+carried over: if you used it, add those channels again on the Trusted
+YouTube channels page.
 
 **For parents**
 - **Trusted YouTube channels** (Video requests → Trusted YouTube

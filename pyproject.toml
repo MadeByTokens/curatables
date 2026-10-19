@@ -1,6 +1,6 @@
 [project]
 name = "curatables"
-version = "0.7.0"
+version = "0.8.0"
 description = "Local, self-hosted video curation server for parents and kids — ad-free, recommendation-free, powered by yt-dlp."
 readme = "README.md"
 requires-python = ">=3.10"
