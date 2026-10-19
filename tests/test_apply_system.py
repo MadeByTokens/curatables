@@ -18,6 +18,9 @@ def test_installs_every_unit_the_tree_ships_and_the_hooks(tmp_path):
     hook = tmp_path / "NetworkManager" / "dispatcher.d" / "70-curatables-wired-only"
     assert os.access(hook, os.X_OK)
     assert 'Unattended-Upgrade "1"' in (tmp_path / "apt" / "apt.conf.d" / "20auto-upgrades").read_text()
+    # Sorts after Raspberry Pi OS's 40-rpi-volatile-storage.conf, so it wins.
+    journald = (tmp_path / "systemd" / "journald.conf.d" / "60-curatables.conf").read_text()
+    assert "Storage=persistent" in journald and "SystemMaxUse=" in journald
 
 
 def test_every_installed_unit_with_an_install_section_is_enabled():

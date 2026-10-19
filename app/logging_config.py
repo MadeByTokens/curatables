@@ -108,7 +108,7 @@ def setup_logging(log_level: str = "info",
                  file handler at {log_dir}/curatables.log (5MB, 3 backups).
                  The file leaves out the per-request access lines: on the
                  Pi it lives on the SD card, and the console (the journal,
-                 kept in RAM) still has them.
+                 capped in size) still has them.
         log_format: ``"plain"`` or ``"json"``. When omitted, falls back
                  to the ``LOG_FORMAT`` environment variable, then to
                  ``"plain"``.
