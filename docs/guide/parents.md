@@ -87,7 +87,7 @@ again**. Ticked videos can be paused, resumed or stopped together, and
 while downloads run the page offers **Pause all** and **Resume all**,
 handy after adding a long playlist.
 
-![The Content page with six videos](img/parent-content.webp)
+![The Content page: one download paused, with Resume and Stop](img/parent-content.webp)
 
 **Edit** on a video changes its title, description, picture or channel.
 Sam shortened YouTube's long title to "Caminandes 2: Gran Dillama".
@@ -110,7 +110,7 @@ choose:
 - **Which channels they see**: all of them, only the ones you tick, or
   none of yours (only channels they make themselves).
 
-![The profile form filled in for Mia: picture PIN, Playful theme, everything on](img/parent-kid-form.webp)
+![The profile form filled in for Mia: picture PIN, Playful theme, everything on, and Numberblocks trusted for her only](img/parent-kid-form.webp)
 
 The **Kids** page sums up each profile. Mia has everything switched on,
 Leo has the Portuguese Big & clear screen and sees only Cartoons, and
@@ -134,7 +134,7 @@ Each request shows the name and note your kid wrote, the channel they
 picked ("For: Cartoons") and YouTube's own title. Everything here works
 on your phone too.
 
-![Video requests on a phone: Mia asked for Llama Drama](img/parent-requests-phone.webp)
+![Video requests on a phone: Mia asked for Llama Drama, with buttons to trust its channel](img/parent-requests-phone.webp)
 
 **Review & add** opens the same Review & Add page as before, already
 filled in with the name, description and channel your kid chose. Watch
@@ -171,9 +171,11 @@ on their page:
   is listed as "Added automatically" under **Recently decided**, where
   **Remove from library** takes it back: the video is deleted and
   turned down for that kid. Anything else still waits for you.
-The page lists the oldest 100 requests
-waiting (and says how many more there are), with your 20 latest
-decisions below. If YouTube won't serve a video (it was removed or is
+
+![Trusted YouTube channels: two for every kid, Leo finds only those, and a search for Numberblocks](img/parent-trusted-channels.webp)
+
+Video requests lists the oldest 100 requests waiting (and says how
+many more there are), with your 20 latest decisions below. If YouTube won't serve a video (it was removed or is
 age-restricted), the request says so and your kid sees "Can't get this
 one".
 

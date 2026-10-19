@@ -95,7 +95,7 @@ Sometimes a grown-up lets a video come straight away: then it says
 says **Yes! Watch**. **Can't get this one** means YouTube won't let the
 box have it.
 
-![What I asked for: Yes! Watch](img/kid-asked.webp)
+![What I asked for: one waiting, with Don't ask, and one Yes! Watch](img/kid-asked.webp)
 
 ## Your own videos
 
