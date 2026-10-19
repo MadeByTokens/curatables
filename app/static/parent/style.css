@@ -160,6 +160,7 @@ fieldset.form-group legend {
 input[type=text],
 input[type=password],
 input[type=url],
+input[type=search],
 input[type=number],
 select {
   padding: 8px 10px;
@@ -847,3 +848,4 @@ td .btn { white-space: nowrap; }
 .trusted-list { padding-left: 20px; }
 .trusted-list li { margin: 6px 0; }
 .trusted-list form { margin-left: 6px; }
+.trusted-list select { width: auto; max-width: 100%; padding: 4px 6px; font-size: 14px; }
