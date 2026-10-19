@@ -65,19 +65,27 @@ a { color: var(--accent); }
 .topnav-links { display: flex; flex-wrap: wrap; }
 .topnav .right { margin-left: auto; display: flex; align-items: center; }
 
-/* Phones: brand + status on one row, the links in a single row that
-   scrolls sideways instead of wrapping into several rows. */
+/* Phones: brand + status on one row, then every link in view, wrapping
+   onto a second row rather than hiding off the edge. */
 @media (max-width: 700px) {
   .topnav .brand { order: 1; }
   .topnav .right { order: 2; }
   .topnav-links {
     order: 3;
     width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    border-top: 1px solid #333;
   }
-  .topnav a { padding: 12px 12px; font-size: 14px; }
+  .topnav-links a { flex: 1 0 auto; text-align: center; }
+  .topnav a { padding: 12px 10px; font-size: 14px; }
+}
+
+/* Phones: iOS zooms into any text box or menu under 16px when tapped and
+   stays zoomed, so form fields are 16px there; tick boxes and radio
+   buttons are made big enough to hit with a thumb. */
+@media (max-width: 700px) {
+  input, select, textarea { font-size: 16px !important; }
+  input[type=checkbox], input[type=radio] { width: 20px; height: 20px; vertical-align: middle; }
+  .settings-nav a { padding: 6px 0; }
 }
 
 /* === Tables === */
@@ -98,6 +106,9 @@ th {
   text-transform: uppercase;
   color: #666;
 }
+/* A wide table scrolls by itself instead of the whole page. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 16px; }
+.table-scroll table { margin-top: 0; }
 @media (max-width: 600px) {
   th, td { padding: 8px 6px; }
   th { font-size: 11px; }

@@ -34,7 +34,7 @@
 
 <h2 class="mt-32">Top Videos</h2>
 {% if top_videos %}
-<table>
+<div class="table-scroll"><table>
   <thead>
     <tr>
       <th>#</th>
@@ -62,14 +62,14 @@
     </tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% else %}
 <p class="muted">No videos opened or reacted to in this window.</p>
 {% endif %}
 
 <h2 class="mt-32">Per Kid</h2>
 {% if profiles %}
-<table>
+<div class="table-scroll"><table>
   <thead>
     <tr>
       <th>Kid</th>
@@ -90,7 +90,7 @@
     </tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% else %}
 <p class="muted">No kids yet.</p>
 {% endif %}
