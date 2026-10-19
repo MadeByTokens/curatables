@@ -51,9 +51,17 @@ install -d "$ETC/apt/apt.conf.d"
 printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
 	> "$ETC/apt/apt.conf.d/20auto-upgrades"
 
+# The system log is kept on the card instead of only in RAM.
+install -d "$ETC/systemd/journald.conf.d"
+install -m 0644 "$ROOT/systemd/journald-curatables.conf" \
+	"$ETC/systemd/journald.conf.d/60-curatables.conf"
+
 if [ "${CURATABLES_SKIP_SYSTEMCTL:-0}" != "1" ]; then
 	if [ -d /run/systemd/system ]; then
 		systemctl daemon-reload
+		# Start writing to the card now, moving what is in RAM there too.
+		systemctl restart systemd-journald
+		journalctl --flush >/dev/null 2>&1 || true
 	fi
 	systemctl enable "${ENABLE[@]}" >/dev/null 2>&1 || systemctl enable "${ENABLE[@]}"
 fi

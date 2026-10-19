@@ -27,6 +27,8 @@ code already called itself 0.5.0).
   the page keeps its size when you tap a text box or menu on an iPhone,
   tick boxes are big enough for a thumb, and the Stats tables scroll on
   their own while the page stays put.
+- The box keeps its system log on the SD card (up to 100 MB), so what
+  happened before a restart or a power cut can still be looked up.
 
 ## v0.7.0
 

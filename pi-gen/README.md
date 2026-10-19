@@ -54,8 +54,8 @@ terminal needed after flashing.
   them in again and reboot. Windows line endings are handled. The script
   saves the network as a NetworkManager profile, waits up to two minutes
   for it to show up in a scan, and writes what happened to
-  `curatables-firstboot.log` on the same partition (Raspberry Pi OS keeps
-  the system journal in RAM only, so it is gone after a power cycle).
+  `curatables-firstboot.log` on the same partition, where it can be read
+  from any computer.
 
 **No default passwords, SSH off.** The OS login *and* the parent
 dashboard password are both set by you, not baked in. The first visit to
