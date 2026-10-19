@@ -23,6 +23,10 @@ code already called itself 0.5.0).
   find only their trusted channels** (off by default: trusted channels
   don't limit what kids find unless you ask), and whether requests from
   trusted channels wait for you or go straight into a channel you pick.
+- Easier on small phones: the whole menu fits on screen (in two rows),
+  the page keeps its size when you tap a text box or menu on an iPhone,
+  tick boxes are big enough for a thumb, and the Stats tables scroll on
+  their own while the page stays put.
 
 ## v0.7.0
 
