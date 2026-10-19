@@ -22,6 +22,7 @@ from app.backends.base import VideoBackend
 from app.backends.ytdlp import YtdlpBackend
 from app.services.auth import AuthService, LoginThrottle, PinThrottle
 from app.services.system_helper import SystemHelper
+from app.services.trusted_channels import TrustedChannelService
 from app.services.wishlist import WishlistService
 from app.services.content import ContentService
 from app.services.video_source import VideoSourceService
@@ -45,6 +46,7 @@ from app.repositories.override_repo import ProfileVideoOverrideRepository
 from app.repositories.tag_repo import TagRepository
 from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
 from app.repositories.login_failure_repo import LoginFailureRepository
+from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.repositories.import_job_repo import ImportJobRepository
 
@@ -134,6 +136,11 @@ def get_wishlist_service(backend=Depends(get_backend),
                          thumbnails=Depends(get_thumbnail_service),
                          config=Depends(get_config)) -> WishlistService:
     return WishlistService(backend, repo, video_repo, thumbnails, config)
+
+
+def get_trusted_channel_service(db=Depends(get_db),
+                                backend=Depends(get_backend)) -> TrustedChannelService:
+    return TrustedChannelService(TrustedChannelRepository(db), backend)
 
 
 # MediaProbeService is a process-wide singleton so the ffmpeg decoder

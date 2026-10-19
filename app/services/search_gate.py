@@ -70,6 +70,10 @@ class _Cache:
             return None
         try:
             packed = json.loads(row[1])
+            # Videos without a channel ID can't be checked against the
+            # kids' trusted channels: ask YouTube again.
+            if any(t == "video" and "channel_id" not in d for t, d in packed["items"]):
+                return None
             return row[0], packed["title"], [_TYPES[t](**d) for t, d in packed["items"]]
         except (KeyError, TypeError, ValueError):
             return None

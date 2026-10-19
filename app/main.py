@@ -42,6 +42,7 @@ from app.features.parent_sharing.router import router as parent_sharing_router
 from app.features.parent_stats.router import router as stats_router
 from app.features.parent_storage.router import router as parent_storage_router
 from app.features.parent_system.router import BOX_NOTICES, router as parent_system_router
+from app.features.parent_trusted.router import router as parent_trusted_router
 from app.features.parent_uploads.router import router as parent_uploads_router
 from app.lifecycle import make_lifespan, prepare_data_dir, startup_jobs
 from app.logging_config import setup_logging
@@ -339,7 +340,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         healthz_router, auth_router, dashboard_router, content_router, settings_router,
         stats_router, parent_storage_router, parent_system_router, parent_uploads_router,
         parent_sharing_router, parent_channels_router, parent_profiles_router,
-        parent_requests_router, parent_import_router, kid_profiles_router, browse_router,
+        parent_requests_router, parent_trusted_router, parent_import_router,
+        kid_profiles_router, browse_router,
         watch_router, kid_search_router, kid_wishlist_router, kid_comments_router,
         kid_uploads_router, media_router, api_router,
     ):

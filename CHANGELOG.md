@@ -9,6 +9,21 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**For parents**
+- **Trusted YouTube channels** (Video requests → Trusted YouTube
+  channels), matched by channel ID, so a look-alike channel with the
+  same name doesn't count. Trust a channel for every kid or for one
+  kid; on a kid's page, untick a family channel for that kid or add one
+  just for them. Add one by pasting its link, @handle, ID or a link to
+  one of its videos, by searching for it by name, or with **Trust** on
+  a request.
+- Two family settings, each of which a kid can follow or not: **Kids
+  find only their trusted channels** (off by default: trusted channels
+  don't limit what kids find unless you ask), and whether requests from
+  trusted channels wait for you or go straight into a channel you pick.
+
 ## v0.7.0
 
 Undo and cancel everywhere, and more say for kids over their channels

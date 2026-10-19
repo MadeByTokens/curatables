@@ -110,8 +110,11 @@ class WishlistConfig:
     """Rules for the YouTube results a kid sees on the wishlist page."""
     blocked_words: list[str] = field(
         default_factory=lambda: list(DEFAULT_WISHLIST_BLOCKED_WORDS))
-    # Non-empty: only results from these channel names are shown.
-    allowed_channels: list[str] = field(default_factory=list)
+    # The family's defaults for trusted YouTube channels (each kid can
+    # follow them or not): Find new shows only those channels, and
+    # requests from them go straight into this channel (None: they wait).
+    only_trusted_channels: bool = False
+    auto_add_channel_id: int | None = None
     max_results: int = 12
     max_duration_minutes: int = 0
 

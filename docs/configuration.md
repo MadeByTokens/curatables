@@ -74,12 +74,14 @@ the spelling: a misspelled key has no effect.
 ### `wishlist`
 
 Rules for the YouTube results a kid sees on **Find new** (Settings →
-Video requests).
+Video requests). The trusted YouTube channels themselves are kept in the
+database, by channel ID, not here.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `blocked_words` | a starter list in English, Spanish and Portuguese (horror, scary, gun, miedo, medo, …) | Results whose title, channel or description contains one of these whole words are hidden, and so are channels whose name does; a search containing one shows nothing. |
-| `allowed_channels` | `[]` | If not empty, only these channels (by name) and their videos are shown. |
+| `only_trusted_channels` | `false` | The family setting for **Kids find only their trusted channels** (Video requests → Trusted YouTube channels); each kid can follow it or not. |
+| `auto_add_channel_id` | `null` | The family setting for requests from trusted channels: the id of a parent channel they go straight into, or `null` (they wait for review). Each kid can follow it or not. |
 | `max_duration_minutes` | `0` | Longer results are hidden; `0` (the default) = any length. |
 | `max_results` | `12` | Results per page; **More** shows up to 5 pages. |
 

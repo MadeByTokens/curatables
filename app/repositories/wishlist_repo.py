@@ -36,6 +36,7 @@ class WishlistRequest:
     target_channel_id: int | None = None
     suggested_channel: str = ""
     auto_added: int = 0
+    youtube_channel_id: str = ""
     profile_name: str = ""
 
     @property
@@ -50,7 +51,8 @@ class WishlistRequest:
             video_id=self.raw_id, title=self.original_title or self.title,
             channel=self.channel, duration=self.duration, view_count=self.view_count,
             upload_date=self.upload_date, description=self.original_description,
-            thumbnail_url=self.thumbnail_url, extractor=self.extractor, original_url=self.url)
+            thumbnail_url=self.thumbnail_url, extractor=self.extractor, original_url=self.url,
+            channel_id=self.youtube_channel_id)
 
 
 # Set aside by the parent: what Put back restores each one to.
@@ -72,11 +74,11 @@ class WishlistRepository(BaseRepository):
         self.db.execute(
             "INSERT OR IGNORE INTO wishlist_requests (profile_id, video_id, extractor, "
             "raw_id, title, original_title, description, original_description, channel, "
-            "duration, upload_date, view_count, url, thumbnail_url) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "duration, upload_date, view_count, url, thumbnail_url, youtube_channel_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (profile_id, video_id, meta.extractor, meta.video_id, meta.title, meta.title,
              "", meta.description, meta.channel, meta.duration,
-             meta.upload_date, meta.view_count, url, meta.thumbnail_url))
+             meta.upload_date, meta.view_count, url, meta.thumbnail_url, meta.channel_id))
         self.db.execute(
             "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, "
             "created_at = datetime('now') WHERE profile_id = ? AND video_id = ? "
@@ -179,9 +181,11 @@ class WishlistRepository(BaseRepository):
             "UPDATE wishlist_requests SET "
             "title = CASE WHEN title = original_title THEN ? ELSE title END, "
             "original_title = ?, original_description = ?, channel = ?, duration = ?, "
-            "upload_date = ?, view_count = ? WHERE id = ?",
+            "upload_date = ?, view_count = ?, "
+            "youtube_channel_id = CASE WHEN ? = '' THEN youtube_channel_id ELSE ? END "
+            "WHERE id = ?",
             (meta.title, meta.title, meta.description, meta.channel, meta.duration,
-             meta.upload_date, meta.view_count, request_id))
+             meta.upload_date, meta.view_count, meta.channel_id, meta.channel_id, request_id))
         self.db.commit()
 
     def decide(self, request_id: int, status: str) -> None:

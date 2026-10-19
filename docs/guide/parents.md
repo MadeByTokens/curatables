@@ -150,15 +150,27 @@ one for the video when asking; any other kid can only suggest a name,
 and you see it as "For: a new channel" and filled in under **Or create
 new channel**. Your kid can also take back a request before you decide.
 
-To skip the review for channels you trust, pick a channel under **Add
-their video requests without asking me** on the kid's page (Kids →
-Edit). When that kid taps **Send**, a video from a YouTube channel on
-your **allowed list** (Settings → Video requests) that passes your
-other rules downloads straight into that channel, with your kid's name
-and description. It is listed as "Added automatically" under **Recently
-decided**, where **Remove from library** takes it back: the video is
-deleted and turned down for that kid. Anything else still waits for
-you, and with an empty allowed list nothing is added this way.
+**Trusted YouTube channels** (linked from Video requests and Settings)
+are the channels you trust, matched by their YouTube channel ID, so a
+look-alike channel with the same name doesn't count. Add one by pasting
+its link, its @handle, or a link to one of its videos, by searching for
+it by name, or with **Trust** on a request. A channel can be trusted
+for every kid or for one kid; on a kid's page (Kids → Edit → **Trusted
+YouTube channels**) you can untick a family channel for that kid, or
+add one for that kid only. The Trusted YouTube channels page also has
+two family settings; each kid can follow them or be set differently
+on their page:
+
+- **Kids find only their trusted channels.** Off (the default), kids
+  search all of YouTube through your rules. On, their searches show
+  only videos and channels from their trusted channels.
+- **Requests from trusted channels** wait for you, or go straight into
+  a channel you pick. When a kid taps **Send**, a video from one of
+  their trusted channels that passes your other rules downloads
+  straight into that channel, with your kid's name and description. It
+  is listed as "Added automatically" under **Recently decided**, where
+  **Remove from library** takes it back: the video is deleted and
+  turned down for that kid. Anything else still waits for you.
 The page lists the oldest 100 requests
 waiting (and says how many more there are), with your 20 latest
 decisions below. If YouTube won't serve a video (it was removed or is

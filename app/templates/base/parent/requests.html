@@ -7,6 +7,7 @@
 downloaded until you add it. <strong>Review &amp; add</strong> opens the usual preview with the name,
 description and channel the kid chose; watch it and change anything you like. <strong>Not this one</strong> hides it from that kid's
 searches for good; <strong>Remove</strong> just drops the request, and the kid can ask again; <strong>Put back</strong>, in the list of decisions below, undoes it.</p>
+<p class="muted">Requests from <a href="/parent/trusted-channels">trusted YouTube channels</a> can go into the library without waiting here.</p>
 
 {% if pending %}
   {% if pending_total > pending|length %}
@@ -39,6 +40,21 @@ searches for good; <strong>Remove</strong> just drops the request, and the kid c
         </form>
         <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer" class="fs-13">Open on YouTube &#8599;</a>
       </div>
+      {% if w.youtube_channel_id %}
+      {% if w.youtube_channel_id in trusted_for.get(w.profile_id, ()) %}
+      <div class="meta">{{ w.channel }} is a <a href="/parent/trusted-channels">trusted channel</a> for {{ w.profile_name }}.</div>
+      {% else %}
+      <form method="POST" action="/parent/trusted-channels/add" class="actions">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="channel_id" value="{{ w.youtube_channel_id }}">
+        <input type="hidden" name="name" value="{{ w.channel }}">
+        <input type="hidden" name="back" value="/parent/requests">
+        <span class="fs-13">Trust {{ w.channel }}:</span>
+        <button type="submit" name="profile_id" value="" class="btn btn-sm btn-secondary">For every kid</button>
+        <button type="submit" name="profile_id" value="{{ w.profile_id }}" class="btn btn-sm btn-secondary">Only {{ w.profile_name }}</button>
+      </form>
+      {% endif %}
+      {% endif %}
     </div>
   </div>
   {% endfor %}

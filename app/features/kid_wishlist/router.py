@@ -262,8 +262,7 @@ def wishlist_choose(request: Request, request_id: int,
         if error:
             return _ask_page(request, viewer, repo.get(request_id), back, content,
                              error=error, new_channel=name, status_code=400)
-        profile = profiles.get(viewer.kid_id)
-        into = profile.auto_add_channel_id if profile else None
+        into = service.auto_add_into(profiles.get(viewer.kid_id))
         if into is not None and _auto_add(request_id, into, viewer, repo, content,
                                           channels_svc, service, kid_lib):
             how = "auto"
@@ -277,8 +276,8 @@ def _auto_add(request_id: int, into: int, viewer: ViewerContext, repo: WishlistR
               content: ContentService, channels_svc: ChannelService,
               service: WishlistService, kid_lib: KidLibraryService) -> bool:
     """Add a sent request to the library straight away, into the channel
-    the parent set for this kid, if its YouTube channel is on the allowed
-    list. YouTube's full details are fetched first when only the search
+    the parent set for this kid, if its YouTube channel is one of the
+    kid's trusted channels. YouTube's full details are fetched first when only the search
     result is stored, so the rules see the description too. A kid's own
     channel they picked gets the video as well."""
     channel = channels_svc.get(into)
@@ -291,7 +290,7 @@ def _auto_add(request_id: int, into: int, viewer: ViewerContext, repo: WishlistR
     if item is None or item.status != "pending" or not item.has_details:
         return False
     meta = item.metadata()
-    if not service.may_skip_review(meta):
+    if not service.may_skip_review(meta, service.kid_rules(item.profile_id)):
         return False
     source_id = content.create_source("video", meta.extractor, meta.video_id,
                                       meta.title, item.url)

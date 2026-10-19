@@ -14,13 +14,19 @@ from app.services.search_gate import GATE, SearchGate, SearchRefused
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 
 
-def _meta(raw, title, channel="Kids TV", duration=120, live=False):
+KIDS_TV = "UC" + "a" * 22
+OTHER = "UC" + "d" * 22
+
+
+def _meta(raw, title, channel="Kids TV", duration=120, live=False, channel_id=None):
+    if channel_id is None:
+        channel_id = {"Kids TV": KIDS_TV, "Other Channel": OTHER}.get(channel, "")
     return VideoMetadata(video_id=raw, title=title, channel=channel, duration=duration,
                          view_count=0, upload_date="", description="",
                          thumbnail_url=f"https://i.ytimg.com/vi/{raw}/hq.jpg",
                          extractor="youtube",
                          original_url=f"https://www.youtube.com/watch?v={raw}",
-                         is_live=live)
+                         is_live=live, channel_id=channel_id)
 
 
 RESULTS = [
@@ -62,11 +68,23 @@ class FakeBackend:
         return self._result(list(CHANNELS))
 
     def fetch_channel_videos(self, url, max_results=50):
+        # Like YouTube's channel listings, the entries carry no channel ID.
+        from dataclasses import replace
         self.queries.append(("channel", url))
         cid = url.split("/channel/")[1].split("/")[0]
         name = next(c.name for c in CHANNELS if c.channel_id == cid)
-        return name, self._result([m for m in RESULTS if m.channel == name] if name == "Kids TV"
+        return name, self._result([replace(m, channel_id="") for m in RESULTS if m.channel == name]
+                                  if name == "Kids TV"
                                   else [_meta("fffffffffff", "Spooky", channel=name)])
+
+    def find_channel(self, url):
+        self.queries.append(("find", url))
+        if self.fail:
+            return None
+        if "@kidstv" in url or "aaaaaaaaaaa" in url:
+            return ChannelHit(KIDS_TV, "Kids TV")
+        cid = url.split("/channel/")[-1]
+        return next((c for c in CHANNELS if c.channel_id == cid), None)
 
     def fetch_video_info(self, url):
         raw = url.rsplit("=", 1)[-1]
@@ -138,14 +156,83 @@ def test_search_applies_the_parents_rules(app, client, backend):
     assert 'href="/wishlist"' in page
 
 
-def test_allowlist_limits_results_to_those_channels(app, client, backend):
-    app.state.config.wishlist.allowed_channels = ["kids tv"]
-    try:
-        _kid(app, client)
-        page = client.get("/wishlist", params={"q": "songs"}).text
-        assert "Counting to ten" in page and "Shapes song" not in page
-    finally:
-        app.state.config.wishlist.allowed_channels = []
+def _trust(app, channel_id=KIDS_TV, name="Kids TV", profile_id=None):
+    from app.repositories.trusted_channel_repo import TrustedChannelRepository
+    from app.services.trusted_channels import TrustedChannelService
+    TrustedChannelService(TrustedChannelRepository(_conn(app))).add(channel_id, name, profile_id)
+
+
+def _look_alike(backend):
+    """A channel with a trusted channel's name but not its ID."""
+    fake = _meta("ggggggggggg", "Fake counting", channel="Kids TV", channel_id="UC" + "z" * 22)
+    plain = backend.search
+    backend.search = lambda *a, **kw: plain(*a, **kw) + [fake]
+
+
+def test_only_trusted_limits_results_by_channel_id(app, client, backend):
+    _trust(app)
+    _look_alike(backend)
+    app.state.config.wishlist.only_trusted_channels = True
+    _kid(app, client)
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "Counting to ten" in page
+    assert "Shapes song" not in page and "Fake counting" not in page
+
+
+def test_trusted_channels_dont_limit_search_unless_asked(app, client, backend):
+    _trust(app)
+    _kid(app, client)
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "Counting to ten" in page and "Shapes song" in page
+
+
+def test_a_kid_can_differ_from_the_family_setting(app, client, backend):
+    _trust(app)
+    app.state.config.wishlist.only_trusted_channels = True
+    _kid(app, client, "wren", trusted_only="off")
+    assert "Shapes song" in client.get("/wishlist", params={"q": "songs"}).text
+    app.state.config.wishlist.only_trusted_channels = False
+    _kid(app, client, "otto", trusted_only="on")
+    page = client.get("/wishlist", params={"q": "other"}).text
+    assert "Counting to ten" in page and "Shapes song" not in page
+
+
+def test_a_kids_own_and_switched_off_channels(app, client, backend):
+    from app.repositories.trusted_channel_repo import TrustedChannelRepository
+    _trust(app)
+    pid = _kid(app, client, trusted_only="on")
+    repo = TrustedChannelRepository(_conn(app))
+    repo.set_switched_off(pid, {KIDS_TV})
+    _trust(app, OTHER, "Other Channel", profile_id=pid)
+    assert repo.ids_for(pid) == {OTHER}
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "Shapes song" in page and "Counting to ten" not in page
+
+
+def test_only_trusted_hides_other_channels_in_channel_search(app, client, backend):
+    _trust(app)
+    _trust(app, "UC" + "c" * 22, "Art Club")
+    _kid(app, client, trusted_only="on")
+    page = client.get("/wishlist", params={"q": "kids", "mode": "channels"}).text
+    assert "Kids TV" in page and "Art Club" in page
+    from app.repositories.trusted_channel_repo import TrustedChannelRepository
+    TrustedChannelRepository(_conn(app)).remove_family("UC" + "c" * 22)
+    GATE.reset()
+    page = client.get("/wishlist", params={"q": "kids", "mode": "channels"}).text
+    assert "Kids TV" in page and "Art Club" not in page
+    assert "be shown. Try another one" in client.get(f"/wishlist/channel/UC{'c' * 22}").text
+    assert ("channel", f"https://www.youtube.com/channel/UC{'c' * 22}/videos") not in backend.queries
+
+
+def test_asking_from_a_trusted_channels_page_in_only_trusted_mode(app, client, backend):
+    _trust(app)
+    _kid(app, client, trusted_only="on")
+    page = client.get(f"/wishlist/channel/{KIDS_TV}").text
+    assert "Counting to ten" in page
+    backend.fetch_video_info = lambda url: None
+    assert client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"}).status_code == 303
+    item = WishlistRepository(_conn(app)).list_by_status("pending")[0]
+    assert item.youtube_channel_id == KIDS_TV
 
 
 def test_blocked_query_never_reaches_youtube(app, client, backend):
@@ -453,12 +540,12 @@ def _full_details(backend, description=""):
 def _auto_kid(app, client, **kw):
     from app.repositories.channel_repo import ChannelRepository
     into = ChannelRepository(_conn(app)).create("From YouTube")
-    return _kid(app, client, auto_add_channel_id=into, **kw), into
+    return _kid(app, client, auto_add_mode="on", auto_add_channel_id=into, **kw), into
 
 
-def test_requests_from_allowed_channels_are_added_straight_away(app, client, authed_client, backend):
+def test_requests_from_trusted_channels_are_added_straight_away(app, client, authed_client, backend):
     from unittest.mock import patch
-    app.state.config.wishlist.allowed_channels = ["Kids TV"]
+    _trust(app)
     _full_details(backend)
     pid, into = _auto_kid(app, client)
     from app.repositories.channel_repo import ChannelRepository
@@ -484,7 +571,7 @@ def test_requests_from_allowed_channels_are_added_straight_away(app, client, aut
 
 def test_parent_takes_back_an_auto_added_video(app, client, authed_client, backend):
     from unittest.mock import patch
-    app.state.config.wishlist.allowed_channels = ["Kids TV"]
+    _trust(app)
     _full_details(backend)
     pid, into = _auto_kid(app, client)
     repo = WishlistRepository(_conn(app))
@@ -509,7 +596,55 @@ def test_parent_takes_back_an_auto_added_video(app, client, authed_client, backe
     assert repo.get(other_id).status == "pending"
 
 
-def test_requests_wait_without_an_allowed_list_or_with_a_blocked_word(app, client, backend):
+def _ask_and_send(app, client, raw="aaaaaaaaaaa"):
+    """Ask for a video and send it; returns the request as it ends up."""
+    from unittest.mock import patch
+    repo = WishlistRepository(_conn(app))
+    client.post("/wishlist/ask", data={"raw_id": raw})
+    item = next(w for w in repo.list_by_status("pending") if w.raw_id == raw)
+    with patch("app.services.content.ContentService._start_download"):
+        client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+    return repo.get(item.id)
+
+
+def test_family_setting_adds_requests_unless_the_kid_waits(app, client, backend):
+    from app.repositories.channel_repo import ChannelRepository
+    _trust(app)
+    _full_details(backend)
+    into = ChannelRepository(_conn(app)).create("From YouTube")
+    app.state.config.wishlist.auto_add_channel_id = into
+    _kid(app, client, "wren")
+    item = _ask_and_send(app, client)
+    assert item.status == "approved" and item.auto_added
+    assert VideoRepository(_conn(app)).get(item.video_id).channel_id == into
+    _kid(app, client, "otto", auto_add_mode="off")
+    assert _ask_and_send(app, client, "eeeeeeeeeee").status == "pending"
+
+
+def test_a_kids_own_trusted_channels_decide(app, client, backend):
+    from app.repositories.trusted_channel_repo import TrustedChannelRepository
+    _trust(app)
+    _full_details(backend)
+    pid, _into = _auto_kid(app, client)
+    TrustedChannelRepository(_conn(app)).set_switched_off(pid, {KIDS_TV})
+    assert _ask_and_send(app, client).status == "pending"
+    _trust(app, OTHER, "Other Channel", profile_id=pid)
+    item = _ask_and_send(app, client, "eeeeeeeeeee")
+    assert item.status == "approved" and item.auto_added
+
+
+def test_a_look_alike_channel_waits(app, client, backend):
+    from dataclasses import replace
+    _trust(app)
+    _full_details(backend)
+    plain = backend.fetch_video_info
+    backend.fetch_video_info = lambda url: replace(plain(url), channel_id="UC" + "z" * 22)
+    _auto_kid(app, client)
+    item = _ask_and_send(app, client)
+    assert item.status == "pending" and item.youtube_channel_id == "UC" + "z" * 22
+
+
+def test_requests_wait_without_a_trusted_channel_or_with_a_blocked_word(app, client, backend):
     from unittest.mock import patch
     _full_details(backend, description="a big spider")
     _auto_kid(app, client)
@@ -521,7 +656,7 @@ def test_requests_wait_without_an_allowed_list_or_with_a_blocked_word(app, clien
         assert resp.headers["location"].endswith("asked=1#ask-aaaaaaaaaaa")
         assert repo.get(item.id).status == "pending"
 
-        app.state.config.wishlist.allowed_channels = ["Kids TV"]
+        _trust(app)
         app.state.config.wishlist.blocked_words = ["spider"]
         client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
         assert repo.get(item.id).status == "pending"
@@ -540,15 +675,32 @@ def test_parent_sets_where_requests_go(app, authed_client):
     pid = ProfileService(ProfileRepository(_conn(app))).create(name="ivy", display_name="Ivy")
     kids = channels.create("Ivy's", owner_profile_id=pid)
     form = authed_client.get(f"/parent/profiles/{pid}/edit").text
-    assert f'<option value="{into}">Yes, into From YouTube</option>' in form
-    assert f'value="{kids}">Yes, into' not in form
-    assert "Your allowed list is empty" in form
+    assert f'<option value="{into}">Go straight into From YouTube</option>' in form
+    assert f'value="{kids}">Go straight into' not in form
+    assert "Family setting (now: wait for me)" in form
+
+    def mode():
+        p = ProfileRepository(_conn(app)).get(pid)
+        return p.auto_add_mode, p.auto_add_channel_id
+
     authed_client.post(f"/parent/profiles/{pid}/edit", data={
-        "display_name": "Ivy", "auto_add_channel_id": str(into)})
-    assert ProfileRepository(_conn(app)).get(pid).auto_add_channel_id == into
+        "display_name": "Ivy", "auto_add": str(into)})
+    assert mode() == ("on", into)
     authed_client.post(f"/parent/profiles/{pid}/edit", data={
-        "display_name": "Ivy", "auto_add_channel_id": str(kids)})
-    assert ProfileRepository(_conn(app)).get(pid).auto_add_channel_id is None
+        "display_name": "Ivy", "auto_add": str(kids)})
+    assert mode() == ("off", None)
+    authed_client.post(f"/parent/profiles/{pid}/edit", data={
+        "display_name": "Ivy", "auto_add": "family"})
+    assert mode() == ("family", None)
+    authed_client.post("/parent/trusted-channels/settings", data={
+        "only_trusted": "1", "auto_add_channel_id": str(into)})
+    rules = app.state.config.wishlist
+    assert (rules.only_trusted_channels, rules.auto_add_channel_id) == (True, into)
+    form = authed_client.get(f"/parent/profiles/{pid}/edit").text
+    assert "Family setting (now: straight into From YouTube)" in form
+    assert "Family setting (now: only trusted channels)" in form
+    authed_client.post("/parent/trusted-channels/settings", data={"auto_add_channel_id": str(kids)})
+    assert (rules.only_trusted_channels, rules.auto_add_channel_id) == (False, None)
 
 
 def test_adding_needs_a_channel_chosen_on_purpose(app, client, authed_client, backend):
@@ -577,12 +729,11 @@ def test_other_kids_cannot_see_a_siblings_requests(app, client, backend):
 
 def test_parent_edits_the_rules(app, authed_client):
     resp = authed_client.post("/parent/settings/wishlist", data={
-        "blocked_words": "spiders, sharks\nspiders", "allowed_channels": "Kids TV\n",
+        "blocked_words": "spiders, sharks\nspiders",
         "max_duration_minutes": "15", "max_results": "6"})
     assert resp.status_code == 200
     rules = app.state.config.wishlist
     assert rules.blocked_words == ["spiders", "sharks"]
-    assert rules.allowed_channels == ["Kids TV"]
     assert (rules.max_duration_minutes, rules.max_results) == (15, 6)
 
 
@@ -590,7 +741,7 @@ def test_flat_search_entries_keep_thumbnail_and_live_state():
     from app.backends.ytdlp import _entries_to_metadata
     metas = _entries_to_metadata([
         {"id": "aaaaaaaaaaa", "title": "A", "channel": "C", "duration": 61.0,
-         "thumbnails": [{"url": "https://i.ytimg.com/vi/aaaaaaaaaaa/hq720.jpg?sqp=x&rs=y"}]},
+         "channel_id": KIDS_TV, "thumbnails": [{"url": "https://i.ytimg.com/vi/aaaaaaaaaaa/hq720.jpg?sqp=x&rs=y"}]},
         {"id": "bbbbbbbbbbb", "title": "B", "live_status": "is_upcoming"},
         {"id": "c1", "title": "Elsewhere",
          "thumbnails": [{"url": "https://cdn.example/small.jpg"},
@@ -602,17 +753,19 @@ def test_flat_search_entries_keep_thumbnail_and_live_state():
     assert metas[2].thumbnail_url == "https://cdn.example/big.jpg"
     assert metas[0].duration == 61 and metas[0].extractor == "youtube"
     assert not metas[0].is_live and metas[1].is_live
+    assert (metas[0].channel_id, metas[1].channel_id) == (KIDS_TV, "")
 
 
 def test_full_youtube_info_keeps_a_plain_jpeg_and_replaces_webp():
     from app.backends.ytdlp import _info_to_metadata
-    jpg = _info_to_metadata({"id": "aaaaaaaaaaa", "extractor_key": "Youtube",
+    jpg = _info_to_metadata({"id": "aaaaaaaaaaa", "extractor_key": "Youtube", "channel_id": KIDS_TV,
                              "thumbnail": "https://i.ytimg.com/vi/aaaaaaaaaaa/maxresdefault.jpg"})
     webp = _info_to_metadata({"id": "aaaaaaaaaaa", "extractor_key": "Youtube",
                               "thumbnail": "https://i.ytimg.com/vi_webp/aaaaaaaaaaa/maxresdefault.webp"})
     other = _info_to_metadata({"id": "x1", "extractor_key": "Vimeo",
                                "thumbnail": "https://i.vimeocdn.com/x.webp"})
     assert jpg.thumbnail_url == "https://i.ytimg.com/vi/aaaaaaaaaaa/maxresdefault.jpg"
+    assert jpg.channel_id == KIDS_TV and other.channel_id == ""
     assert webp.thumbnail_url == "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg"
     assert other.thumbnail_url == "https://i.vimeocdn.com/x.webp"
 
@@ -669,13 +822,10 @@ def test_a_failed_search_is_not_nothing_found(app, client, backend):
 
 
 def test_nothing_found_when_the_rules_hide_everything(app, client, backend):
-    app.state.config.wishlist.allowed_channels = ["Nobody"]
-    try:
-        _kid(app, client)
-        page = client.get("/wishlist", params={"q": "songs"}).text
-        assert "Nothing found" in page and "working right now" not in page
-    finally:
-        app.state.config.wishlist.allowed_channels = []
+    app.state.config.wishlist.only_trusted_channels = True
+    _kid(app, client)
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "Nothing found" in page and "working right now" not in page
 
 
 def test_a_bot_check_rests_searching_for_everyone(app, client, backend):
@@ -854,7 +1004,7 @@ def test_asking_for_a_shown_video_records_it_from_the_search(app, client, backen
 
 def test_full_details_that_break_the_rules_turn_the_request_down(app, client, authed_client, backend):
     from dataclasses import replace
-    authed_client.post("/parent/settings/wishlist", data={"blocked_words": "scary", "allowed_channels": "",
+    authed_client.post("/parent/settings/wishlist", data={"blocked_words": "scary",
                                                            "max_duration_minutes": "30", "max_results": "12"})
     _kid(app, client)
     client.get("/wishlist", params={"q": "songs"})
@@ -998,3 +1148,15 @@ def test_length_is_unlimited_until_the_parent_sets_a_limit(app, client, backend)
     _kid(app, client)
     app.state.config.wishlist.max_duration_minutes = 0
     assert "Two hour lullabies" in client.get("/wishlist", params={"q": "songs"}).text
+
+
+def test_an_old_request_without_a_channel_id_is_looked_up_again(app, client, backend):
+    from dataclasses import replace
+    _trust(app)
+    otto = _kid(app, client, "otto")
+    WishlistRepository(_conn(app)).add(otto, "youtube_aaaaaaaaaaa", replace(RESULTS[0], channel_id=""),
+                                       "https://www.youtube.com/watch?v=aaaaaaaaaaa")
+    _kid(app, client, "wren", trusted_only="on")
+    assert client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"}).status_code == 303
+    mine = [w for w in WishlistRepository(_conn(app)).list_by_status("pending") if w.profile_id != otto]
+    assert mine[0].youtube_channel_id == KIDS_TV
