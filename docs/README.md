@@ -39,6 +39,7 @@ For people changing the code.
 |-----|----------------|
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Development setup, tests, lint, CI, migrations, commit style. |
 | [architecture.md](architecture.md) | Layers, services, request flow, download queue, background tasks. |
+| [testing/README.md](testing/README.md) | How Curatables is tested: the test suite, the virtual box, the chaos and special-needs box tests, and how to read and improve them. |
 | [testing/release-0.6.0-ux.md](testing/release-0.6.0-ux.md) | Record of the 0.6.0 release test on a real box: scenarios with a parent and two kids, results, what is still open. |
 | [testing/release-0.6.0-acceptance.md](testing/release-0.6.0-acceptance.md) | Record of the go/no-go run before publishing 0.6.0: a parent and three kids use and look after the box through the browser, with release criteria and results. |
 | [threat-model.md](threat-model.md) | Trust boundaries and attack surface; read with [../SECURITY.md](../SECURITY.md). |

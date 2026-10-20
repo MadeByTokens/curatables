@@ -20,6 +20,7 @@ from app.config import load_config, ensure_directories
 from app.db.connection import create_connection, get_db_path
 from app.dependencies import FeatureDisabled, NotAuthenticated, NotAChild
 from app.repositories import ProfileRepository
+from app.services.content import VideoNotFound
 from app.features.api.router import router as api_router
 from app.features.healthz.router import router as healthz_router
 from app.features.kid_browse.router import router as browse_router
@@ -322,6 +323,16 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                                "There is no page at this address. The link may be cut off "
                                "or out of date.")
         return await http_exception_handler(request, exc)
+
+    @app.exception_handler(VideoNotFound)
+    async def video_not_found_handler(request: Request, exc: VideoNotFound):
+        # A video deleted (or never seen by this kid) while a page or an
+        # old tab still points at it.
+        if _wants_html(request):
+            return _error_page(request, 404, "Video not found",
+                               "This video isn't in the library any more, or this "
+                               "profile can't see it.")
+        return PlainTextResponse("Video not found", status_code=404)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request: Request, exc: RequestValidationError):
