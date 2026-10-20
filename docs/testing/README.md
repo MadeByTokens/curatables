@@ -207,6 +207,7 @@ behaviours the tests act out, and what each must hold:
 |----------|------|----------|
 | Real box logs | an emptied kid description came back as the original | 3166962 |
 | Real box logs | reloading the PIN page showed the "Oops" page | 3166962 |
+| personas.py (`back_masher`) | Back to the PIN page had to send a form again (Chrome asks to confirm, Safari asks or shows a blank page): the PIN page now has its own address | 8c777f1 |
 | Real box logs | a paused download was logged as a failure, "the drive is full" | 3166962 |
 | Virtual box, first boot | `systemd-networkd-wait-online` failed: the QEMU kernel line had `rw`, which let systemd's first-boot presets turn on networkd | 3d6df8b |
 | chaos.py | a video deleted while a kid's player loaded it crashed the request (500) | 61ead84 |

@@ -43,8 +43,9 @@ code already called itself 0.5.0).
   brings the first one back).
 
 **Fixes**
-- Reloading the PIN page, or going back to it, opens the profile
-  picker instead of an "Oops" page.
+- The PIN page has an address of its own: Back, a reload or a tab the
+  iPad restores shows it again, instead of asking to send a form again
+  or showing a blank or "Oops" page.
 - A download that is paused or cancelled part way is logged as
   stopped, not as a failure with "the drive is full".
 - A video deleted while someone is on its page, or while a kid's
