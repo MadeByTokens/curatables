@@ -40,6 +40,8 @@ kid/_shell.html and static/kid/i18n.js)."""
 SERVER_MESSAGES = (
     "Too many tries. Wait a little, then try again.",
     "Wrong PIN. Try again.",
+    "This video isn't here.",
+    "There's nothing here.",
     "That channel isn't available. Pick one from the list.",
     "This video is too big. Ask a grown-up to help.",
     "There isn't enough free space on this computer. Ask a grown-up.",

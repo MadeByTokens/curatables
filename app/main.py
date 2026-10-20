@@ -279,7 +279,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         return PlainTextResponse("", status_code=403)
 
     def _error_page(request: Request, status_code: int, heading: str | None = None,
-                    detail: str | None = None):
+                    detail: str | None = None, kid_message: str | None = None):
         if request.url.path.startswith("/parent/"):
             try:
                 return app.state.templates.TemplateResponse(request,
@@ -289,7 +289,8 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
                 _error_logger.exception("Parent error page failed to render")
         try:
             return app.state.templates.TemplateResponse(request,
-                "kid/error.html", {"request": request, "lang": _kid_language(request)},
+                "kid/error.html", {"request": request, "lang": _kid_language(request),
+                                   "kid_message": kid_message},
                 status_code=status_code)
         except Exception:
             _error_logger.exception("Kid error page failed to render")
@@ -321,7 +322,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         if exc.status_code in (404, 405) and _wants_html(request):
             return _error_page(request, exc.status_code, "Page not found",
                                "There is no page at this address. The link may be cut off "
-                               "or out of date.")
+                               "or out of date.", kid_message="There's nothing here.")
         return await http_exception_handler(request, exc)
 
     @app.exception_handler(VideoNotFound)
@@ -331,7 +332,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
         if _wants_html(request):
             return _error_page(request, 404, "Video not found",
                                "This video isn't in the library any more, or this "
-                               "profile can't see it.")
+                               "profile can't see it.", kid_message="This video isn't here.")
         return PlainTextResponse("Video not found", status_code=404)
 
     @app.exception_handler(RequestValidationError)

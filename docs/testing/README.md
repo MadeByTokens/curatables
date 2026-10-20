@@ -106,7 +106,8 @@ Every page is checked for:
 | Finding | Meaning |
 |---------|---------|
 | `http-500` (any 5xx but 503) | the server crashed on that request |
-| `oops`, `not-found`, `raw-error` | the kid or parent was shown an error page, or a bare error |
+| `oops`, `raw-error` | the kid or parent was shown the "something went wrong" page, or a bare error |
+| `not-found` | a page came back "not found" (the kid sees "This video isn't here." or "There's nothing here.") |
 | `js-error` | the page's script threw |
 | `empty-download`, `download-NNN` | a download came back empty or failed |
 | `targeted-…-NNN` | the hammer loop got an unexpected answer |
@@ -207,6 +208,8 @@ behaviours the tests act out, and what each must hold:
 |----------|------|----------|
 | Real box logs | an emptied kid description came back as the original | 3166962 |
 | Real box logs | reloading the PIN page showed the "Oops" page | 3166962 |
+| chaos.py | a video's picture deleted while a page showed it crashed the request (500) | this change |
+| chaos.py | a kid opening a deleted video from an old page saw "Oops! That didn't work."; it now says "This video isn't here." | this change |
 | personas.py (`back_masher`) | Back to the PIN page had to send a form again (Chrome asks to confirm, Safari asks or shows a blank page): the PIN page now has its own address | 8c777f1 |
 | Real box logs | a paused download was logged as a failure, "the drive is full" | 3166962 |
 | Virtual box, first boot | `systemd-networkd-wait-online` failed: the QEMU kernel line had `rw`, which let systemd's first-boot presets turn on networkd | 3d6df8b |
