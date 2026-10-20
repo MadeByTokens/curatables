@@ -104,3 +104,21 @@ def test_hide_switched_off(app):
     assert "/hide" not in kid.get("/watch/yt_b").text
     assert kid.post("/video/yt_b/hide").status_code == 403
     assert "Diesel train" in kid.get("/").text
+
+
+def test_a_video_deleted_while_its_player_loads_is_not_found(app, monkeypatch):
+    """A parent deletes a video while a kid's player is asking for it:
+    its folder goes between any check and the listing."""
+    import pathlib
+    _, kid, _, _ = _setup(app)
+    real = pathlib.Path.iterdir
+
+    def gone(self):
+        if self.name in ("yt_a", "yt_b"):
+            raise FileNotFoundError(str(self))
+        return real(self)
+
+    monkeypatch.setattr(pathlib.Path, "iterdir", gone)
+    assert kid.get("/media/video/yt_a").status_code == 404
+    assert kid.get("/media/video/yt_a?download=1").status_code == 404
+    assert kid.get("/media/subs/yt_a").json() == []
