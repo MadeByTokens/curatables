@@ -2,7 +2,7 @@
 
 import time
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.dependencies import (
@@ -169,14 +169,20 @@ def setup_system_submit(request: Request,
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request,
+               signed_in: bool = Query(False),
                config: Config = Depends(get_config),
                viewer: ViewerContext = Depends(get_viewer)):
     if config.is_first_run:
         return RedirectResponse(url="/parent/setup", status_code=302)
     if viewer.is_parent:
         return RedirectResponse(url="/parent/", status_code=302)
+    # Back here right after a correct password: the browser dropped the
+    # session cookie (a private tab that blocks cookies, say).
+    error = ("This browser didn't keep the sign-in. Private tabs often do this: "
+             "use a normal tab, or allow cookies in the browser's settings."
+             if signed_in else None)
     return request.app.state.templates.TemplateResponse(request, "parent/login.html", {
-        "request": request, "error": None,
+        "request": request, "error": error,
     })
 
 
@@ -197,7 +203,9 @@ def login_submit(request: Request,
         throttle.succeeded(client_key)
         auth.start_parent_session(request.session)
         request.app.state.metrics.record_parent_login("success")
-        return RedirectResponse(url="/parent/", status_code=302)
+        # Through the login page, which sends a browser that kept the
+        # session on to the dashboard and explains to one that didn't.
+        return RedirectResponse(url="/parent/login?signed_in=1", status_code=302)
     throttle.failed(client_key)
     request.app.state.metrics.record_parent_login("failure")
     return request.app.state.templates.TemplateResponse(request, "parent/login.html", {

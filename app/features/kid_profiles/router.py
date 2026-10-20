@@ -1,6 +1,6 @@
 """Kid profile selection: picker, PIN entry, profile switching."""
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import get_pin_throttle, get_profile_service
@@ -25,6 +25,13 @@ def _viewer_for_profile(profile):
     )
 
 
+# Where a device goes once a kid is signed in. A browser that drops the
+# session cookie (a private tab that blocks cookies) arrives without the
+# kid and gets the picker with an explanation, instead of being sent
+# round to the picker for ever.
+SIGNED_IN_URL = "/profiles?signed_in=1"
+
+
 def _enter_kid_mode(request: Request, profile_id: int | None) -> None:
     """Select a kid profile and drop any parent login on this device."""
     if profile_id is None:
@@ -35,18 +42,22 @@ def _enter_kid_mode(request: Request, profile_id: int | None) -> None:
 
 @router.get("/profiles", response_class=HTMLResponse)
 def profile_picker(request: Request,
+                   signed_in: bool = Query(False),
                    profiles_svc: ProfileService = Depends(get_profile_service)):
+    if signed_in and request.session.get("profile_id"):
+        return RedirectResponse(url="/", status_code=302)
     profiles = profiles_svc.list()
-    if len(profiles) == 1 and not profiles[0].pin:
+    if len(profiles) == 1 and not profiles[0].pin and not signed_in:
         # Single-kid household with no PIN: zero-click auto-select.
         _enter_kid_mode(request, profiles[0].id)
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
     # With no profiles the page links to /parent/profiles/; redirecting
     # to / instead would loop through the anonymous-kid redirect.
     return request.app.state.templates.TemplateResponse(request, "kid/profiles.html", {
         "request": request,
         "profiles": profiles,
         "avatars": AVATAR_EMOJIS,
+        "cookies_blocked": signed_in,
     })
 
 
@@ -73,7 +84,7 @@ def profile_select(request: Request,
     if profile.pin:
         return _pin_page(request, profile)
     _enter_kid_mode(request, profile.id)
-    return RedirectResponse(url="/", status_code=302)
+    return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
 
 
 @router.post("/profiles/pin")
@@ -95,7 +106,7 @@ def profile_pin(request: Request,
         PIN_LIMITER.reset(limiter_key)
         pin_throttle.succeeded(profile.id)
         _enter_kid_mode(request, profile.id)
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
     pin_throttle.failed(profile.id)
     return _pin_page(request, profile, "Wrong PIN. Try again.")
 

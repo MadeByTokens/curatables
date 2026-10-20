@@ -38,7 +38,43 @@ def test_correct_pin_enters_profile(app, client):
     pid = svc.create(name="cy", display_name="Cy", pin="2222")
     resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "2222"})
     assert resp.status_code == 302
-    assert resp.headers["location"] == "/"
+    assert resp.headers["location"] == "/profiles?signed_in=1"
+    assert client.get(resp.headers["location"]).headers["location"] == "/"
+
+
+def test_a_browser_that_drops_the_cookie_is_told_instead_of_bounced(app, client):
+    # A private tab that blocks cookies: the PIN is right, but the next
+    # request arrives without the session.
+    pid = _svc(app).create(name="dee", display_name="Dee", pin="3333")
+    resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "3333"})
+    client.cookies.clear()
+    page = client.get(resp.headers["location"])
+    assert page.status_code == 200
+    assert "keep the sign-in" in page.text
+
+
+def test_the_only_kid_without_a_pin_does_not_loop_without_cookies(app, client):
+    _svc(app).create(name="solo", display_name="Solo")
+    resp = client.get("/profiles")
+    assert resp.headers["location"] == "/profiles?signed_in=1"
+    client.cookies.clear()
+    page = client.get(resp.headers["location"])
+    assert page.status_code == 200
+    assert "keep the sign-in" in page.text
+    # With the cookie kept, the same step goes on to the kid's home.
+    fresh = TestClient(app, follow_redirects=False)
+    first = fresh.get("/profiles")
+    assert fresh.get(first.headers["location"]).headers["location"] == "/"
+
+
+def test_parent_sign_in_explains_a_dropped_cookie(client):
+    resp = client.post("/parent/login", data={"password": "testpass"})
+    assert resp.headers["location"] == "/parent/login?signed_in=1"
+    assert client.get(resp.headers["location"]).headers["location"] == "/parent/"
+    client.cookies.clear()
+    page = client.get(resp.headers["location"])
+    assert page.status_code == 200
+    assert "keep the sign-in" in page.text
 
 
 def test_parent_login_is_throttled(client):
