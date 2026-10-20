@@ -50,7 +50,8 @@ def test_new_profile_form_starts_simple(authed_client):
     import re
     page = authed_client.get("/parent/profiles/create").text
     checked = set(re.findall(r'name="(allow_\w+|auto_subtitles)" value="1"\s+checked', page))
-    assert checked == {"allow_reactions"}
+    # Saving a video and hiding one the kid dislikes are on too.
+    assert checked == {"allow_reactions", "allow_download", "allow_hide"}
 
 
 def test_reaction_toggles_and_reports_counts(app):
@@ -71,8 +72,8 @@ def test_home_marks_current_page_and_shows_reaction_emoji(app):
     assert '<html lang="en">' in home
 
 
-def test_watch_page_blocks_cast_download_and_pip(app):
-    _, kid, _ = _setup(app)
+def test_watch_page_blocks_cast_and_pip_and_download_when_off(app):
+    _, kid, _ = _setup(app, allow_download=False)
     page = kid.get("/watch/yt_train").text
     assert 'controlsList="nodownload noremoteplayback"' in page
     assert "disablePictureInPicture" in page

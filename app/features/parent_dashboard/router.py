@@ -12,8 +12,9 @@ from starlette.responses import HTMLResponse, Response
 from app.constants import AVATAR_EMOJIS
 from app.dependencies import (
     require_parent, get_channel_service, get_content_service, get_import_job_repo,
-    get_stats_service, get_wishlist_repo,
+    get_hidden_video_repo, get_stats_service, get_wishlist_repo,
 )
+from app.repositories.hidden_video_repo import HiddenVideoRepository
 from app.repositories.import_job_repo import ImportJobRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.channels import ChannelService
@@ -34,7 +35,8 @@ def dashboard(request: Request,
               stats: StatsService = Depends(get_stats_service),
               channels_svc: ChannelService = Depends(get_channel_service),
               wishlist: WishlistRepository = Depends(get_wishlist_repo),
-              imports: ImportJobRepository = Depends(get_import_job_repo)):
+              imports: ImportJobRepository = Depends(get_import_job_repo),
+              hidden: HiddenVideoRepository = Depends(get_hidden_video_repo)):
     _, total = content.list_all(page=1, per_page=1)
     overview = stats.dashboard_overview()
     setup = {
@@ -52,6 +54,8 @@ def dashboard(request: Request,
             "avatars": AVATAR_EMOJIS,
             "channel_names": {c.id: c.name for c in channels_svc.list()},
             "imports_active": imports.count_active(),
+            "kid_hidden": hidden.list_unreviewed(limit=3),
+            "kid_hidden_count": hidden.count_unreviewed(),
             "search": _search_notice(),
             **overview,
         })

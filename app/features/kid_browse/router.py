@@ -1,5 +1,7 @@
 """Kid browsing: home grid with pagination and channel filtering."""
 
+import re
+
 from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.responses import HTMLResponse, RedirectResponse, Response
@@ -48,6 +50,7 @@ def _build_home_context(videos, content, reactions, viewer, page, total,
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request,
          page: int = Query(1, ge=1),
+         hid: str = Query(""),
          viewer: ViewerContext = Depends(get_viewer),
          content: ContentService = Depends(get_content_service),
          profiles_svc: ProfileService = Depends(get_profile_service),
@@ -64,6 +67,9 @@ def home(request: Request,
     if viewer.is_child and viewer.profile_id:
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total)
+    # Just hidden: say so, with an Undo for a tap by mistake.
+    ctx["just_hidden"] = (hid if viewer.is_child and viewer.allow_hide
+                          and re.fullmatch(r"[A-Za-z0-9._-]{1,200}", hid) else "")
     return render_kid_template(request, viewer, "kid/home.html", ctx)
 
 

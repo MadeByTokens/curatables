@@ -105,7 +105,7 @@ Stored in the database, not `config.json`.
 | Language | English, Português (Brasil) or Español for this kid's screens. Video and channel names are not translated. |
 | Theme | Default, Playful, Calm, or Big & clear (large text, high contrast). |
 | Search | Off, or search within the approved library. |
-| What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles, and asking for new videos from YouTube (the wishlist). New profiles start with reactions only. |
+| What this kid can do | Reactions, comments, tags, customize, upload, automatic subtitles, asking for new videos from YouTube (the wishlist), downloading videos onto the device, and hiding videos (the parent is told). New profiles start with reactions, downloading and hiding. |
 | Which channels can they see? | **All channels** (including new ones), **Only the ones ticked here**, or **None of yours** (only the kid's own channels). Ticking a channel means "only the ticked ones". |
 
 ## Environment variables

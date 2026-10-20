@@ -36,7 +36,7 @@
 {% set ds = disk_status() %}
 {% set sd = system_disk_status() %}
 
-{% set has_attention = attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') or (sd and sd.status in ('blocked', 'warning')) %}
+{% set has_attention = kid_hidden_count or attention.failed_downloads or attention.stuck_pending or attention.awaiting_review or wishlist_pending or imports_active or search or ds.status in ('blocked', 'warning') or (sd and sd.status in ('blocked', 'warning')) %}
 {% if has_attention %}
 <div class="attention-box{% if ds.status == 'blocked' %} dash-disk-blocked{% endif %}">
   <h2>Needs your attention</h2>
@@ -86,6 +86,20 @@
       <a href="/parent/requests"><strong>{{ wishlist_pending }} video request{% if wishlist_pending != 1 %}s{% endif %} from your kids</strong> — review them</a>
     </li>
     {% endif %}
+    {% if kid_hidden_count %}
+    <li>
+      <strong>{{ kid_hidden_count }}
+        video{% if kid_hidden_count != 1 %}s{% endif %} a kid hid</strong> —
+      {% for h in kid_hidden %}
+        <a href="/parent/content/{{ h.video_id }}">{{ h.title }}</a> ({{ h.kid_name }}){% if not loop.last %}, {% endif %}
+      {% endfor %}
+      {% if kid_hidden_count > kid_hidden|length %}
+      and {{ kid_hidden_count - kid_hidden|length }} more…
+      {% endif %}
+      <a href="/parent/content?status=kid_hidden">Review →</a>
+    </li>
+    {% endif %}
+
     {% if attention.awaiting_review %}
     <li>
       <strong>{{ attention.awaiting_review|length }}

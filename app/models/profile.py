@@ -24,6 +24,8 @@ class Profile:
     allow_upload: bool = True
     auto_subtitles: bool = True
     allow_wishlist: bool = False
+    allow_download: bool = True
+    allow_hide: bool = True
     # Requests from trusted YouTube channels skip review: "family" follows
     # the family setting, "on" goes into auto_add_channel_id, "off" waits.
     auto_add_mode: str = "family"
@@ -39,6 +41,8 @@ FEATURE_SWITCHES = (
     ("allow_customize", "Customize videos and own channels (titles, pictures)", False),
     ("allow_upload", "Upload videos from this device", False),
     ("auto_subtitles", "Turn subtitles on automatically", False),
+    ("allow_download", "Download videos to keep on this device", True),
+    ("allow_hide", "Hide videos they don't like (you're told, and can delete them)", True),
     ("allow_wishlist", "Ask for new videos from YouTube (a grown-up approves each one first)", False),
 )
 """(field, label, on-by-default-for-a-new-profile) for the parent form."""

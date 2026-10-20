@@ -12,7 +12,9 @@ from app.backends.base import VideoMetadata
 from app.dependencies import (
     require_parent, get_content_service, get_channel_service,
     get_stats_service, get_comment_service, get_thumbnail_service, get_wishlist_repo,
+    get_hidden_video_repo,
 )
+from app.repositories.hidden_video_repo import HiddenVideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.ids import make_video_id
 from app.services.images import validate_image
@@ -44,6 +46,7 @@ CONTENT_FILTERS = [
     ("pending", "Downloads"),
     ("error", "Failed"),
     ("hidden", "Hidden"),
+    ("kid_hidden", "Hidden by a kid"),
 ]
 
 CONTENT_SORTS = [
@@ -479,7 +482,8 @@ def content_detail(request: Request, video_id: str,
                    cp: int = Query(1, ge=1),
                    viewer: ViewerContext = Depends(require_parent),
                    content: ContentService = Depends(get_content_service),
-                   stats: StatsService = Depends(get_stats_service)):
+                   stats: StatsService = Depends(get_stats_service),
+                   hidden: HiddenVideoRepository = Depends(get_hidden_video_repo)):
     try:
         video = content.get_video(video_id)
     except Exception:
@@ -493,8 +497,22 @@ def content_detail(request: Request, video_id: str,
             "video": video,
             "family_channel": family_channel,
             "emoji_lookup": dict(EMOJI_MAP),
+            "hidden_by": hidden.for_video(video_id),
             **detail,
         })
+
+
+@router.post("/content/{video_id}/kid-hidden/{profile_id}")
+def kid_hidden_decide(video_id: str, profile_id: int,
+                      action: str = Form(""),
+                      viewer: ViewerContext = Depends(require_parent),
+                      hidden: HiddenVideoRepository = Depends(get_hidden_video_repo)):
+    """A kid hid this video: keep it hidden from them, or show it again."""
+    if action == "show":
+        hidden.unhide(profile_id, video_id)
+    elif action == "keep":
+        hidden.mark_reviewed(profile_id, video_id)
+    return RedirectResponse(url=f"/parent/content/{video_id}", status_code=303)
 
 
 @router.post("/content/{video_id}/comment")

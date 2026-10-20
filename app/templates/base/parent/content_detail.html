@@ -24,6 +24,28 @@
   Watch it, then approve it so the kids can see it.
 </div>
 {% endif %}
+{% for h in hidden_by %}
+<div class="flash flash-info mt-8">
+  <strong>{{ h.kid_name }} hid this video</strong> ({{ h.hidden_at|local_time }}){% if h.reviewed %}; it stays hidden from them.{% else %}
+  and would like it gone. Delete it for everyone, or decide just for {{ h.kid_name }}:{% endif %}
+  <div class="mt-8">
+    {% if not h.reviewed %}
+    <form method="POST" action="/parent/content/{{ video.video_id }}/delete" data-confirm="Delete this video for everyone?" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-danger">Delete video</button>
+    </form>
+    <form method="POST" action="/parent/content/{{ video.video_id }}/kid-hidden/{{ h.profile_id }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" name="action" value="keep" class="btn btn-sm btn-secondary">Keep it hidden from {{ h.kid_name }}</button>
+    </form>
+    {% endif %}
+    <form method="POST" action="/parent/content/{{ video.video_id }}/kid-hidden/{{ h.profile_id }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" name="action" value="show" class="btn btn-sm btn-secondary">Show it to {{ h.kid_name }} again</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
 <div class="mt-8">
   <a href="/parent/content/{{ video.video_id }}/edit" class="btn btn-sm btn-secondary">Edit</a>
   {% if video.status == 'review' %}
