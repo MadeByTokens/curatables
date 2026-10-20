@@ -205,4 +205,4 @@ behaviours the tests act out, and what each must hold:
 | Real box logs | a paused download was logged as a failure, "the drive is full" | 3166962 |
 | Virtual box, first boot | `systemd-networkd-wait-online` failed: the QEMU kernel line had `rw`, which let systemd's first-boot presets turn on networkd | 3d6df8b |
 | chaos.py | a video deleted while a kid's player loaded it crashed the request (500) | 61ead84 |
-| Special-needs tests | the edit page of a deleted video crashed (500); any page now answers "not found" | this change |
+| Special-needs tests | the edit page of a deleted video crashed (500); any page now answers "not found" | 4bbce56 |
