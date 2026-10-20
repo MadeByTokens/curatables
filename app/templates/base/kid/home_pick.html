@@ -1,0 +1,51 @@
+{% extends "kid/base.html" %}
+{% set nav_active = "home" %}
+{% block content %}
+<div class="home-edit-bar" role="status">
+  <p class="m-0">{{ _("Pick a video for this spot.") }}</p>
+  <a href="/?edit=1" class="video-action-btn">{{ _("Cancel") }}</a>
+</div>
+
+{% if channels|length > 1 %}
+<nav class="channel-nav" aria-label="{{ _('Channels') }}">
+  <a href="/home/pick?slot={{ slot }}" class="channel-link{% if not current_channel_id %} active{% endif %}"{% if not current_channel_id %} aria-current="page"{% endif %}>{{ _("All") }}</a>
+  {% for ch in channels %}
+  <a href="/home/pick?slot={{ slot }}&amp;channel={{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
+    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+<div class="video-grid">
+{% for v in videos %}
+  <form method="POST" action="/home/add" class="video-card home-target">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="slot" value="{{ slot }}">
+    <button type="submit" name="video_id" value="{{ v.video_id }}" class="home-card-btn">
+      <span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt=""></span>
+      <span class="video-title">{{ v.title }}</span>
+      {% if v.video_id in on_home %}<span class="home-note">{{ _("On your Home: moves here") }}</span>{% endif %}
+    </button>
+  </form>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon" aria-hidden="true">&#128250;</div>
+    <p>{{ _("No videos here yet. Ask a grown-up to add some!") }}</p>
+  </div>
+{% endfor %}
+  <div class="clear"></div>
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% set base_url = "/home/pick?slot=" ~ slot ~ ("&channel=" ~ current_channel_id if current_channel_id else "") %}
+  {% if page > 1 %}
+  <a href="{{ base_url }}&amp;page={{ page - 1 }}" class="page-link" aria-label="{{ _('Previous page') }}">&larr;</a>
+  {% endif %}
+  <span class="page-info">{{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="{{ base_url }}&amp;page={{ page + 1 }}" class="page-link" aria-label="{{ _('Next page') }}">&rarr;</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

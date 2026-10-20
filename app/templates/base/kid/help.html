@@ -11,7 +11,8 @@
   <h2>{{ _("How it works") }}</h2>
 
   <div class="help-grid">
-    {{ tile("&#127968;"|safe, _("Home shows all your videos")) }}
+    {{ tile("&#127968;"|safe, _("Home is yours: put your favorite videos there")) }}
+    {{ tile("&#128250;"|safe, _("All shows every video")) }}
     {{ tile("&#127916;"|safe, _("Tap a video to watch it")) }}
     {{ tile("&#9654;&#65039;"|safe, _("Stopped in the middle? Tap Carry on next time")) }}
     {% if viewer and viewer.is_child and viewer.allow_reactions %}

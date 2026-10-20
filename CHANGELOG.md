@@ -31,6 +31,15 @@ code already called itself 0.5.0).
 - Both are new switches under Kids → Edit → What this kid can do, on
   for every kid. Adds one database migration.
 
+**For kids**
+- Home is the kid's own, arranged like a tablet's home screen: at first
+  their 12 newest videos, then whatever they put where. **Change my
+  Home** adds a video to any of 24 spots, moves one (tap Move, then the
+  spot) or takes one off; **Put on my Home** under a video adds it to
+  the first free spot. **All** and the channel buttons show every
+  video as before, and the Home button always comes back. Adds one
+  database migration.
+
 ## v0.8.1
 
 Signing in on a device that blocks cookies, and the Home Screen icon's

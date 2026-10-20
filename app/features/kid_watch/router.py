@@ -5,10 +5,12 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import (
     get_comment_service, get_content_service, get_event_service, get_hidden_video_repo,
-    get_kid_library_service, get_reaction_service, get_viewer, require_kid_feature,
+    get_kid_home_service, get_kid_library_service, get_reaction_service, get_viewer,
+    require_kid_feature,
 )
 from app.repositories.hidden_video_repo import HiddenVideoRepository
 from app.services.events import EventService
+from app.services.kid_home import KidHomeService
 from app.services.content import ContentService, VideoNotFound
 from app.services.reactions import ReactionService
 from app.services.comments import CommentService
@@ -28,11 +30,13 @@ _hide = require_kid_feature("allow_hide")
 def watch(request: Request, video_id: str,
           comments_page: int = Query(1, ge=1, alias="cp"),
           already: int = Query(0),
+          home: str = Query(""),
           viewer: ViewerContext = Depends(get_viewer),
           content: ContentService = Depends(get_content_service),
           reactions: ReactionService = Depends(get_reaction_service),
           comments_svc: CommentService = Depends(get_comment_service),
-          kid_lib: KidLibraryService = Depends(get_kid_library_service)):
+          kid_lib: KidLibraryService = Depends(get_kid_library_service),
+          kid_home: KidHomeService = Depends(get_kid_home_service)):
     try:
         video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
@@ -84,6 +88,8 @@ def watch(request: Request, video_id: str,
         "tags": tags,
         "next_episode": next_episode,
         "already_here": bool(already),
+        "on_home": viewer.is_child and kid_home.contains(viewer, video_id),
+        "home_note": home if home in ("added", "full") else "",
     })
 
 

@@ -43,8 +43,23 @@
     {% endif %}
   </div>
 
-  {% if kid and (viewer.allow_download or viewer.allow_hide) %}
+  {% if kid %}
+  {% if home_note == "added" %}
+  <div class="wishlist-sent" role="status"><span aria-hidden="true">&#127968;</span> {{ _("It's on your Home now.") }}</div>
+  {% elif home_note == "full" %}
+  <div class="wishlist-sent" role="status"><span aria-hidden="true">&#127968;</span> {{ _("Your Home is full. Take a video off it first.") }}</div>
+  {% endif %}
   <div class="video-actions">
+    <form method="POST" action="/home/{{ 'remove' if on_home else 'add' }}" class="d-ib">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="video_id" value="{{ video.video_id }}">
+      <input type="hidden" name="back" value="watch">
+      {% if on_home %}
+      <button type="submit" class="video-action-btn"><span aria-hidden="true">&#10004;&#65039;</span> {{ _("On my Home") }}<span class="sr-only"> {{ _("Take off Home") }}</span></button>
+      {% else %}
+      <button type="submit" class="video-action-btn"><span aria-hidden="true">&#10133;</span> {{ _("Put on my Home") }}</button>
+      {% endif %}
+    </form>
     {% if viewer.allow_download %}
     <a href="/media/video/{{ video.video_id }}?download=1" download class="video-action-btn"><span aria-hidden="true">&#11015;&#65039;</span> {{ _("Download") }}</a>
     {% endif %}

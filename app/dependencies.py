@@ -40,6 +40,7 @@ from app.services.reactions import ReactionService
 from app.services.comments import CommentService
 from app.services.stats import StatsService
 from app.services.kid_library import KidLibraryService
+from app.services.kid_home import KidHomeService
 from app.repositories.reaction_repo import ReactionRepository
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.override_repo import ProfileVideoOverrideRepository
@@ -48,6 +49,7 @@ from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepos
 from app.repositories.login_failure_repo import LoginFailureRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.hidden_video_repo import HiddenVideoRepository
+from app.repositories.home_slot_repo import HomeSlotRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.repositories.import_job_repo import ImportJobRepository
 
@@ -277,6 +279,11 @@ def get_kid_library_service(
 ) -> KidLibraryService:
     return KidLibraryService(override_repo, tag_repo, channel_video_repo,
                              config.media_dir)
+
+
+def get_kid_home_service(db=Depends(get_db),
+                         content=Depends(get_content_service)) -> KidHomeService:
+    return KidHomeService(HomeSlotRepository(db), content)
 
 
 def get_stats_service(

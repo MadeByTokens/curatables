@@ -204,7 +204,7 @@ def create_app(data_dir: str | None = None, log_level: str | None = None) -> Fas
     # A visitor with neither a kid profile nor a parent login who opens a
     # kid page goes to /profiles, which auto-selects the only profile of a
     # single-kid household or shows the picker.
-    _KID_PATH_PREFIXES = ("/watch/", "/channel/", "/search", "/upload")
+    _KID_PATH_PREFIXES = ("/watch/", "/channel/", "/search", "/upload", "/all", "/home/")
 
     @app.middleware("http")
     async def anonymous_kid_redirect(request: Request, call_next):
