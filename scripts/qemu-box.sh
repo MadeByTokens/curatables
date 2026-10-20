@@ -106,11 +106,14 @@ for p in "$port" "$ssh_port"; do
     fi
 done
 
+# No "rw", like the Pi's cmdline.txt: the root starts read-only, so
+# systemd's first boot can't apply its default presets to /etc (they
+# would turn on systemd-networkd beside NetworkManager, ssh.socket, ...).
 echo "Starting. Curatables: http://localhost:$port/  (Ctrl-A X stops it)"
 exec qemu-system-aarch64 \
     -M virt -cpu cortex-a72 -smp "$cpus" -m "$mem" \
     -kernel "$base.vmlinuz" -initrd "$base.initrd" \
-    -append "root=/dev/vda2 rootfstype=ext4 rw console=ttyAMA0 net.ifnames=0" \
+    -append "root=/dev/vda2 rootfstype=ext4 console=ttyAMA0 net.ifnames=0" \
     -drive "file=$overlay,format=qcow2,if=virtio" \
     -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:$port-:80,hostfwd=tcp:127.0.0.1:$ssh_port-:22" \
     -device virtio-net-pci,netdev=net0 \
