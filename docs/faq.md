@@ -34,12 +34,14 @@ time. If that was refused, the box never loads in that browser. Turn
 it back on in the iPad's **Settings**, on the browser's own page (look
 for **Local Network**). Or use Safari, which needs no permission.
 
-**Signing in goes straight back to "Who's watching?" (or the sign-in page).**
-The browser isn't keeping Curatables' sign-in cookie. Private tabs often
-do this: on an iPad or iPhone, a Safari private tab blocks all cookies
-when **Block All Cookies** is on under Settings → Apps → Safari →
-Advanced. The box then says "This browser didn't keep the sign-in".
-Use a normal tab or the Home Screen icon, or allow cookies.
+**"This browser didn't keep the sign-in."**
+The browser is blocking cookies, so Curatables can't remember who
+signed in, and signing in goes back to "Who's watching?" (or to the
+parent sign-in page). On an iPad or iPhone, add Curatables to the Home
+Screen (**Share → Add to Home Screen** in Safari) and open it from that
+icon: it keeps its own sign-in even when Safari blocks cookies (Safari's
+**Block All Cookies**, or a Screen Time restriction). Elsewhere, allow
+cookies in the browser's settings.
 
 **How do I find the box's number address?**
 Look in your router's list of connected devices for `curatables`, then

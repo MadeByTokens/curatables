@@ -12,10 +12,10 @@ code already called itself 0.5.0).
 ## Unreleased
 
 **For parents**
-- A browser that doesn't keep the sign-in, such as a private tab that
-  blocks cookies, is told so ("This browser didn't keep the sign-in")
-  on the kids' picker or the parent sign-in page, instead of going back
-  to "Who's watching?" or round in a loop.
+- A browser that blocks cookies is told so ("This browser didn't keep
+  the sign-in") on the kids' picker or the parent sign-in page, with
+  what to do (on an iPad or iPhone, open Curatables from its Home Screen
+  icon), instead of going back to "Who's watching?" or round in a loop.
 - Added to a Home Screen, the box is named "Curatables", whichever page
   it was added from.
 

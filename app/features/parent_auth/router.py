@@ -177,9 +177,11 @@ def login_page(request: Request,
     if viewer.is_parent:
         return RedirectResponse(url="/parent/", status_code=302)
     # Back here right after a correct password: the browser dropped the
-    # session cookie (a private tab that blocks cookies, say).
-    error = ("This browser didn't keep the sign-in. Private tabs often do this: "
-             "use a normal tab, or allow cookies in the browser's settings."
+    # session cookie (Safari with Block All Cookies on, say).
+    error = ("This browser didn't keep the sign-in, so it is blocking cookies. "
+             "On an iPad or iPhone, add this page to the Home Screen "
+             "(Share → Add to Home Screen) and open it from that icon; "
+             "elsewhere, allow cookies in the browser's settings."
              if signed_in else None)
     return request.app.state.templates.TemplateResponse(request, "parent/login.html", {
         "request": request, "error": error,
