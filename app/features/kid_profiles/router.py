@@ -74,6 +74,19 @@ def _pin_page(request: Request, profile, error: str | None = None,
     })
 
 
+# Shown on the PIN page after a try; the page is reached by address
+# (Post/Redirect/Get), so Back, a reload or a restored tab shows it again
+# instead of asking to send the form again.
+_PIN_MESSAGES = {
+    "wrong": "Wrong PIN. Try again.",
+    "locked": "Too many tries. Wait a little, then try again.",
+}
+
+
+def _pin_url(profile_id: int | None, outcome: str = "") -> str:
+    return f"/profiles/{profile_id}/pin" + (f"?e={outcome}" if outcome else "")
+
+
 @router.post("/profiles/select")
 def profile_select(request: Request,
                    profile_id: int = Form(...),
@@ -82,9 +95,18 @@ def profile_select(request: Request,
     if not profile:
         return RedirectResponse(url="/profiles", status_code=302)
     if profile.pin:
-        return _pin_page(request, profile)
+        return RedirectResponse(url=_pin_url(profile.id), status_code=303)
     _enter_kid_mode(request, profile.id)
     return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
+
+
+@router.get("/profiles/{profile_id}/pin", response_class=HTMLResponse)
+def pin_page(request: Request, profile_id: int, e: str = Query(""),
+             profiles_svc: ProfileService = Depends(get_profile_service)):
+    profile = profiles_svc.get(profile_id)
+    if not profile or not profile.pin:
+        return RedirectResponse(url="/profiles", status_code=302)
+    return _pin_page(request, profile, _PIN_MESSAGES.get(e), locked=e == "locked")
 
 
 @router.post("/profiles/pin")
@@ -100,22 +122,21 @@ def profile_pin(request: Request,
     # the profile on everyone else's tablet.
     limiter_key = (profile.id, request.client.host if request.client else "")
     if pin_throttle.blocked(profile.id) or not PIN_LIMITER.check(limiter_key):
-        return _pin_page(request, profile,
-                         "Too many tries. Wait a little, then try again.", locked=True)
+        return RedirectResponse(url=_pin_url(profile.id, "locked"), status_code=303)
     if profiles_svc.check_pin(profile, pin):
         PIN_LIMITER.reset(limiter_key)
         pin_throttle.succeeded(profile.id)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
     pin_throttle.failed(profile.id)
-    return _pin_page(request, profile, "Wrong PIN. Try again.")
+    return RedirectResponse(url=_pin_url(profile.id, "wrong"), status_code=303)
 
 
 @router.get("/profiles/select")
 @router.get("/profiles/pin")
-def pin_page_reloaded():
-    """The PIN page is the answer to a form, so its address only takes
-    forms. Reloading it, or coming back to it, starts at the picker."""
+def pin_form_address():
+    """These addresses only take the picker's and the PIN page's forms;
+    one opened from history or a bookmark starts at the picker."""
     return RedirectResponse(url="/profiles", status_code=302)
 
 

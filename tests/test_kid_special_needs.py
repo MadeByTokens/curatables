@@ -125,7 +125,7 @@ def test_wrong_pictures_lock_kindly_and_only_that_profile(app):
     tablet = TestClient(app, follow_redirects=False)
     for _ in range(5):
         tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "999"})
-    locked = tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "512"}).text
+    locked = tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "512"}, follow_redirects=True).text
     assert "Wait a little" in locked
     assert 'class="pin-pad' not in locked
     assert 'href="/profiles"' in locked

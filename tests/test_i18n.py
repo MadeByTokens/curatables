@@ -77,9 +77,9 @@ def test_kid_screens_follow_the_profile_language(app, client):
 
 def test_pin_page_and_errors_use_the_profile_language(app, client):
     pid = _kid(app, client, "es", pin="1234")
-    page = client.post("/profiles/select", data={"profile_id": pid}).text
+    page = client.post("/profiles/select", data={"profile_id": pid}, follow_redirects=True).text
     assert '<html lang="es">' in page and "Volver" in page
-    wrong = client.post("/profiles/pin", data={"profile_id": pid, "pin": "9999"}).text
+    wrong = client.post("/profiles/pin", data={"profile_id": pid, "pin": "9999"}, follow_redirects=True).text
     assert "Clave incorrecta" in wrong
 
 
