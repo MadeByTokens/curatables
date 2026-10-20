@@ -151,6 +151,34 @@ In CI, [`.github/workflows/build-image.yml`](../.github/workflows/build-image.ym
 runs the same script (manually, or on a published GitHub Release, which
 gets the `.img.xz` attached).
 
+## Trying an image on a laptop (QEMU)
+
+[`scripts/qemu-box.sh`](../scripts/qemu-box.sh) boots the image as a
+whole system in QEMU, without a Pi or an SD card: first-boot setup,
+systemd, the server, the root helper, SSH, backups, restarts.
+
+```bash
+scripts/qemu-box.sh                    # the latest release, downloaded
+scripts/qemu-box.sh --image pi-gen/.pi-gen/deploy/image_….img.xz
+scripts/qemu-box.sh --fresh            # back to a just-flashed box
+```
+
+Then open <http://localhost:8080/>; once SSH is on (setup step 2),
+`ssh -p 2223 admin@localhost`. **Ctrl-A X** stops it. Everything lives
+in `~/.cache/curatables-qemu`: each image is decompressed and readied
+once (in a throwaway privileged Docker container, so no root password),
+and the box writes to a copy-on-write layer on top, which `--fresh`
+throws away.
+
+It runs on QEMU's generic arm64 machine with Debian's arm64 cloud
+kernel, because the Raspberry Pi kernel needs Pi hardware (QEMU's
+`raspi3b` machine never got as far as answering on the network). So
+Wi-Fi, USB drives, the Pi's power readings and EEPROM updates aren't
+there (`rpi-eeprom-update.service` fails), and the emulated CPU is
+several times slower than a Pi 4: the first boot takes about three
+minutes. Needs `qemu-system-arm`, `qemu-utils`, Docker, `xz`, `curl`,
+and `gh` for the release download.
+
 ## How it fits together
 
 - `config` — pi-gen settings (image name, Lite/trixie, no baked
