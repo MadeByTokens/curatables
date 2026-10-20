@@ -46,12 +46,11 @@
     <div class="mb-16">
       <label for="description" class="d-flex jc-sb ai-c fw-bold mb-4">
         <span>{{ _("Description") }}</span>
-        {% if overrides and overrides.description %}
+        {% if overrides and overrides.description is not none %}
         <button type="submit" form="reset-description" class="txt bd-none r-3 fs-12 clickable fw-normal reset-btn">{{ _("Reset to original") }}</button>
         {% endif %}
       </label>
-      <textarea id="description" name="description" rows="4" maxlength="2000" class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans">{{ overrides.description if overrides and overrides.description else video.description }}</textarea>
-      <div class="fs-12 muted mt-2">{{ _("Leave blank to use the original description.") }}</div>
+      <textarea id="description" name="description" rows="4" maxlength="2000" class="w-100 p-8 fs-14 bd-ccc r-4 bb ff-sans">{{ overrides.description if overrides and overrides.description is not none else video.description }}</textarea>
     </div>
 
     <div class="mb-16">

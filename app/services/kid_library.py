@@ -44,13 +44,10 @@ class KidLibraryService:
 
     def set_description(self, profile_id: int, video_id: str,
                         description: str) -> None:
-        description = description.strip()
-        if description:
-            self.override_repo.upsert(
-                profile_id, video_id, description=description)
-        else:
-            self.override_repo.clear_field(
-                profile_id, video_id, "description")
+        """The kid's own description; an empty one stays empty
+        (clear_description brings back the original)."""
+        self.override_repo.upsert(
+            profile_id, video_id, description=description.strip())
 
     def clear_title(self, profile_id: int, video_id: str) -> None:
         self.override_repo.clear_field(profile_id, video_id, "title")
@@ -94,7 +91,7 @@ class KidLibraryService:
             if ov:
                 if ov.get("title"):
                     changes["title"] = ov["title"]
-                if ov.get("description"):
+                if ov.get("description") is not None:
                     changes["description"] = ov["description"]
             out.append(dataclasses.replace(v, **changes) if changes else v)
         return out

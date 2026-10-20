@@ -39,6 +39,14 @@ code already called itself 0.5.0).
   the first free spot. **All** and the channel buttons show every
   video as before, and the Home button always comes back. Adds one
   database migration.
+- A description the kid empties stays empty (**Reset to original**
+  brings the first one back).
+
+**Fixes**
+- Reloading the PIN page, or going back to it, opens the profile
+  picker instead of an "Oops" page.
+- A download that is paused or cancelled part way is logged as
+  stopped, not as a failure with "the drive is full".
 
 ## v0.8.1
 

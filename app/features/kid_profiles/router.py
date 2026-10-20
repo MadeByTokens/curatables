@@ -111,6 +111,14 @@ def profile_pin(request: Request,
     return _pin_page(request, profile, "Wrong PIN. Try again.")
 
 
+@router.get("/profiles/select")
+@router.get("/profiles/pin")
+def pin_page_reloaded():
+    """The PIN page is the answer to a form, so its address only takes
+    forms. Reloading it, or coming back to it, starts at the picker."""
+    return RedirectResponse(url="/profiles", status_code=302)
+
+
 @router.get("/profiles/switch")
 def profile_switch(request: Request):
     request.session.pop("profile_id", None)

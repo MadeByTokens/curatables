@@ -356,7 +356,7 @@ class YtdlpBackend(VideoBackend):
         if keep_going is not None:
             def _stop_when_asked(_status: dict) -> None:
                 if not keep_going():
-                    raise _StopDownload("stopped: the drive is full")
+                    raise _StopDownload("asked to stop")
             opts["progress_hooks"] = [_stop_when_asked]
 
         if subtitle_langs:
@@ -379,6 +379,10 @@ class YtdlpBackend(VideoBackend):
                 opts = {k: v for k, v in opts.items() if k not in _SUBTITLE_OPTS}
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
+        except _StopDownload:
+            # Paused, cancelled or out of space: the caller knows which.
+            logger.info("Download stopped part way for %s", url)
+            return None
         except Exception as e:
             self.last_error = self.classify_error(e)
             logger.exception("Download failed for %s", url)

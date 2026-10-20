@@ -262,14 +262,19 @@ async def video_edit_save(request: Request, video_id: str,
                           kid_lib: KidLibraryService = Depends(get_kid_library_service),
                           channels_svc: ChannelService = Depends(get_channel_service),
                           events: EventService = Depends(get_event_service)):
-    content.get_video_for_viewer(video_id, viewer)
+    video = content.get_video_for_viewer(video_id, viewer)
     form = await request.form()
 
     title = form_str(form, "title").strip()
     kid_lib.set_title(viewer.kid_id, video_id, title)
 
+    # The box starts with the original text: left as it was, the video
+    # keeps following the original. Emptied, it stays empty.
     description = form_str(form, "description").strip()
-    kid_lib.set_description(viewer.kid_id, video_id, description)
+    if description == (video.description or "").strip():
+        kid_lib.clear_description(viewer.kid_id, video_id)
+    else:
+        kid_lib.set_description(viewer.kid_id, video_id, description)
 
     thumbnail = form.get("thumbnail")
     if isinstance(thumbnail, StarletteUploadFile):
