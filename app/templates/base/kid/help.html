@@ -26,6 +26,12 @@
     {% if viewer and viewer.is_child and viewer.allow_tags %}
     {{ tile("&#127991;&#65039;"|safe, _("Put a word on a video to find it again")) }}
     {% endif %}
+    {% if viewer and viewer.is_child and viewer.allow_download %}
+    {{ tile("&#11015;&#65039;"|safe, _("Download a video to keep it")) }}
+    {% endif %}
+    {% if viewer and viewer.is_child and viewer.allow_hide %}
+    {{ tile("&#128584;"|safe, _("Don't like a video? Hide it")) }}
+    {% endif %}
     {% if viewer and viewer.is_child and viewer.allow_wishlist %}
     {{ tile("&#128301;"|safe, _("Ask for a new video")) }}
     {% endif %}

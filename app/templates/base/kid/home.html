@@ -2,6 +2,15 @@
 {% from "kid/_video_grid.html" import video_grid with context %}
 {% set nav_active = "tags" if tag_name else ("home" if not channel else "") %}
 {% block content %}
+{% if just_hidden %}
+<div class="wishlist-sent hidden-done" role="status">
+  <span aria-hidden="true">&#128584;</span> {{ _("Hidden. A grown-up will be told.") }}
+  <form method="POST" action="/video/{{ just_hidden }}/unhide" class="d-ib">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="video-action-btn">{{ _("Undo") }}</button>
+  </form>
+</div>
+{% endif %}
 
 {% if channel %}
 <div class="channel-header" style="--ch: {{ channel.color or '' }}">

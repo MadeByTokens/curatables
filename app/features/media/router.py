@@ -1,9 +1,10 @@
 """Media streaming: video and thumbnail serving."""
 
 import logging
+import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from starlette.responses import FileResponse, Response
 
 from app.dependencies import (
@@ -111,11 +112,23 @@ _VIDEO_MIME_BY_EXT = {
 }
 
 
+def _download_name(title: str, suffix: str) -> str:
+    """A file name from the title: no path separators, quotes or control
+    characters, and short enough for any file system."""
+    name = re.sub(r'[\x00-\x1f\x7f/\\:*?"<>|]+', " ", title)
+    name = " ".join(name.split())[:100].strip(" .") or "video"
+    return name + suffix
+
+
 @router.get("/video/{video_id}")
 def serve_video(request: Request, video_id: str,
+                download: bool = Query(False),
                 viewer: ViewerContext = Depends(get_viewer),
                 content: ContentService = Depends(get_content_service),
-                storage: StorageService = Depends(get_storage_service)):
+                storage: StorageService = Depends(get_storage_service),
+                kid_lib: KidLibraryService = Depends(get_kid_library_service)):
+    """The video file. With ?download=1 the browser saves it (on an iPad,
+    into Files) under the title the kid sees."""
     try:
         if viewer.is_parent:
             video = content.get_video(video_id)
@@ -123,13 +136,20 @@ def serve_video(request: Request, video_id: str,
             video = content.get_video_for_viewer(video_id, viewer)
     except VideoNotFound:
         return Response(status_code=404, content="Video not found")
+    if download and viewer.is_child and not viewer.allow_download:
+        return Response(status_code=403, content="Downloads are off for this profile")
 
     video_path = storage.video_file_path(video)
     if not video_path.exists():
         return Response(status_code=404, content="Video not downloaded yet")
 
     media_type = _VIDEO_MIME_BY_EXT.get(video_path.suffix.lower(), "video/mp4")
-    return FileResponse(str(video_path), media_type=media_type)
+    if not download:
+        return FileResponse(str(video_path), media_type=media_type)
+    if viewer.is_child and viewer.profile_id:
+        video = kid_lib.apply_overrides(viewer.profile_id, [video])[0]
+    return FileResponse(str(video_path), media_type=media_type,
+                        filename=_download_name(video.title, video_path.suffix.lower()))
 
 
 @router.get("/subs/{video_id}")

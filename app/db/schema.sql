@@ -98,7 +98,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     auto_add_channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,
     auto_add_mode TEXT NOT NULL DEFAULT 'family',  -- 'family' | 'off' | 'on'
     -- Find new shows only trusted YouTube channels: 'family' | 'on' | 'off'.
-    trusted_only TEXT NOT NULL DEFAULT 'family'
+    trusted_only TEXT NOT NULL DEFAULT 'family',
+    allow_download  INTEGER NOT NULL DEFAULT 1,
+    allow_hide      INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (
@@ -146,6 +148,16 @@ CREATE TABLE IF NOT EXISTS profile_video_overrides (
     PRIMARY KEY (profile_id, video_id)
 );
 
+-- A kid hid the video from their own lists; reviewed = 1 once the
+-- parent chose to keep it hidden.
+CREATE TABLE IF NOT EXISTS profile_hidden_videos (
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    video_id   TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
+    hidden_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    reviewed   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (profile_id, video_id)
+);
+
 CREATE TABLE IF NOT EXISTS tags (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE COLLATE NOCASE
@@ -190,6 +202,8 @@ CREATE TABLE IF NOT EXISTS wishlist_requests (
     suggested_channel TEXT NOT NULL DEFAULT '',  -- a new channel's name the kid suggests
     auto_added    INTEGER NOT NULL DEFAULT 0,   -- added without the parent's review
     youtube_channel_id TEXT NOT NULL DEFAULT '',  -- UC..., '' when not known
+    auto_added_at TEXT,                         -- counts a kid's automatic adds per day
+    held_by_limit INTEGER NOT NULL DEFAULT 0,   -- waited: that day's allowance was used up
     UNIQUE (profile_id, video_id)
 );
 

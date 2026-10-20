@@ -9,6 +9,7 @@ import unicodedata
 
 from app.models import Video
 from app.repositories.base import BaseRepository
+from app.repositories.hidden_video_repo import NOT_HIDDEN_SQL
 
 
 def fold_text(text: str) -> str:
@@ -84,11 +85,16 @@ class VideoRepository(BaseRepository):
         return int(row["cnt"])
 
     def list_ready(self, channel_id: int | None = None,
-                   limit: int = 30, offset: int = 0) -> builtins.list[Video]:
+                   limit: int = 30, offset: int = 0,
+                   hidden_for: int | None = None) -> builtins.list[Video]:
         """Videos kids can open: active, and downloaded or freed (a freed
-        video downloads again when a kid opens it)."""
+        video downloads again when a kid opens it). `hidden_for` leaves out
+        the videos that kid hid."""
         clauses = ["status = 'active'", "download_status IN ('ready', 'evicted')"]
         params: list = []
+        if hidden_for is not None:
+            clauses.append(NOT_HIDDEN_SQL.format(col="video_id"))
+            params.append(hidden_for)
         order = "added_at DESC"
         if channel_id is not None:
             clauses.append("channel_id = ?")
@@ -103,9 +109,13 @@ class VideoRepository(BaseRepository):
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def count_ready(self, channel_id: int | None = None) -> int:
+    def count_ready(self, channel_id: int | None = None,
+                    hidden_for: int | None = None) -> int:
         clauses = ["status = 'active'", "download_status IN ('ready', 'evicted')"]
         params: list = []
+        if hidden_for is not None:
+            clauses.append(NOT_HIDDEN_SQL.format(col="video_id"))
+            params.append(hidden_for)
         if channel_id is not None:
             clauses.append("channel_id = ?")
             params.append(channel_id)
@@ -116,45 +126,68 @@ class VideoRepository(BaseRepository):
         return int(row["cnt"])
 
     def list_ready_by_channels(self, channel_ids: builtins.list[int],
-                               limit: int = 30, offset: int = 0) -> builtins.list[Video]:
+                               limit: int = 30, offset: int = 0,
+                               hidden_for: int | None = None) -> builtins.list[Video]:
         if not channel_ids:
             return []
         placeholders = ",".join("?" for _ in channel_ids)
         params: list = list(channel_ids)
+        hidden = ""
+        if hidden_for is not None:
+            hidden = "AND " + NOT_HIDDEN_SQL.format(col="video_id") + " "
+            params.append(hidden_for)
         params.extend([limit, offset])
         rows = self.db.execute(
             f"SELECT * FROM videos WHERE status = 'active' AND download_status IN ('ready', 'evicted') "
-            f"AND channel_id IN ({placeholders}) "
+            f"AND channel_id IN ({placeholders}) {hidden}"
             f"ORDER BY added_at DESC LIMIT ? OFFSET ?",
             params,
         ).fetchall()
         return [self._to_model(r) for r in rows]
 
-    def next_episode(self, channel_id: int, episode_key: int) -> Video | None:
-        """The ready episode after this one in the same channel."""
+    def next_episode(self, channel_id: int, episode_key: int,
+                     hidden_for: int | None = None) -> Video | None:
+        """The ready episode after this one in the same channel, skipping
+        the ones `hidden_for` hid."""
+        hidden, params = "", [channel_id, episode_key]
+        if hidden_for is not None:
+            hidden = "AND " + NOT_HIDDEN_SQL.format(col="video_id") + " "
+            params.append(hidden_for)
         row = self.db.execute(
             "SELECT * FROM videos WHERE channel_id = ? AND status = 'active' "
-            "AND download_status = 'ready' AND episode_key > ? "
-            "ORDER BY episode_key LIMIT 1", (channel_id, episode_key)).fetchone()
+            f"AND download_status = 'ready' AND episode_key > ? {hidden}"
+            "ORDER BY episode_key LIMIT 1", params).fetchone()
         return self._to_model(row) if row else None
 
-    def count_ready_by_channels(self, channel_ids: builtins.list[int]) -> int:
+    def count_ready_by_channels(self, channel_ids: builtins.list[int],
+                                hidden_for: int | None = None) -> int:
         if not channel_ids:
             return 0
         placeholders = ",".join("?" for _ in channel_ids)
+        params: list = list(channel_ids)
+        hidden = ""
+        if hidden_for is not None:
+            hidden = " AND " + NOT_HIDDEN_SQL.format(col="video_id")
+            params.append(hidden_for)
         row = self.db.execute(
             f"SELECT COUNT(*) as cnt FROM videos "
             f"WHERE status = 'active' AND download_status IN ('ready', 'evicted') "
-            f"AND channel_id IN ({placeholders})",
-            channel_ids,
+            f"AND channel_id IN ({placeholders}){hidden}",
+            params,
         ).fetchone()
         return int(row["cnt"])
 
-    def channel_ids_with_ready(self) -> set[int]:
-        """Channels that hold at least one video kids can watch."""
+    def channel_ids_with_ready(self, hidden_for: int | None = None) -> set[int]:
+        """Channels that hold at least one video kids can watch (that
+        `hidden_for` didn't hide)."""
+        hidden, params = "", []
+        if hidden_for is not None:
+            hidden = " AND " + NOT_HIDDEN_SQL.format(col="video_id")
+            params.append(hidden_for)
         rows = self.db.execute(
             "SELECT DISTINCT channel_id FROM videos WHERE status = 'active' "
-            "AND download_status IN ('ready', 'evicted') AND channel_id IS NOT NULL").fetchall()
+            "AND download_status IN ('ready', 'evicted') AND channel_id IS NOT NULL"
+            + hidden, params).fetchall()
         return {r["channel_id"] for r in rows}
 
     def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
@@ -164,8 +197,9 @@ class VideoRepository(BaseRepository):
         start of a word: "park" finds "Park day" and "parks", not "Sparky".
         Accents and case are ignored ("vulcao" finds "Vulcão"). With a
         `profile_id`, that kid's own title, description and tags are
-        searched as well. `channel_ids` None searches every video; an empty list
-        matches nothing."""
+        searched as well, and the videos that kid hid are left out.
+        `channel_ids` None searches every video; an empty list matches
+        nothing."""
         sql = ("SELECT v.*, o.title AS kid_title, o.description AS kid_description, "
                "(SELECT group_concat(t.name, char(31)) FROM profile_video_tags pvt "
                " JOIN tags t ON t.id = pvt.tag_id "
@@ -174,6 +208,9 @@ class VideoRepository(BaseRepository):
                "ON o.video_id = v.video_id AND o.profile_id = ? "
                "WHERE v.status = 'active' AND v.download_status IN ('ready', 'evicted') ")
         params: list = [profile_id, profile_id]
+        if profile_id is not None:
+            sql += "AND " + NOT_HIDDEN_SQL.format(col="v.video_id") + " "
+            params.append(profile_id)
         if channel_ids is not None:
             if not channel_ids:
                 return []
@@ -272,6 +309,7 @@ class VideoRepository(BaseRepository):
         "hidden": "status = 'hidden'",
         "pending": "download_status IN ('pending', 'downloading', 'paused', 'stopped')",
         "error": "download_status = 'error'",
+        "kid_hidden": "video_id IN (SELECT video_id FROM profile_hidden_videos)",
     }
 
     def list_filtered(self, filter_name: str, limit: int = 30,
@@ -342,6 +380,12 @@ class VideoRepository(BaseRepository):
             (f"-{float(cache_days)} days",),
         ).fetchall()
         return [self._to_model(r) for r in rows]
+
+    def is_hidden_for(self, video_id: str, profile_id: int) -> bool:
+        """Whether this kid hid the video."""
+        return self.db.execute(
+            "SELECT 1 FROM profile_hidden_videos WHERE profile_id = ? AND video_id = ?",
+            (profile_id, video_id)).fetchone() is not None
 
     def touch_played(self, video_id: str) -> None:
         self.db.execute(

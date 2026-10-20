@@ -174,7 +174,8 @@ finds "Vulcão".
 **Can each child have different rules?**
 Yes. Each profile has its own channels, PIN, language, theme and
 switches for reactions, comments, tags, customizing, uploads, search,
-asking for new videos and automatic subtitles (**Kids → Edit**).
+asking for new videos, automatic subtitles, downloading videos and
+hiding videos (**Kids → Edit**).
 
 **A kid uploaded something. Who sees it?**
 In the kid's own channel: only that kid (and anyone you shared that

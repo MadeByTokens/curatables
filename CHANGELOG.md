@@ -20,6 +20,16 @@ code already called itself 0.5.0).
   reached"; the kid sees the usual "a grown-up will look" and nothing
   about a limit. Videos taken back still count for that day.
   Adds one database migration.
+- A kid can hide a video they don't like: **Hide** under the video
+  takes it out of that kid's lists, search and tags (with an Undo right
+  after). It shows under **Needs your attention**, and on the video's
+  page you delete it for everyone, keep it hidden from that kid, or show
+  it to them again. Content → **Hidden by a kid** lists them all.
+- A kid can save a video onto their device: **Download** under the
+  video (on an iPad, into the Files app), named as the kid sees it; on
+  a computer the player's own download option works too.
+- Both are new switches under Kids → Edit → What this kid can do, on
+  for every kid. Adds one database migration.
 
 ## v0.8.1
 

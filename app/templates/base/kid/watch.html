@@ -13,7 +13,7 @@
      data-profile-id="{{ viewer.profile_id if kid else '' }}">
   <div class="video-frame">
     <video id="player" controls playsinline preload="metadata"
-           controlsList="nodownload noremoteplayback" disablePictureInPicture disableRemotePlayback
+           controlsList="{% if not (kid and viewer.allow_download) %}nodownload {% endif %}noremoteplayback" disablePictureInPicture disableRemotePlayback
            poster="/media/thumb/{{ video.video_id }}">
       <source src="/media/video/{{ video.video_id }}" type="video/mp4">
     </video>
@@ -42,6 +42,24 @@
     </a>
     {% endif %}
   </div>
+
+  {% if kid and (viewer.allow_download or viewer.allow_hide) %}
+  <div class="video-actions">
+    {% if viewer.allow_download %}
+    <a href="/media/video/{{ video.video_id }}?download=1" download class="video-action-btn"><span aria-hidden="true">&#11015;&#65039;</span> {{ _("Download") }}</a>
+    {% endif %}
+    {% if viewer.allow_hide %}
+    <details class="hide-video">
+      <summary class="video-action-btn"><span aria-hidden="true">&#128584;</span> {{ _("Hide") }}</summary>
+      <form method="POST" action="/video/{{ video.video_id }}/hide" class="hide-confirm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <p>{{ _("Don't like this video? Hide it and a grown-up is told.") }}</p>
+        <button type="submit" class="hide-confirm-yes">{{ _("Yes, hide it") }}</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="action-status" id="action-status" role="status" aria-live="polite"></div>
 

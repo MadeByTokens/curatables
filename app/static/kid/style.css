@@ -1075,6 +1075,52 @@ video:focus {
     .end-btn { margin: 8px 12px; padding: 18px 28px; min-width: 140px; font-size: 24px; }
 }
 
+/* Download and Hide, under the video */
+.video-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 10px;
+}
+.video-action-btn {
+    display: inline-block;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 10px 16px;
+    border: 1px solid #bbb;
+    border-radius: 22px;
+    background: #fff;
+    color: #222;
+    font-size: 16px;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.hide-video > summary { list-style: none; }
+.hide-video > summary::-webkit-details-marker { display: none; }
+.hide-confirm {
+    margin-top: 8px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fff8e1;
+    color: #5c4400;
+    border: 1px solid #f0d080;
+}
+.hide-confirm p { margin: 0 0 8px; font-size: 17px; }
+.hide-confirm-yes {
+    min-height: 44px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 22px;
+    background: #a12a22;
+    color: #fff;
+    font-size: 17px;
+    font-family: inherit;
+    cursor: pointer;
+}
+.hidden-done .video-action-btn { margin-left: 8px; }
+
 /* Search */
 .search-input {
     width: 65%;

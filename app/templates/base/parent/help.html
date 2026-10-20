@@ -6,7 +6,7 @@
 <h2>Getting Started</h2>
 <ol class="steps-list">
   <li><strong>Organize into channels</strong> — Go to <a href="/parent/channels/">Channels</a> and make a few shelves (e.g. "Animals", "Music", "Bedtime").</li>
-  <li><strong>Add each child</strong> — Go to <a href="/parent/profiles">Kids</a>. Choose a name, avatar, optional PIN, theme, which channels they see, and what they're allowed to do. New kids start with "watch + react" only.</li>
+  <li><strong>Add each child</strong> — Go to <a href="/parent/profiles">Kids</a>. Choose a name, avatar, optional PIN, theme, which channels they see, and what they're allowed to do. New kids start with watching, reactions, downloading and hiding.</li>
   <li><strong>Add videos</strong> — Go to <a href="/parent/add">+ Add</a> and paste a video, channel or playlist link from YouTube or any other site yt-dlp supports. Watch each video in the preview, tick that you've seen it all, and confirm.</li>
   <li><strong>Open the kid address on the tablet</strong> — <code>{{ kid_address(request) }}</code>, or scan the QR code on the <a href="/parent/profiles">Kids</a> page. Add it to the home screen and open it from that icon, and use Guided Access (iPad) or App pinning (Android) to keep your child inside it. If the tablet says "This browser didn't keep the sign-in", the browser is blocking cookies: on an iPad or iPhone, use the home screen icon, which keeps its own sign-in; elsewhere, allow cookies in the browser's settings.</li>
 </ol>
@@ -21,7 +21,7 @@
   <li><strong>PIN</strong> — optional, 4–6 digits or 3 pictures; keeps siblings out of each other's profiles (not a strong lock)</li>
   <li><strong>Theme</strong> — Default, Playful, Calm, or Big &amp; clear (large text, high contrast)</li>
   <li><strong>Search</strong> — off, or search within the approved library only</li>
-  <li><strong>Switches</strong> — reactions, comments, tags, customizing, uploads, automatic subtitles. Turn off what your child doesn't need: fewer buttons, fewer ways to get lost.</li>
+  <li><strong>Switches</strong> — reactions, comments, tags, customizing, uploads, automatic subtitles, downloading and hiding videos. Turn off what your child doesn't need: fewer buttons, fewer ways to get lost.</li>
 </ul>
 
 <h3>Downloads and disk space</h3>
@@ -31,6 +31,10 @@
 <h3>Video requests</h3>
 <p>Switch on <strong>Ask for new videos</strong> for a kid (Kids → Edit) and they get a <strong>Find new</strong> page that searches YouTube through this server, showing only results that pass the rules in <a href="/parent/settings#settings-wishlist">Settings → Video requests</a>. What they ask for waits in <a href="/parent/requests">Video requests</a> (the oldest 100 at a time, with the 20 latest decisions below); nothing downloads until you add it. <strong>Remove</strong> and <strong>Not this one</strong> can be undone under <strong>Recently decided</strong>. They see the titles and pictures of the results, so keep the word list strict or let them find only <a href="/parent/trusted-channels">YouTube channels you trust</a>.</p>
 <p><a href="/parent/trusted-channels">Trusted YouTube channels</a> are matched by their channel ID, so a look-alike with the same name doesn't count. Trust a channel for every kid or for one; on a kid's page (Kids → Edit) you can untick a family channel for that kid or add one for them only. Requests from a kid's trusted channels can go straight into a channel you pick, up to 10 a day for each kid (you can change the number); after that they wait for you until the next day, marked "Waited: daily limit reached" (your kid isn't told about the limit). Anything added that way can be taken back with <strong>Remove from library</strong>. Whether kids find only their trusted channels, and whether those requests go straight in, are set for the whole family on the Trusted YouTube channels page; each kid can be set differently on their page.</p>
+
+<h3>Downloading and hiding videos</h3>
+<p><strong>Download</strong> under a video saves it onto the kid's device (on an iPad or iPhone, into the Files app, under Downloads), named as your kid sees it. Switching it off removes the button and the browser's own download option; it keeps an honest kid from saving videos, but isn't a lock.</p>
+<p><strong>Hide</strong> under a video takes it out of that kid's lists, search and tags; other kids still see it. You see it under <strong>Needs your attention</strong> on the dashboard and under <a href="/parent/content?status=kid_hidden">Content → Hidden by a kid</a>. On the video's page, <strong>Delete video</strong> removes it for everyone, <strong>Keep it hidden</strong> leaves it hidden for that kid only, and <strong>Show it again</strong> puts it back in their lists.</p>
 
 <h3>Kid uploads</h3>
 <p>Videos a kid uploads into their own channel appear right away for that kid. Uploads into a shared channel wait for you under <strong>Needs your attention</strong> on the dashboard.</p>
@@ -53,6 +57,7 @@
   <li>It must be fully downloaded (Content → Downloading shows the ones still going)</li>
   <li>It must be in a channel that kid may see</li>
   <li>It must not be hidden or waiting for your OK</li>
+  <li>The kid may have hidden it: see <a href="/parent/content?status=kid_hidden">Content → Hidden by a kid</a></li>
 </ul>
 
 <h3>Kids see "the videos are resting"</h3>

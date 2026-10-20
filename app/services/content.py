@@ -99,17 +99,28 @@ class ContentService:
         watch, and the kid's own channels (they hold the kid's saved
         videos). An empty channel can still be picked when asking for a
         new video."""
-        with_videos = self.video_repo.channel_ids_with_ready()
+        with_videos = self.video_repo.channel_ids_with_ready(self._hidden_for(viewer))
         return [c for c in self.channels_for_viewer(viewer)
                 if c.id in with_videos
                 or (viewer.profile_id and c.owner_profile_id == viewer.profile_id)]
 
+    @staticmethod
+    def _hidden_for(viewer: ViewerContext) -> int | None:
+        """The kid whose hidden videos are left out of lists, if any."""
+        return viewer.profile_id if viewer.is_child else None
+
+    def hidden_by_viewer(self, video: Video, viewer: ViewerContext) -> bool:
+        kid = self._hidden_for(viewer)
+        return kid is not None and self.video_repo.is_hidden_for(video.video_id, kid)
+
     def get_video_for_viewer(self, video_id: str, viewer: ViewerContext) -> Video:
-        """Get a video if the viewer is allowed to see it and it's ready."""
+        """Get a video if the viewer is allowed to see it and it's ready.
+        A video the kid hid is gone for them until a grown-up shows it
+        again."""
         video = self.get_video(video_id)
         if video.status != "active" or video.download_status != "ready":
             raise VideoNotFound(f"Video {video_id} not available")
-        if not self.can_view(video, viewer):
+        if not self.can_view(video, viewer) or self.hidden_by_viewer(video, viewer):
             raise VideoNotFound(f"Video {video_id} not available")
         return video
 
@@ -119,20 +130,22 @@ class ContentService:
         """List videos the viewer can see (active + downloaded only)."""
         offset = (page - 1) * per_page
         visible = self.visible_channel_ids(viewer)
+        hidden_for = self._hidden_for(viewer)
 
         if channel_id is not None:
             if visible is not None and channel_id not in visible:
                 return [], 0
             videos = self.video_repo.list_ready(
-                channel_id=channel_id, limit=per_page, offset=offset)
-            total = self.video_repo.count_ready(channel_id=channel_id)
+                channel_id=channel_id, limit=per_page, offset=offset, hidden_for=hidden_for)
+            total = self.video_repo.count_ready(channel_id=channel_id, hidden_for=hidden_for)
         elif visible is None:
-            videos = self.video_repo.list_ready(limit=per_page, offset=offset)
-            total = self.video_repo.count_ready()
+            videos = self.video_repo.list_ready(limit=per_page, offset=offset,
+                                                hidden_for=hidden_for)
+            total = self.video_repo.count_ready(hidden_for=hidden_for)
         else:
             videos = self.video_repo.list_ready_by_channels(
-                visible, limit=per_page, offset=offset)
-            total = self.video_repo.count_ready_by_channels(visible)
+                visible, limit=per_page, offset=offset, hidden_for=hidden_for)
+            total = self.video_repo.count_ready_by_channels(visible, hidden_for=hidden_for)
         return videos, total
 
     def search_for_viewer(self, query: str, viewer: ViewerContext,
@@ -479,10 +492,12 @@ class ContentService:
         and one already pending/downloading is returned as is.
 
         Returns None if the video doesn't exist, isn't active, isn't
-        visible to this viewer, or is in any other state (e.g. error).
+        visible to this viewer, was hidden by them, or is in any other
+        state (e.g. error).
         """
         video = self.video_repo.get(video_id)
-        if not video or video.status != "active" or not self.can_view(video, viewer):
+        if (not video or video.status != "active" or not self.can_view(video, viewer)
+                or self.hidden_by_viewer(video, viewer)):
             return None
         if video.download_status == "evicted":
             if self.video_repo.claim_evicted(video_id):

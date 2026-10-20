@@ -47,6 +47,7 @@ from app.repositories.tag_repo import TagRepository
 from app.repositories.profile_channel_video_repo import ProfileChannelVideoRepository
 from app.repositories.login_failure_repo import LoginFailureRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
+from app.repositories.hidden_video_repo import HiddenVideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.repositories.import_job_repo import ImportJobRepository
 
@@ -128,6 +129,10 @@ def get_thumbnail_service(config=Depends(get_config)) -> ThumbnailService:
 
 def get_wishlist_repo(db=Depends(get_db)) -> WishlistRepository:
     return WishlistRepository(db)
+
+
+def get_hidden_video_repo(db=Depends(get_db)) -> HiddenVideoRepository:
+    return HiddenVideoRepository(db)
 
 
 def get_wishlist_service(backend=Depends(get_backend),
@@ -327,6 +332,8 @@ def get_viewer(
                 allow_upload=profile.allow_upload,
                 auto_subtitles=profile.auto_subtitles,
                 allow_wishlist=profile.allow_wishlist,
+                allow_download=profile.allow_download,
+                allow_hide=profile.allow_hide,
             )
 
     if auth.is_parent_session(session):

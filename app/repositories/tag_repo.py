@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.models.tag import Tag
 from app.repositories.base import BaseRepository
+from app.repositories.hidden_video_repo import NOT_HIDDEN_SQL
 
 
 class TagRepository(BaseRepository):
@@ -59,8 +60,9 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? "
-               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
-        params: list = [profile_id]
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted') "
+               "AND " + NOT_HIDDEN_SQL.format(col="v.video_id"))
+        params: list = [profile_id, profile_id]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
             sql += f" AND v.channel_id IN ({placeholders})"
@@ -76,8 +78,9 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? AND t.name = ? COLLATE NOCASE "
-               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
-        params: list = [profile_id, tag_name]
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted') "
+               "AND " + NOT_HIDDEN_SQL.format(col="v.video_id"))
+        params: list = [profile_id, tag_name, profile_id]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
             sql += f" AND v.channel_id IN ({placeholders})"
@@ -93,8 +96,9 @@ class TagRepository(BaseRepository):
                "JOIN tags t ON pvt.tag_id = t.id "
                "JOIN videos v ON pvt.video_id = v.video_id "
                "WHERE pvt.profile_id = ? AND t.name = ? COLLATE NOCASE "
-               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted')")
-        params: list = [profile_id, tag_name]
+               "AND v.status = 'active' AND v.download_status IN ('ready', 'evicted') "
+               "AND " + NOT_HIDDEN_SQL.format(col="v.video_id"))
+        params: list = [profile_id, tag_name, profile_id]
         if channel_ids is not None:
             placeholders = ",".join("?" for _ in channel_ids)
             sql += f" AND v.channel_id IN ({placeholders})"

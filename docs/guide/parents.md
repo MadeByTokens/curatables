@@ -103,10 +103,11 @@ choose:
   kid who doesn't read numbers yet. Leave it empty for no PIN.
 - **Language** and **theme**: Default, Playful, Calm, or Big & clear
   (larger text, stronger colours).
-- **What they may do.** A new profile can watch and react, nothing more.
-  Tick more when you're ready: a search box, comments, tags, their own
-  channels and uploads, asking for new videos, or subtitles that turn on
-  by themselves.
+- **What they may do.** A new profile can watch, react, download a
+  video onto the device and hide a video they don't like. Tick more
+  when you're ready: a search box, comments, tags, their own channels
+  and uploads, asking for new videos, or subtitles that turn on by
+  themselves.
 - **Which channels they see**: all of them, only the ones you tick, or
   none of yours (only channels they make themselves).
 
@@ -199,6 +200,13 @@ The **dashboard** shows today at a glance: what each kid watched, new
 comments and reactions, what was added (and by whom: a kid's upload
 says "Uploaded by Mia · in Mia's Films"), and anything that needs you
 (requests, failed downloads, a drive that's getting full).
+
+When a kid taps **Hide** under a video, it leaves that kid's lists and
+shows up under **Needs your attention**. Open it: **Delete video**
+removes it for everyone, **Keep it hidden from (name)** leaves it hidden
+for that kid only, and **Show it to (name) again** puts it back. Content
+→ **Hidden by a kid** lists them all. **Download** under a video saves
+it onto the kid's device (on an iPad, into the Files app).
 
 ![The dashboard during the day](img/parent-dashboard.webp)
 
