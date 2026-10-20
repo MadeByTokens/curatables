@@ -22,9 +22,10 @@ def _test_client_host(monkeypatch):
 def _reset_rate_limiters():
     """The limiters are module-level and keyed on ids that repeat across
     fresh test DBs, so counts would otherwise leak between tests."""
-    from app.services.auth import PIN_LIMITER
+    from app.services.auth import PICTURE_PIN_LIMITER, PIN_LIMITER
     from app.services.comments import _KID_RATE_LIMITER, _PARENT_RATE_LIMITER
     PIN_LIMITER.reset()
+    PICTURE_PIN_LIMITER.reset()
     _KID_RATE_LIMITER.reset()
     _PARENT_RATE_LIMITER.reset()
     yield

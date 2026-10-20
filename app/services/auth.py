@@ -17,6 +17,9 @@ _PIN_ITERATIONS = 100_000
 _PIN_PREFIX = "pbkdf2$"
 
 PIN_LIMITER = RateLimiter(max_events=5, window_seconds=300)
+# Pictures are tapped by younger children, often fast and off by one,
+# so a picture PIN gets twice the tries before a wait.
+PICTURE_PIN_LIMITER = RateLimiter(max_events=10, window_seconds=300)
 
 LOGIN_WINDOW_SECONDS = 300
 LOGIN_FAILURES_PER_CLIENT = 10
@@ -44,6 +47,15 @@ class LoginThrottle:
 
 PIN_WINDOW_SECONDS = 3600
 PIN_FAILURES_PER_PROFILE = 20
+PICTURE_PIN_FAILURES_PER_PROFILE = 40
+
+
+def pin_limits(pin_style: str) -> tuple[RateLimiter, int]:
+    """The per-device limiter and the per-profile hourly limit for a
+    profile's PIN style."""
+    if pin_style == "pictures":
+        return PICTURE_PIN_LIMITER, PICTURE_PIN_FAILURES_PER_PROFILE
+    return PIN_LIMITER, PIN_FAILURES_PER_PROFILE
 
 
 class PinThrottle:
@@ -59,9 +71,10 @@ class PinThrottle:
     def _key(profile_id: int | None) -> str:
         return f"pin:{profile_id}"
 
-    def blocked(self, profile_id: int | None, now: float | None = None) -> bool:
+    def blocked(self, profile_id: int | None, now: float | None = None,
+                limit: int = PIN_FAILURES_PER_PROFILE) -> bool:
         since = (now if now is not None else time.time()) - PIN_WINDOW_SECONDS
-        return self.repo.count_since(since, self._key(profile_id)) >= PIN_FAILURES_PER_PROFILE
+        return self.repo.count_since(since, self._key(profile_id)) >= limit
 
     def failed(self, profile_id: int | None) -> None:
         self.repo.record(self._key(profile_id), time.time())

@@ -39,6 +39,8 @@ code already called itself 0.5.0).
   the first free spot. **All** and the channel buttons show every
   video as before, and the Home button always comes back. Adds one
   database migration.
+- A picture PIN allows 10 wrong tries before "Wait a little" (a
+  number PIN still 5), so a quick finger isn't locked out as soon.
 - A description the kid empties stays empty (**Reset to original**
   brings the first one back).
 - When a video isn't there any more (a grown-up deleted it while an

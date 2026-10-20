@@ -179,10 +179,11 @@ PINs are a sibling barrier, not an access-control boundary.
   existing row).
 - **5 attempts per device per profile per 5 minutes** (in memory), and
   **20 per profile per hour from all devices together**, kept in the
-  database so a restart does not reset it. On average that is about
-  18 hours to guess a picture PIN, 10 days for 4 digits and almost three
-  years for 6 digits: slow, not impossible. A sibling mistyping on
-  purpose can lock a profile for up to an hour.
+  database so a restart does not reset it. A picture PIN gets twice
+  both (10 and 40), since the children who use one tap fast and miss.
+  On average that is about 9 hours to guess a picture PIN, 10 days for
+  4 digits and almost three years for 6 digits: slow, not impossible.
+  A sibling mistyping on purpose can lock a profile for up to an hour.
 - The parent profile form never echoes the PIN back.
 - An empty PIN means "no PIN": selecting the profile is one POST, and a
   household with a single PIN-less profile is auto-selected on

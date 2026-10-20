@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import get_pin_throttle, get_profile_service
-from app.services.auth import PIN_LIMITER, PinThrottle
+from app.services.auth import PinThrottle, pin_limits
 from app.services.profiles import ProfileService
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
@@ -121,10 +121,11 @@ def profile_pin(request: Request,
     # Keyed by device as well, so one sibling's wrong guesses don't lock
     # the profile on everyone else's tablet.
     limiter_key = (profile.id, request.client.host if request.client else "")
-    if pin_throttle.blocked(profile.id) or not PIN_LIMITER.check(limiter_key):
+    limiter, per_profile = pin_limits(profile.pin_style)
+    if pin_throttle.blocked(profile.id, limit=per_profile) or not limiter.check(limiter_key):
         return RedirectResponse(url=_pin_url(profile.id, "locked"), status_code=303)
     if profiles_svc.check_pin(profile, pin):
-        PIN_LIMITER.reset(limiter_key)
+        limiter.reset(limiter_key)
         pin_throttle.succeeded(profile.id)
         _enter_kid_mode(request, profile.id)
         return RedirectResponse(url=SIGNED_IN_URL, status_code=302)

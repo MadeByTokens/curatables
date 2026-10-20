@@ -209,7 +209,7 @@ def pin_storm(page):
     """Taps the wrong pictures until locked out: the message is calm and
     Back works. Leaves Kiki locked on this address for a few minutes."""
     page.goto(args.base + "/profiles/switch")
-    for _ in range(6):
+    for _ in range(11):  # a picture PIN allows 10 wrong tries
         page.goto(args.base + "/profiles")
         page.locator('form[action="/profiles/select"]', has_text="Kiki").locator("button").click()
         page.wait_for_load_state()
