@@ -155,6 +155,47 @@ class TestVideoSearch:
         assert [v.video_id for v in repo.search_ready("VULCÃO")] == ["v1"]
         assert [v.video_id for v in repo.search_ready("école")] == ["v2"]
 
+    def test_close_search_forgives_a_childs_spelling(self, db):
+        repo = VideoRepository(db)
+        repo.insert(_make_video("v1", title="Dinosaurs at the museum"))
+        repo.insert(_make_video("v2", title="Dinosaur song"))
+        repo.insert(_make_video("v3", title="Fire trucks"))
+        repo.insert(_make_video("v4", title="Elephant bath"))
+        assert repo.search_ready("dinasor") == []
+        assert {v.video_id for v in repo.search_ready_close("dinasor")} == {"v1", "v2"}
+        assert [v.video_id for v in repo.search_ready_close("elefant")] == ["v4"]
+        assert [v.video_id for v in repo.search_ready_close("dinosor song")] == ["v2"]
+        # Short words must be spelled right; nothing near is nothing.
+        assert [v.video_id for v in repo.search_ready_close("fir")] == ["v3"]
+        assert repo.search_ready_close("fiv") == []
+        assert repo.search_ready_close("xylophone") == []
+
+    def test_close_search_ranks_the_closest_first(self, db):
+        repo = VideoRepository(db)
+        repo.insert(_make_video("v1", title="Tractor"))
+        repo.insert(_make_video("v2", title="Trator"))
+        assert [v.video_id for v in repo.search_ready_close("trator")] == ["v2", "v1"]
+
+    def test_close_search_finds_nothing_the_exact_search_could_not_show(self, db):
+        """Forgiving spelling widens the words, never the videos: not
+        ready, removed, hidden by the kid or outside the kid's channels
+        stay out."""
+        from app.repositories.hidden_video_repo import HiddenVideoRepository
+        from app.repositories.channel_repo import ChannelRepository
+        repo = VideoRepository(db)
+        mine = ChannelRepository(db).create("Mine")
+        other = ChannelRepository(db).create("Other")
+        repo.insert(_make_video("v1", title="Dinosaurs", channel_id=mine))
+        repo.insert(_make_video("v2", title="Dinosaurs", channel_id=other))
+        repo.insert(_make_video("v3", title="Dinosaurs", channel_id=mine, download_status="pending"))
+        repo.insert(_make_video("v4", title="Dinosaurs", channel_id=mine, status="hidden"))
+        repo.insert(_make_video("v5", title="Dinosaurs", channel_id=mine))
+        pid = ProfileRepository(db).create(Profile(name="kiddo"))
+        HiddenVideoRepository(db).hide(pid, "v5")
+        found = repo.search_ready_close("dinasor", channel_ids=[mine], profile_id=pid)
+        assert [v.video_id for v in found] == ["v1"]
+        assert repo.search_ready_close("dinasor", channel_ids=[]) == []
+
     def test_search_uses_one_kids_own_title_and_tags(self, db):
         from app.repositories.override_repo import ProfileVideoOverrideRepository
         from app.repositories.tag_repo import TagRepository

@@ -30,6 +30,9 @@ code already called itself 0.5.0).
   a computer the player's own download option works too.
 - Both are new switches under Kids → Edit → What this kid can do, on
   for every kid. Adds one database migration.
+- A blocked word of 6 letters or more also catches a spelling one
+  letter off ("skibidy" for "skibidi") in a kid's Find new search, and
+  in titles and channel names.
 
 **For kids**
 - Home is the kid's own, arranged like a tablet's home screen: at first
@@ -41,6 +44,10 @@ code already called itself 0.5.0).
   database migration.
 - A picture PIN allows 10 wrong tries before "Wait a little" (a
   number PIN still 5), so a quick finger isn't locked out as soon.
+- Search forgives spelling: when no video has the word typed, it shows
+  the videos with a word that sounds like it ("dinasor" finds the
+  dinosaurs) under "Did you mean one of these?", closest first, and only
+  from what the kid can already see.
 - A description the kid empties stays empty (**Reset to original**
   brings the first one back).
 - When a video isn't there any more (a grown-up deleted it while an
