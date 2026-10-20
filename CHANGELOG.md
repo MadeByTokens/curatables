@@ -9,7 +9,11 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.8.1
+
+Signing in on a device that blocks cookies, and the Home Screen icon's
+name. Boxes on v0.8.0 install it from **Box → Updates**; no database
+changes.
 
 **For parents**
 - A browser that blocks cookies is told so ("This browser didn't keep
