@@ -113,7 +113,8 @@ Every page is checked for:
 
 Off limits, because they end the test rather than test the app: reboot,
 shutdown, restarting the server or the network, Wi-Fi, drives, the
-admin and parent passwords, updates, restoring a backup, moving the data
+admin and parent passwords, updates (a yt-dlp update restarts the
+server, which looks like the box dropping everyone), restoring a backup, moving the data
 folder, the clock, Advanced settings (port and address), signing the
 parent out, deleting kids, and the setup screens. Test those on purpose,
 one at a time.
@@ -131,7 +132,11 @@ leaves Kiki locked out from that address for a few minutes.
 
 ### Reading the results
 
-1. **Server side first.** Over SSH: `journalctl -u curatables -b | grep -E
+1. **Server side first, always.** The browser only reports answers to
+   pages that are still open: a background request (an upload
+   finishing, a reaction) whose page the random person already left
+   is never seen by `chaos.py`. The box's log is the complete record.
+   Over SSH: `journalctl -u curatables -b | grep -E
    "Traceback|ERROR"` and the access log lines with a 5xx status. A 500
    always comes with a traceback there, and the request id in brackets
    ties it to the access line.
@@ -205,4 +210,5 @@ behaviours the tests act out, and what each must hold:
 | Real box logs | a paused download was logged as a failure, "the drive is full" | 3166962 |
 | Virtual box, first boot | `systemd-networkd-wait-online` failed: the QEMU kernel line had `rw`, which let systemd's first-boot presets turn on networkd | 3d6df8b |
 | chaos.py | a video deleted while a kid's player loaded it crashed the request (500) | 61ead84 |
+| chaos.py, from the box's log | the same file sent twice at once (a double-tapped Send, or a parent and a kid sending the same clip) was stored twice over itself; a take-back in between crashed the second (500) | this change |
 | Special-needs tests | the edit page of a deleted video crashed (500); any page now answers "not found" | 4bbce56 |

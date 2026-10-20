@@ -16,6 +16,7 @@ import json
 import logging
 import secrets
 import shutil
+import threading
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -24,10 +25,23 @@ from app.models import Video
 from app.repositories import VideoRepository
 from app.services.ingest import IngestService, VideoDetails, upload_video_id
 from app.services.storage import StorageService
-from app.services.media_probe import MediaProbeService, UnsupportedCodec, ProbeError
+from app.services.media_probe import MediaProbeService, ProbeError, ProbeResult, UnsupportedCodec
 from app.services.thumbnails import ThumbnailService
 
 logger = logging.getLogger(__name__)
+
+
+# One finalize at a time per video id: an upload's id is its content's
+# hash, so the same file sent twice at once (a double-tapped Send, a
+# parent and a kid sending the same clip) would otherwise both pass the
+# "already uploaded?" check and race to store it.
+_finalize_locks: dict[str, threading.Lock] = {}
+_finalize_locks_lock = threading.Lock()
+
+
+def _finalize_lock(video_id: str) -> threading.Lock:
+    with _finalize_locks_lock:
+        return _finalize_locks.setdefault(video_id, threading.Lock())
 
 
 _ALLOWED_EXTS = {"mp4", "mkv", "webm", "mov", "m4v", "avi", "mpg", "mpeg"}
@@ -162,7 +176,11 @@ class UploadService:
             raise
 
         video_id = upload_video_id(self.ingest.hash_file(tmp_path))
+        with _finalize_lock(video_id):
+            return self._store(token, session, tmp_path, ext, probe, video_id, status)
 
+    def _store(self, token: str, session: UploadSession, tmp_path: Path, ext: str,
+               probe: ProbeResult, video_id: str, status: str) -> Video:
         # Same bytes already uploaded: keep the existing video.
         existing = self.video_repo.get(video_id)
         if existing is not None:

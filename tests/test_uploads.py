@@ -236,6 +236,67 @@ class TestUploadLifecycle:
         # Title derived from filename
         assert video.title == "home video"
 
+    def test_the_same_file_finalized_twice_at_once_is_stored_once(self, tmp_path):
+        """A double-tapped Send (or a parent and a kid sending the same
+        clip): both finish together. One stores it, the other gets that
+        video back; neither fails, and the stored file stays put."""
+        import threading
+        import time as _time
+        from app.db.connection import create_connection
+        from app.db.schema import init_schema
+        # Two requests, each with its own connection, as on the box.
+        conns = [create_connection(tmp_path / "db" / "c.db") for _ in range(2)]
+        init_schema(conns[0])
+        services = [_make_services(tmp_path, c)[0] for c in conns]
+        cid = ChannelRepository(conns[0]).create("Family")
+        content = b"b" * 100
+        tokens = []
+        for svc in services:
+            session = svc.create("twice.mp4", len(content), cid, "")
+            svc.append(session.token, 0, content)
+            tokens.append(session.token)
+
+        normalized = []
+
+        def slow(normalize):
+            def run(path, probe, **kw):
+                normalized.append(path)
+                _time.sleep(0.3)  # the second finalize arrives meanwhile
+                return normalize(path, probe, **kw)
+            return run
+
+        results, errors = [], []
+
+        def run(svc, token):
+            try:
+                with patch.object(svc.probe, "validate", return_value=ProbeResult(
+                        codec_name="h264", width=640, height=480,
+                        duration_seconds=3.0, container="mov")), \
+                        patch.object(svc.thumbnails, "extract_frame", return_value=None), \
+                        patch.object(svc.ingest, "normalize", side_effect=slow(svc.ingest.normalize)):
+                    results.append(svc.finalize(token))
+            except Exception as e:  # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=run, args=pair) for pair in zip(services, tokens, strict=True)]
+        for t in threads:
+            t.start()
+            _time.sleep(0.05)
+        for t in threads:
+            t.join()
+        for c in conns:
+            c.close()
+
+        assert errors == []
+        # The second waited, found the first stored and didn't store it
+        # again over the top of it (where a take-back in between would
+        # pull the file away mid-store).
+        assert len(normalized) == 1
+        expected_id = f"up_{hashlib.sha256(content).hexdigest()[:16]}"
+        assert [v.video_id for v in results] == [expected_id, expected_id]
+        assert (tmp_path / "uploads" / expected_id / "video.mp4").read_bytes() == content
+        assert not any((tmp_path / "uploads" / ".tmp").iterdir())
+
     def test_finalize_dedup_returns_existing_video(self, tmp_path, db):
         uploads, video_repo, channel_repo = _make_services(tmp_path, db)
         cid = channel_repo.create("Family")
