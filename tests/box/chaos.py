@@ -29,7 +29,7 @@ NASTY = ["", " ", "x" * 5000, "😀🐸🚀" * 40, "<script>alert(1)</script>", 
 
 # Things that would end the test itself rather than test the app.
 BLOCK = re.compile(r"/(logout|reboot|shutdown|network-restart|restart$|wifi|drives|linux-password|ssh|updates|"
-                   r"backups/restore|settings/password|settings/move-data|settings/advanced|clock|diagnostics/update-downloader|"
+                   r"backups/restore|settings/password|settings/move-data|settings/advanced|settings/update|clock|diagnostics/update-downloader|"
                    r"setup|profiles/\d+/delete)(/|$|\?)|^/parent/system/(restart|reboot|shutdown)")
 ERROR_SIGNS = [("oops", re.compile(r"Oops! That didn't work|Something went wrong")),
                ("not-found", re.compile(r"There is no page at this address|Page not found")),

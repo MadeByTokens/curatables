@@ -50,6 +50,8 @@ code already called itself 0.5.0).
 - A video deleted while someone is on its page, or while a kid's
   player is loading it, answers "not found" on every page instead of
   an error.
+- The same video sent twice at once (a double-tapped Send, or a parent
+  and a kid sending the same clip) is stored once.
 
 ## v0.8.1
 
