@@ -1,6 +1,7 @@
 """Media streaming: video and thumbnail serving."""
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -31,6 +32,15 @@ _TRANSPARENT_PIXEL = (
     b'\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01'
     b'\r\n\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
 )
+
+
+def _stat(path):
+    """The file's stat, or None when it isn't there. Taken once and handed
+    to FileResponse, as the file can go (its video deleted) at any time."""
+    try:
+        return os.stat(path)
+    except OSError:
+        return None
 
 
 def _sniff_image_mime(path) -> str:
@@ -79,8 +89,9 @@ def serve_thumbnail(request: Request, video_id: str,
     # Per-kid custom thumbnail override
     if viewer.is_child and viewer.profile_id:
         custom = kid_lib.get_custom_thumb_path(viewer.profile_id, video_id)
-        if custom and custom.exists():
-            return FileResponse(str(custom),
+        stat = _stat(custom) if custom else None
+        if custom and stat:
+            return FileResponse(str(custom), stat_result=stat,
                                 media_type=_sniff_image_mime(custom),
                                 headers=no_cache)
 
@@ -92,8 +103,9 @@ def serve_thumbnail(request: Request, video_id: str,
             logger.debug("Thumbnail fetch failed for %s: %s", video_id, e)
 
     path = thumbnails.get_path(video_id)
-    if path.exists():
-        return FileResponse(str(path),
+    stat = _stat(path)
+    if stat:
+        return FileResponse(str(path), stat_result=stat,
                             media_type=_sniff_image_mime(path),
                             headers=no_cache)
 

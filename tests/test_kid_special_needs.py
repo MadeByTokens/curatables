@@ -110,6 +110,8 @@ def test_something_unexpected_is_calm_and_has_a_way_home(app):
             continue
         page = resp.text
         assert 'href="/"' in page, path
+        # It says what happened, not just that something went wrong.
+        assert "isn&#39;t here" in page or "nothing here" in page, path
         for word in ("404", "405", "500", "Method Not Allowed", "detail", "Traceback", "Error"):
             assert word not in re.sub(r"<[^>]+>", " ", page), (path, word)
 

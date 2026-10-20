@@ -104,7 +104,7 @@ def test_the_kids_error_page_is_rendered_in_the_kids_language(app, client, monke
     page = client.get("/no-such-page")
     assert page.status_code == 404
     assert "{%" not in page.text and "{{" not in page.text
-    assert "Oops! That didn" in page.text
+    assert "There&#39;s nothing here." in page.text
     conn = next(app.dependency_overrides[get_db]())
 
     class Shared:
@@ -119,6 +119,7 @@ def test_the_kids_error_page_is_rendered_in_the_kids_language(app, client, monke
     client.post("/profiles/select", data={"profile_id": pid})
     page = client.get("/no-such-page")
     assert "{%" not in page.text and 'lang="es"' in page.text
+    assert "Aquí no hay nada." in page.text
 
 
 @pytest.mark.parametrize("lang", LANGUAGE_CODES)

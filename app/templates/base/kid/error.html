@@ -15,7 +15,7 @@ a:focus { outline: 4px solid #f4a261; outline-offset: 4px; }
 </head>
 <body>
 <div class="big" aria-hidden="true">&#128584;</div>
-<p>{{ _("Oops! That didn't work.") }}</p>
+<p>{{ _(kid_message) if kid_message else _("Oops! That didn't work.") }}</p>
 <a href="/"><span aria-hidden="true">&#127968;</span> {{ _("Home") }}</a>
 </body>
 </html>

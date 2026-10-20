@@ -122,3 +122,25 @@ def test_a_video_deleted_while_its_player_loads_is_not_found(app, monkeypatch):
     assert kid.get("/media/video/yt_a").status_code == 404
     assert kid.get("/media/video/yt_a?download=1").status_code == 404
     assert kid.get("/media/subs/yt_a").json() == []
+
+
+def test_a_picture_deleted_while_it_loads_is_not_an_error(app, monkeypatch):
+    """The parent deletes a video while a page still shows its picture:
+    it is there when looked for and gone when read."""
+    import os
+    import pathlib
+    _, kid, _, _ = _setup(app)
+    real_stat, real_exists = os.stat, pathlib.Path.exists
+
+    def vanishing(path):
+        return str(path).endswith("yt_a.jpg")
+
+    def stat(path, *a, **kw):
+        if vanishing(path):
+            raise FileNotFoundError(str(path))
+        return real_stat(path, *a, **kw)
+
+    monkeypatch.setattr(pathlib.Path, "exists", lambda self, *a, **kw: vanishing(self) or real_exists(self))
+    monkeypatch.setattr(pathlib.Path, "stat", lambda self, *a, **kw: stat(self))
+    monkeypatch.setattr(os, "stat", stat)
+    assert kid.get("/media/thumb/yt_a").status_code == 200  # the placeholder

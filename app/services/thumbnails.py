@@ -35,8 +35,12 @@ class ThumbnailService:
         return self.media_dir / "thumbnails" / "videos" / f"{video_id}.jpg"
 
     def is_cached(self, video_id: str) -> bool:
-        path = self.get_path(video_id)
-        return path.exists() and path.stat().st_size > 0
+        try:
+            # One stat: the picture can go (its video deleted) between
+            # an exists() and a stat().
+            return self.get_path(video_id).stat().st_size > 0
+        except OSError:
+            return False
 
     def save_uploaded(self, video_id: str, file_data: bytes) -> Path:
         """Overwrite a video's thumbnail with already-validated bytes. The

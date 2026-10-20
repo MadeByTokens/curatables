@@ -82,6 +82,9 @@ class Actor:
     def _response(self, r):
         if r.status >= 500 and r.status != 503:
             finding(self.name, f"http-{r.status}", f"{r.request.method} {r.url}", self.trail)
+        elif r.status == 404 and r.request.is_navigation_request():
+            # Often expected (the parent deleted it meanwhile); the trail tells.
+            finding(self.name, "not-found", r.url, self.trail)
 
     async def check_page(self):
         try:

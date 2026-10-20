@@ -41,6 +41,10 @@ code already called itself 0.5.0).
   database migration.
 - A description the kid empties stays empty (**Reset to original**
   brings the first one back).
+- When a video isn't there any more (a grown-up deleted it while an
+  old page still pointed at it), the kid sees "This video isn't here."
+  with the Home button, and any other missing page says "There's
+  nothing here.", instead of "Oops! That didn't work."
 
 **Fixes**
 - The PIN page has an address of its own: Back, a reload or a tab the
