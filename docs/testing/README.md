@@ -165,7 +165,7 @@ behaviours the tests act out, and what each must hold:
 | Routine: Home arranged just so | new videos never shift an arranged Home | `test_an_arranged_home_stays_put_when_new_videos_arrive` |
 | Getting lost | Home is the first button on every kid page, in exactly the same spot | `test_home_is_the_first_button_on_every_kid_page`, `same_place` |
 | Something unexpected (a deleted video, an old tab, a wrong address) | a calm page with no codes or technical words, and a big Home button | `test_something_unexpected_is_calm_and_has_a_way_home` |
-| A quick finger on the PIN pictures | a few wrong tries lock that profile on that tablet only, with "Wait a little", no blame, and Back | `test_wrong_pictures_lock_kindly_and_only_that_profile`, `pin_storm` |
+| A quick finger on the PIN pictures | 10 wrong tries lock that profile on that tablet only, with "Wait a little", no blame, and Back | `test_wrong_pictures_lock_kindly_and_only_that_profile`, `pin_storm` |
 | Sensitivity to sound | a video never starts by itself | `test_videos_wait_for_a_tap_to_start` |
 | Sensitivity to motion | Reduce Motion stops every animation and transition | `test_reduced_motion_stops_every_animation`, `still` |
 | Flashing | nothing repeats faster than about three times a second; no blink or marquee | `test_nothing_on_kid_screens_flashes_fast` |

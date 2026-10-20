@@ -33,6 +33,18 @@ def test_pin_attempts_are_throttled(app, client):
     assert "Too many tries" in resp.text
 
 
+def test_a_picture_pin_gets_more_tries_than_a_number_pin(app, client):
+    from app.services.auth import PICTURE_PIN_LIMITER, PIN_LIMITER, pin_limits
+    assert PICTURE_PIN_LIMITER.max_events > PIN_LIMITER.max_events
+    assert pin_limits("pictures")[1] > pin_limits("digits")[1]
+    pid = _svc(app).create(name="di", display_name="Di", pin="512", pin_style="pictures")
+    for _ in range(PICTURE_PIN_LIMITER.max_events):
+        resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "999"}, follow_redirects=True)
+        assert "Wrong PIN" in resp.text
+    resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "512"}, follow_redirects=True)
+    assert "Too many tries" in resp.text
+
+
 def test_correct_pin_enters_profile(app, client):
     svc = _svc(app)
     pid = svc.create(name="cy", display_name="Cy", pin="2222")

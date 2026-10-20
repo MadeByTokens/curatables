@@ -125,8 +125,11 @@ def test_wrong_pictures_lock_kindly_and_only_that_profile(app):
     pid = svc.create(name="mia", display_name="Mia", pin="512", pin_style="pictures")
     sib = svc.create(name="leo", display_name="Leo")
     tablet = TestClient(app, follow_redirects=False)
-    for _ in range(5):
+    # Picture PINs get more tries than number PINs before the wait.
+    for _ in range(9):
         tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "999"})
+    assert "Wait a little" not in tablet.get(f"/profiles/{pid}/pin?e=wrong").text
+    tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "999"})
     locked = tablet.post("/profiles/pin", data={"profile_id": pid, "pin": "512"}, follow_redirects=True).text
     assert "Wait a little" in locked
     assert 'class="pin-pad' not in locked
