@@ -97,6 +97,28 @@ def test_pin_page_has_keypad(app, client):
     assert page.count('class="pin-key"') == 10
 
 
+def test_reloading_the_pin_page_goes_to_the_picker(client):
+    for path in ("/profiles/select", "/profiles/pin"):
+        resp = client.get(path, follow_redirects=False)
+        assert resp.status_code == 302 and resp.headers["location"] == "/profiles"
+
+
+def test_kid_can_empty_a_description(app):
+    conn, client, _ = _setup(app, allow_customize=True)
+    conn.execute("UPDATE videos SET description = 'From YouTube' WHERE video_id = 'yt_train'")
+    conn.commit()
+    edit = "/video/yt_train/edit"
+    client.post(edit, data={"title": "Steam train", "description": ""})
+    assert "From YouTube" not in client.get("/watch/yt_train").text
+    assert "From YouTube" not in client.get(edit).text
+    assert 'form="reset-description"' in client.get(edit).text
+    # Reset brings the original back; leaving the box as it was keeps following it.
+    client.post("/video/yt_train/reset", data={"field": "description"})
+    assert "From YouTube" in client.get("/watch/yt_train").text
+    client.post(edit, data={"title": "Steam train", "description": "From YouTube"})
+    assert 'form="reset-description"' not in client.get(edit).text
+
+
 def test_friendly_date():
     from datetime import date
     today = date(2026, 10, 8)

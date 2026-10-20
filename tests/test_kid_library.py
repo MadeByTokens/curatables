@@ -145,7 +145,7 @@ class TestDescriptionOverrides:
         [patched] = svc.apply_overrides(alice, [video])
         assert patched.description == "Alice's description"
 
-    def test_empty_description_clears_override(self, db, tmp_path):
+    def test_empty_description_stays_empty(self, db, tmp_path):
         alice = _mk_kid(db, "alice")
         VideoRepository(db).insert(Video(
             video_id="v1", title="T", original_title="T",
@@ -157,6 +157,9 @@ class TestDescriptionOverrides:
         svc.set_description(alice, "v1", "")
 
         video = VideoRepository(db).get("v1")
+        [patched] = svc.apply_overrides(alice, [video])
+        assert patched.description == ""
+        svc.clear_description(alice, "v1")
         [patched] = svc.apply_overrides(alice, [video])
         assert patched.description == "Original"
 

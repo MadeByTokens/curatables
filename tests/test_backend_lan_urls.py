@@ -96,6 +96,32 @@ def test_a_failed_subtitle_does_not_fail_the_video(monkeypatch, tmp_path):
     assert runs == [["en", "pt"], None]
 
 
+def test_a_download_stopped_on_purpose_is_not_logged_as_a_failure(monkeypatch, tmp_path, caplog):
+    import yt_dlp
+
+    class FakeYDL:
+        def __init__(self, opts):
+            self.hooks = opts["progress_hooks"]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def download(self, urls):
+            for hook in self.hooks:
+                hook({"status": "downloading"})
+
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", FakeYDL)
+    b = YtdlpBackend()
+    monkeypatch.setattr(b, "_blocked", lambda url: False)
+    out = b.download_video("https://www.youtube.com/watch?v=aaaaaaaaaaa", tmp_path / "v",
+                           keep_going=lambda: False)
+    assert out is None and b.last_error is None
+    assert "Download failed" not in caplog.text and "drive is full" not in caplog.text
+
+
 
 def test_too_many_requests_says_wait_not_change_settings():
     from app.template_utils import friendly_download_error
