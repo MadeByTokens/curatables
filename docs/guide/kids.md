@@ -71,7 +71,9 @@ another one.
 
 ## Looking for a video
 
-**Search** looks through your videos. Type a word and tap Search.
+**Search** looks through your videos. Type a word and tap Search. If
+no video has that word, it shows videos with a word that sounds like it
+("dinasor" finds the dinosaurs) under "Did you mean one of these?".
 
 ![Searching for "moon"](img/kid-search.webp)
 

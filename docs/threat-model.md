@@ -555,7 +555,9 @@ channel search) on the server, and `/wishlist/channel/<UC…>` lists a
 channel's videos; both filter by `config.wishlist`: blocked words
 (query, title, channel, description snippet; a query with one is
 refused before any request to YouTube, a blocked channel can't be
-opened by URL), an
+opened by URL; in the query, title and channel a blocked word of 6
+letters or more also matches a spelling one edit off with the same
+first letter, `app/spelling.py`), an
 an optional "only trusted channels" mode per kid (YouTube channel IDs,
 so a look-alike name doesn't pass), a maximum duration, no live or upcoming
 streams, YouTube ids only. Thumbnails are fetched by the server

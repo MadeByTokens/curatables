@@ -8,6 +8,7 @@ import sqlite3
 import unicodedata
 
 from app.models import Video
+from app.spelling import closeness
 from app.repositories.base import BaseRepository
 from app.repositories.hidden_video_repo import NOT_HIDDEN_SQL
 
@@ -190,16 +191,11 @@ class VideoRepository(BaseRepository):
             + hidden, params).fetchall()
         return {r["channel_id"] for r in rows}
 
-    def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
-                     limit: int = 24, offset: int = 0,
-                     profile_id: int | None = None) -> builtins.list[Video]:
-        """Search ready videos by title and description, matching from the
-        start of a word: "park" finds "Park day" and "parks", not "Sparky".
-        Accents and case are ignored ("vulcao" finds "Vulcão"). With a
-        `profile_id`, that kid's own title, description and tags are
-        searched as well, and the videos that kid hid are left out.
-        `channel_ids` None searches every video; an empty list matches
-        nothing."""
+    def _searchable(self, channel_ids: builtins.list[int] | None,
+                    profile_id: int | None) -> sqlite3.Cursor | None:
+        """Ready videos with that kid's own title, description and tags,
+        newest first, leaving out what the kid hid and channels outside
+        `channel_ids` (None: every channel; an empty list: None)."""
         sql = ("SELECT v.*, o.title AS kid_title, o.description AS kid_description, "
                "(SELECT group_concat(t.name, char(31)) FROM profile_video_tags pvt "
                " JOIN tags t ON t.id = pvt.tag_id "
@@ -213,16 +209,31 @@ class VideoRepository(BaseRepository):
             params.append(profile_id)
         if channel_ids is not None:
             if not channel_ids:
-                return []
+                return None
             sql += f"AND v.channel_id IN ({','.join('?' for _ in channel_ids)}) "
             params.extend(channel_ids)
+        return self.db.execute(sql + "ORDER BY v.added_at DESC", params)
+
+    def search_ready(self, query: str, channel_ids: builtins.list[int] | None = None,
+                     limit: int = 24, offset: int = 0,
+                     profile_id: int | None = None) -> builtins.list[Video]:
+        """Search ready videos by title and description, matching from the
+        start of a word: "park" finds "Park day" and "parks", not "Sparky".
+        Accents and case are ignored ("vulcao" finds "Vulcão"). With a
+        `profile_id`, that kid's own title, description and tags are
+        searched as well, and the videos that kid hid are left out.
+        `channel_ids` None searches every video; an empty list matches
+        nothing."""
+        rows_found = self._searchable(channel_ids, profile_id)
+        if rows_found is None:
+            return []
         # Folding is done here, not in SQL: SQLite's LIKE folds neither
         # accents nor non-ASCII case.
         word_start = re.compile(r"(?<!\w)" + re.escape(fold_text(query)))
         # Stop reading once this page is full: a short query matches
         # most of a large library.
         rows: builtins.list = []
-        for r in self.db.execute(sql + "ORDER BY v.added_at DESC", params):
+        for r in rows_found:
             texts = (r["title"], r["description"], r["kid_title"],
                      r["kid_description"], r["kid_tags"])
             if any(t and word_start.search(fold_text(t)) for t in texts):
@@ -230,6 +241,40 @@ class VideoRepository(BaseRepository):
                 if len(rows) >= offset + limit:
                     break
         return [self._to_model(r) for r in rows[offset:offset + limit]]
+
+    def search_ready_close(self, query: str, channel_ids: builtins.list[int] | None = None,
+                           limit: int = 24, offset: int = 0,
+                           profile_id: int | None = None) -> builtins.list[Video]:
+        """Like search_ready, for a query spelled the way a child might:
+        every word typed is in the video's titles or tags, or close to a
+        word there ("dinasor" finds "Dinosaurs"; see app.spelling).
+        Closest first. It searches exactly the videos search_ready does,
+        so nothing hidden or outside `channel_ids` turns up."""
+        typed = re.findall(r"\w+", fold_text(query))
+        rows_found = self._searchable(channel_ids, profile_id)
+        if not typed or rows_found is None:
+            return []
+        known: dict[tuple[str, str], float | None] = {}
+        scored: builtins.list[tuple[float, int, sqlite3.Row]] = []
+        for r in rows_found:
+            words = set(re.findall(r"\w+", fold_text(
+                " ".join(t for t in (r["title"], r["kid_title"], r["kid_tags"]) if t))))
+            total = 0.0
+            for t in typed:
+                best = None
+                for w in words:
+                    if (t, w) not in known:
+                        known[(t, w)] = closeness(t, w)
+                    d = known[(t, w)]
+                    if d is not None and (best is None or d < best):
+                        best = d
+                if best is None:
+                    break
+                total += best
+            else:
+                scored.append((total, len(scored), r))
+        scored.sort(key=lambda s: (s[0], s[1]))
+        return [self._to_model(r) for _, _, r in scored[offset:offset + limit]]
 
     def insert(self, video: Video) -> None:
         self.db.execute(

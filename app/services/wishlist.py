@@ -17,12 +17,13 @@ from app.config import Config
 from app.models import Profile
 from app.repositories.profile_repo import ProfileRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
-from app.repositories.video_repo import VideoRepository
+from app.repositories.video_repo import VideoRepository, fold_text
 from app.repositories.wishlist_repo import WishlistRepository
 from app.services.family_time import since_days_ago
 from app.services.ids import make_video_id
 from app.services.search_gate import GATE, SearchRefused
 from app.services.thumbnails import ThumbnailService
+from app.spelling import near_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +94,16 @@ def _contains_word(text: str, word: str) -> bool:
     return re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text, re.IGNORECASE) is not None
 
 
-def blocked_word_in(words: list, text: str) -> str | None:
-    """The first of the parent's blocked words found in text, if any."""
+def blocked_word_in(words: list, text: str, near: bool = False) -> str | None:
+    """The first of the parent's blocked words found in text, if any.
+    With `near`, a long blocked word spelled a little differently counts
+    too ("skibidy" for "skibidi"; see app.spelling)."""
+    folded = re.findall(r"\w+", fold_text(text)) if near else []
     for word in words:
         word = str(word).strip()
         if word and _contains_word(text, word):
+            return word
+        if word and folded and any(near_blocked(w, fold_text(word)) for w in folded):
             return word
     return None
 
@@ -118,8 +124,8 @@ class WishlistService:
         self.trusted = TrustedChannelRepository(repo.db)
         self.profiles = ProfileRepository(repo.db)
 
-    def blocked_word_in(self, text: str) -> str | None:
-        return blocked_word_in(self.rules.blocked_words, text)
+    def blocked_word_in(self, text: str, near: bool = False) -> str | None:
+        return blocked_word_in(self.rules.blocked_words, text, near)
 
     def kid_rules(self, profile_id: int) -> KidRules:
         """The kid's trusted channels; "only trusted channels" is theirs
@@ -155,7 +161,10 @@ class WishlistService:
         limit = self.rules.max_duration_minutes
         if limit > 0 and meta.duration > limit * 60:
             return False
-        if self.blocked_word_in(f"{meta.title}\n{meta.channel}\n{meta.description}"):
+        # A title or channel name can be spelled to slip past a filter; a
+        # description is long, so only the exact words count there.
+        if (self.blocked_word_in(f"{meta.title}\n{meta.channel}", near=True)
+                or self.blocked_word_in(meta.description)):
             return False
         return kid is None or kid.allows_channel(meta.channel_id)
 
@@ -166,7 +175,7 @@ class WishlistService:
         return bool(meta.channel_id) and meta.channel_id in kid.trusted and self.passes(meta, kid)
 
     def channel_allowed(self, name: str) -> bool:
-        return not self.blocked_word_in(name)
+        return not self.blocked_word_in(name, near=True)
 
     def _fetch(self, profile_id: int, key: tuple, want: int, call):
         def run(n):
@@ -218,7 +227,7 @@ class WishlistService:
         sort = sort if sort in SORTS[mode] else SORTS[mode][0]
         if not query:
             return WishlistPage(page=page)
-        if self.blocked_word_in(query):
+        if self.blocked_word_in(query, near=True):
             raise WishlistError("rules")
         kid = self.kid_rules(profile_id)
         try:

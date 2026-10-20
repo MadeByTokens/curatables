@@ -75,7 +75,7 @@ def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository, *
     # blocked words is listed without its title and picture.
     words = request.app.state.config.wishlist.blocked_words
     hidden = {w.id for w in mine if w.status != "approved"
-              and blocked_word_in(words, f"{w.title}\n{w.original_title}")}
+              and blocked_word_in(words, f"{w.title}\n{w.original_title}", near=True)}
     context = {
         "here": _here(request),
         "query": "", "mode": "videos", "sort": "", "sorts": (), "results": [],

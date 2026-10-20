@@ -242,6 +242,25 @@ def test_blocked_query_never_reaches_youtube(app, client, backend):
     assert backend.queries == []
 
 
+def test_a_blocked_word_spelled_a_little_differently_is_caught(app, client, backend, monkeypatch):
+    """Search forgives spelling, so the parent's blocked words do too: a
+    long blocked word one letter off is refused in the search and hidden
+    in titles and channel names, while short everyday words are not
+    caught by a blocked word they merely look like."""
+    _kid(app, client)
+    monkeypatch.setattr(app.state.config.wishlist, "blocked_words", ["skibidi", "scary"])
+    page = client.get("/wishlist", params={"q": "skibidy toilet"}).text
+    assert "look for something else" in page and backend.queries == []
+    monkeypatch.setattr(backend, "search", lambda q, max_results=12, newest_first=False: [
+        _meta("aaaaaaaaaaa", "Skibdi toilet part 5"),
+        _meta("bbbbbbbbbbb", "Funny clips", channel="Skibidy Fan"),
+        _meta("ccccccccccc", "Score a goal"),
+        _meta("eeeeeeeeeee", "Scarf knitting for kids")])
+    page = client.get("/wishlist", params={"q": "toilet"}).text
+    assert "Skibdi" not in page and "Funny clips" not in page
+    assert "Score a goal" in page and "Scarf knitting" in page
+
+
 def test_kid_asks_and_parent_sees_the_request(app, client, authed_client, backend):
     pid = _kid(app, client)
     client.get("/wishlist", params={"q": "songs"})

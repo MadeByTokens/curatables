@@ -27,16 +27,22 @@ def search(request: Request,
         return RedirectResponse(url="/", status_code=302)
 
     videos = []
+    close = False
     query = q.strip()
     if query:
         videos = content.search_for_viewer(query, viewer, page=page)
+        # Nothing spelled that way: videos with words close to it.
+        if not videos and (page == 1 or not content.search_for_viewer(query, viewer)):
+            videos = content.search_for_viewer(query, viewer, page=page, close=True)
+            close = bool(videos)
         if viewer.is_child and viewer.profile_id:
             videos = kid_lib.apply_overrides(viewer.profile_id, videos)
         events.log("search", profile_id=viewer.profile_id,
-                   data={"query": query, "result_count": len(videos)})
+                   data={"query": query, "result_count": len(videos), "close": close})
 
     return render_kid_template(request, viewer, "kid/search.html", {
         "videos": videos,
         "query": query,
+        "close": close,
         "page": page,
     })

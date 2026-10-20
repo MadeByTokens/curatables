@@ -149,13 +149,16 @@ class ContentService:
         return videos, total
 
     def search_for_viewer(self, query: str, viewer: ViewerContext,
-                          page: int = 1, per_page: int = 24) -> list[Video]:
-        """Search within approved content visible to the viewer.
+                          page: int = 1, per_page: int = 24,
+                          close: bool = False) -> list[Video]:
+        """Search within approved content visible to the viewer; with
+        `close`, for words spelled close to the query's.
         Returns empty list if search is disabled for this viewer."""
         if viewer.search_mode == "disabled":
             return []
         offset = (page - 1) * per_page
-        return self.video_repo.search_ready(
+        search = self.video_repo.search_ready_close if close else self.video_repo.search_ready
+        return search(
             query, channel_ids=self.visible_channel_ids(viewer),
             limit=per_page, offset=offset,
             profile_id=viewer.profile_id if viewer.is_child else None)
