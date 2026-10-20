@@ -5,6 +5,12 @@
   <h1>{{ _("Who's watching?") }}</h1>
 </header>
 <main id="main">
+{% if cookies_blocked %}
+<div class="mw-500 p-24 ta-c bd-ddd r-8 picker-card" role="alert">
+  <h2 class="mt-0">{{ _("This browser didn't keep the sign-in.") }}</h2>
+  <p class="muted-2 mb-0">{{ _("Curatables can't remember who is watching. Private tabs often do this: open Curatables in a normal tab or from the Home Screen icon, or allow cookies in the browser's settings.") }}</p>
+</div>
+{% endif %}
 {% if profiles %}
 <div class="profile-grid">
   {% for p in profiles %}

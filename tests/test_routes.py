@@ -48,7 +48,8 @@ class TestParentAuth:
         # Parent logs in: should succeed AND land on the parent dashboard.
         resp = client.post("/parent/login", data={"password": "pw"})
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/parent/"
+        assert resp.headers["location"] == "/parent/login?signed_in=1"
+        assert client.get(resp.headers["location"]).headers["location"] == "/parent/"
 
         # Follow-up request to /parent/ should NOT redirect back to login
         # (which would mean the viewer is still resolving as a kid).
@@ -509,3 +510,13 @@ class TestCommentInlineEditXHR:
         assert resp.status_code == 302
         assert "#comments" in resp.headers["location"]
 
+
+
+def test_home_screen_name_is_curatables(client, app):
+    # iOS names a Home Screen icon after the page title unless told,
+    # and the page a kid's tablet is added from is "Who's watching?".
+    from app.services.auth import AuthService
+    AuthService(app.state.config).set_password("testpass")
+    page = client.get("/profiles")
+    assert '<meta name="apple-mobile-web-app-title" content="Curatables">' in page.text
+    assert '<meta name="apple-mobile-web-app-title" content="Curatables">' in client.get("/parent/login").text

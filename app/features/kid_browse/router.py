@@ -16,6 +16,7 @@ from app.services.reactions import ReactionService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
 from app.web import form_str, is_xhr
+from app.features.kid_profiles.router import SIGNED_IN_URL
 from app.models import ViewerContext
 from app.template_utils import render_kid_template
 
@@ -56,7 +57,7 @@ def home(request: Request,
         profiles = profiles_svc.list()
         if len(profiles) == 1 and not profiles[0].pin:
             request.session["profile_id"] = profiles[0].id
-            return RedirectResponse(url="/", status_code=302)
+            return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
         return RedirectResponse(url="/profiles", status_code=302)
 
     videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
