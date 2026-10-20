@@ -49,6 +49,16 @@ class EvictionReport:
     video_ids: list[str] = field(default_factory=list)
 
 
+def _entries(folder: Path) -> list[Path]:
+    """What is in a video's folder, sorted; empty when it isn't there.
+    A parent can delete a video while a kid's player is opening it, so
+    the folder may vanish between any check and the listing."""
+    try:
+        return sorted(folder.iterdir())
+    except (FileNotFoundError, NotADirectoryError):
+        return []
+
+
 def newest_mtime(path: Path) -> float:
     """The latest change under path. A folder's own mtime only moves when
     an entry is added or removed, not while a file in it is written."""
@@ -114,11 +124,9 @@ class StorageService:
         mp4 = self.video_path(video_id)
         if mp4.exists():
             return mp4
-        vdir = self.video_dir(video_id)
-        if vdir.exists():
-            for entry in sorted(vdir.iterdir()):
-                if entry.stem == "video" and entry.suffix in _VIDEO_SUFFIXES:
-                    return entry
+        for entry in _entries(self.video_dir(video_id)):
+            if entry.stem == "video" and entry.suffix in _VIDEO_SUFFIXES:
+                return entry
         return None
 
     def uploads_dir(self) -> Path:
@@ -161,10 +169,9 @@ class StorageService:
         for uploads, see downloaded_file() for downloads."""
         if video.storage_mode == "uploaded":
             vdir = self.upload_video_dir(video.video_id)
-            if vdir.exists():
-                for entry in vdir.iterdir():
-                    if entry.is_file() and entry.stem == "video":
-                        return entry
+            for entry in _entries(vdir):
+                if entry.is_file() and entry.stem == "video":
+                    return entry
             # Caller will get a non-existent path and handle the 404.
             return vdir / "video.missing"
         return self.downloaded_file(video.video_id) or self.video_path(video.video_id)
@@ -199,14 +206,12 @@ class StorageService:
 
     def list_subtitles(self, video: Video) -> list[dict]:
         """Subtitle files for a video, named ``video.<lang>.vtt`` (or .srt)."""
-        vdir = self.subtitle_dir(video)
         subs = []
-        if vdir.exists():
-            for f in sorted(vdir.iterdir()):
-                if f.suffix in (".vtt", ".srt") and f.is_file():
-                    parts = f.stem.split(".", 1)
-                    lang = parts[1] if len(parts) > 1 else ""
-                    subs.append({"lang": lang, "path": str(f), "filename": f.name})
+        for f in _entries(self.subtitle_dir(video)):
+            if f.suffix in (".vtt", ".srt") and f.is_file():
+                parts = f.stem.split(".", 1)
+                lang = parts[1] if len(parts) > 1 else ""
+                subs.append({"lang": lang, "path": str(f), "filename": f.name})
         return subs
 
     def download(self, video_id: str, url: str,
@@ -283,10 +288,7 @@ class StorageService:
         self._remove_partial_download(video_id)
 
     def _remove_partial_download(self, video_id: str) -> None:
-        vdir = self.video_dir(video_id)
-        if not vdir.is_dir():
-            return
-        for f in vdir.iterdir():
+        for f in _entries(self.video_dir(video_id)):
             if f.is_file() and (f.stem == "video" or f.name.startswith("video.")):
                 f.unlink(missing_ok=True)
 

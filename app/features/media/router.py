@@ -140,15 +140,19 @@ def serve_video(request: Request, video_id: str,
         return Response(status_code=403, content="Downloads are off for this profile")
 
     video_path = storage.video_file_path(video)
-    if not video_path.exists():
+    try:
+        # Once, here: the file can go (a parent deleting the video) while
+        # a player is still asking for pieces of it.
+        stat = video_path.stat()
+    except OSError:
         return Response(status_code=404, content="Video not downloaded yet")
 
     media_type = _VIDEO_MIME_BY_EXT.get(video_path.suffix.lower(), "video/mp4")
     if not download:
-        return FileResponse(str(video_path), media_type=media_type)
+        return FileResponse(str(video_path), media_type=media_type, stat_result=stat)
     if viewer.is_child and viewer.profile_id:
         video = kid_lib.apply_overrides(viewer.profile_id, [video])[0]
-    return FileResponse(str(video_path), media_type=media_type,
+    return FileResponse(str(video_path), media_type=media_type, stat_result=stat,
                         filename=_download_name(video.title, video_path.suffix.lower()))
 
 
@@ -188,6 +192,8 @@ def serve_subtitle(request: Request, video_id: str, filename: str,
         return Response(status_code=404)
     try:
         raw = sub_path.read_bytes()
+    except FileNotFoundError:
+        return Response(status_code=404)
     except OSError:
         return Response(status_code=500, content="Failed to read subtitle")
     return Response(content=to_vtt(raw, sub_path.suffix),
