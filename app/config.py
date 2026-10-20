@@ -115,6 +115,9 @@ class WishlistConfig:
     # requests from them go straight into this channel (None: they wait).
     only_trusted_channels: bool = False
     auto_add_channel_id: int | None = None
+    # At most this many requests a day go straight in for each kid; the
+    # rest wait for the parent. 0: none go straight in.
+    auto_add_per_day: int = 10
     max_results: int = 12
     max_duration_minutes: int = 0
 

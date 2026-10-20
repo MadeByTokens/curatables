@@ -36,6 +36,8 @@ class WishlistRequest:
     target_channel_id: int | None = None
     suggested_channel: str = ""
     auto_added: int = 0
+    auto_added_at: str | None = None
+    held_by_limit: int = 0
     youtube_channel_id: str = ""
     profile_name: str = ""
 
@@ -80,7 +82,7 @@ class WishlistRepository(BaseRepository):
              "", meta.description, meta.channel, meta.duration,
              meta.upload_date, meta.view_count, url, meta.thumbnail_url, meta.channel_id))
         self.db.execute(
-            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, "
+            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, held_by_limit = 0, "
             "created_at = datetime('now') WHERE profile_id = ? AND video_id = ? "
             "AND status IN ('removed', 'allowed_again')", (profile_id, video_id))
         self.db.commit()
@@ -206,13 +208,28 @@ class WishlistRepository(BaseRepository):
     def reopen_approved(self, video_id: str) -> int:
         """Approved requests for a video that left the library wait again."""
         cur = self.db.execute(
-            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0 "
+            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, held_by_limit = 0 "
             "WHERE video_id = ? AND status = 'approved'", (video_id,))
         self.db.commit()
         return cur.rowcount
 
+    def auto_added_since(self, profile_id: int, since: str) -> int:
+        """How many of this kid's requests went into the library by
+        themselves since `since` (stored UTC text), even ones taken back."""
+        row = self.db.execute(
+            "SELECT COUNT(*) AS n FROM wishlist_requests WHERE profile_id = ? AND auto_added_at >= ?",
+            (profile_id, since)).fetchone()
+        return int(row["n"])
+
+    def mark_held_by_limit(self, request_id: int) -> None:
+        """The request would have gone straight in, but the kid's daily
+        allowance was used up: the parent sees why it waits."""
+        self.db.execute("UPDATE wishlist_requests SET held_by_limit = 1 WHERE id = ?", (request_id,))
+        self.db.commit()
+
     def mark_auto_added(self, request_id: int) -> None:
-        self.db.execute("UPDATE wishlist_requests SET auto_added = 1 WHERE id = ?", (request_id,))
+        self.db.execute("UPDATE wishlist_requests SET auto_added = 1, auto_added_at = datetime('now') "
+                        "WHERE id = ?", (request_id,))
         self.db.commit()
 
     @staticmethod

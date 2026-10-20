@@ -25,6 +25,7 @@ searches for good; <strong>Remove</strong> just drops the request, and the kid c
         &middot; {{ w.channel }}
         {% if w.duration %}&middot; {{ w.duration|duration }}{% endif %}
       </div>
+      {% if w.held_by_limit %}<div class="meta"><strong>Waited: daily limit reached.</strong> It would have gone straight in, but {{ w.profile_name }} had used today's automatic adds (<a href="/parent/trusted-channels#family-settings">change the limit</a>).</div>{% endif %}
       <div class="meta">For: {% if w.target_channel_id in channel_names %}<strong>{{ channel_names[w.target_channel_id] }}</strong>{% elif w.suggested_channel %}a new channel, <strong>{{ w.suggested_channel }}</strong>{% else %}you to pick a channel{% endif %}</div>
       {% if w.description %}<div class="desc">&ldquo;{{ w.description }}&rdquo;</div>{% endif %}
       <div class="actions">

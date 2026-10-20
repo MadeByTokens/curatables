@@ -19,6 +19,7 @@ from app.repositories.profile_repo import ProfileRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.video_repo import VideoRepository
 from app.repositories.wishlist_repo import WishlistRepository
+from app.services.family_time import since_days_ago
 from app.services.ids import make_video_id
 from app.services.search_gate import GATE, SearchRefused
 from app.services.thumbnails import ThumbnailService
@@ -113,6 +114,7 @@ class WishlistService:
         self.video_repo = video_repo
         self.thumbnails = thumbnails
         self.rules = config.wishlist
+        self.timezone = config.server.timezone
         self.trusted = TrustedChannelRepository(repo.db)
         self.profiles = ProfileRepository(repo.db)
 
@@ -129,12 +131,19 @@ class WishlistService:
 
     def auto_add_into(self, profile: Profile | None) -> int | None:
         """The channel this kid's requests from trusted channels go
-        straight into (theirs if set, else the family's), or None."""
+        straight into (theirs if set, else the family's), or None. The
+        daily allowance is checked when adding (auto_adds_left)."""
         if profile is None or profile.auto_add_mode == "off":
             return None
         if profile.auto_add_mode == "on":
             return profile.auto_add_channel_id
         return self.rules.auto_add_channel_id
+
+    def auto_adds_left(self, profile_id: int) -> int:
+        """How many more requests may go straight in for this kid today
+        (the family's day, from its time zone)."""
+        used = self.repo.auto_added_since(profile_id, since_days_ago(0, self.timezone))
+        return max(self.rules.auto_add_per_day - used, 0)
 
     def passes(self, meta: VideoMetadata, kid: KidRules | None = None) -> bool:
         """The parent's rules for a single result, and the kid's trusted

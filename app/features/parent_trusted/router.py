@@ -104,6 +104,7 @@ def trusted_page(request: Request, find: str = "", notice: str = "",
 @router.post("/settings")
 def save_family_settings(only_trusted: str = Form(""),
                          auto_add_channel_id: str = Form(""),
+                         auto_add_per_day: str = Form(""),
                          viewer: ViewerContext = Depends(require_parent),
                          config: Config = Depends(get_config),
                          content: ContentService = Depends(get_content_service)):
@@ -111,6 +112,8 @@ def save_family_settings(only_trusted: str = Form(""),
     into = int(auto_add_channel_id) if auto_add_channel_id.isdigit() else None
     config.wishlist.only_trusted_channels = only_trusted == "1"
     config.wishlist.auto_add_channel_id = into if into in ours else None
+    if auto_add_per_day.strip().isdigit():
+        config.wishlist.auto_add_per_day = min(int(auto_add_per_day), 100)
     config.save()
     return RedirectResponse(url=f"{PAGE}?notice=saved", status_code=303)
 
