@@ -44,6 +44,10 @@ canonical bill of materials and pinned version ranges.
 .venv/bin/pytest tests/test_routes.py -v  # one file
 ```
 
+For the virtual box, the browser-driven box tests in `tests/box/` and
+the special-needs tests, see
+[docs/testing/README.md](docs/testing/README.md).
+
 Tests are flat in `tests/` (`test_<area>.py`), with shared fixtures
 in `tests/conftest.py`.
 

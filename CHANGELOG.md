@@ -47,6 +47,9 @@ code already called itself 0.5.0).
   picker instead of an "Oops" page.
 - A download that is paused or cancelled part way is logged as
   stopped, not as a failure with "the drive is full".
+- A video deleted while someone is on its page, or while a kid's
+  player is loading it, answers "not found" on every page instead of
+  an error.
 
 ## v0.8.1
 

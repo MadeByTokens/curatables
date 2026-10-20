@@ -1210,3 +1210,19 @@ def test_an_old_request_without_a_channel_id_is_looked_up_again(app, client, bac
     assert client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"}).status_code == 303
     mine = [w for w in WishlistRepository(_conn(app)).list_by_status("pending") if w.profile_id != otto]
     assert mine[0].youtube_channel_id == KIDS_TV
+
+
+def test_asking_for_the_same_video_again_and_again_makes_one_request(app, client, authed_client, backend):
+    """A kid who loves one video taps Ask on it over and over (and on
+    Send): the parent sees one request, not a pile."""
+    _kid(app, client)
+    client.get("/wishlist", params={"q": "songs"})
+    for _ in range(12):
+        resp = client.post("/wishlist/ask", data={"raw_id": "aaaaaaaaaaa"})
+        assert resp.status_code == 303
+    item = WishlistRepository(_conn(app)).list_by_status("pending")
+    assert len(item) == 1
+    for _ in range(5):
+        assert client.post(f"/wishlist/asked/{item[0].id}", data={"title": "Counting"}).status_code == 303
+    assert len(WishlistRepository(_conn(app)).list_by_status("pending")) == 1
+    assert "1 video request from your kids" in authed_client.get("/parent/").text
