@@ -104,7 +104,7 @@ class Actor:
             return
         if "/parent" in url or not url.startswith(B):
             await self.page.goto(B + "/")
-        if re.search(r"/profiles(\?|$|/select|/pin)", self.page.url):
+        if re.search(r"/profiles(\?|$|/)", self.page.url):
             await self.page.goto(B + "/profiles")
             btn = self.page.locator('form[action="/profiles/select"]', has_text=self.kid).locator("button")
             if await btn.count() == 0:

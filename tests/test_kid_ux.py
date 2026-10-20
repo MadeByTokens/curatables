@@ -92,15 +92,29 @@ def test_pin_page_has_keypad(app, client):
     from app.services.profiles import ProfileService
     pid = ProfileService(ProfileRepository(conn)).create(name="pat", display_name="Pat", pin="1234")
     ProfileService(ProfileRepository(conn)).create(name="max", display_name="Max")
-    page = client.post("/profiles/select", data={"profile_id": pid}).text
+    page = client.post("/profiles/select", data={"profile_id": pid}, follow_redirects=True).text
     assert 'class="pin-pad"' in page
     assert page.count('class="pin-key"') == 10
 
 
-def test_reloading_the_pin_page_goes_to_the_picker(client):
-    for path in ("/profiles/select", "/profiles/pin"):
-        resp = client.get(path, follow_redirects=False)
-        assert resp.status_code == 302 and resp.headers["location"] == "/profiles"
+def test_the_pin_page_has_an_address_of_its_own(app, client):
+    """Back, a reload or a restored tab shows the PIN page again,
+    instead of asking to send a form again (or a blank page)."""
+    from app.services.profiles import ProfileService
+    conn = next(app.dependency_overrides[get_db]())
+    svc = ProfileService(ProfileRepository(conn))
+    pid = svc.create(name="pat", display_name="Pat", pin="1234")
+    resp = client.post("/profiles/select", data={"profile_id": pid})
+    assert resp.status_code == 303 and resp.headers["location"] == f"/profiles/{pid}/pin"
+    assert 'class="pin-pad"' in client.get(f"/profiles/{pid}/pin").text
+    wrong = client.post("/profiles/pin", data={"profile_id": pid, "pin": "9999"})
+    assert wrong.status_code == 303 and wrong.headers["location"] == f"/profiles/{pid}/pin?e=wrong"
+    assert "Wrong PIN" in client.get(wrong.headers["location"]).text
+    # No PIN, or no such kid: the picker.
+    nopin = svc.create(name="max", display_name="Max")
+    for path in (f"/profiles/{nopin}/pin", "/profiles/999/pin", "/profiles/select", "/profiles/pin"):
+        resp = client.get(path)
+        assert resp.status_code == 302 and resp.headers["location"] == "/profiles", path
 
 
 def test_kid_can_empty_a_description(app):

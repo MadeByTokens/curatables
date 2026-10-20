@@ -174,7 +174,7 @@ def still(page):
     for path in ["/", "/wishlist?q=trains", f"/watch/{ids[0]}", "/?edit=1"]:
         page.goto(args.base + path)
         moving = page.evaluate("() => [...document.querySelectorAll('*')].filter(e => {"
-                               " const s = getComputedStyle(e); return s.animationName !== 'none'"
+                               " const s = getComputedStyle(e); return (s.animationName && s.animationName !== 'none')"
                                " || parseFloat(s.transitionDuration) > 0; }).map(e => e.className).slice(0, 5)")
         if moving:
             raise Fail(f"{path}: moving with Reduce Motion on: {moving}")

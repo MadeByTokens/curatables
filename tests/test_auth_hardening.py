@@ -26,9 +26,9 @@ def test_pin_attempts_are_throttled(app, client):
     pid = svc.create(name="ann", display_name="Ann", pin="1111")
     svc.create(name="bo", display_name="Bo")
     for _ in range(5):
-        resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "0000"})
+        resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "0000"}, follow_redirects=True)
         assert "Wrong PIN" in resp.text
-    resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "1111"})
+    resp = client.post("/profiles/pin", data={"profile_id": pid, "pin": "1111"}, follow_redirects=True)
     assert resp.status_code == 200
     assert "Too many tries" in resp.text
 
@@ -175,7 +175,7 @@ def test_picture_pin_profile_round_trip(app, authed_client, client):
     assert profile.pin_style == "pictures"
     assert profile.pin.startswith("pbkdf2$")
 
-    page = client.post("/profiles/select", data={"profile_id": profile.id})
+    page = client.post("/profiles/select", data={"profile_id": profile.id}, follow_redirects=True)
     assert 'data-auto-submit="1"' in page.text
     assert page.text.count('class="pin-key pin-key-picture"') == 9
     assert client.post("/profiles/pin", data={
