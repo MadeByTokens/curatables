@@ -9,12 +9,13 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
     get_reaction_service, get_kid_library_service, get_channel_service,
-    get_event_service, require_kid_feature,
+    get_event_service, get_kid_home_service, require_child, require_kid_feature,
 )
 from app.services.content import ContentService, VideoNotFound
 from app.services.events import EventService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
+from app.services.kid_home import SLOTS, KidHomeService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
 from app.web import form_str, is_xhr
@@ -47,30 +48,141 @@ def _build_home_context(videos, content, reactions, viewer, page, total,
     }
 
 
+_VIDEO_ID = re.compile(r"[A-Za-z0-9._-]{1,200}")
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request,
-         page: int = Query(1, ge=1),
          hid: str = Query(""),
+         edit: bool = Query(False),
+         move: int | None = Query(None),
          viewer: ViewerContext = Depends(get_viewer),
          content: ContentService = Depends(get_content_service),
          profiles_svc: ProfileService = Depends(get_profile_service),
          reactions: ReactionService = Depends(get_reaction_service),
-         kid_lib: KidLibraryService = Depends(get_kid_library_service)):
+         kid_lib: KidLibraryService = Depends(get_kid_library_service),
+         kid_home: KidHomeService = Depends(get_kid_home_service)):
+    """A kid's own Home, arranged by them; anyone else sees every video."""
     if viewer.viewer_type == "anonymous":
         profiles = profiles_svc.list()
         if len(profiles) == 1 and not profiles[0].pin:
             request.session["profile_id"] = profiles[0].id
             return RedirectResponse(url=SIGNED_IN_URL, status_code=302)
         return RedirectResponse(url="/profiles", status_code=302)
+    if not viewer.is_child:
+        return _all_videos(request, 1, viewer, content, reactions, kid_lib)
 
+    grid = kid_home.layout(viewer)
+    on_home = kid_lib.apply_overrides(viewer.kid_id, [v for v in grid if v is not None])
+    named = {v.video_id: v for v in on_home}
+    slots = [named[v.video_id] if v is not None else None for v in grid]
+    moving = move if move is not None and 0 <= move < len(slots) and slots[move] else None
+    editing = edit or moving is not None
+    if not editing:
+        # Gaps the kid left stay, but nothing after the last video.
+        while slots and slots[-1] is None:
+            slots.pop()
+    return render_kid_template(request, viewer, "kid/my_home.html", {
+        "slots": slots,
+        "editing": editing,
+        "moving": moving,
+        "customized": kid_home.customized(viewer),
+        "channels": content.channels_to_browse(viewer),
+        "reaction_counts": reactions.get_bulk_counts(list(named)) if named else {},
+        "emojis": dict(reactions.get_emoji_list()),
+        # Just hidden: say so, with an Undo for a tap by mistake.
+        "just_hidden": hid if viewer.allow_hide and _VIDEO_ID.fullmatch(hid) else "",
+    })
+
+
+@router.get("/all", response_class=HTMLResponse)
+def all_videos(request: Request,
+               page: int = Query(1, ge=1),
+               viewer: ViewerContext = Depends(get_viewer),
+               content: ContentService = Depends(get_content_service),
+               reactions: ReactionService = Depends(get_reaction_service),
+               kid_lib: KidLibraryService = Depends(get_kid_library_service)):
+    return _all_videos(request, page, viewer, content, reactions, kid_lib)
+
+
+def _all_videos(request, page, viewer, content, reactions, kid_lib):
     videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
     if viewer.is_child and viewer.profile_id:
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total)
-    # Just hidden: say so, with an Undo for a tap by mistake.
-    ctx["just_hidden"] = (hid if viewer.is_child and viewer.allow_hide
-                          and re.fullmatch(r"[A-Za-z0-9._-]{1,200}", hid) else "")
     return render_kid_template(request, viewer, "kid/home.html", ctx)
+
+
+# --- Arranging Home ---
+
+@router.get("/home/pick", response_class=HTMLResponse)
+def home_pick(request: Request,
+              slot: int = Query(..., ge=0, lt=SLOTS),
+              channel: int | None = Query(None),
+              page: int = Query(1, ge=1),
+              viewer: ViewerContext = Depends(require_child),
+              content: ContentService = Depends(get_content_service),
+              kid_lib: KidLibraryService = Depends(get_kid_library_service),
+              kid_home: KidHomeService = Depends(get_kid_home_service)):
+    """Choose the video for an empty spot on Home."""
+    videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE,
+                                            channel_id=channel)
+    videos = kid_lib.apply_overrides(viewer.kid_id, videos)
+    on_home = {v.video_id for v in kid_home.layout(viewer) if v is not None}
+    return render_kid_template(request, viewer, "kid/home_pick.html", {
+        "slot": slot,
+        "videos": videos,
+        "on_home": on_home,
+        "channels": content.channels_to_browse(viewer),
+        "current_channel_id": channel,
+        "page": page,
+        "total_pages": max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE),
+    })
+
+
+def _slot(value: str) -> int | None:
+    return int(value) if value.isdigit() else None
+
+
+@router.post("/home/add")
+async def home_add(request: Request,
+                   viewer: ViewerContext = Depends(require_child),
+                   kid_home: KidHomeService = Depends(get_kid_home_service)):
+    """From the picker (a spot is given) back to arranging Home; from the
+    player (first free spot) back to the video."""
+    form = await request.form()
+    video_id = form_str(form, "video_id")
+    slot = _slot(form_str(form, "slot"))
+    added = kid_home.add(viewer, video_id, slot)
+    if slot is not None:
+        return RedirectResponse(url="/?edit=1", status_code=303)
+    if not _VIDEO_ID.fullmatch(video_id):
+        return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url=f"/watch/{video_id}?home={'added' if added else 'full'}",
+                            status_code=303)
+
+
+@router.post("/home/remove")
+async def home_remove(request: Request,
+                      viewer: ViewerContext = Depends(require_child),
+                      kid_home: KidHomeService = Depends(get_kid_home_service)):
+    form = await request.form()
+    video_id = form_str(form, "video_id")
+    kid_home.remove(viewer, video_id)
+    if form_str(form, "back") == "watch" and _VIDEO_ID.fullmatch(video_id):
+        return RedirectResponse(url=f"/watch/{video_id}", status_code=303)
+    return RedirectResponse(url="/?edit=1", status_code=303)
+
+
+@router.post("/home/move")
+async def home_move(request: Request,
+                    viewer: ViewerContext = Depends(require_child),
+                    kid_home: KidHomeService = Depends(get_kid_home_service)):
+    form = await request.form()
+    source, target = _slot(form_str(form, "source")), _slot(form_str(form, "target"))
+    if source is not None and target is not None:
+        kid_home.move(viewer, source, target)
+    return RedirectResponse(url="/?edit=1", status_code=303)
 
 
 @router.get("/help", response_class=HTMLResponse)

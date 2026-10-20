@@ -1121,6 +1121,90 @@ video:focus {
 }
 .hidden-done .video-action-btn { margin-left: 8px; }
 
+/* The kid's own Home: spots they arrange, like a tablet's home screen */
+.home-edit-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #fff8e1;
+    color: #5c4400;
+    border: 1px solid #f0d080;
+    font-size: 18px;
+}
+.home-change-row { padding: 4px 16px 24px; }
+.home-gap { visibility: hidden; box-shadow: none; }
+.home-empty {
+    display: block;
+    text-decoration: none;
+    color: #555;
+    background: transparent;
+    box-shadow: none;
+    border: 3px dashed #aaa;
+    box-sizing: border-box;
+}
+.home-empty .thumb { background: transparent; }
+.home-plus {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    margin-top: -0.6em;
+    text-align: center;
+    font-size: 48px;
+    line-height: 1.2;
+    color: #888;
+}
+.home-tools {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 8px 8px;
+}
+.home-tool {
+    display: inline-block;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #bbb;
+    border-radius: 22px;
+    background: #fff;
+    color: #222;
+    font-size: 16px;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.home-card-btn {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #333;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.home-note {
+    display: block;
+    padding: 0 10px 10px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #1f7a70;
+    color: var(--accent, #1f7a70);
+}
+.home-moving { outline: 4px solid #f4a261; }
+.home-target.home-empty .home-note { padding-top: 10px; }
+/* Editing: cards stand still (a moving target is hard to tap) and get
+   a coloured edge instead. */
+.is-editing .video-card:not(.home-empty) { box-shadow: 0 0 0 3px #f0d080; }
+
 /* Search */
 .search-input {
     width: 65%;

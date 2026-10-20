@@ -201,6 +201,13 @@ comments and reactions, what was added (and by whom: a kid's upload
 says "Uploaded by Mia · in Mia's Films"), and anything that needs you
 (requests, failed downloads, a drive that's getting full).
 
+**Home** is each kid's own screen, like a tablet's home screen. At
+first it shows their 12 newest videos. **Change my Home** lets them put
+a video in any of its 24 spots, move one (**Move**, then the spot) or
+take one off; **Put on my Home** under a video adds it too. Once they
+change it, Home stays as they arranged it, and new videos show under
+**All** and in their channels.
+
 When a kid taps **Hide** under a video, it leaves that kid's lists and
 shows up under **Needs your attention**. Open it: **Delete video**
 removes it for everyone, **Keep it hidden from (name)** leaves it hidden

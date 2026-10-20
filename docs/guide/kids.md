@@ -36,16 +36,24 @@ Or tap your numbers, then ✓. Got it wrong? Just try again.
 
 ## Home
 
-**Home shows all your videos.** If you have more than one channel, tap
-one at the top to see only those. **Tap a picture to watch it.** A video
-marked "Takes a moment to start" has to download first; it plays after a
-short wait.
+**Home is yours.** At first it shows your newest videos. **Tap a
+picture to watch it.** A video marked "Takes a moment to start" has to
+download first; it plays after a short wait. **All** shows every video,
+and the channel buttons show one channel. **Home** always brings you
+back.
+
+**Change my Home** puts your favorite videos where you want them: tap a
+**+** to put a video there, **Move** and then a spot to move one, or
+**✕** to take one off. Tap **Done** when it looks right. Under a video,
+**Put on my Home** adds it too.
 
 ![Mia's home with six videos](img/kid-home.webp)
 
 ## Watching a video
 
-**Tap a face to say how you liked it.** You can put a word on the video
+**Tap a face to say how you liked it.** **Download** keeps the video
+on your tablet. Don't like it? **Hide** takes it away, and a grown-up
+is told. You can put a word on the video
 to find it again, and write a comment. A grown-up may write back.
 **Change** under your comment fixes the words or deletes it.
 

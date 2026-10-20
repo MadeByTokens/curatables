@@ -1,16 +1,8 @@
 {% extends "kid/base.html" %}
 {% from "kid/_video_grid.html" import video_grid with context %}
-{% set nav_active = "tags" if tag_name else ("home" if not channel else "") %}
+{# Every video, a channel, or a tag. The kid's own Home is my_home.html. #}
+{% set nav_active = "tags" if tag_name else ("home" if not (viewer and viewer.is_child) and not channel else "") %}
 {% block content %}
-{% if just_hidden %}
-<div class="wishlist-sent hidden-done" role="status">
-  <span aria-hidden="true">&#128584;</span> {{ _("Hidden. A grown-up will be told.") }}
-  <form method="POST" action="/video/{{ just_hidden }}/unhide" class="d-ib">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="video-action-btn">{{ _("Undo") }}</button>
-  </form>
-</div>
-{% endif %}
 
 {% if channel %}
 <div class="channel-header" style="--ch: {{ channel.color or '' }}">
@@ -43,7 +35,7 @@
 
 {% if channels|length > 1 %}
 <nav class="channel-nav" aria-label="{{ _('Channels') }}">
-  <a href="/" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>{{ _("All") }}</a>
+  <a href="/all" class="channel-link{% if not current_channel_id and not tag_name %} active{% endif %}"{% if not current_channel_id and not tag_name %} aria-current="page"{% endif %}>{{ _("All") }}</a>
   {% for ch in channels %}
   <a href="/channel/{{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
     {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
@@ -55,7 +47,7 @@
 
 {% if total_pages > 1 %}
 <div class="pagination">
-  {% set base_url = ("/tags/" ~ tag_name|urlencode) if tag_name else ("/channel/" ~ current_channel_id if current_channel_id else "/") %}
+  {% set base_url = ("/tags/" ~ tag_name|urlencode) if tag_name else ("/channel/" ~ current_channel_id if current_channel_id else "/all") %}
   {% if page > 1 %}
   <a href="{{ base_url }}?page={{ page - 1 }}" class="page-link" aria-label="{{ _('Previous page') }}">&larr;</a>
   {% endif %}

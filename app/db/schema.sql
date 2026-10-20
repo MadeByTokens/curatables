@@ -100,7 +100,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- Find new shows only trusted YouTube channels: 'family' | 'on' | 'off'.
     trusted_only TEXT NOT NULL DEFAULT 'family',
     allow_download  INTEGER NOT NULL DEFAULT 1,
-    allow_hide      INTEGER NOT NULL DEFAULT 1
+    allow_hide      INTEGER NOT NULL DEFAULT 1,
+    home_customized INTEGER NOT NULL DEFAULT 0  -- the kid arranged Home
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (
@@ -156,6 +157,15 @@ CREATE TABLE IF NOT EXISTS profile_hidden_videos (
     hidden_at  TEXT NOT NULL DEFAULT (datetime('now')),
     reviewed   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (profile_id, video_id)
+);
+
+-- A kid's Home: the video in each spot, once they arrange it.
+CREATE TABLE IF NOT EXISTS profile_home_slots (
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    position   INTEGER NOT NULL,
+    video_id   TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
+    PRIMARY KEY (profile_id, position),
+    UNIQUE (profile_id, video_id)
 );
 
 CREATE TABLE IF NOT EXISTS tags (

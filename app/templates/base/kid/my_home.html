@@ -1,0 +1,122 @@
+{% extends "kid/base.html" %}
+{% set nav_active = "home" %}
+{% macro card_body(v) %}
+<span class="thumb"><img src="/media/thumb/{{ v.video_id }}" alt=""></span>
+<span class="video-title">{{ v.title }}</span>
+{% endmacro %}
+{% block content %}
+
+{% if just_hidden %}
+<div class="wishlist-sent hidden-done" role="status">
+  <span aria-hidden="true">&#128584;</span> {{ _("Hidden. A grown-up will be told.") }}
+  <form method="POST" action="/video/{{ just_hidden }}/unhide" class="d-ib">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="video-action-btn">{{ _("Undo") }}</button>
+  </form>
+</div>
+{% endif %}
+
+{# One channel needs no channel buttons; All stays once the kid has
+   arranged Home, since then not every video is on it. #}
+{% if not editing and (channels|length > 1 or (channels and customized)) %}
+<nav class="channel-nav" aria-label="{{ _('Channels') }}">
+  <a href="/all" class="channel-link">{{ _("All") }}</a>
+  {% for ch in channels if channels|length > 1 %}
+  <a href="/channel/{{ ch.id }}" class="channel-link">
+    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+{% if editing %}
+<div class="home-edit-bar" role="status">
+  <p class="m-0">{% if moving is not none %}{{ _("Now tap the spot where it goes.") }}{% else %}{{ _("Tap a + to put a video there. Tap Move, then a spot, to move one.") }}{% endif %}</p>
+  {% if moving is not none %}
+  <a href="/?edit=1" class="video-action-btn">{{ _("Cancel") }}</a>
+  {% else %}
+  <a href="/" class="video-action-btn home-done"><span aria-hidden="true">&#10004;&#65039;</span> {{ _("Done") }}</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if slots or editing %}
+<div class="video-grid home-grid{% if editing %} is-editing{% endif %}">
+{% for v in slots %}
+  {% set pos = loop.index0 %}
+  {% if moving is not none %}
+    {% if pos == moving %}
+    <div class="video-card home-moving">{{ card_body(v) }}<span class="home-note">{{ _("Moving…") }}</span></div>
+    {% else %}
+    <form method="POST" action="/home/move" class="video-card home-target{% if not v %} home-empty{% endif %}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="source" value="{{ moving }}">
+      <button type="submit" name="target" value="{{ pos }}" class="home-card-btn">
+        {% if v %}{{ card_body(v) }}{% else %}<span class="thumb"></span><span class="video-title">&nbsp;</span>{% endif %}
+        <span class="home-note">{{ _("Put it here") }}</span>
+      </button>
+    </form>
+    {% endif %}
+  {% elif editing %}
+    {% if v %}
+    <div class="video-card">
+      {{ card_body(v) }}
+      <div class="home-tools">
+        <a href="/?edit=1&amp;move={{ pos }}" class="home-tool"><span aria-hidden="true">&#8596;&#65039;</span> {{ _("Move") }}</a>
+        <form method="POST" action="/home/remove" class="d-ib">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="video_id" value="{{ v.video_id }}">
+          <button type="submit" class="home-tool"><span aria-hidden="true">&#10005;</span><span class="sr-only"> {{ _("Take off Home") }}</span></button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <a href="/home/pick?slot={{ pos }}" class="video-card home-empty">
+      <span class="thumb"><span class="home-plus" aria-hidden="true">+</span></span>
+      <span class="video-title">{{ _("Put a video here") }}</span>
+    </a>
+    {% endif %}
+  {% else %}
+    {% if v %}
+    <div class="video-card">
+      <a href="/watch/{{ v.video_id }}">
+        {{ card_body(v) }}
+        {% if v.download_status == 'evicted' %}
+        <span class="card-wait"><span aria-hidden="true">&#8987;</span> {{ _("Takes a moment to start") }}</span>
+        {% endif %}
+        {% if reaction_counts.get(v.video_id) %}
+        <span class="card-reactions">
+          {% for name, cnt in reaction_counts[v.video_id].items() if name in emojis %}
+          <span class="card-reaction"><span aria-hidden="true">{{ emojis[name] }}</span> {{ cnt }}<span class="sr-only"> {{ _(name) }}</span></span>
+          {% endfor %}
+        </span>
+        {% endif %}
+      </a>
+    </div>
+    {% else %}
+    <div class="video-card home-gap" aria-hidden="true"><span class="thumb"></span><span class="video-title">&nbsp;</span></div>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+  <div class="clear"></div>
+</div>
+{% else %}
+<div class="empty-state">
+  {% if customized %}
+  <div class="empty-icon" aria-hidden="true">&#127968;</div>
+  <p>{{ _("Your Home is empty. Tap Change my Home to put videos here.") }}</p>
+  {% else %}
+  <div class="empty-icon" aria-hidden="true">&#128250;</div>
+  <p>{{ _("No videos here yet. Ask a grown-up to add some!") }}</p>
+  {% if viewer.allow_wishlist %}
+  <a href="/wishlist" class="wishlist-pill is-on empty-find-new"><span aria-hidden="true">&#128301;</span> {{ _("Find new videos") }}</a>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{% if not editing %}
+<div class="ta-c home-change-row">
+  <a href="/?edit=1" class="video-action-btn"><span aria-hidden="true">&#9999;&#65039;</span> {{ _("Change my Home") }}</a>
+</div>
+{% endif %}
+{% endblock %}
