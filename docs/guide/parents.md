@@ -119,9 +119,10 @@ Lucía has the Spanish Calm screen with a number PIN.
 ![The Kids page with Leo, Lucía and Mia](img/parent-kids.webp)
 
 **Set up the tablet:** on the kid's tablet, open **http://curatables.local/**
-(or scan the QR code on this page with its camera) and add it to the
-home screen (on an iPad, use Safari; see the
-[FAQ](../faq.md#getting-connected)). To keep your kid inside it, use Guided Access on an iPad
+(or scan the QR code on this page with its camera), add it to the home
+screen and open it from that icon (on an iPad, use Safari; see the
+[FAQ](../faq.md#getting-connected)). On an iPad or iPhone the icon keeps
+your kid signed in even when Safari blocks cookies. To keep your kid inside it, use Guided Access on an iPad
 or App pinning on Android; see the
 [safety model](../safety-model.md#what-you-still-need-to-do-on-the-device).
 
