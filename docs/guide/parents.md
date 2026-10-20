@@ -171,7 +171,11 @@ on their page:
   straight into that channel, with your kid's name and description. It
   is listed as "Added automatically" under **Recently decided**, where
   **Remove from library** takes it back: the video is deleted and
-  turned down for that kid. Anything else still waits for you.
+  turned down for that kid. Each kid can get 10 a day this way (change
+  the number on the same page; 0 means none); after that, their
+  requests wait for you until the next day, marked "Waited: daily limit
+  reached" (your kid isn't told about the limit). Anything else waits
+  for you too.
 
 ![Trusted YouTube channels: two for every kid, Leo finds only those, and a search for Numberblocks](img/parent-trusted-channels.webp)
 

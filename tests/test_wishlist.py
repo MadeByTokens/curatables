@@ -633,6 +633,56 @@ def test_a_kids_own_trusted_channels_decide(app, client, backend):
     assert item.status == "approved" and item.auto_added
 
 
+def test_a_kid_gets_a_daily_allowance_of_automatic_adds(app, client, authed_client, backend):
+    _trust(app)
+    _full_details(backend)
+    pid, _into = _auto_kid(app, client)
+    _trust(app, OTHER, "Other Channel", profile_id=pid)
+    app.state.config.wishlist.auto_add_per_day = 1
+    first = _ask_and_send(app, client)
+    assert first.status == "approved" and first.auto_added and not first.held_by_limit
+    # Over the allowance: the next one waits for the parent, who sees why;
+    # the kid sees the usual "asked" page, with no word of a limit.
+    second = _ask_and_send(app, client, "eeeeeeeeeee")
+    assert second.status == "pending" and second.held_by_limit
+    assert "limit" not in client.get("/wishlist?asked=1").text.lower()
+    assert "Waited: daily limit reached" in authed_client.get("/parent/requests").text
+    # The next day there is a fresh allowance.
+    from app.services.wishlist import WishlistService
+    conn = _conn(app)
+    conn.execute("UPDATE wishlist_requests SET auto_added_at = datetime('now', '-2 days')")
+    conn.commit()
+    service = WishlistService(backend, WishlistRepository(conn), VideoRepository(conn),
+                              None, app.state.config)
+    assert service.auto_adds_left(pid) == 1
+    app.state.config.wishlist.auto_add_per_day = 0
+    assert service.auto_adds_left(pid) == 0
+
+
+def test_videos_taken_back_still_count_toward_the_day(app, client, authed_client, backend):
+    _trust(app)
+    _full_details(backend)
+    pid, _into = _auto_kid(app, client)
+    _trust(app, OTHER, "Other Channel", profile_id=pid)
+    app.state.config.wishlist.auto_add_per_day = 1
+    first = _ask_and_send(app, client)
+    authed_client.post(f"/parent/requests/{first.id}/undo-auto")
+    client.post("/profiles/select", data={"profile_id": pid})
+    assert _ask_and_send(app, client, "eeeeeeeeeee").status == "pending"
+
+
+def test_daily_allowance_is_saved_from_the_trusted_channels_page(app, authed_client):
+    rules = app.state.config.wishlist
+    assert rules.auto_add_per_day == 10
+    assert 'name="auto_add_per_day"' in authed_client.get("/parent/trusted-channels").text
+    authed_client.post("/parent/trusted-channels/settings", data={"auto_add_per_day": "3"})
+    assert rules.auto_add_per_day == 3
+    authed_client.post("/parent/trusted-channels/settings", data={"auto_add_per_day": "500"})
+    assert rules.auto_add_per_day == 100
+    authed_client.post("/parent/trusted-channels/settings", data={"auto_add_per_day": ""})
+    assert rules.auto_add_per_day == 100
+
+
 def test_a_look_alike_channel_waits(app, client, backend):
     from dataclasses import replace
     _trust(app)

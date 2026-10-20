@@ -32,6 +32,13 @@ library without waiting for you, and a kid can be set to find only these channel
     {% if not own_channels %}<small class="muted d-block">Make a channel on the <a href="/parent/channels">Channels</a> page first.</small>{% endif %}
     <small class="muted d-block">Each kid can be set differently (Kids → Edit). Pick a channel the kids can see.</small>
   </div>
+  <div class="form-group">
+    <label for="auto_add_per_day">At most this many a day for each kid</label>
+    <input type="number" id="auto_add_per_day" name="auto_add_per_day" min="0" max="100"
+           value="{{ config.wishlist.auto_add_per_day }}">
+    <small class="muted d-block">After that, a kid's requests from trusted channels wait for you until
+      the next day. 0: none go straight in.</small>
+  </div>
   <button type="submit" class="btn">Save</button>
 </form>
 

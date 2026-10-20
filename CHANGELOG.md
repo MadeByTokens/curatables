@@ -9,6 +9,18 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**For parents**
+- Requests from trusted channels go straight in at most 10 times a day
+  for each kid (Trusted YouTube channels → **At most this many a day
+  for each kid**; 0 means none). After that, a kid's requests wait for
+  you until the next day, so a run of taps on Ask can't fill the
+  library or the disk. Video requests marks them "Waited: daily limit
+  reached"; the kid sees the usual "a grown-up will look" and nothing
+  about a limit. Videos taken back still count for that day.
+  Adds one database migration.
+
 ## v0.8.1
 
 Signing in on a device that blocks cookies, and the Home Screen icon's

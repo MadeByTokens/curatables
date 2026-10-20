@@ -292,6 +292,11 @@ def _auto_add(request_id: int, into: int, viewer: ViewerContext, repo: WishlistR
     meta = item.metadata()
     if not service.may_skip_review(meta, service.kid_rules(item.profile_id)):
         return False
+    if service.auto_adds_left(item.profile_id) <= 0:
+        # Today's allowance is used up: it waits like any request (the kid
+        # sees nothing different) and the parent sees why.
+        repo.mark_held_by_limit(request_id)
+        return False
     source_id = content.create_source("video", meta.extractor, meta.video_id,
                                       meta.title, item.url)
     content.add_video(meta, source_id=source_id, channel_id=into,
