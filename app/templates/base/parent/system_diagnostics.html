@@ -39,11 +39,11 @@
       <input type="hidden" name="back" value="/parent/system/diagnostics">
       <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
     </form>
-    <span class="fs-14">A minute or two. Use it when YouTube videos stop downloading.</span>
+    <span class="fs-14">A few minutes: it tries the new version before using it. Use it when YouTube videos stop downloading.</span>
   </li>
 </ul>
-{% if update_state.result and update_state.result.status != "ok" %}
-<div class="flash flash-error mw-500" role="alert">Last downloader update failed: {{ update_state.result.message or "see the report" }}</div>
+{% if update_state.pending or (update_state.result and update_state.result.status != "ok") %}
+{% include "parent/_downloader_result.html" %}
 {% endif %}
 {% set back = "/parent/system/diagnostics" %}
 {% include "parent/_power_buttons.html" %}

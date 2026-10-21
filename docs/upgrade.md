@@ -20,9 +20,15 @@ how the updates work.
 ## Updating yt-dlp from the dashboard
 
 Open **Settings → Updates** and click **Update yt-dlp now** (on the Pi
-image, **Box → Updates → Update the downloader** does the same). The server
-restarts itself when the update is done; reload the page to see the old
-→ new version.
+image, **Box → Updates → Update the downloader** does the same). The box
+tries the newest version before using it: it reads a video's details,
+searches, lists a channel and starts a download with it. Only if that
+works does it switch, wait for running downloads, and restart; if
+Curatables then doesn't run well, the previous version goes back in. A
+new version that fails is not used, and the page says what it couldn't
+do. It takes a few minutes; the page shows each step, and you can leave
+it: the update carries on and the page shows the result when you come
+back.
 
 ### How it works
 
@@ -34,13 +40,17 @@ data dir, so it cannot `pip install` or restart itself. Instead:
 1. The app drops `update-request.json` in the data dir.
 2. The root-owned path unit
    [`curatables-updater.path`](../systemd/curatables-updater.path)
-   notices it and runs [`scripts/updater.sh`](../scripts/updater.sh).
-   The script upgrades yt-dlp (running pip as the owner of the venv),
-   writes `update-result.json`, removes the request and restarts
-   `curatables`. Everything it reads or writes in the data dir it does
-   as the service user, so a compromised app can't trick it into
-   touching other files.
-3. The dashboard reads the result file.
+   notices it and runs [`scripts/updater.sh`](../scripts/updater.sh),
+   which runs [`scripts/ytdlp_update.py`](../scripts/ytdlp_update.py):
+   download the newest yt-dlp beside the one in use, check it with
+   [`scripts/ytdlp-check.py`](../scripts/ytdlp-check.py) (as the service
+   user, in the server's sandbox), install it only if it passes, restart
+   `curatables` and put the previous version back if it doesn't come up
+   well. It writes the step it is on to `update-progress.json` and the
+   outcome to `update-result.json`, then removes the request. Everything
+   it reads or writes in the data dir it does as the service user, so a
+   compromised app can't trick it into touching other files.
+3. The dashboard shows the step while it runs, then the result.
 
 The updater only ever upgrades yt-dlp, to the newest release
 (`yt-dlp>=2024.0`, no upper bound: yt-dlp changes fast and old versions

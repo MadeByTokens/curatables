@@ -375,28 +375,35 @@ root.
 
 What bounds it:
 
-- It does one fixed thing: `pip install --upgrade 'yt-dlp>=2024.0'` in
-  `/opt/curatables/.venv`, then `systemctl restart curatables`. The
-  flag's only field read is `kind`, and anything but `yt-dlp` is
-  rejected. Nothing from the flag is executed.
+- It does one fixed thing, in
+  [`scripts/ytdlp_update.py`](../scripts/ytdlp_update.py) on the system
+  Python: download the newest `yt-dlp` and `yt-dlp-ejs` wheels from PyPI,
+  check them, and install exactly those wheels into
+  `/opt/curatables/.venv` if they pass (then `systemctl restart
+  curatables`). The flag's only field read is `kind`, and anything but
+  `yt-dlp` is rejected. Nothing from the flag is executed.
+- The downloaded code runs only as the service user inside the same
+  sandbox as `curatables.service` (`systemd-run` with its `ProtectSystem`,
+  `ReadWritePaths`, `NoNewPrivileges`, ... properties), for the check.
+  Root never imports it; installing a wheel runs no package code.
 - Every read and write inside the service-owned data dir (parsing the
-  flag, writing `update-result.json` atomically) runs as the service
-  user via `runuser`, so a planted symlink can't redirect a root
-  write.
+  flag, writing `update-progress.json` and `update-result.json`
+  atomically) runs as the service user via `runuser`, so a planted
+  symlink can't redirect a root write. Its own files (wheels, the
+  switch note) are in root-owned `/var/lib/curatables-ytdlp`.
 - pip runs as the owner of the venv. Both install paths keep
   `/opt/curatables` and its venv root-owned, so the code root runs is
   code only root can modify.
-- `TimeoutStartSec=600`.
+- `TimeoutStartSec=1800`.
 
 What remains:
 
-- A compromised service process can trigger upgrades at will (fetching
+- A compromised service process can trigger updates at will (fetching
   the latest yt-dlp from PyPI); it cannot choose the package or version.
-- Root imports the freshly installed `yt_dlp` (to report its version),
-  so a malicious yt-dlp release on PyPI would run as root once, not
-  only inside the sandbox.
-- If an operator builds the venv as another user, the script still
-  runs that venv's `python` as root. Keep `/opt/curatables` root-owned.
+  A release that passes the checks still runs inside the sandbox
+  afterwards, as before.
+- If an operator builds the venv as another user, pip runs as that user
+  and could be subverted by it. Keep `/opt/curatables` root-owned.
 
 ## The root system helper
 

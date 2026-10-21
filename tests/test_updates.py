@@ -74,7 +74,7 @@ class TestResult:
 class TestState:
     def test_state_shape(self, config):
         state = updates.update_state(config)
-        assert set(state) == {"current_version", "pending", "result"}
+        assert set(state) == {"current_version", "pending", "progress", "result"}
         # yt-dlp is a hard dependency, so a version string is expected.
         assert state["current_version"]
         assert state["pending"] is None

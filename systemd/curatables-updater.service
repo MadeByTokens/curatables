@@ -22,5 +22,6 @@ Environment=CURATABLES_USER=curatables
 # app process.
 ExecStart=/opt/curatables/scripts/updater.sh
 
-# Don't let a hung pip wedge the unit forever.
-TimeoutStartSec=600
+# Downloading, checking two versions and waiting for a running download
+# take a few minutes; a hung step must not wedge the unit forever.
+TimeoutStartSec=1800

@@ -33,6 +33,13 @@ code already called itself 0.5.0).
 - A blocked word of 6 letters or more also catches a spelling one
   letter off ("skibidy" for "skibidi") in a kid's Find new search, and
   in titles and channel names.
+- **Update the downloader** tries the new yt-dlp before using it: it
+  must read a video's details, search, list a channel and start a
+  download. Only then does the box switch, after running downloads
+  finish, and if Curatables doesn't run well with it the previous
+  version goes back in. A new version that fails is not used, and the
+  page says what it couldn't do. The page shows each step and can be
+  left; the update carries on, even through a power cut.
 
 **For kids**
 - Home is the kid's own, arranged like a tablet's home screen: at first

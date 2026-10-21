@@ -106,6 +106,28 @@
     setTimeout(tick, 2000);
   }
 
+  // The downloader update: reload when its step changes or it ends. The
+  // server restarts near the end, so failed requests just keep polling.
+  var updater = document.querySelector('[data-downloader-poll]');
+  if (updater) {
+    var stage = updater.getAttribute('data-downloader-progress');
+    var follow = function () {
+      get(updater.getAttribute('data-downloader-poll'), function (status, body) {
+        if (status === 200) {
+          try {
+            var state = JSON.parse(body);
+            if (!state.running || state.progress !== stage) {
+              location.reload();
+              return;
+            }
+          } catch (e) { /* keep polling */ }
+        }
+        setTimeout(follow, 3000);
+      });
+    };
+    setTimeout(follow, 3000);
+  }
+
   var wait = document.querySelector('[data-wait-healthy]');
   if (wait) {
     var health = wait.getAttribute('data-wait-healthy');
