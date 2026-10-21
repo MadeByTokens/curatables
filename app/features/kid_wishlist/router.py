@@ -69,8 +69,12 @@ def _with_asked(url: str, how: str = "1") -> str:
     return url + ("&" if "?" in url else "?") + f"asked={how}"
 
 
-def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository, **ctx):
-    mine = repo.list_for_profile(viewer.kid_id, limit=24)
+def _render(request: Request, viewer: ViewerContext, repo: WishlistRepository,
+            content: ContentService, **ctx):
+    # A video that was added and then deleted or hidden (by a grown-up or
+    # by the kid) leaves the list: its Watch button would lead nowhere.
+    mine = [w for w in repo.list_for_profile(viewer.kid_id, limit=24)
+            if w.status != "approved" or not content.gone_for_viewer(w.video_id, viewer)]
     # A turned-down request whose title now has one of the parent's
     # blocked words is listed without its title and picture.
     words = request.app.state.config.wishlist.blocked_words
@@ -104,6 +108,7 @@ async def wishlist_page(request: Request,
                         viewer: ViewerContext = Depends(_wishlist),
                         service: WishlistService = Depends(get_wishlist_service),
                         repo: WishlistRepository = Depends(get_wishlist_repo),
+                        content: ContentService = Depends(get_content_service),
                         events: EventService = Depends(get_event_service)):
     query = " ".join(q.split())[:100]
     mode = mode if mode in ("videos", "channels") else "videos"
@@ -124,7 +129,7 @@ async def wishlist_page(request: Request,
                    data={"query": query, "mode": mode, "sort": sort, "page": page,
                          "result_count": len(ctx.get("results", [])) + len(ctx.get("channels", [])),
                          "refused": ctx.get("error_kind") or None})
-    return _render(request, viewer, repo, **ctx)
+    return _render(request, viewer, repo, content, **ctx)
 
 
 @router.get("/wishlist/channel/{channel_id}", response_class=HTMLResponse)
@@ -135,6 +140,7 @@ async def wishlist_channel(request: Request, channel_id: str,
                            viewer: ViewerContext = Depends(_wishlist),
                            service: WishlistService = Depends(get_wishlist_service),
                            repo: WishlistRepository = Depends(get_wishlist_repo),
+                           content: ContentService = Depends(get_content_service),
                            events: EventService = Depends(get_event_service)):
     query = " ".join(q.split())[:100]
     sort = sort if sort in SORTS["channel"] else "newest"
@@ -152,7 +158,7 @@ async def wishlist_channel(request: Request, channel_id: str,
                data={"channel": ctx.get("channel_title", ""), "page": page,
                      "result_count": len(ctx.get("results", [])),
                      "refused": ctx.get("error_kind") or None})
-    return _render(request, viewer, repo, **ctx)
+    return _render(request, viewer, repo, content, **ctx)
 
 
 @router.post("/wishlist/ask")
@@ -163,11 +169,12 @@ async def wishlist_ask(request: Request,
                        viewer: ViewerContext = Depends(_wishlist),
                        service: WishlistService = Depends(get_wishlist_service),
                        repo: WishlistRepository = Depends(get_wishlist_repo),
+                       content: ContentService = Depends(get_content_service),
                        events: EventService = Depends(get_event_service)):
     try:
         request_id, partial = await run_in_threadpool(service.ask, viewer.kid_id, raw_id)
     except WishlistError as e:
-        return _render(request, viewer, repo, **_refusal(viewer, e))
+        return _render(request, viewer, repo, content, **_refusal(viewer, e))
     if partial:
         background.add_task(fill_details_later, request.app.state.db_connect, service.backend,
                             service.thumbnails, request.app.state.config, request_id)

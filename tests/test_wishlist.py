@@ -1245,3 +1245,30 @@ def test_asking_for_the_same_video_again_and_again_makes_one_request(app, client
         assert client.post(f"/wishlist/asked/{item[0].id}", data={"title": "Counting"}).status_code == 303
     assert len(WishlistRepository(_conn(app)).list_by_status("pending")) == 1
     assert "1 video request from your kids" in authed_client.get("/parent/").text
+
+
+def test_what_i_asked_for_drops_videos_that_are_gone(app, client, backend):
+    """An added video that was deleted, hidden by a grown-up or hidden by
+    the kid leaves "What I asked for": its Watch button would lead to
+    "This video isn't here." One still downloading stays."""
+    from app.models import Video
+    from app.repositories.hidden_video_repo import HiddenVideoRepository
+    pid = _kid(app, client)
+    conn = _conn(app)
+    from app.repositories.channel_repo import ChannelRepository
+    repo, videos = WishlistRepository(conn), VideoRepository(conn)
+    ch = ChannelRepository(conn).create("Songs")
+    for raw, title in (("aaaaaaaaaaa", "Kept video"), ("bbbbbbbbbbb", "Deleted video"),
+                       ("ccccccccccc", "Grown-up hid it"), ("ddddddddddd", "Kid hid it"),
+                       ("eeeeeeeeeee", "Still downloading")):
+        rid = repo.add(pid, f"youtube_{raw}", _meta(raw, title), f"https://www.youtube.com/watch?v={raw}")
+        repo.decide(rid, "approved")
+        if title != "Deleted video":
+            videos.insert(Video(video_id=f"youtube_{raw}", title=title, original_title=title, channel_id=ch,
+                                status="hidden" if title == "Grown-up hid it" else "active",
+                                download_status="pending" if title == "Still downloading" else "ready"))
+    HiddenVideoRepository(conn).hide(pid, "youtube_ddddddddddd")
+    page = client.get("/wishlist").text
+    assert "Kept video" in page and "Still downloading" in page
+    for gone in ("Deleted video", "Grown-up hid it", "Kid hid it"):
+        assert gone not in page, gone
