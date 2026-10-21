@@ -9,7 +9,14 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.9.0
+
+Each kid's own Home, channel order and Hide; Download onto the device;
+search that forgives spelling; a downloader update that tries the new
+version before using it; and a daily limit on requests that go straight
+in. Boxes on v0.8.x install it from **Box → Updates**; it adds four
+database migrations, applied on the first start (they only add tables
+and columns).
 
 **For parents**
 - Requests from trusted channels go straight in at most 10 times a day
