@@ -9,6 +9,13 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**Fixes**
+- "What I asked for" leaves out a video that was added and then deleted
+  or hidden (by a grown-up or by the kid), instead of offering **Yes!
+  Watch** for a video that isn't there.
+
 ## v0.9.0
 
 Each kid's own Home, channel order and Hide; Download onto the device;

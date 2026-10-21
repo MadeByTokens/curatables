@@ -113,6 +113,14 @@ class ContentService:
         kid = self._hidden_for(viewer)
         return kid is not None and self.video_repo.is_hidden_for(video.video_id, kid)
 
+    def gone_for_viewer(self, video_id: str, viewer: ViewerContext) -> bool:
+        """Whether a video was deleted, hidden by a grown-up, hidden by
+        this kid, or moved out of their channels. A video still on its
+        way (downloading) is not gone."""
+        video = self.video_repo.get(video_id)
+        return (video is None or video.status != "active" or not self.can_view(video, viewer)
+                or self.hidden_by_viewer(video, viewer))
+
     def get_video_for_viewer(self, video_id: str, viewer: ViewerContext) -> Video:
         """Get a video if the viewer is allowed to see it and it's ready.
         A video the kid hid is gone for them until a grown-up shows it
