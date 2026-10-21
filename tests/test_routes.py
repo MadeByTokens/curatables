@@ -73,7 +73,7 @@ class TestParentSettings:
 
         resp = authed_client.post("/parent/settings/update")
         assert resp.status_code == 200
-        assert b"Update requested" in resp.content
+        assert b"Update started" in resp.content and b"data-downloader-poll" in resp.content
         assert updates.pending_request(app.state.config) is not None
 
 
