@@ -100,7 +100,9 @@ Open **Kids → Add a kid**. Give the kid a name and a picture, then
 choose:
 
 - **A PIN**, if you want one: four to six numbers, or three pictures for a
-  kid who doesn't read numbers yet. Leave it empty for no PIN.
+  kid who doesn't read numbers yet. Leave it empty for no PIN. After 5
+  wrong tries (10 for pictures) the kid waits a few minutes on that
+  device.
 - **Language** and **theme**: Default, Playful, Calm, or Big & clear
   (larger text, stronger colours).
 - **What they may do.** A new profile can watch, react, download a
@@ -208,6 +210,12 @@ take one off; **Put on my Home** under a video adds it too. Once they
 change it, Home stays as they arranged it, and new videos show under
 **All** and in their channels.
 
+On a channel, **Order** shows its videos newest or oldest first, or A to
+Z or Z to A by the titles that kid sees, so a kid who renames videos
+"1 Trains", "2 Boats" gets that order. Each kid's choice stays for each
+channel. **Search** forgives spelling: when no video has the word typed,
+it offers ones with a word close to it ("dinasor" finds the dinosaurs).
+
 When a kid taps **Hide** under a video, it leaves that kid's lists and
 shows up under **Needs your attention**. Open it: **Delete video**
 removes it for everyone, **Keep it hidden from (name)** leaves it hidden
@@ -279,7 +287,12 @@ back, after asking.
   one keeps running, so kids only lose about a minute. If it doesn't
   start, the box goes back to the old one by itself, and **Go back to …**
   undoes an update you don't like.
-- **Update the downloader** when YouTube videos stop downloading.
+- **Update the downloader** when YouTube videos stop downloading. The
+  box tries the new version before using it (a video's details, a
+  search, a channel, the start of a download) and keeps the one it has
+  if the new one fails, saying what it couldn't do. It takes a few
+  minutes; you can leave the page, and it shows the result when you come
+  back.
 - **Update system packages** installs the operating system's updates.
   Security updates also install by themselves every day. If the page
   says a restart is needed, restart the box when nobody is watching.
