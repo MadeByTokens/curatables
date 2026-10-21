@@ -42,6 +42,11 @@ download first; it plays after a short wait. **All** shows every video,
 and the channel buttons show one channel. **Home** always brings you
 back.
 
+**On a channel**, pick the order of its videos: **Newest**, **Oldest**,
+**A to Z** or **Z to A**. The channel keeps that order for you. A to Z
+goes by your own names for the videos, so naming them "1 Trains",
+"2 Boats" puts them in the order you want.
+
 **Change my Home** puts your favorite videos where you want them: tap a
 **+** to put a video there, **Move** and then a spot to move one, or
 **✕** to take one off. Tap **Done** when it looks right. Under a video,

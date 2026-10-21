@@ -9,12 +9,14 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from app.dependencies import (
     get_viewer, get_content_service, get_profile_service,
     get_reaction_service, get_kid_library_service, get_channel_service,
-    get_event_service, get_kid_home_service, require_child, require_kid_feature,
+    get_event_service, get_kid_home_service, get_channel_order_service,
+    require_child, require_kid_feature,
 )
-from app.services.content import ContentService, VideoNotFound
+from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
+from app.services.channel_order import SORTS as CHANNEL_SORTS, ChannelOrderService
 from app.services.kid_home import SLOTS, KidHomeService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
@@ -191,24 +193,6 @@ def help_page(request: Request,
     return render_kid_template(request, viewer, "kid/help.html", {})
 
 
-def _with_bookmarks(videos, channel_id, viewer, content, kid_lib):
-    """Videos the kid saved into their own channel (from Customize), shown
-    ahead of the videos that live in it. Ones the kid can no longer see
-    are skipped."""
-    ids, _total = kid_lib.channel_video_ids(viewer.profile_id, channel_id,
-                                            per_page=ITEMS_PER_PAGE)
-    present = {v.video_id for v in videos}
-    saved = []
-    for vid in ids:
-        if vid in present:
-            continue
-        try:
-            saved.append(content.get_video_for_viewer(vid, viewer))
-        except VideoNotFound:
-            continue
-    return saved + videos
-
-
 @router.get("/channel/{channel_id}", response_class=HTMLResponse)
 def channel_view(request: Request, channel_id: int,
                  page: int = Query(1, ge=1),
@@ -216,21 +200,35 @@ def channel_view(request: Request, channel_id: int,
                  content: ContentService = Depends(get_content_service),
                  reactions: ReactionService = Depends(get_reaction_service),
                  kid_lib: KidLibraryService = Depends(get_kid_library_service),
-                 channels_svc: ChannelService = Depends(get_channel_service)):
+                 channels_svc: ChannelService = Depends(get_channel_service),
+                 order: ChannelOrderService = Depends(get_channel_order_service)):
     channel = channels_svc.get(channel_id)
     visible = content.visible_channel_ids(viewer)
     if channel is None or (visible is not None and channel_id not in visible):
         return RedirectResponse(url="/", status_code=302)
-    videos, total = content.list_for_viewer(
-        viewer, page=page, per_page=ITEMS_PER_PAGE, channel_id=channel_id)
-    if viewer.is_child and channel.owner_profile_id == viewer.profile_id and page == 1:
-        videos = _with_bookmarks(videos, channel_id, viewer, content, kid_lib)
+    videos, total = order.page(viewer, channel, page, ITEMS_PER_PAGE)
     if viewer.is_child and viewer.profile_id:
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total,
                               current_channel_id=channel_id)
     ctx["channel"] = channel
+    ctx["sort"] = order.sort_for(viewer, channel_id)
+    ctx["sorts"] = CHANNEL_SORTS if viewer.is_child else ()
     return render_kid_template(request, viewer, "kid/home.html", ctx)
+
+
+@router.post("/channel/{channel_id}/sort")
+async def channel_sort(request: Request, channel_id: int,
+                       viewer: ViewerContext = Depends(require_child),
+                       content: ContentService = Depends(get_content_service),
+                       channels_svc: ChannelService = Depends(get_channel_service),
+                       order: ChannelOrderService = Depends(get_channel_order_service)):
+    """Keep the order the kid picked for this channel, then show it."""
+    form = await request.form()
+    visible = content.visible_channel_ids(viewer)
+    if channels_svc.get(channel_id) is not None and (visible is None or channel_id in visible):
+        order.choose(viewer, channel_id, form_str(form, "sort"))
+    return RedirectResponse(url=f"/channel/{channel_id}", status_code=303)
 
 
 # --- Video customize ---

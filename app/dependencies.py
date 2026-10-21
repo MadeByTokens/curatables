@@ -41,6 +41,7 @@ from app.services.comments import CommentService
 from app.services.stats import StatsService
 from app.services.kid_library import KidLibraryService
 from app.services.kid_home import KidHomeService
+from app.services.channel_order import ChannelOrderService
 from app.repositories.reaction_repo import ReactionRepository
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.override_repo import ProfileVideoOverrideRepository
@@ -50,6 +51,7 @@ from app.repositories.login_failure_repo import LoginFailureRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.hidden_video_repo import HiddenVideoRepository
 from app.repositories.home_slot_repo import HomeSlotRepository
+from app.repositories.channel_sort_repo import ChannelSortRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.repositories.import_job_repo import ImportJobRepository
 
@@ -279,6 +281,12 @@ def get_kid_library_service(
 ) -> KidLibraryService:
     return KidLibraryService(override_repo, tag_repo, channel_video_repo,
                              config.media_dir)
+
+
+def get_channel_order_service(db=Depends(get_db),
+                              content=Depends(get_content_service),
+                              kid_lib=Depends(get_kid_library_service)) -> ChannelOrderService:
+    return ChannelOrderService(ChannelSortRepository(db), content, kid_lib)
 
 
 def get_kid_home_service(db=Depends(get_db),

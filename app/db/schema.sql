@@ -168,6 +168,15 @@ CREATE TABLE IF NOT EXISTS profile_home_slots (
     UNIQUE (profile_id, video_id)
 );
 
+-- The order a kid picked for a channel's videos ('oldest', 'az', 'za');
+-- no row means newest first.
+CREATE TABLE IF NOT EXISTS profile_channel_sort (
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    sort       TEXT NOT NULL,
+    PRIMARY KEY (profile_id, channel_id)
+);
+
 CREATE TABLE IF NOT EXISTS tags (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE COLLATE NOCASE
