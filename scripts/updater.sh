@@ -5,15 +5,12 @@
 # The sandboxed app process cannot pip-install into its venv or restart
 # itself, so it drops a request flag in the data dir. The
 # curatables-updater.path systemd unit notices the flag and runs this
-# script (as root, via curatables-updater.service). It:
-#   1. reads the request flag
-#   2. pip-upgrades yt-dlp and its YouTube challenge solver in the venv
-#   3. writes a result file the app reads back
-#   4. removes the request flag (re-arming the path watcher)
-#   5. restarts the curatables service so the new yt-dlp is live
-#
-# The only accepted update kind is "yt-dlp". Nothing from the flag is
-# ever run; only the fixed pip command below.
+# script (as root, via curatables-updater.service). The work is in
+# scripts/ytdlp_update.py, run with the system Python: it downloads the
+# newest yt-dlp beside the one in use, checks it the way Curatables uses
+# it (scripts/ytdlp-check.py, as the service user), and switches only to
+# a version that passes, putting the previous one back if Curatables
+# does not run well with it. The flag is removed when it is done.
 #
 # Paths come from the environment (set by the .service unit), with the
 # default-install values as fallbacks:
@@ -24,87 +21,8 @@
 set -euo pipefail
 
 ROOT="${CURATABLES_ROOT:-/opt/curatables}"
-DATA="${CURATABLES_DATA:-/home/curatables/curatables-data}"
-SVC_USER="${CURATABLES_USER:-curatables}"
+export CURATABLES_ROOT="$ROOT"
+export CURATABLES_DATA="${CURATABLES_DATA:-/home/curatables/curatables-data}"
+export CURATABLES_USER="${CURATABLES_USER:-curatables}"
 
-REQ="$DATA/update-request.json"
-RES="$DATA/update-result.json"
-
-PY="$ROOT/.venv/bin/python"
-# Root only ever runs the system interpreter; the venv's Python (which
-# imports packages just fetched from PyPI) runs as the service user.
-SYS_PY=/usr/bin/python3
-
-# Nothing to do if the flag vanished between the path trigger and now.
-[[ -f "$REQ" ]] || exit 0
-
-now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-
-ytdlp_ver() {
-    as_svc "$PY" -c 'import yt_dlp; print(yt_dlp.version.__version__)' 2>/dev/null || echo ""
-}
-
-# The data dir is owned by the service user, so anything root does there
-# by path could be redirected with a planted symlink. Every read and
-# write inside it therefore runs as the service user.
-as_svc() { runuser -u "$SVC_USER" -- "$@"; }
-
-# pip runs as whoever owns the venv, so root never executes code a less
-# privileged account could have modified.
-VENV_OWNER="$(stat -c %U "$ROOT/.venv")"
-as_venv_owner() {
-    if [[ "$VENV_OWNER" == "root" ]]; then "$@"; else runuser -u "$VENV_OWNER" -- "$@"; fi
-}
-
-# Write the result file atomically (temp + mv) as the service user.
-write_result() {
-    local status="$1" message="$2" from_v="$3" to_v="$4" json
-    json="$("$SYS_PY" - "$status" "$message" "$from_v" "$to_v" "$(now)" <<'PYEOF'
-import json, sys
-status, message, from_v, to_v, finished_at = sys.argv[1:6]
-print(json.dumps({
-    "kind": "yt-dlp",
-    "status": status,
-    "message": message,
-    "from_version": from_v or None,
-    "to_version": to_v or None,
-    "finished_at": finished_at,
-}, indent=2))
-PYEOF
-)"
-    # shellcheck disable=SC2016  # $1 is expanded by the inner sh
-    printf '%s\n' "$json" | as_svc sh -c 'umask 022; cat > "$1.tmp" && mv -f "$1.tmp" "$1"' _ "$RES"
-}
-
-# Parse the requested kind without trusting it as code.
-kind="$(as_svc "$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("kind",""))' "$REQ" 2>/dev/null || echo "")"
-
-if [[ "$kind" != "yt-dlp" ]]; then
-    write_result "error" "unsupported update kind: ${kind:-<none>}" "" ""
-    rm -f "$REQ"
-    exit 0
-fi
-
-before="$(ytdlp_ver)"
-log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
-
-if as_venv_owner "$PY" -m pip install --upgrade 'yt-dlp>=2024.0' 'yt-dlp-ejs>=0.8' >"$log" 2>&1; then
-    after="$(ytdlp_ver)"
-    if [[ "$before" == "$after" ]]; then
-        write_result "ok" "Already up to date." "$before" "$after"
-    else
-        write_result "ok" "Updated." "$before" "$after"
-    fi
-    rm -f "$REQ"
-    # Restart so the running server imports the new yt-dlp. Done after the
-    # result is written so the restarted app shows the outcome.
-    systemctl restart curatables || true
-else
-    # Surface the last few lines of pip output — enough to diagnose
-    # without dumping the whole log into the dashboard.
-    tail="$(tail -n 5 "$log" | tr '\n' ' ')"
-    write_result "error" "pip upgrade failed: $tail" "$before" "$before"
-    rm -f "$REQ"
-    exit 1
-fi
+exec /usr/bin/python3 -I "$ROOT/scripts/ytdlp_update.py"

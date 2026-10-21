@@ -36,7 +36,6 @@ BOX_NOTICES = {
     "restarted": "Curatables restarted.",
     "rebooted": "The box restarted.",
     "network": "The network reconnected.",
-    "downloader": "The downloader update ran. Its result is shown on this page.",
     "task-gone": "That task ended while the box's helper restarted (this is normal at the end of an "
                  "update). Its result is shown on this page.",
 }
@@ -437,14 +436,22 @@ def update_downloader(request: Request, back: str = Form("/parent/system/updates
                       viewer: ViewerContext = Depends(require_parent),
                       helper: SystemHelper = Depends(get_system_helper),
                       config: Config = Depends(get_config)):
-    try:
-        updates.request_update(config, kind=updates.KIND_YTDLP)
-    except OSError as e:
-        return _updates_page(request, helper, config, status_code=500,
-                             error=f"The downloader update could not be started: {e}")
-    return _waiting(request, "Updating the downloader",
-                    "This takes a minute or two, then Curatables restarts. The page comes back by itself.",
-                    back, notice="downloader", expect_down=True)
+    if updates.pending_request(config) is None:
+        try:
+            updates.request_update(config, kind=updates.KIND_YTDLP)
+        except OSError as e:
+            return _updates_page(request, helper, config, status_code=500,
+                                 error=f"The downloader update could not be started: {e}")
+    # The page shows each step and the result; the update carries on
+    # on the box if the parent leaves it.
+    return RedirectResponse(url=_safe_back(back) + "#downloader", status_code=303)
+
+
+@router.get("/updates/downloader.json")
+def downloader_state(viewer: ViewerContext = Depends(require_parent), config: Config = Depends(get_config)):
+    state = updates.update_state(config)
+    return JSONResponse({"running": state["pending"] is not None, "progress": state["progress"]},
+                        headers={"Cache-Control": "no-store"})
 
 
 @router.get("/diagnostics/report.txt")

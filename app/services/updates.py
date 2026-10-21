@@ -4,12 +4,17 @@ The service is sandboxed (``ProtectSystem=strict``, ``NoNewPrivileges``;
 only the data directory is writable), so it can neither ``pip install``
 into its venv nor restart itself. Instead it drops a request flag in the
 data dir; the root-owned ``curatables-updater.path`` unit runs
-``scripts/updater.sh`` (upgrade yt-dlp, restart the service), writes a
-result file and removes the request.
+``scripts/updater.sh`` (``scripts/ytdlp_update.py``: download the newest
+yt-dlp beside the one in use, check it, switch only if it works,
+restart the service), writes a result file and removes the request.
+The work runs on the box, so a parent leaving the page changes nothing.
 
 This module is the unprivileged half. Files, directly under the data dir:
-  - ``update-request.json``  written by the app, removed by the helper.
-  - ``update-result.json``   written by the helper, read by the app.
+  - ``update-request.json``   written by the app, removed by the helper.
+  - ``update-progress.json``  the step under way, while it runs.
+  - ``update-result.json``    written by the helper, read by the app:
+    ``status`` "ok" (updated, or already the newest), "kept" (the new
+    version failed its checks, the one in use stays) or "error".
 """
 
 import json
@@ -24,6 +29,7 @@ from app.services import safe_fetch
 
 REQUEST_FILENAME = "update-request.json"
 RESULT_FILENAME = "update-result.json"
+PROGRESS_FILENAME = "update-progress.json"
 
 # updater.sh rejects any other kind.
 KIND_YTDLP = "yt-dlp"
@@ -102,11 +108,24 @@ def last_result(config: Config) -> Optional[dict]:
         return None
 
 
+def progress(config: Config) -> str:
+    """The step the updater is on ("Checking the new version"), or ""."""
+    try:
+        with open(config.data_dir / PROGRESS_FILENAME) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return ""
+    stage = data.get("stage") if isinstance(data, dict) else ""
+    return stage if isinstance(stage, str) else ""
+
+
 def update_state(config: Config) -> dict:
     """Bundle everything the settings page needs to render the Updates box."""
+    pending = pending_request(config)
     return {
         "current_version": ytdlp_version(),
-        "pending": pending_request(config),
+        "pending": pending,
+        "progress": progress(config) if pending else "",
         "result": last_result(config),
     }
 

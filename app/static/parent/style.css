@@ -155,6 +155,10 @@ th {
   background: #e7f1fb;
   color: #0b3d6b;
 }
+.flash-warning {
+  background: #fff3cd;
+  color: #664d03;
+}
 
 /* === Forms === */
 

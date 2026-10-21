@@ -67,7 +67,7 @@ Directory-level only; open the directory for the current file list.
 | `app/static/` | CSS/JS: `kid/` (old-browser-safe), `parent/`, `js/` (vendored tus client). |
 | `tests/` | Flat: one `test_*.py` per area, `conftest.py` fixtures, `fixtures/` (incl. a fake yt-dlp for the smoke suite). |
 | `syshelper/` | The root system helper for the Pi image: standard library only, one module per area (accounts, Wi-Fi, drives, backups, diagnostics, updates). See [System helper](#system-helper). |
-| `scripts/` | `install.sh`, `apply-system.sh` (installs units and system files; used by the image build and by updates), backup/restore, the root-side `updater.sh`, drive setup, `curatables-helper.py`, Pi `firstboot.sh`, `nm-wired-only.sh`, `mdns-unicast.py`, `seed_demo.py`. |
+| `scripts/` | `install.sh`, `apply-system.sh` (installs units and system files; used by the image build and by updates), backup/restore, the root-side `updater.sh` with `ytdlp_update.py` and `ytdlp-check.py`, drive setup, `curatables-helper.py`, Pi `firstboot.sh`, `nm-wired-only.sh`, `mdns-unicast.py`, `seed_demo.py`. |
 | `systemd/` | Units for the server, the system helper, the yt-dlp updater (path + service), the nightly backup (service + timer), and the Pi's first boot, SD-card recovery, SD-card diagnostics and unicast mDNS. |
 | `pi-gen/` | Raspberry Pi appliance image build ([`pi-gen/README.md`](../pi-gen/README.md)). |
 | `tools/` | `curatables-cli.py`, a standalone yt-dlp helper; not part of the server. |
@@ -660,14 +660,29 @@ dashboard's "Update yt-dlp" button cannot pip-install directly. Instead:
    `update-request.json` in the data dir. It never shells out.
 2. The root-owned `curatables-updater.path` unit sees the file and starts
    `curatables-updater.service`, which runs `scripts/updater.sh` as root.
-3. `updater.sh` does one fixed thing: `pip install --upgrade yt-dlp`. It
-   reads the request and writes `update-result.json` **as the service
-   user** (the data dir belongs to that user, so root acting there by path
-   could be redirected by a planted symlink), and runs pip **as the venv
-   owner** (root on a normal install, where `/opt/curatables` is
-   root-owned), so root never executes files the service user can edit.
-   Then it removes the request and `systemctl restart curatables`.
-4. The dashboard reads the result file on its next render.
+3. `updater.sh` runs `scripts/ytdlp_update.py` on the system Python. It
+   downloads the newest yt-dlp and yt-dlp-ejs as wheels into
+   `/var/lib/curatables-ytdlp`, beside wheels of the versions in use, and
+   checks both with `scripts/ytdlp-check.py`: it loads, takes the
+   server's settings, reads a video's details, searches, lists a channel
+   and fetches the first 64 KB of the file a download would pick, through
+   `YtdlpBackend` itself. The check runs as the service user inside the
+   same sandbox as `curatables.service` (`systemd-run`). Only a new
+   version that passes is installed (`pip install --no-deps --no-index`
+   of exactly the checked wheels), after running downloads finish or five
+   minutes pass; Curatables restarts, and if it isn't running the new
+   version well within two minutes the previous wheels go back in. A new
+   version that fails is not used: the result says which checks failed,
+   and whether the version in use failed them too (then it's usually the
+   network or YouTube). It reads and writes the data dir **as the service
+   user** (a planted symlink there can't redirect root) and runs pip **as
+   the venv owner**. It removes the request only at the end; a
+   `switching.json` note in its state folder lets a run after a power cut
+   (the path unit fires again at boot) finish the switch or undo it.
+4. While it runs it writes the current step to `update-progress.json`;
+   the page shows it and polls `/parent/system/updates/downloader.json`,
+   and reads `update-result.json` (`ok`, `kept` or `error`) at the end.
+   The work never depends on the page: a parent can leave it.
 
 Don't weaken the sandbox to add self-update. The request carries a
 `kind` field (only `yt-dlp` is accepted). Updating Curatables itself

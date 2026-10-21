@@ -335,18 +335,9 @@ class YtdlpBackend(VideoBackend):
             return None
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Prefer H.264 + AAC, which every client plays without a transcode.
-        # VP9/AV1/Opus fall through to the last clauses and are transcoded
-        # later by app/services/normalize.py.
-        fmt = (
-            f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio[acodec^=mp4a]/"
-            f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio/"
-            f"best[vcodec^=avc1][height<={resolution}]/"
-            f"best[height<={resolution}]/best"
-        )
         opts = {
             **self._base_opts(),
-            "format": fmt,
+            "format": download_format(resolution),
             "merge_output_format": "mp4",
             "outtmpl": str(output_dir / "video.%(ext)s"),
             "noplaylist": True,
@@ -408,6 +399,18 @@ class YtdlpBackend(VideoBackend):
                            "download size in Settings.",
             )
         return None
+
+
+def download_format(resolution: int) -> str:
+    """The formats a download asks for. H.264 + AAC first, which every
+    client plays without a transcode; VP9/AV1/Opus fall through to the
+    last clauses and are transcoded later by app/services/normalize.py."""
+    return (
+        f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio[acodec^=mp4a]/"
+        f"bestvideo[vcodec^=avc1][height<={resolution}]+bestaudio/"
+        f"best[vcodec^=avc1][height<={resolution}]/"
+        f"best[height<={resolution}]/best"
+    )
 
 
 def _parse_duration(value) -> int:

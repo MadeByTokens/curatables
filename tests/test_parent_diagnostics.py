@@ -1,5 +1,6 @@
 """Box, Diagnostics: health checks, fixes, and the report download."""
 
+import json
 import pytest
 
 from app.services import updates
@@ -58,8 +59,34 @@ def test_report_needs_a_parent(client, helper):
 def test_update_button_requests_an_update(authed_client, app, helper, monkeypatch):
     asked = []
     monkeypatch.setattr(updates, "request_update", lambda config, kind: asked.append(kind))
-    page = authed_client.post("/parent/system/diagnostics/update-downloader").text
-    assert asked == [updates.KIND_YTDLP] and "data-wait-healthy" in page
+    resp = authed_client.post("/parent/system/diagnostics/update-downloader", follow_redirects=False)
+    assert asked == [updates.KIND_YTDLP]
+    assert resp.status_code == 303 and resp.headers["location"] == "/parent/system/updates#downloader"
+
+
+def test_the_updates_page_follows_the_downloader_update(authed_client, app, helper):
+    """Each step shows while it runs, the page keeps polling, and pressing
+    again does not start a second update; the result shows after."""
+    config = app.state.config
+    updates.request_update(config)
+    (config.data_dir / updates.PROGRESS_FILENAME).write_text('{"stage": "Checking the new version"}')
+    page = authed_client.get("/parent/system/updates").text
+    assert "Checking the new version" in page and "data-downloader-poll" in page
+    assert "You can leave this page" in page
+    assert authed_client.get("/parent/system/updates/downloader.json").json() == {
+        "running": True, "progress": "Checking the new version"}
+    first = updates.pending_request(config)
+    authed_client.post("/parent/system/diagnostics/update-downloader")
+    assert updates.pending_request(config) == first
+
+    updates.request_path(config).unlink()
+    updates.result_path(config).write_text(json.dumps({
+        "kind": "yt-dlp", "status": "kept", "from_version": "2026.3.17", "to_version": "2026.3.17",
+        "message": "Kept 2026.3.17: the new 2026.8.19 could not download videos."}))
+    page = authed_client.get("/parent/system/updates").text
+    assert "could not download videos" in page and "Last update failed" not in page
+    assert "data-downloader-poll" not in page
+    assert authed_client.get("/parent/system/updates/downloader.json").json()["running"] is False
 
 
 def test_latest_version_lookup_is_cached_and_survives_errors(monkeypatch):

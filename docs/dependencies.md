@@ -195,7 +195,8 @@ in the media folder; everything else is in the data dir.
 | `channels/<channel_id>/` | Kid channel art (banner, icon). Removed with the channel. | Yes — user-generated content. |
 | `logs/curatables.log` | Application log, rotated at 5 MB with 3 backups (`app/logging_config.py`). The per-request access lines are left out of the file (it sits on the SD card); under systemd everything, access lines included, also goes to the journal. `LOG_FORMAT=json` switches to one JSON object per line. | Optional — safe to discard. |
 | `update-request.json` | Written by the app to ask the root helper to update yt-dlp; removed by the helper (see [architecture.md](architecture.md#in-app-yt-dlp-update)). | Not relevant without systemd. |
-| `update-result.json` | Written by `scripts/updater.sh` (as the service user) with the outcome; shown in Settings. | Not relevant without systemd. |
+| `update-progress.json` | The step the yt-dlp update is on, written by `scripts/ytdlp_update.py` (as the service user) while it runs. | Not relevant without systemd. |
+| `update-result.json` | Written by `scripts/ytdlp_update.py` (as the service user) with the outcome: `ok`, `kept` (the new version failed its checks) or `error`; shown in Settings and Box → Updates. | Not relevant without systemd. |
 | `backups/` | Default target of a manual `scripts/backup.sh` run without an argument. | Optional. |
 
 Outside the data dir:

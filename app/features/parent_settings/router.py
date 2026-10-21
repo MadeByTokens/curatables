@@ -54,16 +54,16 @@ def settings_update(request: Request,
     ctx = {"request": request, "config": config, "advanced_open": False,
            "error": None}
     try:
-        updates.request_update(config, kind=updates.KIND_YTDLP)
+        if updates.pending_request(config) is None:
+            updates.request_update(config, kind=updates.KIND_YTDLP)
     except OSError as e:
         return templates.TemplateResponse(request, "parent/settings.html", {
             **ctx, "success": None, "update_state": updates.update_state(config),
             "error": f"Could not write the update request: {e}"})
     return templates.TemplateResponse(request, "parent/settings.html", {
         **ctx, "success": (
-            "Update requested. The updater runs in the background and the "
-            "server will restart when it finishes — reload this page in a "
-            "moment to see the result."
+            "Update started. The box tries the new version before using "
+            "it; you can leave this page, and it shows the result."
         ),
         "update_state": updates.update_state(config),
     })

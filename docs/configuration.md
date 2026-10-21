@@ -118,6 +118,7 @@ Stored in the database, not `config.json`.
 | `CURATABLES_DATA_DIR` | `backup.sh`, `restore.sh` | Data dir to back up / restore into. |
 | `RETAIN` | `backup.sh` | Number of snapshots to keep (default 14). |
 | `CURATABLES_ROOT`, `CURATABLES_DATA`, `CURATABLES_USER` | `updater.sh` | Install dir, data dir and service user (set in `curatables-updater.service`). |
+| `CURATABLES_YTDLP_STATE` | `ytdlp_update.py` | Where the yt-dlp update keeps its wheels and switch note (default `/var/lib/curatables-ytdlp`). |
 
 ## Command line
 
