@@ -253,6 +253,11 @@ migrations must be idempotent and safe on existing data.
 | `0015_wishlist_suggested_channel.py` | `wishlist_requests.suggested_channel`: a new channel's name suggested by a kid who can't make channels. |
 | `0016_wishlist_auto_add.py` | `profiles.auto_add_channel_id` (requests from allowed YouTube channels go straight there) and `wishlist_requests.auto_added`. |
 | `0017_comment_edits.py` | `comments.edited_at` and `comments.deleted` (a kid's own comment changed, or deleted while others' replies stay). |
+| `0018_trusted_youtube_channels.py` | `trusted_youtube_channels` (the family's) and `profile_youtube_channels` (per kid), by YouTube channel ID; `profiles.trusted_only`, `auto_add_mode`; `wishlist_requests.youtube_channel_id`. |
+| `0019_wishlist_auto_added_at.py` | `wishlist_requests.auto_added_at` and `held_by_limit` (waited because the day's allowance was used up). |
+| `0020_kid_hide_and_download.py` | `profiles.allow_download`, `allow_hide` and `profile_hidden_videos`. |
+| `0021_kid_home_screen.py` | `profile_home_slots` and `profiles.home_customized` (the kid's own Home). |
+| `0022_kid_channel_sort.py` | `profile_channel_sort`: the order a kid picked for a channel's videos. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
@@ -260,7 +265,9 @@ Tables (see `schema.sql` for columns): `channels` (parent-created when
 `reactions`, `comments`, `events` (append-only usage log),
 `profile_video_overrides`, `tags`, `profile_video_tags`,
 `profile_channel_videos`, `wishlist_requests`, `login_failures`,
-`import_jobs`.
+`import_jobs`, `trusted_youtube_channels`, `profile_youtube_channels`,
+`profile_hidden_videos`,
+`profile_home_slots`, `profile_channel_sort`.
 
 `videos` carries two independent states: `status` (`active` / `hidden` /
 `review`, the parent's decision) and `download_status` (`pending` /

@@ -44,6 +44,11 @@ code already called itself 0.5.0).
   database migration.
 - A picture PIN allows 10 wrong tries before "Wait a little" (a
   number PIN still 5), so a quick finger isn't locked out as soon.
+- On a channel, a kid picks the order of its videos: **Newest**,
+  **Oldest**, **A to Z** or **Z to A**. A to Z goes by the kid's own
+  titles, and numbers count as numbers ("2 Boats" before "10 Cars"), so
+  numbering titles puts the videos in the kid's order. Each kid's choice
+  stays for each channel. Adds one database migration.
 - Search forgives spelling: when no video has the word typed, it shows
   the videos with a word that sounds like it ("dinasor" finds the
   dinosaurs) under "Did you mean one of these?", closest first, and only

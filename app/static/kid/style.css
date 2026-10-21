@@ -1566,3 +1566,36 @@ a.wishlist-mine-title { color: inherit; }
     border-radius: 4px;
     cursor: pointer;
 }
+
+/* A kid's order for a channel's videos */
+.channel-sort {
+    padding: 8px 16px 0;
+}
+
+.channel-sort-label {
+    font-weight: bold;
+    margin-right: 4px;
+    color: #444;
+}
+
+.sort-btn {
+    display: inline-block;
+    min-height: 44px;
+    padding: 8px 14px;
+    margin: 4px 2px;
+    background: #fff;
+    color: #333;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.sort-btn.active {
+    border-color: #1f7a70;
+    border-color: var(--accent, #1f7a70);
+    color: #1f7a70;
+    color: var(--accent, #1f7a70);
+    font-weight: bold;
+}
