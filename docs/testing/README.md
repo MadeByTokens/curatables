@@ -62,7 +62,20 @@ turned on during setup. `--fresh` starts over from a just-flashed card.
 
 To test code that isn't in a release yet, deploy the local commits onto
 the virtual box the way they go onto a real one (`PI_HOST=admin@127.0.0.1
-PI_PORT=2223` for the deploy script).
+PI_PORT=2223` for the deploy script). A change to a systemd unit also
+needs `sudo /opt/curatables/scripts/apply-system.sh` on the box. If
+port 8080 is taken on the laptop, `--port 8081`.
+
+The downloader update is tested here end to end, since it needs root,
+systemd and PyPI: put an older yt-dlp in the box's venv (`sudo
+/opt/curatables/.venv/bin/python -m pip install 'yt-dlp==<older>'`,
+then restart curatables), press **Box → Updates → Update the
+downloader**, leave the page for a while and come back. The page shows
+each step and then "Updated from … to …, after checking …"; the
+updater's own log is `journalctl -u curatables-updater`. The cases
+that are hard to cause on purpose (a new version failing its checks,
+Curatables not coming back, a power cut mid-switch) are in
+`tests/test_ytdlp_update.py`.
 
 What it can't show: Wi-Fi, USB drives, the Pi's power readings and
 firmware updates (`rpi-eeprom-update` fails on every boot there), Pi
@@ -163,6 +176,7 @@ behaviours the tests act out, and what each must hold:
 |-----------|----------------|-------|
 | The same tap, over and over (a reaction, Put on my Home, Hide/Undo, Ask) | it settles: one reaction, one spot on Home, one hidden row, one request; never an error or a pile of duplicates | `test_the_same_tap_over_and_over_settles`, `test_asking_for_the_same_video_again_and_again_makes_one_request`, `repeat_tapper` |
 | Routine: Home arranged just so | new videos never shift an arranged Home | `test_an_arranged_home_stays_put_when_new_videos_arrive` |
+| Routine: a channel in their own order | the order a kid picks (A to Z by their own titles, numbers by value) stays, per channel, for that kid only | `test_kid_channel_order.py` |
 | Getting lost | Home is the first button on every kid page, in exactly the same spot | `test_home_is_the_first_button_on_every_kid_page`, `same_place` |
 | Something unexpected (a deleted video, an old tab, a wrong address) | a calm page with no codes or technical words, and a big Home button | `test_something_unexpected_is_calm_and_has_a_way_home` |
 | A quick finger on the PIN pictures | 10 wrong tries lock that profile on that tablet only, with "Wait a little", no blame, and Back | `test_wrong_pictures_lock_kindly_and_only_that_profile`, `pin_storm` |
@@ -173,7 +187,7 @@ behaviours the tests act out, and what each must hold:
 | Back held down, history exhausted | never an error page, never the parent login | `back_masher` |
 | Opening video after video without waiting | the last one opens normally | `rapid_switcher` |
 | Big text or 200% zoom, less precise fingers | no sideways scrolling; buttons at least 44×44 px | `big_zoom` |
-| Keyboard mashing, misspellings, emoji in search | no errors | `key_masher` |
+| Keyboard mashing, misspellings, emoji in search | no errors; a misspelled word offers videos with a close word, never one the kid may not see | `key_masher`, `test_a_misspelled_search_offers_close_videos_the_kid_may_see` |
 | A page left open a long time | still signed in when they come back | `long_pause` |
 
 ## What none of this catches
