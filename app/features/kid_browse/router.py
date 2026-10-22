@@ -17,7 +17,7 @@ from app.services.events import EventService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
 from app.services import guides
-from app.services.channel_order import SORTS as CHANNEL_SORTS, ChannelOrderService
+from app.services.channel_order import ALL_SORTS, SORTS as CHANNEL_SORTS, START_SORTS, ChannelOrderService
 from app.services.kid_home import SLOTS, KidHomeService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
@@ -120,7 +120,7 @@ def _all_videos(request, page, viewer, content, reactions, kid_lib, order=None):
     ctx = _build_home_context(videos, content, reactions, viewer, page, total)
     if order is not None and viewer.is_child:
         ctx["sort"] = order.sort_for_all(viewer)
-        ctx["sorts"] = CHANNEL_SORTS
+        ctx["sorts"] = ALL_SORTS
         ctx["sort_action"] = "/all/sort"
     return render_kid_template(request, viewer, "kid/home.html", ctx)
 
@@ -344,6 +344,7 @@ def channel_look_reset(channel_id: int,
 @router.get("/channel/{channel_id}", response_class=HTMLResponse)
 def channel_view(request: Request, channel_id: int,
                  page: int = Query(1, ge=1),
+                 done: str = Query(""),
                  viewer: ViewerContext = Depends(get_viewer),
                  content: ContentService = Depends(get_content_service),
                  reactions: ReactionService = Depends(get_reaction_service),
@@ -363,7 +364,113 @@ def channel_view(request: Request, channel_id: int,
     ctx["sort"] = order.sort_for(viewer, channel_id)
     ctx["sorts"] = CHANNEL_SORTS if viewer.is_child else ()
     ctx["sort_action"] = f"/channel/{channel_id}/sort"
+    if viewer.is_child and ctx["sort"] == "mine":
+        ctx["my_order_saved"] = order.my_order(viewer, channel_id)["saved"] is not None
+        ctx["can_undo_save"] = order.can_undo_save(viewer, channel_id)
+    ctx["order_done"] = done if done in ("saved", "unsaved", "cancelled") else ""
     return render_kid_template(request, viewer, "kid/home.html", ctx)
+
+
+# --- My order: arranging a channel ---
+
+ARRANGE_PER_PAGE = 30
+
+
+def _seen_channel(channel_id: int, viewer: ViewerContext, content: ContentService,
+                  channels_svc: ChannelService):
+    channel = channels_svc.get(channel_id)
+    visible = content.visible_channel_ids(viewer)
+    if channel is None or (visible is not None and channel_id not in visible):
+        return None
+    return channel
+
+
+@router.get("/channel/{channel_id}/arrange", response_class=HTMLResponse)
+def channel_arrange(request: Request, channel_id: int,
+                    page: int = Query(1, ge=1),
+                    ask: str = Query(""),
+                    moved: str = Query(""),
+                    place: int = Query(0),
+                    viewer: ViewerContext = Depends(require_child),
+                    content: ContentService = Depends(get_content_service),
+                    kid_lib: KidLibraryService = Depends(get_kid_library_service),
+                    channels_svc: ChannelService = Depends(get_channel_service),
+                    order: ChannelOrderService = Depends(get_channel_order_service)):
+    """Arranging My order: a compact list of the draft, page by page."""
+    channel = _seen_channel(channel_id, viewer, content, channels_svc)
+    if channel is None:
+        return RedirectResponse(url="/channels", status_code=302)
+    draft = order.draft(viewer, channel)
+    pages = max(1, (len(draft) + ARRANGE_PER_PAGE - 1) // ARRANGE_PER_PAGE)
+    page = min(page, pages)
+    start = (page - 1) * ARRANGE_PER_PAGE
+    shown = kid_lib.apply_overrides(viewer.kid_id, draft[start:start + ARRANGE_PER_PAGE])
+    return render_kid_template(request, viewer, "kid/channel_arrange.html", {
+        "channel": content.channel_for_viewer(channel_id, viewer) or channel,
+        "rows": [(start + n + 1, v) for n, v in enumerate(shown)],
+        "total": len(draft), "page": page, "pages": pages,
+        "starts": START_SORTS,
+        "ask": ask if ask in START_SORTS else "",
+        "can_undo": order.has_moves(viewer, channel_id),
+        "moved": moved, "moved_place": place,
+        "nav_active": "channels",
+    })
+
+
+@router.post("/channel/{channel_id}/arrange")
+async def channel_arrange_do(request: Request, channel_id: int,
+                             viewer: ViewerContext = Depends(require_child),
+                             content: ContentService = Depends(get_content_service),
+                             channels_svc: ChannelService = Depends(get_channel_service),
+                             order: ChannelOrderService = Depends(get_channel_order_service)):
+    """One change to the draft (a move, Start from, Undo), or Save or
+    Cancel. Every change is one plain form, so it works on old tablets."""
+    channel = _seen_channel(channel_id, viewer, content, channels_svc)
+    if channel is None:
+        return RedirectResponse(url="/channels", status_code=303)
+    form = await request.form()
+    do = form_str(form, "do")
+    page = form_str(form, "page")
+    here = f"/channel/{channel_id}/arrange?page={page if page.isdigit() else 1}"
+    if do == "save":
+        order.save(viewer, channel)
+        return RedirectResponse(url=f"/channel/{channel_id}?done=saved", status_code=303)
+    if do == "cancel":
+        order.cancel(viewer, channel)
+        return RedirectResponse(url=f"/channel/{channel_id}?done=cancelled", status_code=303)
+    if do == "undo":
+        order.undo(viewer, channel)
+        return RedirectResponse(url=here, status_code=303)
+    if do == "start":
+        sort = form_str(form, "sort")
+        # Moves already made are not wiped by one tap: ask first.
+        if order.has_moves(viewer, channel_id) and form_str(form, "sure") != "1":
+            return RedirectResponse(url=f"{here}&ask={sort}", status_code=303)
+        order.start_from(viewer, channel, sort)
+        return RedirectResponse(url=here, status_code=303)
+    video_id = form_str(form, "video_id")
+    if do in ("up", "down", "top", "end", "place"):
+        place = form_str(form, "place").strip()
+        if do == "place" and not place.isdigit():
+            return RedirectResponse(url=here, status_code=303)
+        new_place = order.move(viewer, channel, video_id, do, int(place) if place.isdigit() else 0)
+        if new_place is not None:
+            return RedirectResponse(url=f"{here}&moved={video_id}&place={new_place}#row-{video_id}",
+                                    status_code=303)
+    return RedirectResponse(url=here, status_code=303)
+
+
+@router.post("/channel/{channel_id}/undo-save")
+def channel_undo_save(channel_id: int,
+                      viewer: ViewerContext = Depends(require_child),
+                      content: ContentService = Depends(get_content_service),
+                      channels_svc: ChannelService = Depends(get_channel_service),
+                      order: ChannelOrderService = Depends(get_channel_order_service)):
+    channel = _seen_channel(channel_id, viewer, content, channels_svc)
+    if channel is None:
+        return RedirectResponse(url="/channels", status_code=303)
+    order.undo_save(viewer, channel)
+    return RedirectResponse(url=f"/channel/{channel_id}?done=unsaved", status_code=303)
 
 
 @router.post("/channel/{channel_id}/sort")

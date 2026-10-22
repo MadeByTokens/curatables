@@ -180,6 +180,20 @@ CREATE TABLE IF NOT EXISTS profile_channel_looks (
     PRIMARY KEY (profile_id, channel_id)
 );
 
+-- A kid's own order for a channel (My order): saved, the one before the
+-- last save and the sort picked then (Undo save), and a draft being
+-- arranged with its undo steps. Orders are JSON lists of video ids.
+CREATE TABLE IF NOT EXISTS profile_channel_order (
+    profile_id   INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    channel_id   INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    saved        TEXT,
+    saved_before TEXT,
+    sort_before  TEXT,
+    draft        TEXT,
+    undo         TEXT NOT NULL DEFAULT '[]',
+    PRIMARY KEY (profile_id, channel_id)
+);
+
 -- The order a kid picked for a channel's videos ('oldest', 'az', 'za');
 -- no row means newest first.
 CREATE TABLE IF NOT EXISTS profile_channel_sort (

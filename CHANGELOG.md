@@ -43,6 +43,22 @@ code already called itself 0.5.0).
   channel stays as the parent set it for everyone else. Needs
   **Customize videos and channels**. Adds one database migration.
 
+- **Came out first** is a new **Order** button on channels and on All
+  videos: by when the video came out on YouTube (or when it was added,
+  for one with no date), so a series lines up the way it was made,
+  whatever order it was downloaded in. Newest and Oldest stay by when a
+  video was added.
+- **My order** on a channel lets the kid put its videos in exactly the
+  order they want. Picking it changes nothing by itself; **Change the
+  order** opens a short list (30 to a page) to arrange a draft: **Start
+  from** Newest, Oldest, Came out first, A to Z or Z to A (asking first
+  if moves would be lost), then ▲ ▼, **To the top**, **To the end** or
+  **Move** to a place number. **Undo** takes back the last change, and
+  nothing shows on the channel until **Save**; **Cancel** drops the
+  draft and **Undo save** brings back the order from before. A video
+  added later goes in by when it came out without moving any placed
+  one. Each kid's own, per channel. Adds one database migration.
+
 **Fixes**
 - Find new showed "Yes!" for a video that was added once and then
   deleted, moved out of the kid's channels or hidden by the kid, and

@@ -1729,3 +1729,79 @@ span.channel-icon { font-size: 30px; line-height: 48px; }
 .emoji-pick input:focus + .emoji-choice {
     outline: 3px solid #ffbf00;
 }
+
+/* My order: the note and buttons under the Order row, and the page for
+   arranging (a compact list; every button stays where it is). */
+.my-order-bar { padding: 4px 16px 0; }
+.my-order-note { margin: 4px 0 8px; font-size: 17px; }
+
+.arrange-bar { margin: 12px 0; }
+.arrange-bar .video-action-btn[disabled] { opacity: 0.45; }
+.arrange-ask {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff3cd;
+    font-size: 18px;
+}
+.arrange-ask p { margin: 0 0 8px; }
+.arrange-start { margin: 8px 0 4px; }
+.arrange-moved { margin: 6px 0; font-weight: bold; }
+
+.arrange-list { list-style: none; margin: 8px 0; padding: 0; }
+.arrange-row {
+    overflow: hidden;
+    margin: 0 0 8px;
+    padding: 8px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.arrange-row.is-moved {
+    box-shadow: 0 0 0 3px #1f7a70;
+    box-shadow: 0 0 0 3px var(--accent, #1f7a70);
+}
+.arrange-place {
+    float: left;
+    width: 40px;
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 54px;
+    text-align: center;
+}
+.arrange-thumb {
+    float: left;
+    width: 96px;
+    height: 54px;
+    margin-right: 10px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #000;
+}
+.arrange-title { display: block; min-height: 54px; font-weight: bold; line-height: 1.3; }
+.arrange-moves { clear: both; padding-top: 6px; }
+.arrange-btn {
+    min-width: 48px;
+    min-height: 44px;
+    margin: 2px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 18px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+}
+.arrange-btn-word { font-size: 15px; }
+.arrange-btn[disabled] { opacity: 0.35; }
+.arrange-place-input {
+    width: 64px;
+    min-height: 44px;
+    margin: 2px;
+    font-size: 18px;
+    text-align: center;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+}

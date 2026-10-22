@@ -260,6 +260,7 @@ migrations must be idempotent and safe on existing data.
 | `0022_kid_channel_sort.py` | `profile_channel_sort`: the order a kid picked for a channel's videos. |
 | `0023_kid_channel_looks.py` | `profile_channel_looks`: a kid's own name and picture (emoji or `channels/<id>/kid-<profile>.<ext>`) for a channel, applied by `ChannelRepository.with_looks`. |
 | `0024_kid_all_videos_sort.py` | `profiles.all_sort`: the order a kid picked for All videos. |
+| `0025_kid_my_order.py` | `profile_channel_order`: a kid's My order for a channel (saved, the one before the last save and the sort then, a draft and its undo steps; JSON lists of video ids), see `app/services/channel_order.py`. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
@@ -269,7 +270,8 @@ Tables (see `schema.sql` for columns): `channels` (parent-created when
 `profile_channel_videos`, `wishlist_requests`, `login_failures`,
 `import_jobs`, `trusted_youtube_channels`, `profile_youtube_channels`,
 `profile_hidden_videos`,
-`profile_home_slots`, `profile_channel_sort`, `profile_channel_looks`.
+`profile_home_slots`, `profile_channel_sort`, `profile_channel_looks`,
+`profile_channel_order`.
 
 `videos` carries two independent states: `status` (`active` / `hidden` /
 `review`, the parent's decision) and `download_status` (`pending` /

@@ -39,8 +39,19 @@
     "kid/base.html": "e18058b8097c098a",
     "kid/my_home.html": "f3e6180dc7c54449",
     "kid/channels.html": "6c7d20085c3372be",
-    "kid/home.html": "37ff4eecff63ff41",
+    "kid/home.html": "16819ce586522e95",
     "kid/_channel_avatar.html": "1b2d89657b36e8b0"
+   }
+  },
+  {
+   "id": "my-order",
+   "icon": "↕️",
+   "needs": "",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/channels.html": "6c7d20085c3372be",
+    "kid/home.html": "16819ce586522e95",
+    "kid/channel_arrange.html": "ce9e20ecba6e0e2f"
    }
   },
   {
@@ -289,7 +300,7 @@
      {
       "img": "channels-03.webp",
       "box": [
-       0.3204,
+       0.5034,
        0.2542,
        0.0966,
        0.043
@@ -300,6 +311,77 @@
       "img": "channels-04.webp",
       "box": null,
       "say": "The channel keeps your order."
+     }
+    ]
+   },
+   {
+    "id": "my-order",
+    "title": "My order",
+    "steps": [
+     {
+      "img": "my-order-01.webp",
+      "box": [
+       0.366,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Open a channel."
+     },
+     {
+      "img": "my-order-02.webp",
+      "box": [
+       0.7173,
+       0.2542,
+       0.1235,
+       0.043
+      ],
+      "say": "Tap My order. Nothing changes yet."
+     },
+     {
+      "img": "my-order-03.webp",
+      "box": [
+       0.0208,
+       0.3362,
+       0.2344,
+       0.043
+      ],
+      "say": "Tap Change the order."
+     },
+     {
+      "img": "my-order-04.webp",
+      "box": [
+       0.3872,
+       0.2767,
+       0.1726,
+       0.043
+      ],
+      "say": "Pick where to start from."
+     },
+     {
+      "img": "my-order-05.webp",
+      "box": [
+       0.203,
+       0.7903,
+       0.1186,
+       0.043
+      ],
+      "say": "Move a video: To the top, the arrows, or a place number."
+     },
+     {
+      "img": "my-order-06.webp",
+      "box": [
+       0.0443,
+       0.2181,
+       0.1339,
+       0.043
+      ],
+      "say": "Tap Save when it looks right. Undo takes back a move."
+     },
+     {
+      "img": "my-order-07.webp",
+      "box": null,
+      "say": "Saved! Undo save brings back your old order."
      }
     ]
    },
@@ -730,7 +812,7 @@
      {
       "img": "channels-03.webp",
       "box": [
-       0.433,
+       0.5921,
        0.2542,
        0.1624,
        0.043
@@ -741,6 +823,77 @@
       "img": "channels-04.webp",
       "box": null,
       "say": "El canal guarda tu orden."
+     }
+    ]
+   },
+   {
+    "id": "my-order",
+    "title": "Mi orden",
+    "steps": [
+     {
+      "img": "my-order-01.webp",
+      "box": [
+       0.366,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Abre un canal."
+     },
+     {
+      "img": "my-order-02.webp",
+      "box": [
+       0.0234,
+       0.305,
+       0.1231,
+       0.043
+      ],
+      "say": "Toca Mi orden. Todavía no cambia nada."
+     },
+     {
+      "img": "my-order-03.webp",
+      "box": [
+       0.0208,
+       0.387,
+       0.2333,
+       0.043
+      ],
+      "say": "Toca Cambiar el orden."
+     },
+     {
+      "img": "my-order-04.webp",
+      "box": [
+       0.5433,
+       0.2767,
+       0.1487,
+       0.043
+      ],
+      "say": "Elige desde dónde empezar."
+     },
+     {
+      "img": "my-order-05.webp",
+      "box": [
+       0.203,
+       0.8411,
+       0.1285,
+       0.043
+      ],
+      "say": "Mueve un video: Al principio, las flechas o un número de lugar."
+     },
+     {
+      "img": "my-order-06.webp",
+      "box": [
+       0.0443,
+       0.2181,
+       0.1615,
+       0.043
+      ],
+      "say": "Toca Guardar cuando esté bien. Deshacer quita un cambio."
+     },
+     {
+      "img": "my-order-07.webp",
+      "box": null,
+      "say": "¡Guardado! Deshacer lo guardado trae tu orden de antes."
      }
     ]
    },
@@ -1171,7 +1324,7 @@
      {
       "img": "channels-03.webp",
       "box": [
-       0.4273,
+       0.626,
        0.2542,
        0.1193,
        0.043
@@ -1182,6 +1335,77 @@
       "img": "channels-04.webp",
       "box": null,
       "say": "O canal guarda a sua ordem."
+     }
+    ]
+   },
+   {
+    "id": "my-order",
+    "title": "Minha ordem",
+    "steps": [
+     {
+      "img": "my-order-01.webp",
+      "box": [
+       0.366,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Abra um canal."
+     },
+     {
+      "img": "my-order-02.webp",
+      "box": [
+       0.0234,
+       0.305,
+       0.1642,
+       0.043
+      ],
+      "say": "Toque em Minha ordem. Nada muda ainda."
+     },
+     {
+      "img": "my-order-03.webp",
+      "box": [
+       0.0208,
+       0.387,
+       0.2168,
+       0.043
+      ],
+      "say": "Toque em Mudar a ordem."
+     },
+     {
+      "img": "my-order-04.webp",
+      "box": [
+       0.4998,
+       0.2767,
+       0.1883,
+       0.043
+      ],
+      "say": "Escolha de onde começar."
+     },
+     {
+      "img": "my-order-05.webp",
+      "box": [
+       0.203,
+       0.7903,
+       0.162,
+       0.043
+      ],
+      "say": "Mova um vídeo: Para o começo, as setas ou um número de lugar."
+     },
+     {
+      "img": "my-order-06.webp",
+      "box": [
+       0.0443,
+       0.2181,
+       0.1456,
+       0.043
+      ],
+      "say": "Toque em Salvar quando estiver certo. Desfazer volta uma mudança."
+     },
+     {
+      "img": "my-order-07.webp",
+      "box": null,
+      "say": "Salvo! Desfazer o salvo traz sua ordem de antes."
      }
     ]
    },
