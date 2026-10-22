@@ -1,0 +1,13 @@
+{# A channel's round picture as this kid sees it: their own photo or
+   emoji, else the channel's icon, else its first letter on its colour. #}
+{% macro channel_avatar(ch, cls="channel-avatar") -%}
+{%- if ch.kid_picture -%}
+<img src="/media/channel/{{ ch.id }}/my-icon" alt="" class="{{ cls }}">
+{%- elif ch.kid_emoji -%}
+<span class="{{ cls }} channel-avatar-emoji" aria-hidden="true">{{ ch.kid_emoji }}</span>
+{%- elif ch.icon_filename -%}
+<img src="/media/channel/{{ ch.id }}/icon" alt="" class="{{ cls }}">
+{%- else -%}
+<span class="{{ cls }} channel-avatar-letter" style="background: {{ ch.color or '#2a9d8f' }}" aria-hidden="true">{{ ch.name[:1]|upper }}</span>
+{%- endif -%}
+{%- endmacro %}

@@ -12,7 +12,10 @@
 
   <div class="help-grid">
     {{ tile("&#127968;"|safe, _("Home is yours: put your favorite videos there")) }}
-    {{ tile("&#128250;"|safe, _("All shows every video")) }}
+    {{ tile("&#128250;"|safe, _("Channels shows all your channels")) }}
+    {% if viewer and viewer.is_child and viewer.allow_customize %}
+    {{ tile("&#9999;&#65039;"|safe, _("Give a channel your own name and picture")) }}
+    {% endif %}
     {{ tile("&#128288;"|safe, _("On a channel, pick the order: newest, oldest, A to Z")) }}
     {{ tile("&#127916;"|safe, _("Tap a video to watch it")) }}
     {{ tile("&#9654;&#65039;"|safe, _("Stopped in the middle? Tap Carry on next time")) }}

@@ -45,7 +45,7 @@ def test_a_new_home_shows_the_newest_videos_and_follows_new_ones(app):
     newest = [f"yt_{i}" for i in range(NEWEST_ON_A_NEW_HOME + 1, 1, -1)]
     assert _home(kid) == newest
     page = kid.get("/").text
-    assert 'href="/all"' in page and 'href="/channel/' in page
+    assert 'href="/channels"' in page and 'href="/channel/' not in page
     assert 'href="/?edit=1"' in page
 
 
@@ -126,7 +126,7 @@ def test_empty_home_after_taking_everything_off(app):
     kid.post("/home/remove", data={"video_id": "yt_0"})
     page = kid.get("/").text
     assert "Your Home is empty" in page
-    assert 'href="/all"' in page
+    assert 'href="/channels"' in page
 
 
 def test_strangers_and_parents(app, client, authed_client):

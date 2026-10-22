@@ -189,7 +189,7 @@ through Curatables and shows only results that pass your rules
 (Settings → Video requests). Tapping **Ask** sends it to **Video requests** (linked from
 the dashboard and the Kids page), and the child can then give it their own name and
 description and pick one of their channels, make a new one of their own (with
-**Customize videos and own channels** on; otherwise the name is a suggestion for you),
+**Customize videos and channels** on; otherwise the name is a suggestion for you),
 or leave the choice to you: then **Add** waits until you pick a channel, or "none".
 The child can take a request back, and you can **Remove** one without turning the video
 down. Videos from YouTube channels you trust (Video requests → **Trusted YouTube

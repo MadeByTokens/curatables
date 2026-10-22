@@ -38,9 +38,13 @@ Or tap your numbers, then ✓. Got it wrong? Just try again.
 
 **Home is yours.** At first it shows your newest videos. **Tap a
 picture to watch it.** A video marked "Takes a moment to start" has to
-download first; it plays after a short wait. **All** shows every video,
-and the channel buttons show one channel. **Home** always brings you
-back.
+download first; it plays after a short wait. **Home** always brings
+you back.
+
+**Channels** shows all your channels as big pictures. Tap one to see
+its videos, or **All videos** to see everything. **Change** under a
+channel gives it your own name and picture (one of the drawings, or a
+photo); only you see them, and **Reset to original** puts them back.
 
 **On a channel**, pick the order of its videos: **Newest**, **Oldest**,
 **A to Z** or **Z to A**. The channel keeps that order for you. A to Z

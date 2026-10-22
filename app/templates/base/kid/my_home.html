@@ -16,18 +16,6 @@
 </div>
 {% endif %}
 
-{# One channel needs no channel buttons; All stays once the kid has
-   arranged Home, since then not every video is on it. #}
-{% if not editing and (channels|length > 1 or (channels and customized)) %}
-<nav class="channel-nav" aria-label="{{ _('Channels') }}">
-  <a href="/all" class="channel-link">{{ _("All") }}</a>
-  {% for ch in channels if channels|length > 1 %}
-  <a href="/channel/{{ ch.id }}" class="channel-link">
-    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
-  {% endfor %}
-</nav>
-{% endif %}
-
 {% if editing %}
 <div class="home-edit-bar" role="status">
   <p class="m-0">{% if moving is not none %}{{ _("Now tap the spot where it goes.") }}{% else %}{{ _("Tap a + to put a video there. Tap Move, then a spot, to move one.") }}{% endif %}</p>

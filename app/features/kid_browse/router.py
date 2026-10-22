@@ -20,6 +20,7 @@ from app.services.channel_order import SORTS as CHANNEL_SORTS, ChannelOrderServi
 from app.services.kid_home import SLOTS, KidHomeService
 from app.services.kid_library import KidLibraryService
 from app.services.channels import ASSET_KINDS, ChannelService, valid_color
+from app.constants import CHANNEL_EMOJIS
 from app.web import form_str, is_xhr
 from app.features.kid_profiles.router import SIGNED_IN_URL
 from app.models import ViewerContext
@@ -193,6 +194,93 @@ def help_page(request: Request,
     return render_kid_template(request, viewer, "kid/help.html", {})
 
 
+# --- The Channels page ---
+
+@router.get("/channels", response_class=HTMLResponse)
+def channels_page(request: Request,
+                  viewer: ViewerContext = Depends(get_viewer),
+                  content: ContentService = Depends(get_content_service)):
+    """Every channel the kid can watch, as big cards with the picture and
+    name the kid gave them, even when there is only one."""
+    return render_kid_template(request, viewer, "kid/channels.html", {
+        "channels": content.channels_to_browse(viewer),
+        "nav_active": "channels",
+    })
+
+
+def _look_page(request, viewer, channel, look, error=None):
+    response = render_kid_template(request, viewer, "kid/channel_look.html", {
+        "channel": channel, "look": look, "emojis": CHANNEL_EMOJIS, "error": error,
+        "nav_active": "channels",
+    })
+    if error:
+        response.status_code = 400
+    return response
+
+
+def _not_own(content: ContentService, viewer: ViewerContext, channel_id: int):
+    """A channel the kid sees and didn't make (their own has Edit Channel)."""
+    channel = content.channel_for_viewer(channel_id, viewer)
+    return channel if channel is not None and channel.owner_profile_id != viewer.profile_id else None
+
+
+@router.get("/channels/{channel_id}/look", response_class=HTMLResponse)
+def channel_look_page(request: Request, channel_id: int,
+                      viewer: ViewerContext = Depends(_customize),
+                      content: ContentService = Depends(get_content_service)):
+    channel = _not_own(content, viewer, channel_id)
+    if channel is None:
+        return RedirectResponse(url="/channels", status_code=302)
+    return _look_page(request, viewer, channel, content.channel_repo.look(viewer.kid_id, channel_id))
+
+
+@router.post("/channels/{channel_id}/look")
+async def channel_look_save(request: Request, channel_id: int,
+                            viewer: ViewerContext = Depends(_customize),
+                            content: ContentService = Depends(get_content_service),
+                            channels_svc: ChannelService = Depends(get_channel_service)):
+    """The kid's own name and picture for a channel; only they see it."""
+    channel = _not_own(content, viewer, channel_id)
+    if channel is None:
+        return RedirectResponse(url="/channels", status_code=302)
+    form = await request.form()
+    look = content.channel_repo.look(viewer.kid_id, channel_id)
+    name = " ".join(form_str(form, "name").split())[:64]
+    original = channel.original_name or channel.name
+    look["name"] = "" if name == original else name
+    emoji = form_str(form, "emoji")
+    if emoji in CHANNEL_EMOJIS:
+        look["emoji"] = emoji
+    upload = form.get("picture")
+    if isinstance(upload, StarletteUploadFile):
+        data = await upload.read()
+        if data:
+            try:
+                look["picture"] = channels_svc.save_kid_picture(channel_id, viewer.kid_id, data)
+                look["emoji"] = ""
+            except ValueError:
+                return _look_page(request, viewer, channel, look,
+                                  error="That picture didn't work. Try another one.")
+    elif emoji in CHANNEL_EMOJIS and look["picture"]:
+        # The form ticks no emoji while a photo is in use, so one sent
+        # was tapped: it replaces the photo.
+        channels_svc.remove_kid_picture(channel_id, viewer.kid_id)
+        look["picture"] = ""
+    content.channel_repo.set_look(viewer.kid_id, channel_id, look["name"], look["emoji"], look["picture"])
+    return RedirectResponse(url="/channels", status_code=303)
+
+
+@router.post("/channels/{channel_id}/look/reset")
+def channel_look_reset(channel_id: int,
+                       viewer: ViewerContext = Depends(_customize),
+                       content: ContentService = Depends(get_content_service),
+                       channels_svc: ChannelService = Depends(get_channel_service)):
+    if _not_own(content, viewer, channel_id) is not None:
+        channels_svc.remove_kid_picture(channel_id, viewer.kid_id)
+        content.channel_repo.set_look(viewer.kid_id, channel_id, "", "", "")
+    return RedirectResponse(url="/channels", status_code=303)
+
+
 @router.get("/channel/{channel_id}", response_class=HTMLResponse)
 def channel_view(request: Request, channel_id: int,
                  page: int = Query(1, ge=1),
@@ -211,7 +299,7 @@ def channel_view(request: Request, channel_id: int,
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total,
                               current_channel_id=channel_id)
-    ctx["channel"] = channel
+    ctx["channel"] = content.channel_for_viewer(channel_id, viewer) or channel
     ctx["sort"] = order.sort_for(viewer, channel_id)
     ctx["sorts"] = CHANNEL_SORTS if viewer.is_child else ()
     return render_kid_template(request, viewer, "kid/home.html", ctx)

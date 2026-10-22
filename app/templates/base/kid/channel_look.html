@@ -1,0 +1,44 @@
+{% extends "kid/base.html" %}
+{% from "kid/_channel_avatar.html" import channel_avatar %}
+{% from "kid/_file_picker.html" import file_picker with context %}
+{% block content %}
+<div class="mw-600 mx-auto p-16">
+  <h2 class="page-title">{{ channel_avatar(channel, "channel-avatar channel-avatar-small") }} {{ _("Change {name}", name=channel.name) }}</h2>
+  <p class="page-intro">{{ _("Only you see these changes.") }}</p>
+  {% if error %}<div class="upload-error" role="alert">{{ _(error) }}</div>{% endif %}
+
+  <form method="POST" action="/channels/{{ channel.id }}/look" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="mb-16">
+      <label for="name" class="d-block fw-bold mb-4">{{ _("Name") }}</label>
+      <input type="text" id="name" name="name" maxlength="64" value="{{ channel.name }}"
+             class="w-100 p-8 fs-15 bd-ccc r-4 bb">
+    </div>
+
+    <fieldset class="mb-16 emoji-pick">
+      <legend class="fw-bold mb-4">{{ _("Pick a picture") }}</legend>
+      {% for e in emojis %}
+      <input type="radio" name="emoji" value="{{ e }}" id="emoji-{{ loop.index }}" class="sr-only"{% if look.emoji == e and not look.picture %} checked{% endif %}>
+      <label for="emoji-{{ loop.index }}" class="emoji-choice">{{ e }}</label>
+      {% endfor %}
+    </fieldset>
+
+    <div class="mb-16">
+      <label for="picture-input" class="d-block fw-bold mb-4">{{ _("Or use a photo") }}</label>
+      {{ file_picker("picture-input", "picture", "image/*", _("Choose a picture")) }}
+    </div>
+
+    <div class="d-flex gap-8">
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn">{{ _("Save") }}</button>
+      <a href="/channels" class="on-dark r-4 no-underline fs-15 cancel-link">{{ _("Cancel") }}</a>
+    </div>
+  </form>
+
+  {% if look.name or look.emoji or look.picture %}
+  <form method="POST" action="/channels/{{ channel.id }}/look/reset" class="mt-16">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="video-action-btn">{{ _("Reset to original") }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

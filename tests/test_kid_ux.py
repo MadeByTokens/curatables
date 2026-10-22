@@ -201,17 +201,23 @@ def test_help_lists_only_what_the_kid_can_do(app, allowed):
     assert ("Ask for a new video" in page) is allowed
 
 
-def test_one_channel_needs_no_channel_buttons(app):
+def test_channels_have_their_own_page_not_home(app):
+    """Home shows only the kid's videos; channels are on the Channels page,
+    which lists even a single channel, but not an empty one."""
     conn, kid, _ = _setup(app)
-    assert 'class="channel-nav"' not in kid.get("/").text
+    home = kid.get("/").text
+    assert 'class="channel-nav"' not in home and 'href="/channels"' in home
+    page = kid.get("/channels").text
+    assert page.count('class="channel-card"') == 2  # All videos + the one channel
+    assert 'href="/all"' in page
     planes = ChannelRepository(conn).create("Planes")
     conn.commit()
-    # An empty channel is not offered either.
-    assert 'class="channel-nav"' not in kid.get("/").text
+    assert "Planes" not in kid.get("/channels").text
     VideoRepository(conn).insert(Video(
         video_id="yt_plane", title="Jumbo jet", original_title="Jumbo jet",
         channel_id=planes, status="active", download_status="ready"))
-    assert 'class="channel-nav"' in kid.get("/").text
+    assert "Planes" in kid.get("/channels").text
+    assert 'class="channel-nav"' not in kid.get("/").text
 
 
 def test_label_emoji_ask_for_colour():

@@ -258,6 +258,7 @@ migrations must be idempotent and safe on existing data.
 | `0020_kid_hide_and_download.py` | `profiles.allow_download`, `allow_hide` and `profile_hidden_videos`. |
 | `0021_kid_home_screen.py` | `profile_home_slots` and `profiles.home_customized` (the kid's own Home). |
 | `0022_kid_channel_sort.py` | `profile_channel_sort`: the order a kid picked for a channel's videos. |
+| `0023_kid_channel_looks.py` | `profile_channel_looks`: a kid's own name and picture (emoji or `channels/<id>/kid-<profile>.<ext>`) for a channel, applied by `ChannelRepository.with_looks`. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),
@@ -267,7 +268,7 @@ Tables (see `schema.sql` for columns): `channels` (parent-created when
 `profile_channel_videos`, `wishlist_requests`, `login_failures`,
 `import_jobs`, `trusted_youtube_channels`, `profile_youtube_channels`,
 `profile_hidden_videos`,
-`profile_home_slots`, `profile_channel_sort`.
+`profile_home_slots`, `profile_channel_sort`, `profile_channel_looks`.
 
 `videos` carries two independent states: `status` (`active` / `hidden` /
 `review`, the parent's decision) and `download_status` (`pending` /

@@ -87,12 +87,19 @@ class ContentService:
         return video.channel_id is not None and video.channel_id in visible
 
     def channels_for_viewer(self, viewer: ViewerContext) -> list[Channel]:
+        """The channels the viewer may see; a kid's with their own names
+        and pictures."""
         visible = self.visible_channel_ids(viewer)
         channels = self.channel_repo.list()
         if visible is None:
             return channels
         allowed = set(visible)
-        return [c for c in channels if c.id in allowed]
+        mine = [c for c in channels if c.id in allowed]
+        return self.channel_repo.with_looks(viewer.profile_id, mine) if viewer.profile_id else mine
+
+    def channel_for_viewer(self, channel_id: int, viewer: ViewerContext) -> Channel | None:
+        """One channel the viewer may see, as channels_for_viewer shows it."""
+        return next((c for c in self.channels_for_viewer(viewer) if c.id == channel_id), None)
 
     def channels_to_browse(self, viewer: ViewerContext) -> list[Channel]:
         """The channel buttons a kid sees: channels with something to
