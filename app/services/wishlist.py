@@ -145,6 +145,16 @@ class WishlistService:
             return profile.auto_add_channel_id
         return self.rules.auto_add_channel_id
 
+    def auto_add_target(self, profile: Profile | None, picked: int | None) -> int | None:
+        """Where a request from a trusted channel goes straight in: the
+        parent's channel the kid picked when asking (`picked`, if the
+        family allows it), else auto_add_into. A kid set to wait waits."""
+        if profile is None or profile.auto_add_mode == "off":
+            return None
+        if self.rules.auto_add_kid_choice and picked is not None:
+            return picked
+        return self.auto_add_into(profile)
+
     def auto_adds_left(self, profile_id: int) -> int:
         """How many more requests may go straight in for this kid today
         (the family's day, from its time zone)."""

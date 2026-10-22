@@ -12,6 +12,11 @@ code already called itself 0.5.0).
 ## Unreleased
 
 **For parents**
+- Requests from trusted channels can go straight into the channel the
+  kid picked when asking: tick **If they picked one of your channels
+  when asking, it goes straight there instead** (Trusted YouTube
+  channels). With nothing picked, the usual setting decides; a kid set
+  to wait still waits, and the daily limit still counts.
 - **Help → Show me how** has the same kind of guides for parents:
   adding a kid, answering a video request, a video a kid hid. The
   written guides on GitHub use them as moving pictures.

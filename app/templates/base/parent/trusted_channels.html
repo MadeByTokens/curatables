@@ -31,6 +31,13 @@ library without waiting for you, and a kid can be set to find only these channel
     </select>
     {% if not own_channels %}<small class="muted d-block">Make a channel on the <a href="/parent/channels">Channels</a> page first.</small>{% endif %}
     <small class="muted d-block">Each kid can be set differently (Kids → Edit). Pick a channel the kids can see.</small>
+    <div class="mt-12">
+      <input type="checkbox" id="auto_add_kid_choice" name="auto_add_kid_choice" value="1"{% if config.wishlist.auto_add_kid_choice %} checked{% endif %}>
+      <label for="auto_add_kid_choice" class="inline-label">If they picked one of your channels when asking, it goes straight there instead</label>
+      <small class="muted d-block">Also when the setting above is "Wait for me": then a request goes straight in
+        only when the kid picked a channel. A kid set to wait (Kids → Edit) always waits; the daily limit
+        still applies.</small>
+    </div>
   </div>
   <div class="form-group">
     <label for="auto_add_per_day">At most this many a day for each kid</label>

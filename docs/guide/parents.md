@@ -176,9 +176,12 @@ on their page:
   search all of YouTube through your rules. On, their searches show
   only videos and channels from their trusted channels.
 - **Requests from trusted channels** wait for you, or go straight into
-  a channel you pick. When a kid taps **Send**, a video from one of
-  their trusted channels that passes your other rules downloads
-  straight into that channel, with your kid's name and description. It
+  a channel you pick. Tick **If they picked one of your channels when
+  asking, it goes straight there instead** to let your kid's choice
+  decide (with nothing picked, the setting above does). When a kid taps
+  **Send**, a video from one of their trusted channels that passes your
+  other rules downloads straight into that channel, with your kid's
+  name and description. It
   is listed as "Added automatically" under **Recently decided**, where
   **Remove from library** takes it back: the video is deleted and
   turned down for that kid. Each kid can get 10 a day this way (change

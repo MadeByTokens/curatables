@@ -496,9 +496,11 @@ kid's form; `TrustedChannelService.lookup` turns a pasted ID, @handle,
 or channel or video link into an ID with one flat yt-dlp lookup
 (`find_channel`).
 
-When the kid sends the request, `WishlistService.auto_add_into` picks
-the channel it may go straight into: the kid's own
-(`auto_add_mode = 'on'` and `auto_add_channel_id`), none (`'off'`), or
+When the kid sends the request, `WishlistService.auto_add_target` picks
+the channel it may go straight into: none if the kid is set to wait
+(`auto_add_mode = 'off'`); the parent's channel the kid picked when
+asking, if `wishlist.auto_add_kid_choice` is on; else
+`auto_add_into`: the kid's own (`'on'` and `auto_add_channel_id`) or
 the family's `wishlist.auto_add_channel_id` (`'family'`). If there is
 one, `_auto_add` in `kid_wishlist/router.py` fetches YouTube's full
 details if only the search result is stored, then adds the video into
