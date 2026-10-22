@@ -44,8 +44,8 @@
 </nav>
 {% endif %}
 
-{% if channel and sorts %}
-<form method="POST" action="/channel/{{ channel.id }}/sort" class="channel-sort">
+{% if sorts and sort_action %}
+<form method="POST" action="{{ sort_action }}" class="channel-sort">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <span class="channel-sort-label" id="sort-label">{{ _("Order") }}</span>
   {% set sort_labels = {"newest": _("Newest"), "oldest": _("Oldest"), "az": _("A to Z"), "za": _("Z to A")} %}

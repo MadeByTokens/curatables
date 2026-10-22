@@ -259,6 +259,7 @@ migrations must be idempotent and safe on existing data.
 | `0021_kid_home_screen.py` | `profile_home_slots` and `profiles.home_customized` (the kid's own Home). |
 | `0022_kid_channel_sort.py` | `profile_channel_sort`: the order a kid picked for a channel's videos. |
 | `0023_kid_channel_looks.py` | `profile_channel_looks`: a kid's own name and picture (emoji or `channels/<id>/kid-<profile>.<ext>`) for a channel, applied by `ChannelRepository.with_looks`. |
+| `0024_kid_all_videos_sort.py` | `profiles.all_sort`: the order a kid picked for All videos. |
 
 Tables (see `schema.sql` for columns): `channels` (parent-created when
 `owner_profile_id` is NULL, kid-owned otherwise, plus kid channel art),

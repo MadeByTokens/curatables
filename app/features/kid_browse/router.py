@@ -105,16 +105,34 @@ def all_videos(request: Request,
                viewer: ViewerContext = Depends(get_viewer),
                content: ContentService = Depends(get_content_service),
                reactions: ReactionService = Depends(get_reaction_service),
-               kid_lib: KidLibraryService = Depends(get_kid_library_service)):
-    return _all_videos(request, page, viewer, content, reactions, kid_lib)
+               kid_lib: KidLibraryService = Depends(get_kid_library_service),
+               order: ChannelOrderService = Depends(get_channel_order_service)):
+    return _all_videos(request, page, viewer, content, reactions, kid_lib, order)
 
 
-def _all_videos(request, page, viewer, content, reactions, kid_lib):
-    videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
+def _all_videos(request, page, viewer, content, reactions, kid_lib, order=None):
+    if order is not None and viewer.is_child:
+        videos, total = order.page_all(viewer, page, ITEMS_PER_PAGE)
+    else:
+        videos, total = content.list_for_viewer(viewer, page=page, per_page=ITEMS_PER_PAGE)
     if viewer.is_child and viewer.profile_id:
         videos = kid_lib.apply_overrides(viewer.profile_id, videos)
     ctx = _build_home_context(videos, content, reactions, viewer, page, total)
+    if order is not None and viewer.is_child:
+        ctx["sort"] = order.sort_for_all(viewer)
+        ctx["sorts"] = CHANNEL_SORTS
+        ctx["sort_action"] = "/all/sort"
     return render_kid_template(request, viewer, "kid/home.html", ctx)
+
+
+@router.post("/all/sort")
+async def all_videos_sort(request: Request,
+                          viewer: ViewerContext = Depends(require_child),
+                          order: ChannelOrderService = Depends(get_channel_order_service)):
+    """Keep the order the kid picked for All videos, then show it."""
+    form = await request.form()
+    order.choose_all(viewer, form_str(form, "sort"))
+    return RedirectResponse(url="/all", status_code=303)
 
 
 # --- Arranging Home ---
@@ -320,6 +338,7 @@ def channel_view(request: Request, channel_id: int,
     ctx["channel"] = content.channel_for_viewer(channel_id, viewer) or channel
     ctx["sort"] = order.sort_for(viewer, channel_id)
     ctx["sorts"] = CHANNEL_SORTS if viewer.is_child else ()
+    ctx["sort_action"] = f"/channel/{channel_id}/sort"
     return render_kid_template(request, viewer, "kid/home.html", ctx)
 
 

@@ -1,4 +1,4 @@
-"""The order a kid picked for a channel's videos.
+"""The order a kid picked for a channel's videos, and for All videos.
 
 Newest first is how every channel starts (a show's episodes in order).
 A kid can pick oldest first, or A to Z or Z to A by the titles that kid
@@ -47,6 +47,34 @@ class ChannelOrderService:
         if viewer.profile_id and sort in SORTS:
             self.repo.set(viewer.profile_id, channel_id, None if sort == "newest" else sort)
 
+    def sort_for_all(self, viewer: ViewerContext) -> str:
+        if not viewer.is_child or not viewer.profile_id:
+            return "newest"
+        sort = self.repo.get_all(viewer.profile_id)
+        return sort if sort in SORTS else "newest"
+
+    def choose_all(self, viewer: ViewerContext, sort: str) -> None:
+        if viewer.profile_id and sort in SORTS:
+            self.repo.set_all(viewer.profile_id, None if sort == "newest" else sort)
+
+    def page_all(self, viewer: ViewerContext, page: int, per_page: int) -> tuple[list[Video], int]:
+        """One page of every video the kid can watch, in the kid's order."""
+        sort = self.sort_for_all(viewer)
+        if sort == "newest":
+            return self.content.list_for_viewer(viewer, page=page, per_page=per_page)
+        videos, _total = self.content.list_for_viewer(viewer, per_page=_ALL)
+        return self._sorted(viewer, videos, sort, page, per_page)
+
+    def _sorted(self, viewer: ViewerContext, videos: list[Video], sort: str, page: int,
+                per_page: int) -> tuple[list[Video], int]:
+        if sort == "oldest":
+            videos.sort(key=lambda v: (v.added_at or "", v.video_id))
+        else:
+            videos = self.kid_lib.apply_overrides(viewer.kid_id, videos)
+            videos.sort(key=lambda v: (title_key(v.title), v.video_id), reverse=sort == "za")
+        start = (page - 1) * per_page
+        return videos[start:start + per_page], len(videos)
+
     def page(self, viewer: ViewerContext, channel: Channel, page: int,
              per_page: int) -> tuple[list[Video], int]:
         """One page of the channel in the kid's order, with the videos a
@@ -64,13 +92,7 @@ class ChannelOrderService:
         videos, _total = self.content.list_for_viewer(viewer, per_page=_ALL, channel_id=cid)
         if self._owned(viewer, channel):
             videos = videos + self._saved(viewer, cid, videos, _ALL)
-        if sort == "oldest":
-            videos.sort(key=lambda v: (v.added_at or "", v.video_id))
-        else:
-            videos = self.kid_lib.apply_overrides(viewer.kid_id, videos)
-            videos.sort(key=lambda v: (title_key(v.title), v.video_id), reverse=sort == "za")
-        start = (page - 1) * per_page
-        return videos[start:start + per_page], len(videos)
+        return self._sorted(viewer, videos, sort, page, per_page)
 
     @staticmethod
     def _owned(viewer: ViewerContext, channel: Channel) -> bool:
