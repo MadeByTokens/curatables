@@ -80,3 +80,19 @@ def test_the_player_is_calm():
         assert float(m.group(1)) >= 1 and m.group(2) == "1"
     js = (GUIDES.parent / "kid" / "guide.js").read_text()
     assert "prefers-reduced-motion" in js
+
+
+def test_the_guides_show_the_screens_as_they_are():
+    """Each guide records the screens it shows. A screen changed since its
+    pictures were made means the guide is out of date: make it again with
+    `python tools/make_guides.py --only GUIDE --tour ID` (see tools/README.md),
+    and check its captions still say what the screen says."""
+    stale = []
+    for guide in guides.GUIDES:
+        data = json.loads((GUIDES / f"{guide}.json").read_text())
+        for tour in data["tours"]:
+            assert tour.get("screens"), (guide, tour["id"], "made without its screens")
+            for template, fingerprint in tour["screens"].items():
+                if guides.screen_fingerprint(template) != fingerprint:
+                    stale.append(f"{guide}/{tour['id']} ({template})")
+    assert not stale, "guides out of date, make them again: " + ", ".join(stale)

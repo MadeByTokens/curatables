@@ -13,7 +13,9 @@ Helpers that are not part of the server.
   `app/static/guides/` (played on the box under Help → Watch how and
   Help → Show me how; the kids' guide in English, Spanish and Portuguese)
   and `docs/guide/img/anim/` (moving pictures for the written guides).
-  Run it again when a screen in a tour changes:
+  Each tour lists the screens (templates) it shows, and their
+  fingerprints are saved with it: `tests/test_guides.py` fails when one
+  of those screens changes, naming the tours to make again with
   `python tools/make_guides.py [--only kids|parents] [--tour ID]`.
   It needs Playwright with Chromium, Pillow and ffmpeg (not on the box).
 - `make_icons.py` — draws the browser and home-screen icons in

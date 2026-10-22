@@ -9,7 +9,16 @@ from functools import lru_cache
 from pathlib import Path
 
 GUIDES_DIR = Path(__file__).resolve().parents[1] / "static" / "guides"
+TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates" / "base"
 GUIDES = ("kids", "parents")
+
+
+def screen_fingerprint(template: str) -> str:
+    """A short fingerprint of a template a guide shows, recorded when the
+    guide is made: a different one means the screen changed since and the
+    guide's pictures need making again (tests/test_guides.py checks)."""
+    import hashlib
+    return hashlib.sha256((TEMPLATES_DIR / template).read_bytes()).hexdigest()[:16]
 
 
 @lru_cache(maxsize=4)
