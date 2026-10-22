@@ -198,12 +198,26 @@ class WishlistRepository(BaseRepository):
 
     def approve_video(self, video_id: str) -> int:
         """Mark every pending request for this video approved (it was added
-        to the library). Returns how many."""
+        to the library). Returns how many. A kid who asked again for a video
+        they had hidden gets it back."""
+        self.db.execute(
+            "DELETE FROM profile_hidden_videos WHERE video_id = ? AND profile_id IN "
+            "(SELECT profile_id FROM wishlist_requests WHERE video_id = ? AND status = 'pending')",
+            (video_id, video_id))
         cur = self.db.execute(
             "UPDATE wishlist_requests SET status = 'approved', decided_at = datetime('now') "
             "WHERE video_id = ? AND status = 'pending'", (video_id,))
         self.db.commit()
         return cur.rowcount
+
+    def reopen_for(self, profile_id: int, video_id: str) -> None:
+        """One kid's approved request waits again (they asked again for a
+        video that was deleted or hidden since)."""
+        self.db.execute(
+            "UPDATE wishlist_requests SET status = 'pending', decided_at = NULL, auto_added = 0, "
+            "held_by_limit = 0, created_at = datetime('now') "
+            "WHERE profile_id = ? AND video_id = ? AND status = 'approved'", (profile_id, video_id))
+        self.db.commit()
 
     def reopen_approved(self, video_id: str) -> int:
         """Approved requests for a video that left the library wait again."""

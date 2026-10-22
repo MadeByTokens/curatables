@@ -1309,3 +1309,51 @@ def test_what_i_asked_for_drops_videos_that_are_gone(app, client, backend):
     assert "Kept video" in page and "Still downloading" in page
     for gone in ("Deleted video", "Grown-up hid it", "Kid hid it"):
         assert gone not in page, gone
+
+
+def _card(page, raw):
+    """The Find new result card for a video, or None."""
+    m = re.search(r'id="ask-' + raw + r'"(.*?)</div>', page, re.S)
+    return m.group(1) if m else None
+
+
+def test_a_video_gone_since_it_was_added_can_be_asked_for_again(app, client, backend):
+    """Added once, then deleted, moved out of the kid's channels or hidden
+    by the kid: Find new offers Ask again (not "Yes!"), and asking makes
+    the old request wait for a grown-up again. Hidden by a grown-up: left
+    out, like a video turned down. Still there: "Yes!"."""
+    from app.models import Video
+    from app.repositories.channel_repo import ChannelRepository
+    from app.repositories.hidden_video_repo import HiddenVideoRepository
+    pid = _kid(app, client)
+    conn = _conn(app)
+    repo, videos = WishlistRepository(conn), VideoRepository(conn)
+    songs = ChannelRepository(conn).create("Songs")
+    for raw, title in (("aaaaaaaaaaa", "Counting to ten"), ("bbbbbbbbbbb", "Scary monster night"),
+                       ("ccccccccccc", "Two hour lullabies"), ("eeeeeeeeeee", "Shapes song")):
+        rid = repo.add(pid, f"youtube_{raw}", _meta(raw, title), f"https://www.youtube.com/watch?v={raw}")
+        repo.decide(rid, "approved")
+    # aaaa: still there. bbbb: deleted (never stored). cccc: hidden by a grown-up. eeee: the kid hid it.
+    for raw, status in (("aaaaaaaaaaa", "active"), ("ccccccccccc", "hidden"), ("eeeeeeeeeee", "active")):
+        videos.insert(Video(video_id=f"youtube_{raw}", title=raw, original_title=raw, channel_id=songs,
+                            status=status, download_status="ready"))
+    HiddenVideoRepository(conn).hide(pid, "youtube_eeeeeeeeeee")
+    app.state.config.wishlist.blocked_words = []
+    app.state.config.wishlist.max_duration_minutes = 0
+    backend_results = [_meta("aaaaaaaaaaa", "Counting to ten"), _meta("bbbbbbbbbbb", "Monster night"),
+                       _meta("ccccccccccc", "Lullabies"), _meta("eeeeeeeeeee", "Shapes song", channel="Kids TV")]
+    backend.search = lambda q, max_results=12, newest_first=False: list(backend_results)
+    page = client.get("/wishlist", params={"q": "songs"}).text
+    assert "Yes!" in _card(page, "aaaaaaaaaaa")
+    assert 'action="/wishlist/ask"' in _card(page, "bbbbbbbbbbb")
+    assert _card(page, "ccccccccccc") is None
+    assert 'action="/wishlist/ask"' in _card(page, "eeeeeeeeeee")
+
+    for raw in ("bbbbbbbbbbb", "eeeeeeeeeee"):
+        assert client.post("/wishlist/ask", data={"raw_id": raw}).status_code == 303
+        assert repo.statuses_for(pid)[f"youtube_{raw}"] == "pending", raw
+    client.post("/wishlist/ask", data={"raw_id": "ccccccccccc"})
+    assert repo.statuses_for(pid)["youtube_ccccccccccc"] == "approved"
+    # The grown-up says yes again: the kid gets the video they had hidden back.
+    repo.approve_video("youtube_eeeeeeeeeee")
+    assert not VideoRepository(conn).is_hidden_for("youtube_eeeeeeeeeee", pid)

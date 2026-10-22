@@ -15,6 +15,7 @@ from typing import Callable
 from app.backends.base import BackendErrorType, ChannelHit, VideoBackend, VideoMetadata
 from app.config import Config
 from app.models import Profile
+from app.repositories.channel_repo import ChannelRepository
 from app.repositories.profile_repo import ProfileRepository
 from app.repositories.trusted_channel_repo import TrustedChannelRepository
 from app.repositories.video_repo import VideoRepository, fold_text
@@ -218,13 +219,31 @@ class WishlistService:
             status = asked.get(video_id, "new")
             if status in ("rejected", "unavailable"):
                 continue
-            if status == "new" and self.video_repo.get(video_id) is not None:
-                status = "in_library"
+            here = self.library_state(profile_id, video_id)
+            if here == "hidden":
+                continue  # a grown-up took it away: like turned down
+            if status in ("new", "approved"):
+                # In the library for this kid: Yes, watch it. Deleted, moved
+                # out of their channels or hidden by the kid: ask again.
+                status = ("approved" if status == "approved" else "in_library") if here == "watchable" else "new"
             results.append(WishlistResult(meta, video_id, status))
         shown, has_more = self._paged(results, page, sort, lambda r: r.meta.title)
         self.thumbnails.download_many([(r.video_id, r.meta.thumbnail_url) for r in shown])
         GATE.remember_shown([r.meta for r in shown])
         return shown, has_more
+
+    def library_state(self, profile_id: int, video_id: str) -> str:
+        """'absent', 'hidden' (by a grown-up), 'watchable' for this kid, or
+        'gone' (in the library but outside their channels, or they hid it)."""
+        video = self.video_repo.get(video_id)
+        if video is None:
+            return "absent"
+        if video.status != "active":
+            return "hidden"
+        visible = ChannelRepository(self.repo.db).list_visible_to(profile_id)
+        if video.channel_id not in visible or self.video_repo.is_hidden_for(video_id, profile_id):
+            return "gone"
+        return "watchable"
 
     def search(self, profile_id: int, query: str, page: int = 1,
                mode: str = "videos", sort: str = "best") -> WishlistPage:
@@ -299,8 +318,11 @@ class WishlistService:
         if not _YOUTUBE_ID.match(raw_id):
             raise WishlistError("failed")
         video_id = make_video_id("youtube", raw_id)
-        if self.repo.statuses_for(profile_id).get(video_id) == "rejected":
+        before = self.repo.statuses_for(profile_id).get(video_id)
+        if before == "rejected":
             raise WishlistError("rejected")
+        if self.library_state(profile_id, video_id) == "hidden":
+            raise WishlistError("not_allowed")
         url = f"https://www.youtube.com/watch?v={raw_id}"
         known = self.repo.latest_for_video(video_id)
         if known is not None and not known.youtube_channel_id:
@@ -317,6 +339,9 @@ class WishlistService:
             meta = found[0] if found else None
         if meta is None or not self.passes(meta, self.kid_rules(profile_id)):
             raise WishlistError("not_allowed")
+        if before == "approved" and self.library_state(profile_id, video_id) != "watchable":
+            # Added once, but deleted or hidden since: it waits for a grown-up again.
+            self.repo.reopen_for(profile_id, video_id)
         request_id = self.repo.add(profile_id, video_id, meta, meta.original_url or url)
         self.thumbnails.download(video_id, meta.thumbnail_url)
         return request_id, partial
