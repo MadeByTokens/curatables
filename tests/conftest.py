@@ -64,6 +64,18 @@ def _make_test_db():
     return conn
 
 
+@pytest.fixture(autouse=True)
+def _no_mdns_on_the_real_network(monkeypatch):
+    """A test app must not announce "curatables.local" on the network the
+    tests run on: it would answer for a real box there."""
+    from app.services import mdns
+
+    async def quiet(self, *args, **kwargs):
+        return None
+    monkeypatch.setattr(mdns.ZeroconfAdvertiser, "start", quiet)
+    monkeypatch.setattr(mdns.ZeroconfAdvertiser, "stop", quiet)
+
+
 @pytest.fixture
 def app(tmp_path):
     """Full FastAPI app with an in-memory DB for route testing.

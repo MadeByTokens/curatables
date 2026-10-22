@@ -64,7 +64,7 @@ Directory-level only; open the directory for the current file list.
 | `app/backends/` | `VideoBackend` interface and the yt-dlp implementation. |
 | `app/features/<name>/router.py` | HTTP layer, one directory per feature (`parent_*`, `kid_*`, `media`, `api`, `healthz`). `_template/` is the skeleton to copy. |
 | `app/templates/base/` | Jinja templates: `kid/` and `parent/`. Files starting with `_` are partials. |
-| `app/static/` | CSS/JS: `kid/` (old-browser-safe), `parent/`, `js/` (vendored tus client). |
+| `app/static/` | CSS/JS: `kid/` (old-browser-safe, including the guide player `guide.js`), `parent/`, `js/` (vendored tus client); `guides/` (the animated guides' steps and screenshots, made by `tools/make_guides.py` and listed by `app/services/guides.py`). |
 | `tests/` | Flat: one `test_*.py` per area, `conftest.py` fixtures, `fixtures/` (incl. a fake yt-dlp for the smoke suite). |
 | `syshelper/` | The root system helper for the Pi image: standard library only, one module per area (accounts, Wi-Fi, drives, backups, diagnostics, updates). See [System helper](#system-helper). |
 | `scripts/` | `install.sh`, `apply-system.sh` (installs units and system files; used by the image build and by updates), backup/restore, the root-side `updater.sh` with `ytdlp_update.py` and `ytdlp-check.py`, drive setup, `curatables-helper.py`, Pi `firstboot.sh`, `nm-wired-only.sh`, `mdns-unicast.py`, `seed_demo.py`. |

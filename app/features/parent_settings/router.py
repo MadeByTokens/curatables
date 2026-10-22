@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.i18n import LANGUAGE_CODES
 from app.dependencies import (
@@ -15,7 +15,7 @@ from app.config import Config
 from app.services.family_time import valid_timezone
 from app.services.storage import RESOLUTION_MAP
 from app.models import ViewerContext
-from app.services import updates
+from app.services import guides, updates
 from app.services.system_helper import SAME_AS_LINUX, SystemHelper
 
 router = APIRouter(prefix="/parent", tags=["parent-settings"])
@@ -25,8 +25,19 @@ router = APIRouter(prefix="/parent", tags=["parent-settings"])
 def help_page(request: Request,
               viewer: ViewerContext = Depends(require_parent)):
     return request.app.state.templates.TemplateResponse(request, "parent/help.html", {
-        "request": request,
+        "request": request, "guide_tours": guides.tours("parents", "en")[1],
+        "kid_guide_tours": guides.tours("kids", "en")[1],
     })
+
+
+@router.get("/help/guide/{tour_id}", response_class=HTMLResponse)
+def guide_tour(request: Request, tour_id: str,
+               viewer: ViewerContext = Depends(require_parent)):
+    lang, tour = guides.tour("parents", "en", tour_id)
+    if tour is None:
+        return RedirectResponse(url="/parent/help#guides", status_code=302)
+    return request.app.state.templates.TemplateResponse(request, "parent/guide.html", {
+        "request": request, "tour": tour, "lang": lang, "finger": guides.finger})
 
 
 @router.get("/settings", response_class=HTMLResponse)

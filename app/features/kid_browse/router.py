@@ -16,6 +16,7 @@ from app.services.content import ContentService
 from app.services.events import EventService
 from app.services.profiles import ProfileService
 from app.services.reactions import ReactionService
+from app.services import guides
 from app.services.channel_order import SORTS as CHANNEL_SORTS, ChannelOrderService
 from app.services.kid_home import SLOTS, KidHomeService
 from app.services.kid_library import KidLibraryService
@@ -191,7 +192,24 @@ async def home_move(request: Request,
 @router.get("/help", response_class=HTMLResponse)
 def help_page(request: Request,
               viewer: ViewerContext = Depends(get_viewer)):
-    return render_kid_template(request, viewer, "kid/help.html", {})
+    return render_kid_template(request, viewer, "kid/help.html", {
+        "has_guide": bool(guides.tours("kids", viewer.language or "en", viewer)[1]),
+    })
+
+
+@router.get("/help/guide", response_class=HTMLResponse)
+def guide_list(request: Request, viewer: ViewerContext = Depends(get_viewer)):
+    _lang, tours = guides.tours("kids", viewer.language or "en", viewer)
+    return render_kid_template(request, viewer, "kid/guide.html", {"tours": tours})
+
+
+@router.get("/help/guide/{tour_id}", response_class=HTMLResponse)
+def guide_tour(request: Request, tour_id: str, viewer: ViewerContext = Depends(get_viewer)):
+    lang, tour = guides.tour("kids", viewer.language or "en", tour_id, viewer)
+    if tour is None:
+        return RedirectResponse(url="/help/guide", status_code=302)
+    return render_kid_template(request, viewer, "kid/guide_tour.html", {
+        "tour": tour, "lang": lang, "finger": guides.finger})
 
 
 # --- The Channels page ---

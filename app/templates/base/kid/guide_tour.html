@@ -1,0 +1,10 @@
+{% extends "kid/base.html" %}
+{% from "kid/_guide.html" import guide_player with context %}
+{% set nav_active = "help" %}
+{% block head_extra %}<link rel="stylesheet" href="/static/kid/guide.css?v={{ asset_v }}">{% endblock %}
+{% block content %}
+<div class="p-16">
+{{ guide_player("kids", lang, tour, finger, "/help/guide", _("Back")) }}
+</div>
+<script src="/static/kid/guide.js?v={{ asset_v }}"></script>
+{% endblock %}

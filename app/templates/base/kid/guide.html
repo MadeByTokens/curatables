@@ -1,0 +1,13 @@
+{% extends "kid/base.html" %}
+{% set nav_active = "help" %}
+{% block head_extra %}<link rel="stylesheet" href="/static/kid/guide.css?v={{ asset_v }}">{% endblock %}
+{% block content %}
+<div class="p-16 mw-700 mx-auto">
+  <h2 class="page-title"><span aria-hidden="true">&#127916;</span> {{ _("Watch how") }}</h2>
+  <ul class="guide-tours">
+    {% for t in tours %}
+    <li><a href="/help/guide/{{ t.id }}" class="guide-tour-link"><span class="guide-tour-icon" aria-hidden="true">{{ t.icon }}</span>{{ t.title }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

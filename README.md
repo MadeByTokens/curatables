@@ -115,7 +115,7 @@ walk through every screen._
 
 | Who's watching? | Home | Watching |
 |:---:|:---:|:---:|
-| [![Profile picker](docs/guide/img/kid-who-is-watching.webp)](docs/guide/img/kid-who-is-watching.webp) | [![Kid home grid](docs/guide/img/kid-home.webp)](docs/guide/img/kid-home.webp) | [![Kid watch page](docs/guide/img/kid-watch.webp)](docs/guide/img/kid-watch.webp) |
+| [![Signing in](docs/guide/img/anim/kids-sign-in.webp)](docs/guide/img/anim/kids-sign-in.webp) | [![Arranging Home](docs/guide/img/anim/kids-home.webp)](docs/guide/img/anim/kids-home.webp) | [![Kid watch page](docs/guide/img/kid-watch.webp)](docs/guide/img/kid-watch.webp) |
 
 **Parent side**: everything that needs you, at a glance.
 

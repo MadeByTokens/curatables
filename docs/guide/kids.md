@@ -10,6 +10,11 @@ pictures come from a real box with three example kids, Mia, Leo and
 Lucía. The videos are free films (see the
 [credits](parents.md#credits)).
 
+The moving pictures play each task step by step, with a ring on what to
+tap. On the box itself, **Help → Watch how** plays the same guides, one
+step at a time, in your kid's language (English, Spanish or
+Portuguese), and lists only what your kid can do.
+
 - [Who's watching?](#whos-watching)
 - [Home](#home)
 - [Watching a video](#watching-a-video)
@@ -23,12 +28,10 @@ Lucía. The videos are free films (see the
 
 **Tap your picture.**
 
-![Who's watching? Leo, Lucía and Mia](img/kid-who-is-watching.webp)
+![Signing in: tap your picture, then your secret pictures one by one](img/anim/kids-sign-in.webp)
 
 **Some kids have a secret.** Tap your three pictures in the right order.
 Each one shows for a moment, then hides, so nobody else can see it.
-
-![Mia's secret pictures: the first is hidden, the frog shows for a moment](img/kid-picture-pin.webp)
 
 Or tap your numbers, then ✓. Got it wrong? Just try again.
 
@@ -46,6 +49,10 @@ its videos, or **All videos** to see everything. **Change** under a
 channel gives it your own name and picture (one of the drawings, or a
 photo); only you see them, and **Reset to original** puts them back.
 
+![Channels: tap one, then pick its order](img/anim/kids-channels.webp)
+
+![Change under a channel: your own name and a picture](img/anim/kids-channel-look.webp)
+
 **On a channel**, pick the order of its videos: **Newest**, **Oldest**,
 **A to Z** or **Z to A**. The channel keeps that order for you. A to Z
 goes by your own names for the videos, so naming them "1 Trains",
@@ -56,7 +63,7 @@ goes by your own names for the videos, so naming them "1 Trains",
 **✕** to take one off. Tap **Done** when it looks right. Under a video,
 **Put on my Home** adds it too.
 
-![Mia's home with six videos](img/kid-home.webp)
+![Arranging Home: Change my Home, Move and a spot, + and a video, Done](img/anim/kids-home.webp)
 
 ## Watching a video
 
@@ -76,7 +83,9 @@ there, or **From the start** to watch it all again.
 **At the end**, tap **Again** to watch it once more, or **Home** to pick
 another one.
 
-![The end of a video: Again or Home](img/kid-end.webp)
+![Watching: tap a video, play it, then Again or Home at the end](img/anim/kids-watch.webp)
+
+![Hide: Yes, hide it, and Undo if you change your mind](img/anim/kids-hide.webp)
 
 ## Looking for a video
 
@@ -84,7 +93,7 @@ another one.
 no video has that word, it shows videos with a word that sounds like it
 ("dinasor" finds the dinosaurs) under "Did you mean one of these?".
 
-![Searching for "moon"](img/kid-search.webp)
+![Searching for "elefant" finds the elephants](img/anim/kids-search.webp)
 
 **Tags** shows the words you put on videos. Tap one to see its videos.
 
@@ -98,7 +107,7 @@ grown-up watches it first. "Already here" means you have it. Tap
 **More** to see more of its videos. The buttons above the results put
 the best match, the newest or A to Z first.
 
-![Find new: looking for Caminandes](img/kid-find-new.webp)
+![Find new: type, Search, then Ask on the one you want](img/anim/kids-find-new.webp)
 
 You can give it a name, say what it is about and pick a channel, or
 type the name of a new channel to make one for it. Or just tap **Send**.

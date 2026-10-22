@@ -11,10 +11,21 @@ code already called itself 0.5.0).
 
 ## Unreleased
 
+**For parents**
+- **Help → Show me how** has the same kind of guides for parents:
+  adding a kid, answering a video request, a video a kid hid. The
+  written guides on GitHub use them as moving pictures.
+
 **For kids**
 - **Channels** in the menu lists every channel as big round pictures,
   like a channel list on YouTube, with **All videos** first, even when
   there is only one channel. Home shows only the kid's videos.
+- **Help → Watch how** plays step-by-step guides made from real screens,
+  with a finger showing what to tap: signing in, watching, arranging
+  Home, channels, searching, asking for a video, hiding one. In the
+  kid's language (English, Spanish or Portuguese), listing only what
+  that kid can do. It moves on by itself every few seconds, or with the
+  buttons; with Reduce Motion it waits for a tap and nothing glides.
 - **Change** under a channel gives it the kid's own name and picture (a
   drawing or a photo from the tablet). Only that kid sees it; the
   channel stays as the parent set it for everyone else. Needs
