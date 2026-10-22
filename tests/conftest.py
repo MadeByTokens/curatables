@@ -65,9 +65,12 @@ def _make_test_db():
 
 
 @pytest.fixture(autouse=True)
-def _no_mdns_on_the_real_network(monkeypatch):
+def _no_mdns_on_the_real_network(request, monkeypatch):
     """A test app must not announce "curatables.local" on the network the
-    tests run on: it would answer for a real box there."""
+    tests run on: it would answer for a real box there. tests/test_mdns.py
+    checks the advertiser itself, against a pretend Zeroconf."""
+    if request.module.__name__.endswith("test_mdns"):
+        return
     from app.services import mdns
 
     async def quiet(self, *args, **kwargs):
