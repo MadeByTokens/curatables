@@ -60,9 +60,19 @@ photo); only you see them, and **Reset to original** puts them back.
 ![New channel: a name, then Create channel](img/anim/kids-new-channel.webp)
 
 **On a channel**, pick the order of its videos: **Newest**, **Oldest**,
-**A to Z** or **Z to A**. The channel keeps that order for you. A to Z
-goes by your own names for the videos, so naming them "1 Trains",
-"2 Boats" puts them in the order you want.
+**Came out first**, **A to Z** or **Z to A**. The channel keeps that
+order for you. Came out first lines a show's videos up the way they
+were made. A to Z goes by your own names for the videos, so naming them
+"1 Trains", "2 Boats" puts them in the order you want.
+
+**My order** puts a channel's videos exactly where you want them. Tap
+**Change the order**, pick where to **Start from**, then move videos
+with ▲ ▼, **To the top**, **To the end**, or a place number and
+**Move**. Nothing changes until you tap **Save**. **Undo** takes back
+your last move, **Cancel** leaves everything as it was, and **Undo
+save** brings back the order from before.
+
+![My order: Change the order, Start from, To the top, then Save](img/anim/kids-my-order.webp)
 
 **Change my Home** puts your favorite videos where you want them: tap a
 **+** to put a video there, **Move** and then a spot to move one, or

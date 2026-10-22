@@ -1,0 +1,78 @@
+{% extends "kid/base.html" %}
+{% from "kid/_channel_avatar.html" import channel_avatar %}
+{% set start_labels = {"newest": _("Newest"), "oldest": _("Oldest"), "made": _("Came out first"), "az": _("A to Z"), "za": _("Z to A")} %}
+{% macro bar(where) %}
+<div class="arrange-bar">
+  <form method="POST" action="/channel/{{ channel.id }}/arrange" class="d-ib">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    <button type="submit" name="do" value="save" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn"><span aria-hidden="true">&#10004;&#65039;</span> {{ _("Save") }}</button>
+    <button type="submit" name="do" value="undo" class="video-action-btn"{% if not can_undo %} disabled{% endif %}><span aria-hidden="true">&#8630;&#65039;</span> {{ _("Undo") }}</button>
+    <button type="submit" name="do" value="cancel" class="video-action-btn">{{ _("Cancel") }}</button>
+  </form>
+</div>
+{% endmacro %}
+{% block content %}
+<div class="mw-700 mx-auto p-16 arrange">
+  <h2 class="page-title">{{ channel_avatar(channel, "channel-avatar channel-avatar-small") }} {{ _("Arrange {name}", name=channel.name) }}</h2>
+  <p class="page-intro">{{ _("Move the videos where you want them, then tap Save. Nothing changes until you save.") }}</p>
+  {{ bar("top") }}
+
+  {% if ask %}
+  <div class="arrange-ask" role="alert">
+    <p>{{ _("Start over from {name}? Your moves will go.", name=start_labels[ask]) }}</p>
+    <form method="POST" action="/channel/{{ channel.id }}/arrange" class="d-ib">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="page" value="{{ page }}">
+      <input type="hidden" name="sort" value="{{ ask }}">
+      <input type="hidden" name="sure" value="1">
+      <button type="submit" name="do" value="start" class="video-action-btn">{{ _("Yes") }}</button>
+    </form>
+    <a href="/channel/{{ channel.id }}/arrange?page={{ page }}" class="video-action-btn">{{ _("No") }}</a>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/channel/{{ channel.id }}/arrange" class="arrange-start">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    <input type="hidden" name="do" value="start">
+    <span class="channel-sort-label">{{ _("Start from") }}</span>
+    {% for value in starts %}
+    <button type="submit" name="sort" value="{{ value }}" class="sort-btn tappable">{{ start_labels[value] }}</button>
+    {% endfor %}
+  </form>
+
+  {% if moved %}<p class="arrange-moved" role="status">{{ _("Moved to place {n}.", n=moved_place) }}</p>{% endif %}
+
+  <ol class="arrange-list">
+    {% for n, v in rows %}
+    <li class="arrange-row{% if v.video_id == moved %} is-moved{% endif %}" id="row-{{ v.video_id }}">
+      <span class="arrange-place">{{ n }}</span>
+      <img src="/media/thumb/{{ v.video_id }}" alt="" class="arrange-thumb">
+      <span class="arrange-title">{{ v.title }}</span>
+      <form method="POST" action="/channel/{{ channel.id }}/arrange" class="arrange-moves">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="page" value="{{ page }}">
+        <input type="hidden" name="video_id" value="{{ v.video_id }}">
+        <button type="submit" name="do" value="up" class="arrange-btn" aria-label="{{ _('Up') }}"{% if n == 1 %} disabled{% endif %}>&#9650;</button>
+        <button type="submit" name="do" value="down" class="arrange-btn" aria-label="{{ _('Down') }}"{% if n == total %} disabled{% endif %}>&#9660;</button>
+        <button type="submit" name="do" value="top" class="arrange-btn arrange-btn-word">{{ _("To the top") }}</button>
+        <button type="submit" name="do" value="end" class="arrange-btn arrange-btn-word">{{ _("To the end") }}</button>
+        <label class="sr-only" for="place-{{ v.video_id }}">{{ _("Move to place") }}</label>
+        <input type="number" id="place-{{ v.video_id }}" name="place" min="1" max="{{ total }}" inputmode="numeric" pattern="[0-9]*" class="arrange-place-input" placeholder="#">
+        <button type="submit" name="do" value="place" class="arrange-btn arrange-btn-word">{{ _("Move") }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% if pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}<a href="/channel/{{ channel.id }}/arrange?page={{ page - 1 }}" class="page-link" aria-label="{{ _('Previous page') }}">&larr;</a>{% endif %}
+    <span class="page-info">{{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="/channel/{{ channel.id }}/arrange?page={{ page + 1 }}" class="page-link" aria-label="{{ _('Next page') }}">&rarr;</a>{% endif %}
+  </div>
+  {% endif %}
+  {{ bar("bottom") }}
+</div>
+{% endblock %}

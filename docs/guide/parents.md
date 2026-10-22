@@ -229,10 +229,22 @@ the full **Edit Channel** instead, where they can also delete them, and
 **New channel** at the end of the page makes one of their own.
 
 On a channel, and on **All videos**, **Order** shows the videos newest
-or oldest first, or A to Z or Z to A by the titles that kid sees, so a
-kid who renames videos "1 Trains", "2 Boats" gets that order. Each
-kid's choice stays for each channel and for All videos. **Search** forgives spelling: when no video has the word typed,
-it offers ones with a word close to it ("dinasor" finds the dinosaurs).
+or oldest first (by when they were added), **Came out first** (by when
+they came out on YouTube), or A to Z or Z to A by the titles that kid
+sees, so a kid who renames videos "1 Trains", "2 Boats" gets that
+order. Each kid's choice stays for each channel and for All videos.
+
+On a channel, **My order** lets your kid arrange the videos exactly as
+they want, without surprises: picking it changes nothing, and **Change
+the order** opens a short list where they start from one of the orders
+and move videos (▲ ▼, **To the top**, **To the end**, or **Move** to a
+place number). Nothing changes until **Save**; **Undo** takes back the
+last move, **Cancel** leaves everything as it was, and **Undo save**
+brings back the order from before. New videos go in by when they came
+out, without moving the ones your kid placed.
+
+**Search** forgives spelling: when no video has the word typed, it
+offers ones with a word close to it ("dinasor" finds the dinosaurs).
 
 When a kid taps **Hide** under a video, it leaves that kid's lists and
 shows up under **Needs your attention**. Open it: **Delete video**

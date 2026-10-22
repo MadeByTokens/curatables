@@ -230,8 +230,71 @@ def pin_storm(page):
         raise Fail(f"Back from the lock went to {page.url}")
 
 
+def order_fiddler(page):
+    """Arranges My order on a channel the way an anxious, quick finger
+    might: moves, undo, start over, cancel, then save. Nothing errors,
+    nothing changes before Save, and no video is lost or doubled."""
+    page.goto(args.base + "/channels")
+    link = page.locator("a.channel-card-link[href^='/channel/']").first
+    href = link.get_attribute("href")
+    page.goto(args.base + href)
+    before = re.findall(r'href="/watch/([\w-]+)"', page.content())
+    page.locator('button.sort-btn[value="mine"]').click()
+    page.wait_for_load_state()
+    if re.findall(r'href="/watch/([\w-]+)"', page.content()) != before:
+        raise Fail("picking My order changed the channel by itself")
+    page.goto(args.base + href + "/arrange")
+    for i in range(40):
+        rows = page.locator(".arrange-row")
+        n = rows.count()
+        if not n:
+            raise Fail("arranging page shows no videos")
+        what = random.choice(["up", "down", "top", "end", "place", "undo", "start", "back"])
+        if what in ("up", "down", "top", "end"):
+            btn = rows.nth(random.randrange(n)).locator(f'button[value="{what}"]')
+            if btn.is_enabled():
+                btn.click(no_wait_after=bool(i % 3))
+        elif what == "place":
+            row = rows.nth(random.randrange(n))
+            row.locator("input[name=place]").fill(random.choice(["1", "2", "999", "0", "x"]))
+            row.locator('button[value="place"]').click()
+        elif what == "undo":
+            page.locator('.arrange-bar button[value="undo"]').first.click()
+        elif what == "start":
+            page.locator("form.arrange-start button").nth(random.randrange(5)).click()
+            page.wait_for_load_state()
+            if page.locator(".arrange-ask").count():
+                if i % 2:
+                    page.get_by_role("link", name=re.compile("No")).click()
+                else:
+                    page.locator(".arrange-ask button").click()
+        else:
+            page.go_back()
+            page.goto(args.base + href + "/arrange")
+        page.wait_for_load_state()
+        check(page, f"arranging step {i} ({what})")
+    draft = re.findall(r'id="row-([\w-]+)"', page.content())
+    if len(draft) != len(set(draft)):
+        raise Fail(f"a video shows twice while arranging: {draft}")
+    page.locator('.arrange-bar button[value="cancel"]').first.click()
+    page.wait_for_load_state()
+    check(page, "after Cancel")
+    page.goto(args.base + href + "/arrange")
+    page.locator('.arrange-row button[value="top"]').last.click()
+    page.wait_for_load_state()
+    page.locator('.arrange-bar button[value="save"]').first.click()
+    page.wait_for_load_state()
+    check(page, "after Save")
+    after = re.findall(r'href="/watch/([\w-]+)"', page.content())
+    if sorted(set(after)) != sorted(set(before)) and len(before) <= 24:
+        raise Fail(f"Save lost or added videos: {before} -> {after}")
+    page.locator("form[action$='/undo-save'] button").click()
+    page.wait_for_load_state()
+    check(page, "after Undo save")
+
+
 PERSONAS = [replayer, repeat_tapper, back_masher, rapid_switcher, same_place, big_zoom, still,
-            key_masher, long_pause, pin_storm]
+            key_masher, long_pause, order_fiddler, pin_storm]
 
 
 def main():

@@ -16,6 +16,7 @@
   <div class="help-grid">
     {{ tile("&#127968;"|safe, _("Home is yours: put your favorite videos there")) }}
     {{ tile("&#128250;"|safe, _("Channels shows all your channels")) }}
+    {{ tile("&#8597;&#65039;"|safe, _("My order: put a channel's videos where you want them")) }}
     {% if viewer and viewer.is_child and viewer.allow_customize %}
     {{ tile("&#9999;&#65039;"|safe, _("Give a channel your own name and picture")) }}
     {% endif %}
