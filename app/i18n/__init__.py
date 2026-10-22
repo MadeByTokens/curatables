@@ -52,6 +52,7 @@ SERVER_MESSAGES = (
     "Channel name is required.",
     "Channel name must be 64 characters or fewer.",
     "That name is already used. Try another one.",
+    "That picture didn't work. Try another one.",
     "Let's look for something else.",
     "Whoa, so many taps! Let's slow down a little, then try again.",
     "Lots of searching right now. Try again in a minute.",

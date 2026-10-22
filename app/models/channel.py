@@ -12,3 +12,8 @@ class Channel:
     banner_filename: str = ""
     icon_filename: str = ""
     color: str = "#2a9d8f"
+    # One kid's own look for the channel (see ChannelRepository.with_looks);
+    # never stored on the channel itself.
+    kid_emoji: str = ""
+    kid_picture: str = ""
+    original_name: str = ""

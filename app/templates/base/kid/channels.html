@@ -1,0 +1,30 @@
+{% extends "kid/base.html" %}
+{% from "kid/_channel_avatar.html" import channel_avatar %}
+{% block content %}
+<div class="p-16 mw-700 mx-auto">
+  <h2 class="page-title"><span aria-hidden="true">&#128250;</span> {{ _("Channels") }}</h2>
+  <ul class="channel-cards">
+    <li class="channel-card">
+      <a href="/all" class="channel-card-link">
+        <span class="channel-avatar channel-avatar-emoji" aria-hidden="true">&#127916;</span>
+        <span class="channel-card-name">{{ _("All videos") }}</span>
+      </a>
+    </li>
+    {% for ch in channels %}
+    <li class="channel-card">
+      <a href="/channel/{{ ch.id }}" class="channel-card-link">
+        {{ channel_avatar(ch) }}
+        <span class="channel-card-name">{{ ch.name }}</span>
+      </a>
+      {% if viewer and viewer.is_child and viewer.allow_customize %}
+      <a href="{{ ('/channel/' ~ ch.id ~ '/edit') if ch.owner_profile_id == viewer.profile_id else ('/channels/' ~ ch.id ~ '/look') }}"
+         class="channel-card-change tappable"><span aria-hidden="true">&#9999;&#65039;</span> {{ _("Change") }}<span class="sr-only"> {{ ch.name }}</span></a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if not channels %}
+  <p class="page-intro">{{ _("No videos here yet. Ask a grown-up to add some!") }}</p>
+  {% endif %}
+</div>
+{% endblock %}

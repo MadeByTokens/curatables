@@ -16,6 +16,14 @@ AVATAR_EMOJIS = {
     "sun": "\u2600\ufe0f",     # ☀️
 }
 
+# Pictures a kid can give a channel on the Channels page.
+CHANNEL_EMOJIS = [
+    "\U0001f682", "\U0001f697", "\U0001f69a", "\u2708\ufe0f", "\U0001f680", "\U0001f996",
+    "\U0001f436", "\U0001f431", "\U0001f981", "\U0001f438", "\U0001f42c", "\U0001f984",
+    "\U0001f3b5", "\U0001f3a8", "\u26bd", "\U0001f3ae", "\U0001f52c", "\U0001f4da",
+    "\U0001f308", "\u2b50", "\U0001f30d", "\U0001f355", "\u2764\ufe0f", "\U0001f600",
+]
+
 # For parent form dropdowns: list of (key, emoji) tuples
 AVATAR_CHOICES = list(AVATAR_EMOJIS.items())
 

@@ -11,6 +11,15 @@ code already called itself 0.5.0).
 
 ## Unreleased
 
+**For kids**
+- **Channels** in the menu lists every channel as big round pictures,
+  like a channel list on YouTube, with **All videos** first, even when
+  there is only one channel. Home shows only the kid's videos.
+- **Change** under a channel gives it the kid's own name and picture (a
+  drawing or a photo from the tablet). Only that kid sees it; the
+  channel stays as the parent set it for everyone else. Needs
+  **Customize videos and channels**. Adds one database migration.
+
 **Fixes**
 - "What I asked for" leaves out a video that was added and then deleted
   or hidden (by a grown-up or by the kid), instead of offering **Yes!

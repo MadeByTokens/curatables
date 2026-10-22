@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import dataclasses
 import sqlite3
 
 from app.models import Channel
@@ -124,6 +125,42 @@ class ChannelRepository(BaseRepository):
             icon_filename=d.get("icon_filename") or "",
             color=d.get("color") or "#2a9d8f",
         )
+
+    # --- a kid's own look for a channel ---
+
+    def look(self, profile_id: int, channel_id: int) -> dict:
+        row = self.db.execute(
+            "SELECT name, emoji, picture FROM profile_channel_looks WHERE profile_id = ? AND channel_id = ?",
+            (profile_id, channel_id)).fetchone()
+        return dict(row) if row else {"name": "", "emoji": "", "picture": ""}
+
+    def set_look(self, profile_id: int, channel_id: int, name: str, emoji: str, picture: str) -> None:
+        with self.db:
+            if not (name or emoji or picture):
+                self.db.execute("DELETE FROM profile_channel_looks WHERE profile_id = ? AND channel_id = ?",
+                                (profile_id, channel_id))
+                return
+            self.db.execute(
+                "INSERT INTO profile_channel_looks (profile_id, channel_id, name, emoji, picture) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT (profile_id, channel_id) DO UPDATE SET "
+                "name = excluded.name, emoji = excluded.emoji, picture = excluded.picture",
+                (profile_id, channel_id, name, emoji, picture))
+
+    def with_looks(self, profile_id: int, channels: builtins.list[Channel]) -> builtins.list[Channel]:
+        """The channels as this kid named and pictured them."""
+        rows = self.db.execute(
+            "SELECT channel_id, name, emoji, picture FROM profile_channel_looks WHERE profile_id = ?",
+            (profile_id,)).fetchall()
+        looks = {r["channel_id"]: r for r in rows}
+        out = []
+        for ch in channels:
+            look = looks.get(ch.id)
+            if look is None or ch.owner_profile_id == profile_id:
+                out.append(ch)
+                continue
+            out.append(dataclasses.replace(ch, name=look["name"] or ch.name, original_name=ch.name,
+                                           kid_emoji=look["emoji"], kid_picture=look["picture"]))
+        return out
 
     def list_visible_to(self, profile_id: int) -> builtins.list[int]:
         """IDs of the channels the kid profile may see (see kid_sees_channel)."""

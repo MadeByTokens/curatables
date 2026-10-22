@@ -149,7 +149,7 @@ decided** takes that back. **Remove** just drops a request (one tapped by
 mistake, say), and your kid can ask for it again later. Neither deletes
 anything: both stay under **Recently decided**, where **Put back**
 returns the request as it was, with your kid's name and description. A kid who can
-make their own channels (**Customize videos and own channels**) can make
+make their own channels (**Customize videos and channels**) can make
 one for the video when asking; any other kid can only suggest a name,
 and you see it as "For: a new channel" and filled in under **Or create
 new channel**. Your kid can also take back a request before you decide.
@@ -207,8 +207,15 @@ says "Uploaded by Mia · in Mia's Films"), and anything that needs you
 first it shows their 12 newest videos. **Change my Home** lets them put
 a video in any of its 24 spots, move one (**Move**, then the spot) or
 take one off; **Put on my Home** under a video adds it too. Once they
-change it, Home stays as they arranged it, and new videos show under
-**All** and in their channels.
+change it, Home stays as they arranged it, and new videos show on the
+**Channels** page, in their channels and under **All videos**.
+
+**Channels** (in the kid's menu) lists every channel they can watch as
+big round pictures, even when there is only one. With **Customize
+videos and channels** on, **Change** under a channel gives it the kid's
+own name and picture (a drawing or a photo). Only that kid sees it; the
+channel stays as you set it for everyone else. Their own channels open
+the full **Edit Channel** instead.
 
 On a channel, **Order** shows its videos newest or oldest first, or A to
 Z or Z to A by the titles that kid sees, so a kid who renames videos

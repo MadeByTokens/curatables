@@ -168,6 +168,17 @@ CREATE TABLE IF NOT EXISTS profile_home_slots (
     UNIQUE (profile_id, video_id)
 );
 
+-- A kid's own name and picture (an emoji or a picture file) for a
+-- channel, seen only by that kid.
+CREATE TABLE IF NOT EXISTS profile_channel_looks (
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL DEFAULT '',
+    emoji      TEXT NOT NULL DEFAULT '',
+    picture    TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (profile_id, channel_id)
+);
+
 -- The order a kid picked for a channel's videos ('oldest', 'az', 'za');
 -- no row means newest first.
 CREATE TABLE IF NOT EXISTS profile_channel_sort (

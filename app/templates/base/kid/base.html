@@ -10,6 +10,9 @@
   <h1>{{ viewer.kid_header_name if viewer else 'curatables' }}</h1>
   <nav class="header-nav" aria-label="{{ _('Main') }}">
     {{ nav_btn("/", "home", "&#127968;"|safe, _("Home"), nav_active) }}
+    {% if viewer and viewer.is_child %}
+    {{ nav_btn("/channels", "channels", "&#128250;"|safe, _("Channels"), nav_active) }}
+    {% endif %}
     {% if viewer and viewer.search_mode != 'disabled' %}
     {{ nav_btn("/search", "search", "&#128269;"|safe, _("Search"), nav_active) }}
     {% endif %}

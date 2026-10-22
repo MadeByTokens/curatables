@@ -44,6 +44,21 @@ class ChannelService:
         (channel_dir / filename).write_bytes(data)
         return filename
 
+    def save_kid_picture(self, channel_id: int, profile_id: int, data: bytes) -> str:
+        """Store a kid's own picture for a channel beside its art and
+        return its filename. Raises ValueError for anything but an image."""
+        ext = validate_image(data)
+        channel_dir = self.asset_dir(channel_id)
+        channel_dir.mkdir(parents=True, exist_ok=True)
+        self.remove_kid_picture(channel_id, profile_id)
+        filename = f"kid-{profile_id}{ext}"
+        (channel_dir / filename).write_bytes(data)
+        return filename
+
+    def remove_kid_picture(self, channel_id: int, profile_id: int) -> None:
+        for old in self.asset_dir(channel_id).glob(f"kid-{profile_id}.*"):
+            old.unlink(missing_ok=True)
+
     def list(self) -> list[Channel]:
         return self.channel_repo.list()
 
@@ -82,7 +97,7 @@ class ChannelService:
             if ch is not None:
                 channels.append(ch)
         channels.sort(key=lambda c: (c.position, c.name.lower()))
-        return channels
+        return self.channel_repo.with_looks(profile_id, channels)
 
     def name_taken(self, name: str, except_id: int | None = None) -> bool:
         other = self.channel_repo.get_by_name(name)

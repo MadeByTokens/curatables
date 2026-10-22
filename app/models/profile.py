@@ -38,7 +38,7 @@ FEATURE_SWITCHES = (
     ("allow_reactions", "Emoji reactions", True),
     ("allow_comments", "Comments and replies", False),
     ("allow_tags", "Tags (typing words onto videos)", False),
-    ("allow_customize", "Customize videos and own channels (titles, pictures)", False),
+    ("allow_customize", "Customize videos and channels (titles, pictures)", False),
     ("allow_upload", "Upload videos from this device", False),
     ("auto_subtitles", "Turn subtitles on automatically", False),
     ("allow_download", "Download videos to keep on this device", True),

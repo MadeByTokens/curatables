@@ -225,6 +225,26 @@ def _serve_channel_asset(config: Config, content: ContentService, viewer: Viewer
     return Response(status_code=404)
 
 
+_KID_PICTURE = re.compile(r"^kid-\d+\.[a-z]+$")
+
+
+@router.get("/channel/{channel_id}/my-icon")
+def serve_kid_channel_picture(channel_id: int,
+                              viewer: ViewerContext = Depends(get_viewer),
+                              content: ContentService = Depends(get_content_service),
+                              config: Config = Depends(get_config)):
+    """The picture this kid gave a channel; nobody else's."""
+    if not viewer.is_child or not viewer.profile_id or content.channel_for_viewer(channel_id, viewer) is None:
+        return Response(status_code=404)
+    picture = content.channel_repo.look(viewer.profile_id, channel_id)["picture"]
+    if not _KID_PICTURE.match(picture):
+        return Response(status_code=404)
+    path = config.media_dir / "channels" / str(channel_id) / picture
+    if not path.is_file():
+        return Response(status_code=404)
+    return FileResponse(str(path), media_type=_sniff_image_mime(path))
+
+
 @router.get("/channel/{channel_id}/banner")
 def serve_channel_banner(channel_id: int,
                          viewer: ViewerContext = Depends(get_viewer),

@@ -1,4 +1,5 @@
 {% extends "kid/base.html" %}
+{% from "kid/_channel_avatar.html" import channel_avatar %}
 {% set nav_active = "home" %}
 {% block content %}
 <div class="home-edit-bar" role="status">
@@ -11,7 +12,7 @@
   <a href="/home/pick?slot={{ slot }}" class="channel-link{% if not current_channel_id %} active{% endif %}"{% if not current_channel_id %} aria-current="page"{% endif %}>{{ _("All") }}</a>
   {% for ch in channels %}
   <a href="/home/pick?slot={{ slot }}&amp;channel={{ ch.id }}" class="channel-link{% if current_channel_id == ch.id %} active{% endif %}"{% if current_channel_id == ch.id %} aria-current="page"{% endif %}>
-    {% if ch.icon_filename %}<img src="/media/channel/{{ ch.id }}/icon" alt="" class="r-circle va-mid mr-4 chip-icon">{% endif %}{{ ch.name }}</a>
+    {% if ch.icon_filename or ch.kid_picture or ch.kid_emoji %}{{ channel_avatar(ch, "r-circle va-mid mr-4 chip-icon") }}{% endif %}{{ ch.name }}</a>
   {% endfor %}
 </nav>
 {% endif %}
