@@ -229,7 +229,8 @@ the full **Edit Channel** instead, where they can also delete them, and
 **New channel** at the end of the page makes one of their own.
 
 On a channel, and on **All videos**, **Order** shows the videos newest
-or oldest first (by when they were added), **Came out first** (by when
+or oldest first (by when they were downloaded; a video whose files
+were freed counts from when it downloads again), **Came out first** (by when
 they came out on YouTube), or A to Z or Z to A by the titles that kid
 sees, so a kid who renames videos "1 Trains", "2 Boats" gets that
 order. Each kid's choice stays for each channel and for All videos.

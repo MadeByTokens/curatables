@@ -77,6 +77,24 @@ def test_the_kid_picks_an_order_and_it_stays(app):
     assert _order(kid, ch) == ["yt_a", "yt_c", "yt_b"]
 
 
+def test_newest_and_oldest_go_by_the_last_download(app):
+    """A video whose files were freed keeps its place until it downloads
+    again; then it is the newest one (Enrico's order stays as it was
+    until something really was downloaded again)."""
+    conn, ch = _trains(app)
+    _pid, kid = _kid(app, "enzo")
+    videos = VideoRepository(conn)
+    videos.mark_evicted("yt_b")
+    assert _order(kid, ch) == ["yt_a", "yt_c", "yt_b"]
+    assert videos.claim_evicted("yt_b")
+    videos.update("yt_b", download_status="ready")
+    assert _order(kid, ch) == ["yt_b", "yt_a", "yt_c"]
+    kid.post(f"/channel/{ch}/sort", data={"sort": "oldest"})
+    assert _order(kid, ch) == ["yt_c", "yt_a", "yt_b"]
+    kid.post("/all/sort", data={"sort": "oldest"})
+    assert _all(kid) == ["yt_c", "yt_a", "yt_b"]
+
+
 def test_a_to_z_uses_the_kids_own_titles(app):
     """Enrico numbers his titles to put videos where he wants them."""
     conn, ch = _trains(app)
@@ -175,7 +193,7 @@ def test_parents_get_no_order_buttons_on_all_videos(app, authed_client):
 
 
 def test_came_out_first_goes_by_when_a_video_came_out(app):
-    """Newest and Oldest stay by when a video was added; Came out first
+    """Newest and Oldest go by when a video was downloaded; Came out first
     lines videos up by YouTube's upload date, whatever order they were
     downloaded in; one with no date (an upload) counts from the day it
     was added."""

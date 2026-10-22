@@ -46,8 +46,11 @@ code already called itself 0.5.0).
 - **Came out first** is a new **Order** button on channels and on All
   videos: by when the video came out on YouTube (or when it was added,
   for one with no date), so a series lines up the way it was made,
-  whatever order it was downloaded in. Newest and Oldest stay by when a
-  video was added.
+  whatever order it was downloaded in.
+- **Newest** and **Oldest** go by when a video was last downloaded: a
+  video whose files were freed keeps its place, and when it downloads
+  again it counts as the newest. Orders a kid already has stay as they
+  are. Adds one database migration.
 - **My order** on a channel lets the kid put its videos in exactly the
   order they want. Picking it changes nothing by itself; **Change the
   order** opens a short list (30 to a page) to arrange a draft: **Start
