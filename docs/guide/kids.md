@@ -49,6 +49,9 @@ its videos, or **All videos** to see everything. Both have **Order**
 buttons, like a channel. **Change** under a
 channel gives it your own name and picture (one of the drawings, or a
 photo); only you see them, and **Reset to original** puts them back.
+**New channel** makes a channel of your own: put videos in it with
+**Customize** under a video. On your own channel, **Change** opens
+**Edit Channel**, where you can also delete it.
 
 ![Channels: tap one, then pick its order](img/anim/kids-channels.webp)
 

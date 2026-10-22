@@ -89,3 +89,28 @@ def test_without_customizing_there_is_nothing_to_change(app):
     conn.commit()
     assert "/look" not in enzo.get("/channels").text
     assert enzo.get(f"/channels/{trains}/look").status_code != 200
+
+
+def test_a_kid_makes_a_channel_from_the_channels_page(app):
+    conn, trains, [(enzo_id, enzo), (_lia_id, lia)] = _setup(app)
+    assert 'href="/channels/new"' in enzo.get("/channels").text
+    assert enzo.get("/channels/new").status_code == 200
+    resp = enzo.post("/channels/new", data={"name": "  My   drawings "})
+    assert resp.status_code == 303 and resp.headers["location"] == "/channels"
+    mine = ChannelRepository(conn).get_by_name("My drawings")
+    assert mine is not None and mine.owner_profile_id == enzo_id
+    page = enzo.get("/channels").text
+    assert "My drawings" in page and f'href="/channel/{mine.id}/edit"' in page
+    assert "My drawings" not in lia.get("/channels").text
+    for name, says in (("Trains", "already used"), ("   ", "name is required")):
+        resp = enzo.post("/channels/new", data={"name": name})
+        assert resp.status_code == 400 and says in resp.text, name
+
+
+def test_no_new_channels_without_customizing(app):
+    conn, _trains, [(enzo_id, enzo), _] = _setup(app)
+    conn.execute("UPDATE profiles SET allow_customize = 0 WHERE id = ?", (enzo_id,))
+    conn.commit()
+    assert 'href="/channels/new"' not in enzo.get("/channels").text
+    enzo.post("/channels/new", data={"name": "Sneaky"})
+    assert ChannelRepository(conn).get_by_name("Sneaky") is None

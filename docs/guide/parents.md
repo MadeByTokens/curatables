@@ -225,7 +225,8 @@ big round pictures, even when there is only one. With **Customize
 videos and channels** on, **Change** under a channel gives it the kid's
 own name and picture (a drawing or a photo). Only that kid sees it; the
 channel stays as you set it for everyone else. Their own channels open
-the full **Edit Channel** instead.
+the full **Edit Channel** instead, where they can also delete them, and
+**New channel** at the end of the page makes one of their own.
 
 On a channel, and on **All videos**, **Order** shows the videos newest
 or oldest first, or A to Z or Z to A by the titles that kid sees, so a

@@ -208,7 +208,7 @@ def test_channels_have_their_own_page_not_home(app):
     home = kid.get("/").text
     assert 'class="channel-nav"' not in home and 'href="/channels"' in home
     page = kid.get("/channels").text
-    assert page.count('class="channel-card"') == 2  # All videos + the one channel
+    assert page.count('href="/channel/') == 1  # the one channel, besides All videos
     assert 'href="/all"' in page
     planes = ChannelRepository(conn).create("Planes")
     conn.commit()
