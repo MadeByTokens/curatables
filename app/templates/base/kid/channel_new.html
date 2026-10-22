@@ -1,0 +1,20 @@
+{% extends "kid/base.html" %}
+{% block content %}
+<div class="mw-600 mx-auto p-16">
+  <h2 class="page-title"><span aria-hidden="true">&#10133;</span> {{ _("New channel") }}</h2>
+  {% if error %}<div class="upload-error" role="alert">{{ _(error) }}</div>{% endif %}
+  <form method="POST" action="/channels/new">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="mb-16">
+      <label for="name" class="d-block fw-bold mb-4">{{ _("Name") }}</label>
+      <input type="text" id="name" name="name" maxlength="64" required value="{{ typed_name or '' }}"
+             placeholder="{{ _('e.g. My Drawings') }}" class="w-100 p-8 fs-15 bd-ccc r-4 bb">
+    </div>
+    <p class="page-intro">{{ _("Put videos in it with Customize under a video.") }}</p>
+    <div class="d-flex gap-8">
+      <button type="submit" class="accent-bg on-dark bd-none r-4 fs-15 clickable save-btn">{{ _("Create channel") }}</button>
+      <a href="/channels" class="on-dark r-4 no-underline fs-15 cancel-link">{{ _("Cancel") }}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

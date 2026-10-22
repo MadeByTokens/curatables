@@ -22,6 +22,14 @@
       {% endif %}
     </li>
     {% endfor %}
+    {% if viewer and viewer.is_child and viewer.allow_customize %}
+    <li class="channel-card">
+      <a href="/channels/new" class="channel-card-link">
+        <span class="channel-avatar channel-avatar-new" aria-hidden="true">+</span>
+        <span class="channel-card-name">{{ _("New channel") }}</span>
+      </a>
+    </li>
+    {% endif %}
   </ul>
   {% if not channels %}
   <p class="page-intro">{{ _("No videos here yet. Ask a grown-up to add some!") }}</p>

@@ -244,6 +244,30 @@ def channels_page(request: Request,
     })
 
 
+@router.get("/channels/new", response_class=HTMLResponse)
+def channel_new_page(request: Request, viewer: ViewerContext = Depends(_customize)):
+    return render_kid_template(request, viewer, "kid/channel_new.html", {"nav_active": "channels"})
+
+
+@router.post("/channels/new")
+def channel_new(request: Request,
+                name: str = Form(""),
+                viewer: ViewerContext = Depends(_customize),
+                channels_svc: ChannelService = Depends(get_channel_service),
+                events: EventService = Depends(get_event_service)):
+    """A channel of the kid's own, made from the Channels page."""
+    try:
+        channel = channels_svc.create_for_kid(" ".join(name.split()), owner_profile_id=viewer.kid_id)
+    except ValueError as e:
+        response = render_kid_template(request, viewer, "kid/channel_new.html", {
+            "nav_active": "channels", "error": str(e), "typed_name": name[:64]})
+        response.status_code = 400
+        return response
+    events.log("channel_created", profile_id=viewer.profile_id,
+               data={"channel_id": channel.id, "name": channel.name})
+    return RedirectResponse(url="/channels", status_code=303)
+
+
 def _look_page(request, viewer, channel, look, error=None):
     response = render_kid_template(request, viewer, "kid/channel_look.html", {
         "channel": channel, "look": look, "emojis": CHANNEL_EMOJIS, "error": error,

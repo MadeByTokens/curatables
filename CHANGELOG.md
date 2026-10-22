@@ -34,6 +34,8 @@ code already called itself 0.5.0).
 - **All videos** has the same **Order** buttons as a channel (Newest,
   Oldest, A to Z, Z to A), kept for each kid apart from each channel's
   order. Adds one database migration.
+- **New channel** on the Channels page makes a channel of the kid's own
+  (with **Customize videos and channels** on).
 - **Change** under a channel gives it the kid's own name and picture (a
   drawing or a photo from the tablet). Only that kid sees it; the
   channel stays as the parent set it for everyone else. Needs

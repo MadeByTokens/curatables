@@ -1649,6 +1649,19 @@ a.wishlist-mine-title { color: inherit; }
     font-weight: bold;
 }
 
+.channel-avatar-new {
+    font-size: 72px;
+    line-height: 112px;
+    text-align: center;
+    color: #1f7a70;
+    color: var(--accent, #1f7a70);
+    background: #fff;
+    border: 4px dashed #1f7a70;
+    border: 4px dashed var(--accent, #1f7a70);
+    box-sizing: border-box;
+    box-shadow: none;
+}
+
 .channel-avatar-small {
     width: 48px;
     height: 48px;
