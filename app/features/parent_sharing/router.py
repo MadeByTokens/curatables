@@ -7,6 +7,9 @@ same whether the videos came from a URL or a file.
 """
 from __future__ import annotations
 
+import unicodedata
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, RedirectResponse, Response
@@ -40,6 +43,16 @@ def _safe_filename(name: str) -> str:
     return cleaned.strip("-") or "channel"
 
 
+def _attachment(stem: str, ext: str) -> dict:
+    """The download's file name as headers can carry it: plain ASCII in
+    filename (accents dropped), and the channel's own name, in any
+    script, in filename* (RFC 6266), which browsers prefer."""
+    plain = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode()
+    plain = _safe_filename(plain)
+    return {"Content-Disposition":
+            f'attachment; filename="{plain}.{ext}"; filename*=UTF-8\'\'{quote(f"{stem}.{ext}")}'}
+
+
 @router.get("/{channel_id}/export")
 def export_channel(request: Request, channel_id: int,
                    format: str = "ytc",
@@ -64,14 +77,14 @@ def export_channel(request: Request, channel_id: int,
         return Response(
             content=body,
             media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="{stem}.ytc"'},
+            headers=_attachment(stem, "ytc"),
         )
     if fmt == "txt":
         body = render_text(channel, videos).encode("utf-8")
         return Response(
             content=body,
             media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{stem}.txt"'},
+            headers=_attachment(stem, "txt"),
         )
     # fmt == "pdf"
     if not pdf_available():
@@ -97,7 +110,7 @@ def export_channel(request: Request, channel_id: int,
     return Response(
         content=body,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{stem}.pdf"'},
+        headers=_attachment(stem, "pdf"),
     )
 
 

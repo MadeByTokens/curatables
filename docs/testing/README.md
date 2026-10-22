@@ -142,7 +142,11 @@ and `counts.json`.
 One persona at a time, each acting out how some children use a tablet;
 each prints PASS or FAIL and saves a screenshot of a failure. See
 [Special needs](#special-needs). `pin_storm` runs last on purpose: it
-leaves Kiki locked out from that address for a few minutes.
+leaves Kiki locked out from that address for a few minutes. They need the
+family `seed.py` makes, as it made it: run them before `chaos.py`, or
+on a fresh box (`qemu-box.sh --fresh`), since chaos renames the kids,
+gives them PINs and deletes channels (and `seed.py content` expects a
+fresh box too).
 
 ### Reading the results
 
@@ -231,3 +235,4 @@ behaviours the tests act out, and what each must hold:
 | chaos.py | a video deleted while a kid's player loaded it crashed the request (500) | 61ead84 |
 | chaos.py, from the box's log | the same file sent twice at once (a double-tapped Send, or a parent and a kid sending the same clip) was stored twice over itself; a take-back in between crashed the second (500) | d9af139 |
 | Special-needs tests | the edit page of a deleted video crashed (500); any page now answers "not found" | 4bbce56 |
+| chaos.py, from the box's log | exporting a channel named in another script or with accents crashed (500): the file name went into a header as-is | (export fix, 2026-10-22) |

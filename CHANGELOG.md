@@ -60,6 +60,9 @@ code already called itself 0.5.0).
   one. Each kid's own, per channel. Adds one database migration.
 
 **Fixes**
+- Exporting a channel whose name has accents or another script
+  ("Canções", "名前の動画") failed with an error page; the file keeps the
+  channel's name.
 - Find new showed "Yes!" for a video that was added once and then
   deleted, moved out of the kid's channels or hidden by the kid, and
   asking for it again did nothing. It offers **Ask** again, and the old
