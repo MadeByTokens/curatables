@@ -9,7 +9,14 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.9.1
+
+A Channels page with each kid's own channel names and pictures; a kid's
+own order for a channel (My order, with Save and Undo) and a Came out
+first order; animated step-by-step guides on the box's Help pages; and
+fixes to Find new and What I asked for. Boxes on v0.9.0 install it from
+**Box → Updates**; it adds four database migrations, applied on the
+first start (they only add tables and columns).
 
 **For parents**
 - Requests from trusted channels can go straight into the channel the
@@ -42,7 +49,6 @@ code already called itself 0.5.0).
   drawing or a photo from the tablet). Only that kid sees it; the
   channel stays as the parent set it for everyone else. Needs
   **Customize videos and channels**. Adds one database migration.
-
 - **Came out first** is a new **Order** button on channels and on All
   videos: by when the video came out on YouTube (or when it was added,
   for one with no date), so a series lines up the way it was made,
