@@ -42,6 +42,12 @@ code already called itself 0.5.0).
   **Customize videos and channels**. Adds one database migration.
 
 **Fixes**
+- Find new showed "Yes!" for a video that was added once and then
+  deleted, moved out of the kid's channels or hidden by the kid, and
+  asking for it again did nothing. It offers **Ask** again, and the old
+  request waits for you again; saying yes to a video the kid had hidden
+  gives it back to them. A video you hid from kids is left out of their
+  results, like one you turned down.
 - "What I asked for" leaves out a video that was added and then deleted
   or hidden (by a grown-up or by the kid), instead of offering **Yes!
   Watch** for a video that isn't there.
