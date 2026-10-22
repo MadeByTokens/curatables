@@ -23,6 +23,7 @@ class Video:
     source_id: int | None = None
     channel_id: int | None = None
     added_at: str = ""
+    downloaded_at: str | None = None  # last re-download after its files were freed
     cached_at: str | None = None
     cache_expires_at: str | None = None
     file_size: int = 0

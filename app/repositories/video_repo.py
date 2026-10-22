@@ -442,9 +442,10 @@ class VideoRepository(BaseRepository):
 
     def claim_evicted(self, video_id: str) -> bool:
         """Atomically flip an evicted video back to pending. Returns True
-        for exactly one caller when several race to re-download it."""
+        for exactly one caller when several race to re-download it. The
+        re-download counts as its newest download (Newest and Oldest)."""
         cur = self.db.execute(
-            "UPDATE videos SET download_status = 'pending' "
+            "UPDATE videos SET download_status = 'pending', downloaded_at = datetime('now') "
             "WHERE video_id = ? AND download_status = 'evicted'",
             (video_id,),
         )
@@ -530,6 +531,7 @@ class VideoRepository(BaseRepository):
             storage_mode=d.get("storage_mode", "cache"),
             resolution=d.get("resolution", "720p"),
             added_at=d.get("added_at", ""),
+            downloaded_at=d.get("downloaded_at"),
             cached_at=d.get("cached_at"),
             cache_expires_at=d.get("cache_expires_at"),
             file_size=d.get("file_size", 0),

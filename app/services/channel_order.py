@@ -1,9 +1,10 @@
 """The order a kid picked for a channel's videos, and for All videos.
 
 Newest first is how every channel starts (a show's episodes in order,
-then the newest added). A kid can pick oldest first, "came out first"
-(by YouTube's upload date, or when it was added for a video with no
-such date), A to Z or Z to A by the titles that kid sees (their own
+then the newest downloaded: when it was added, or when its files were
+last downloaded again after being freed). A kid can pick oldest first,
+"came out first" (by YouTube's upload date, or when it was added for a
+video with no such date), A to Z or Z to A by the titles that kid sees (their own
 included, so "1 Trains", "2 Boats" put videos in order), or their own
 order on a channel (My order). The choice is kept for each kid and
 channel.
@@ -44,6 +45,12 @@ def release_key(video: Video) -> tuple:
     d = video.upload_date or ""
     day = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 and d.isdigit() else (video.added_at or "")[:10]
     return (day, video.added_at or "", video.video_id)
+
+
+def downloaded_key(video: Video) -> tuple:
+    """When a video was last downloaded: again after its files were
+    freed, else when it was added."""
+    return (video.downloaded_at or video.added_at or "", video.video_id)
 
 
 def title_key(title: str) -> list:
@@ -113,12 +120,12 @@ class ChannelOrderService:
         into their own channel, which newest first puts on top."""
         videos = list(videos)
         if sort == "newest":
-            videos.sort(key=lambda v: (v.added_at or "", v.video_id), reverse=True)
+            videos.sort(key=downloaded_key, reverse=True)
             _episodes_first(videos)
             return list(saved_first or []) + videos
         videos += saved_first or []
         if sort == "oldest":
-            videos.sort(key=lambda v: (v.added_at or "", v.video_id))
+            videos.sort(key=downloaded_key)
         elif sort == "made":
             videos.sort(key=release_key)
             _episodes_first(videos)
