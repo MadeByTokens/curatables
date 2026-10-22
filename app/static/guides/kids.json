@@ -1,0 +1,1246 @@
+{
+ "tours": [
+  {
+   "id": "sign-in",
+   "icon": "👤",
+   "needs": ""
+  },
+  {
+   "id": "watch",
+   "icon": "🎬",
+   "needs": ""
+  },
+  {
+   "id": "home",
+   "icon": "🏠",
+   "needs": ""
+  },
+  {
+   "id": "channels",
+   "icon": "📺",
+   "needs": ""
+  },
+  {
+   "id": "channel-look",
+   "icon": "✏️",
+   "needs": "allow_customize"
+  },
+  {
+   "id": "search",
+   "icon": "🔍",
+   "needs": "search"
+  },
+  {
+   "id": "find-new",
+   "icon": "🔭",
+   "needs": "allow_wishlist"
+  },
+  {
+   "id": "hide",
+   "icon": "🙈",
+   "needs": "allow_hide"
+  }
+ ],
+ "langs": {
+  "en": [
+   {
+    "id": "sign-in",
+    "title": "Sign in",
+    "steps": [
+     {
+      "img": "sign-in-01.webp",
+      "box": [
+       0.5182,
+       0.1016,
+       0.1823,
+       0.0977
+      ],
+      "say": "Tap your picture."
+     },
+     {
+      "img": "sign-in-02.webp",
+      "box": [
+       0.418,
+       0.3475,
+       0.1641,
+       0.0859
+      ],
+      "say": "Tap your secret pictures, one by one."
+     },
+     {
+      "img": "sign-in-03.webp",
+      "box": [
+       0.2375,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "The next one…"
+     },
+     {
+      "img": "sign-in-04.webp",
+      "box": [
+       0.418,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "…and the last one."
+     },
+     {
+      "img": "sign-in-05.webp",
+      "box": null,
+      "say": "You're in! This is your Home."
+     }
+    ]
+   },
+   {
+    "id": "watch",
+    "title": "Watch a video",
+    "steps": [
+     {
+      "img": "watch-01.webp",
+      "box": [
+       0.0208,
+       0.137,
+       0.3073,
+       0.1695
+      ],
+      "say": "Tap a video to watch it."
+     },
+     {
+      "img": "watch-02.webp",
+      "box": [
+       0.0208,
+       0.137,
+       0.9583,
+       0.4043
+      ],
+      "say": "Tap the video to play it."
+     },
+     {
+      "img": "watch-03.webp",
+      "box": [
+       0.257,
+       0.3079,
+       0.1995,
+       0.0625
+      ],
+      "say": "At the end: Again, or Home for another one."
+     },
+     {
+      "img": "watch-04.webp",
+      "box": null,
+      "say": "It plays again from the start."
+     }
+    ]
+   },
+   {
+    "id": "home",
+    "title": "Arrange your Home",
+    "steps": [
+     {
+      "img": "home-01.webp",
+      "box": [
+       0.3797,
+       0.8755,
+       0.2406,
+       0.043
+      ],
+      "say": "Tap Change my Home."
+     },
+     {
+      "img": "home-02.webp",
+      "box": [
+       0.0312,
+       0.3827,
+       0.116,
+       0.043
+      ],
+      "say": "To move a video, tap Move…"
+     },
+     {
+      "img": "home-03.webp",
+      "box": [
+       0.6719,
+       0.4237,
+       0.3073,
+       0.1968
+      ],
+      "say": "…then the spot where it goes."
+     },
+     {
+      "img": "home-04.webp",
+      "box": [
+       0.0208,
+       0.4136,
+       0.3073,
+       0.172
+      ],
+      "say": "Tap + to put a video in an empty spot."
+     },
+     {
+      "img": "home-05.webp",
+      "box": [
+       0.3464,
+       0.8036,
+       0.3073,
+       0.1968
+      ],
+      "say": "Pick the video."
+     },
+     {
+      "img": "home-06.webp",
+      "box": [
+       0.836,
+       0.1438,
+       0.1236,
+       0.043
+      ],
+      "say": "Tap Done when it looks right."
+     },
+     {
+      "img": "home-07.webp",
+      "box": null,
+      "say": "Your Home stays just like that."
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "title": "Channels",
+    "steps": [
+     {
+      "img": "channels-01.webp",
+      "box": [
+       0.1641,
+       0.0518,
+       0.1241,
+       0.056
+      ],
+      "say": "Tap Channels."
+     },
+     {
+      "img": "channels-02.webp",
+      "box": [
+       0.6695,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Tap a channel to see its videos."
+     },
+     {
+      "img": "channels-03.webp",
+      "box": [
+       0.3204,
+       0.2542,
+       0.0966,
+       0.043
+      ],
+      "say": "Pick the order: A to Z goes by your names."
+     },
+     {
+      "img": "channels-04.webp",
+      "box": null,
+      "say": "The channel keeps your order."
+     }
+    ]
+   },
+   {
+    "id": "channel-look",
+    "title": "Name a channel",
+    "steps": [
+     {
+      "img": "channel-look-01.webp",
+      "box": [
+       0.7339,
+       0.3421,
+       0.1383,
+       0.043
+      ],
+      "say": "Tap Change under a channel."
+     },
+     {
+      "img": "channel-look-02.webp",
+      "box": [
+       0.1094,
+       0.2405,
+       0.7812,
+       0.043
+      ],
+      "say": "Type your own name for it."
+     },
+     {
+      "img": "channel-look-03.webp",
+      "box": [
+       0.4998,
+       0.3938,
+       0.0807,
+       0.0605
+      ],
+      "say": "Pick a picture…"
+     },
+     {
+      "img": "channel-look-04.webp",
+      "box": [
+       0.1094,
+       0.6233,
+       0.1043,
+       0.043
+      ],
+      "say": "…and tap Save. Only you see it."
+     },
+     {
+      "img": "channel-look-05.webp",
+      "box": null,
+      "say": "There it is!"
+     }
+    ]
+   },
+   {
+    "id": "search",
+    "title": "Search",
+    "steps": [
+     {
+      "img": "search-01.webp",
+      "box": [
+       0.3012,
+       0.0518,
+       0.1003,
+       0.056
+      ],
+      "say": "Tap Search."
+     },
+     {
+      "img": "search-02.webp",
+      "box": [
+       0.1094,
+       0.1985,
+       0.5078,
+       0.0459
+      ],
+      "say": "Type a word, even with a spelling mistake."
+     },
+     {
+      "img": "search-03.webp",
+      "box": [
+       0.6224,
+       0.2005,
+       0.1563,
+       0.043
+      ],
+      "say": "Tap Search."
+     },
+     {
+      "img": "search-04.webp",
+      "box": null,
+      "say": "It finds the videos that sound like it."
+     }
+    ]
+   },
+   {
+    "id": "find-new",
+    "title": "Ask for a new video",
+    "steps": [
+     {
+      "img": "find-new-01.webp",
+      "box": [
+       0.504,
+       0.0518,
+       0.1142,
+       0.056
+      ],
+      "say": "Tap Find new."
+     },
+     {
+      "img": "find-new-02.webp",
+      "box": [
+       0.1094,
+       0.1985,
+       0.5078,
+       0.0459
+      ],
+      "say": "Type what you'd like to watch."
+     },
+     {
+      "img": "find-new-03.webp",
+      "box": [
+       0.6224,
+       0.2005,
+       0.1563,
+       0.043
+      ],
+      "say": "Tap Search."
+     },
+     {
+      "img": "find-new-04.webp",
+      "box": [
+       0.0339,
+       0.5848,
+       0.2812,
+       0.0469
+      ],
+      "say": "Tap Ask on the one you want."
+     },
+     {
+      "img": "find-new-05.webp",
+      "box": null,
+      "say": "A grown-up looks at it, then it shows under What I asked for."
+     }
+    ]
+   },
+   {
+    "id": "hide",
+    "title": "Hide a video",
+    "steps": [
+     {
+      "img": "hide-01.webp",
+      "box": [
+       0.0208,
+       0.3202,
+       0.3073,
+       0.1695
+      ],
+      "say": "Open a video you don't like."
+     },
+     {
+      "img": "hide-02.webp",
+      "box": [
+       0.4109,
+       0.6038,
+       0.1182,
+       0.043
+      ],
+      "say": "Tap Hide."
+     },
+     {
+      "img": "hide-03.webp",
+      "box": [
+       0.4305,
+       0.6946,
+       0.1524,
+       0.043
+      ],
+      "say": "Tap Yes, hide it. It leaves your lists and a grown-up is told."
+     },
+     {
+      "img": "hide-04.webp",
+      "box": [
+       0.3986,
+       0.1458,
+       0.0929,
+       0.043
+      ],
+      "say": "Changed your mind? Tap Undo."
+     },
+     {
+      "img": "hide-05.webp",
+      "box": null,
+      "say": "It's back."
+     }
+    ]
+   }
+  ],
+  "es": [
+   {
+    "id": "sign-in",
+    "title": "Entrar",
+    "steps": [
+     {
+      "img": "sign-in-01.webp",
+      "box": [
+       0.5182,
+       0.1016,
+       0.1823,
+       0.0977
+      ],
+      "say": "Toca tu dibujo."
+     },
+     {
+      "img": "sign-in-02.webp",
+      "box": [
+       0.418,
+       0.3475,
+       0.1641,
+       0.0859
+      ],
+      "say": "Toca tus dibujos secretos, uno a uno."
+     },
+     {
+      "img": "sign-in-03.webp",
+      "box": [
+       0.2375,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "El siguiente…"
+     },
+     {
+      "img": "sign-in-04.webp",
+      "box": [
+       0.418,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "…y el último."
+     },
+     {
+      "img": "sign-in-05.webp",
+      "box": null,
+      "say": "¡Ya entraste! Este es tu Inicio."
+     }
+    ]
+   },
+   {
+    "id": "watch",
+    "title": "Ver un video",
+    "steps": [
+     {
+      "img": "watch-01.webp",
+      "box": [
+       0.0208,
+       0.137,
+       0.3073,
+       0.1695
+      ],
+      "say": "Toca un video para verlo."
+     },
+     {
+      "img": "watch-02.webp",
+      "box": [
+       0.0208,
+       0.137,
+       0.9583,
+       0.4043
+      ],
+      "say": "Toca el video para empezar."
+     },
+     {
+      "img": "watch-03.webp",
+      "box": [
+       0.2402,
+       0.3079,
+       0.2332,
+       0.0625
+      ],
+      "say": "Al final: Otra vez, o Inicio para otro."
+     },
+     {
+      "img": "watch-04.webp",
+      "box": null,
+      "say": "Vuelve a empezar."
+     }
+    ]
+   },
+   {
+    "id": "home",
+    "title": "Arregla tu Inicio",
+    "steps": [
+     {
+      "img": "home-01.webp",
+      "box": [
+       0.3812,
+       0.8755,
+       0.2376,
+       0.043
+      ],
+      "say": "Toca Cambiar mi Inicio."
+     },
+     {
+      "img": "home-02.webp",
+      "box": [
+       0.0312,
+       0.4129,
+       0.123,
+       0.043
+      ],
+      "say": "Para mover un video, toca Mover…"
+     },
+     {
+      "img": "home-03.webp",
+      "box": [
+       0.6719,
+       0.4237,
+       0.3073,
+       0.1968
+      ],
+      "say": "…y luego el lugar donde va."
+     },
+     {
+      "img": "home-04.webp",
+      "box": [
+       0.0208,
+       0.4136,
+       0.3073,
+       0.172
+      ],
+      "say": "Toca + para poner un video en un lugar vacío."
+     },
+     {
+      "img": "home-05.webp",
+      "box": [
+       0.3464,
+       0.7861,
+       0.3073,
+       0.2144
+      ],
+      "say": "Elige el video."
+     },
+     {
+      "img": "home-06.webp",
+      "box": [
+       0.0404,
+       0.1741,
+       0.121,
+       0.043
+      ],
+      "say": "Toca Listo cuando esté como quieres."
+     },
+     {
+      "img": "home-07.webp",
+      "box": null,
+      "say": "Tu Inicio se queda así."
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "title": "Canales",
+    "steps": [
+     {
+      "img": "channels-01.webp",
+      "box": [
+       0.1365,
+       0.0518,
+       0.1109,
+       0.056
+      ],
+      "say": "Toca Canales."
+     },
+     {
+      "img": "channels-02.webp",
+      "box": [
+       0.6695,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Toca un canal para ver sus videos."
+     },
+     {
+      "img": "channels-03.webp",
+      "box": [
+       0.433,
+       0.2542,
+       0.1624,
+       0.043
+      ],
+      "say": "Elige el orden: de la A a la Z usa tus nombres."
+     },
+     {
+      "img": "channels-04.webp",
+      "box": null,
+      "say": "El canal guarda tu orden."
+     }
+    ]
+   },
+   {
+    "id": "channel-look",
+    "title": "Nombra un canal",
+    "steps": [
+     {
+      "img": "channel-look-01.webp",
+      "box": [
+       0.73,
+       0.3421,
+       0.146,
+       0.043
+      ],
+      "say": "Toca Cambiar debajo de un canal."
+     },
+     {
+      "img": "channel-look-02.webp",
+      "box": [
+       0.1094,
+       0.2405,
+       0.7812,
+       0.043
+      ],
+      "say": "Escribe tu propio nombre."
+     },
+     {
+      "img": "channel-look-03.webp",
+      "box": [
+       0.4998,
+       0.3938,
+       0.0807,
+       0.0605
+      ],
+      "say": "Elige un dibujo…"
+     },
+     {
+      "img": "channel-look-04.webp",
+      "box": [
+       0.1094,
+       0.6233,
+       0.1319,
+       0.043
+      ],
+      "say": "…y toca Guardar. Solo tú lo ves."
+     },
+     {
+      "img": "channel-look-05.webp",
+      "box": null,
+      "say": "¡Ahí está!"
+     }
+    ]
+   },
+   {
+    "id": "search",
+    "title": "Buscar",
+    "steps": [
+     {
+      "img": "search-01.webp",
+      "box": [
+       0.2603,
+       0.0518,
+       0.1008,
+       0.056
+      ],
+      "say": "Toca Buscar."
+     },
+     {
+      "img": "search-02.webp",
+      "box": [
+       0.1094,
+       0.1985,
+       0.5078,
+       0.0459
+      ],
+      "say": "Escribe una palabra, aunque no esté bien escrita."
+     },
+     {
+      "img": "search-03.webp",
+      "box": [
+       0.6224,
+       0.2005,
+       0.155,
+       0.043
+      ],
+      "say": "Toca Buscar."
+     },
+     {
+      "img": "search-04.webp",
+      "box": null,
+      "say": "Encuentra los videos que suenan parecido."
+     }
+    ]
+   },
+   {
+    "id": "find-new",
+    "title": "Pide un video nuevo",
+    "steps": [
+     {
+      "img": "find-new-01.webp",
+      "box": [
+       0.5131,
+       0.0518,
+       0.1276,
+       0.056
+      ],
+      "say": "Toca Buscar nuevos."
+     },
+     {
+      "img": "find-new-02.webp",
+      "box": [
+       0.1094,
+       0.1985,
+       0.5078,
+       0.0459
+      ],
+      "say": "Escribe lo que te gustaría ver."
+     },
+     {
+      "img": "find-new-03.webp",
+      "box": [
+       0.6224,
+       0.2005,
+       0.155,
+       0.043
+      ],
+      "say": "Toca Buscar."
+     },
+     {
+      "img": "find-new-04.webp",
+      "box": [
+       0.0339,
+       0.5848,
+       0.2812,
+       0.0469
+      ],
+      "say": "Toca Pedir en el que quieres."
+     },
+     {
+      "img": "find-new-05.webp",
+      "box": null,
+      "say": "Un adulto lo revisa y aparece en Lo que pedí."
+     }
+    ]
+   },
+   {
+    "id": "hide",
+    "title": "Esconder un video",
+    "steps": [
+     {
+      "img": "hide-01.webp",
+      "box": [
+       0.0208,
+       0.3202,
+       0.3073,
+       0.1695
+      ],
+      "say": "Abre un video que no te gusta."
+     },
+     {
+      "img": "hide-02.webp",
+      "box": [
+       0.3996,
+       0.6038,
+       0.1425,
+       0.043
+      ],
+      "say": "Toca Esconder."
+     },
+     {
+      "img": "hide-03.webp",
+      "box": [
+       0.0404,
+       0.7474,
+       0.1619,
+       0.043
+      ],
+      "say": "Toca Sí, escóndelo. Sale de tus listas y se le avisa a un adulto."
+     },
+     {
+      "img": "hide-04.webp",
+      "box": [
+       0.4085,
+       0.1458,
+       0.1316,
+       0.043
+      ],
+      "say": "¿Cambiaste de idea? Toca Deshacer."
+     },
+     {
+      "img": "hide-05.webp",
+      "box": null,
+      "say": "Volvió."
+     }
+    ]
+   }
+  ],
+  "pt-BR": [
+   {
+    "id": "sign-in",
+    "title": "Entrar",
+    "steps": [
+     {
+      "img": "sign-in-01.webp",
+      "box": [
+       0.5182,
+       0.1016,
+       0.1823,
+       0.0977
+      ],
+      "say": "Toque no seu desenho."
+     },
+     {
+      "img": "sign-in-02.webp",
+      "box": [
+       0.418,
+       0.3475,
+       0.1641,
+       0.0859
+      ],
+      "say": "Toque nos seus desenhos secretos, um por um."
+     },
+     {
+      "img": "sign-in-03.webp",
+      "box": [
+       0.2375,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "O próximo…"
+     },
+     {
+      "img": "sign-in-04.webp",
+      "box": [
+       0.418,
+       0.2493,
+       0.1641,
+       0.0859
+      ],
+      "say": "…e o último."
+     },
+     {
+      "img": "sign-in-05.webp",
+      "box": null,
+      "say": "Você entrou! Este é o seu Início."
+     }
+    ]
+   },
+   {
+    "id": "watch",
+    "title": "Ver um vídeo",
+    "steps": [
+     {
+      "img": "watch-01.webp",
+      "box": [
+       0.0208,
+       0.1969,
+       0.3073,
+       0.1695
+      ],
+      "say": "Toque num vídeo para assistir."
+     },
+     {
+      "img": "watch-02.webp",
+      "box": [
+       0.0208,
+       0.1969,
+       0.9583,
+       0.4043
+      ],
+      "say": "Toque no vídeo para começar."
+     },
+     {
+      "img": "watch-03.webp",
+      "box": [
+       0.2407,
+       0.3678,
+       0.2322,
+       0.0625
+      ],
+      "say": "No fim: De novo, ou Início para outro."
+     },
+     {
+      "img": "watch-04.webp",
+      "box": null,
+      "say": "Começa de novo."
+     }
+    ]
+   },
+   {
+    "id": "home",
+    "title": "Arrume seu Início",
+    "steps": [
+     {
+      "img": "home-01.webp",
+      "box": [
+       0.3817,
+       0.9353,
+       0.2366,
+       0.043
+      ],
+      "say": "Toque em Mudar meu Início."
+     },
+     {
+      "img": "home-02.webp",
+      "box": [
+       0.0312,
+       0.4933,
+       0.123,
+       0.043
+      ],
+      "say": "Para mudar um vídeo de lugar, toque em Mover…"
+     },
+     {
+      "img": "home-03.webp",
+      "box": [
+       0.6719,
+       0.4835,
+       0.3073,
+       0.1968
+      ],
+      "say": "…e depois o lugar onde ele vai."
+     },
+     {
+      "img": "home-04.webp",
+      "box": [
+       0.0208,
+       0.4138,
+       0.3073,
+       0.172
+      ],
+      "say": "Toque em + para pôr um vídeo num lugar vazio."
+     },
+     {
+      "img": "home-05.webp",
+      "box": [
+       0.3464,
+       0.7698,
+       0.3073,
+       0.2144
+      ],
+      "say": "Escolha o vídeo."
+     },
+     {
+      "img": "home-06.webp",
+      "box": [
+       0.0404,
+       0.2545,
+       0.1374,
+       0.043
+      ],
+      "say": "Toque em Pronto quando estiver do seu jeito."
+     },
+     {
+      "img": "home-07.webp",
+      "box": null,
+      "say": "Seu Início fica assim."
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "title": "Canais",
+    "steps": [
+     {
+      "img": "channels-01.webp",
+      "box": [
+       0.1431,
+       0.0518,
+       0.0965,
+       0.056
+      ],
+      "say": "Toque em Canais."
+     },
+     {
+      "img": "channels-02.webp",
+      "box": [
+       0.6695,
+       0.1683,
+       0.267,
+       0.1738
+      ],
+      "say": "Toque num canal para ver os vídeos."
+     },
+     {
+      "img": "channels-03.webp",
+      "box": [
+       0.4273,
+       0.2542,
+       0.1193,
+       0.043
+      ],
+      "say": "Escolha a ordem: de A a Z usa os seus nomes."
+     },
+     {
+      "img": "channels-04.webp",
+      "box": null,
+      "say": "O canal guarda a sua ordem."
+     }
+    ]
+   },
+   {
+    "id": "channel-look",
+    "title": "Dê nome a um canal",
+    "steps": [
+     {
+      "img": "channel-look-01.webp",
+      "box": [
+       0.7393,
+       0.3421,
+       0.1275,
+       0.043
+      ],
+      "say": "Toque em Mudar embaixo de um canal."
+     },
+     {
+      "img": "channel-look-02.webp",
+      "box": [
+       0.1094,
+       0.2405,
+       0.7812,
+       0.043
+      ],
+      "say": "Digite o seu próprio nome."
+     },
+     {
+      "img": "channel-look-03.webp",
+      "box": [
+       0.4998,
+       0.3938,
+       0.0807,
+       0.0605
+      ],
+      "say": "Escolha um desenho…"
+     },
+     {
+      "img": "channel-look-04.webp",
+      "box": [
+       0.1094,
+       0.6233,
+       0.116,
+       0.043
+      ],
+      "say": "…e toque em Salvar. Só você vê."
+     },
+     {
+      "img": "channel-look-05.webp",
+      "box": null,
+      "say": "Aí está!"
+     }
+    ]
+   },
+   {
+    "id": "search",
+    "title": "Buscar",
+    "steps": [
+     {
+      "img": "search-01.webp",
+      "box": [
+       0.2816,
+       0.0518,
+       0.1008,
+       0.056
+      ],
+      "say": "Toque em Buscar."
+     },
+     {
+      "img": "search-02.webp",
+      "box": [
+       0.1094,
+       0.2584,
+       0.5078,
+       0.0459
+      ],
+      "say": "Digite uma palavra, mesmo escrita errado."
+     },
+     {
+      "img": "search-03.webp",
+      "box": [
+       0.6224,
+       0.2603,
+       0.155,
+       0.043
+      ],
+      "say": "Toque em Buscar."
+     },
+     {
+      "img": "search-04.webp",
+      "box": null,
+      "say": "Ele acha os vídeos que soam parecido."
+     }
+    ]
+   },
+   {
+    "id": "find-new",
+    "title": "Peça um vídeo novo",
+    "steps": [
+     {
+      "img": "find-new-01.webp",
+      "box": [
+       0.5344,
+       0.0518,
+       0.1251,
+       0.056
+      ],
+      "say": "Toque em Achar novos."
+     },
+     {
+      "img": "find-new-02.webp",
+      "box": [
+       0.1094,
+       0.2584,
+       0.5078,
+       0.0459
+      ],
+      "say": "Digite o que você gostaria de ver."
+     },
+     {
+      "img": "find-new-03.webp",
+      "box": [
+       0.6224,
+       0.2603,
+       0.155,
+       0.043
+      ],
+      "say": "Toque em Buscar."
+     },
+     {
+      "img": "find-new-04.webp",
+      "box": [
+       0.0339,
+       0.6447,
+       0.2812,
+       0.0469
+      ],
+      "say": "Toque em Pedir no que você quer."
+     },
+     {
+      "img": "find-new-05.webp",
+      "box": null,
+      "say": "Um adulto olha e ele aparece em O que eu pedi."
+     }
+    ]
+   },
+   {
+    "id": "hide",
+    "title": "Esconder um vídeo",
+    "steps": [
+     {
+      "img": "hide-01.webp",
+      "box": [
+       0.0208,
+       0.38,
+       0.3073,
+       0.1695
+      ],
+      "say": "Abra um vídeo de que você não gosta."
+     },
+     {
+      "img": "hide-02.webp",
+      "box": [
+       0.384,
+       0.6637,
+       0.1622,
+       0.043
+      ],
+      "say": "Toque em Esconder."
+     },
+     {
+      "img": "hide-03.webp",
+      "box": [
+       0.0404,
+       0.8072,
+       0.186,
+       0.043
+      ],
+      "say": "Toque em Sim, esconder. Ele sai das suas listas e um adulto fica sabendo."
+     },
+     {
+      "img": "hide-04.webp",
+      "box": [
+       0.4878,
+       0.2057,
+       0.1266,
+       0.043
+      ],
+      "say": "Mudou de ideia? Toque em Desfazer."
+     },
+     {
+      "img": "hide-05.webp",
+      "box": null,
+      "say": "Ele voltou."
+     }
+    ]
+   }
+  ]
+ }
+}

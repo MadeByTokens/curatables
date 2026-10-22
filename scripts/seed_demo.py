@@ -41,6 +41,10 @@ def _ffmpeg(*args: str) -> None:
 
 def main(data_dir: str) -> None:
     config = load_config(data_dir)
+    # A demo on a laptop must not answer for "curatables.local": a real
+    # box on the same network owns that name.
+    config.server.mdns_enabled = False
+    config.save()
     ensure_directories(config)
     if not config.parent.password_hash:
         AuthService(config).set_password("demo-password")

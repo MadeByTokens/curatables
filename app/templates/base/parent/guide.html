@@ -1,0 +1,10 @@
+{% extends "parent/base.html" %}
+{% from "kid/_guide.html" import guide_player with context %}
+{% block title %}{{ tour.title if tour else "Guides" }} · curatables{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/kid/guide.css?v={{ asset_v }}">{% endblock %}
+{% block content %}
+{% if tour %}
+{{ guide_player("parents", lang, tour, finger, "/parent/help#guides", "Back to Help") }}
+<script src="/static/kid/guide.js?v={{ asset_v }}"></script>
+{% endif %}
+{% endblock %}

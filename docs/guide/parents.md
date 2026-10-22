@@ -11,6 +11,9 @@ parent, and three kids, **Mia**, **Leo** and **Lucía**. The kids' side
 has [its own guide](kids.md), to look at together with your kids. The
 videos are free films; see [the credits](#credits).
 
+The moving pictures play a task step by step, with a ring on what to
+tap. On the box, **Help → Show me how** plays them one step at a time.
+
 - [1. Sign in](#1-sign-in)
 - [2. Make a channel](#2-make-a-channel)
 - [3. Add a video](#3-add-a-video)
@@ -121,6 +124,8 @@ Lucía has the Spanish Calm screen with a number PIN.
 
 ![The Kids page with Leo, Lucía and Mia](img/parent-kids.webp)
 
+![Adding a kid: Kids, Add a kid, a name, then Add kid](img/anim/parents-add-kid.webp)
+
 **Set up the tablet:** on the kid's tablet, open **http://curatables.local/**
 (or scan the QR code on this page with its camera), add it to the home
 screen and open it from that icon (on an iPad, use Safari; see the
@@ -139,6 +144,8 @@ picked ("For: Cartoons") and YouTube's own title. Everything here works
 on your phone too.
 
 ![Video requests on a phone: Mia asked for Llama Drama, with buttons to trust its channel](img/parent-requests-phone.webp)
+
+![Answering a request: Review & add, a channel, the watched box, Add](img/anim/parents-requests.webp)
 
 **Review & add** opens the same Review & Add page as before, already
 filled in with the name, description and channel your kid chose. Watch
@@ -229,6 +236,8 @@ removes it for everyone, **Keep it hidden from (name)** leaves it hidden
 for that kid only, and **Show it to (name) again** puts it back. Content
 → **Hidden by a kid** lists them all. **Download** under a video saves
 it onto the kid's device (on an iPad, into the Files app).
+
+![A video Leo hid: Keep it hidden from Leo](img/anim/parents-hidden.webp)
 
 ![The dashboard during the day](img/parent-dashboard.webp)
 

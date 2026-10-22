@@ -1,0 +1,27 @@
+{# The guide player, shared by the kids' and the parents' Help: every step
+   listed (works with no script), turned into a slide show by
+   /static/kid/guide.js. `_` is the page's own translator. #}
+{% macro guide_player(guide, lang, tour, finger, back_href, back_label) %}
+<div class="guide" id="guide">
+  <h2 class="page-title"><span aria-hidden="true">{{ tour.icon }}</span> {{ tour.title }}</h2>
+  <ol class="guide-steps">
+    {% for s in tour.steps %}
+    {% set f = finger(s.box) %}
+    <li class="guide-step">
+      <div class="guide-shot">
+        <img src="/static/guides/{{ guide }}/{{ lang }}/{{ s.img }}" alt="" loading="lazy">
+        {% if f %}<span class="guide-finger" data-left="{{ f.left }}" data-top="{{ f.top }}" style="left: {{ f.left }}%; top: {{ f.top }}%" aria-hidden="true"></span>{% endif %}
+      </div>
+      <p class="guide-say">{{ s.say }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  <div class="guide-controls">
+    <button type="button" class="guide-btn" id="guide-prev" aria-label="{{ _('Back') }}">&#9664;</button>
+    <button type="button" class="guide-btn" id="guide-play" data-play="&#9654; {{ _('Play') }}" data-pause="&#10073;&#10073; {{ _('Pause') }}">&#9654; {{ _('Play') }}</button>
+    <button type="button" class="guide-btn" id="guide-next" aria-label="{{ _('Next') }}">&#9654;&#9654;</button>
+    <span class="guide-count" id="guide-count" aria-live="polite"></span>
+  </div>
+  <p class="mt-16"><a href="{{ back_href }}" class="guide-btn">{{ back_label }}</a></p>
+</div>
+{% endmacro %}

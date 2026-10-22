@@ -3,6 +3,17 @@
 {% block content %}
 <h1>Help</h1>
 
+{% if guide_tours %}
+<h2 id="guides">Show me how</h2>
+<p>Short step-by-step guides, made from real screens: tap one to watch it.</p>
+<ul>
+  {% for t in guide_tours %}
+  <li><a href="/parent/help/guide/{{ t.id }}">{{ t.icon }} {{ t.title }}</a></li>
+  {% endfor %}
+</ul>
+{% if kid_guide_tours %}<p>Your kids have their own guides on their <strong>Help</strong> page (<strong>Watch how</strong>), in their language.</p>{% endif %}
+{% endif %}
+
 <h2>Getting Started</h2>
 <ol class="steps-list">
   <li><strong>Organize into channels</strong> — Go to <a href="/parent/channels/">Channels</a> and make a few shelves (e.g. "Animals", "Music", "Bedtime").</li>

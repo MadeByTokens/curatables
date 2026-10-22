@@ -8,6 +8,9 @@
 {% endmacro %}
 {% block content %}
 <div class="help-page">
+  {% if has_guide %}
+  <p class="ta-c"><a href="/help/guide" class="wishlist-pill is-on guide-start"><span aria-hidden="true">&#127916;</span> {{ _("Watch how") }}</a></p>
+  {% endif %}
   <h2>{{ _("How it works") }}</h2>
 
   <div class="help-grid">

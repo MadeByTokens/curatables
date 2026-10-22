@@ -1,0 +1,166 @@
+{
+ "tours": [
+  {
+   "id": "add-kid",
+   "icon": "🧒",
+   "needs": ""
+  },
+  {
+   "id": "requests",
+   "icon": "📬",
+   "needs": ""
+  },
+  {
+   "id": "hidden",
+   "icon": "🙈",
+   "needs": ""
+  }
+ ],
+ "langs": {
+  "en": [
+   {
+    "id": "add-kid",
+    "title": "Add a kid",
+    "steps": [
+     {
+      "img": "add-kid-01.webp",
+      "box": [
+       0.4621,
+       0.0021,
+       0.0598,
+       0.0625
+      ],
+      "say": "Open Kids."
+     },
+     {
+      "img": "add-kid-02.webp",
+      "box": [
+       0.0312,
+       0.1736,
+       0.0883,
+       0.0444
+      ],
+      "say": "Tap Add a kid."
+     },
+     {
+      "img": "add-kid-03.webp",
+      "box": [
+       0.0312,
+       0.1958,
+       0.4883,
+       0.0486
+      ],
+      "say": "Type a name."
+     },
+     {
+      "img": "add-kid-04.webp",
+      "box": [
+       0.0312,
+       0.9222,
+       0.0769,
+       0.0444
+      ],
+      "say": "Choose a PIN, a theme and what they may do, then Add kid."
+     },
+     {
+      "img": "add-kid-05.webp",
+      "box": null,
+      "say": "Sam is ready. Open the kid address on their tablet."
+     }
+    ]
+   },
+   {
+    "id": "requests",
+    "title": "Answer a video request",
+    "steps": [
+     {
+      "img": "requests-01.webp",
+      "box": [
+       0.0723,
+       0.2306,
+       0.294,
+       0.0222
+      ],
+      "say": "Requests from your kids show on the dashboard."
+     },
+     {
+      "img": "requests-02.webp",
+      "box": [
+       0.2158,
+       0.4306,
+       0.1018,
+       0.0347
+      ],
+      "say": "Tap Review & add (or Not this one)."
+     },
+     {
+      "img": "requests-03.webp",
+      "box": [
+       0.0469,
+       0.4177,
+       0.5859,
+       0.0514
+      ],
+      "say": "Pick the channel it goes into…"
+     },
+     {
+      "img": "requests-04.webp",
+      "box": [
+       0.2715,
+       0.8275,
+       0.0165,
+       0.0235
+      ],
+      "say": "…watch it, and tick that you watched it all…"
+     },
+     {
+      "img": "requests-05.webp",
+      "box": [
+       0.0312,
+       0.9218,
+       0.1035,
+       0.0444
+      ],
+      "say": "…and Add. It downloads for your kid."
+     },
+     {
+      "img": "requests-06.webp",
+      "box": null,
+      "say": "Done: it's in the library."
+     }
+    ]
+   },
+   {
+    "id": "hidden",
+    "title": "A video your kid hid",
+    "steps": [
+     {
+      "img": "hidden-01.webp",
+      "box": [
+       0.1999,
+       0.2306,
+       0.0707,
+       0.0222
+      ],
+      "say": "A video a kid hid shows under Needs your attention."
+     },
+     {
+      "img": "hidden-02.webp",
+      "box": [
+       0.1452,
+       0.8694,
+       0.1582,
+       0.0347
+      ],
+      "say": "Delete it for everyone, keep it hidden for that kid, or show it again."
+     },
+     {
+      "img": "hidden-03.webp",
+      "box": null,
+      "say": "Done."
+     }
+    ]
+   }
+  ]
+ }
+}

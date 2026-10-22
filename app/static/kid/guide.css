@@ -1,0 +1,111 @@
+/* The guide player (app/static/kid/guide.js), on the kids' and the
+   parents' Help pages. Without the script every step is listed. */
+.guide { max-width: 640px; margin: 0 auto; padding: 0 16px 24px; }
+.guide-steps { list-style: none; margin: 0; padding: 0; }
+.guide-step { margin: 0 0 28px; }
+.guide.is-player .guide-step { display: none; margin: 0; }
+.guide.is-player .guide-step.is-shown { display: block; }
+
+.guide-shot {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    background: #fff;
+}
+.guide-shot img { display: block; width: 100%; height: auto; }
+
+/* A ring where to tap, with a pointing finger under it. */
+.guide-finger {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
+    border: 5px solid #ff8c00;
+    border-radius: 50%;
+    background: rgba(255, 191, 0, 0.3);
+    box-sizing: border-box;
+    -webkit-transition: left 0.8s ease-in-out, top 0.8s ease-in-out;
+    transition: left 0.8s ease-in-out, top 0.8s ease-in-out;
+    pointer-events: none;
+}
+.guide-finger:after {
+    content: "\1F446";
+    position: absolute;
+    left: 18px;
+    top: 34px;
+    font-size: 40px;
+    line-height: 1;
+}
+/* One slow press, not a flash. */
+.guide-finger.is-tapping {
+    -webkit-animation: guide-tap 1.2s ease-in-out 1;
+    animation: guide-tap 1.2s ease-in-out 1;
+}
+@-webkit-keyframes guide-tap {
+    0% { -webkit-transform: scale(1); }
+    50% { -webkit-transform: scale(0.8); }
+    100% { -webkit-transform: scale(1); }
+}
+@keyframes guide-tap {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.8); }
+    100% { transform: scale(1); }
+}
+
+.guide-say {
+    margin: 14px 4px 0;
+    font-size: 22px;
+    line-height: 1.35;
+    font-weight: bold;
+    text-align: center;
+}
+
+.guide-controls { display: none; text-align: center; margin: 16px 0 0; }
+.guide.is-player .guide-controls { display: block; }
+.guide-btn {
+    display: inline-block;
+    min-width: 64px;
+    min-height: 48px;
+    margin: 4px;
+    padding: 10px 16px;
+    font-family: inherit;
+    font-size: 18px;
+    border: 2px solid #999;
+    border-radius: 24px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+}
+a.guide-btn { text-decoration: none; }
+.guide-count { display: inline-block; min-width: 56px; font-size: 16px; color: #555; }
+
+.guide-tours { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+.guide-tours li { float: left; width: 46%; margin: 0 2% 16px; }
+.guide-tour-link {
+    display: block;
+    min-height: 44px;
+    padding: 18px 10px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    color: #333;
+    text-align: center;
+    text-decoration: none;
+    font-size: 19px;
+    font-weight: bold;
+}
+.guide-tour-icon { display: block; font-size: 48px; line-height: 1.2; }
+@media (min-width: 600px) { .guide-tours li { width: 29.3%; } }
+
+/* Reduce Motion: the finger stays put. Last, so it wins without
+   !important (kid pages also have style.css's rule for everything). */
+@media (prefers-reduced-motion: reduce) {
+    .guide-finger,
+    .guide-finger.is-tapping {
+        -webkit-transition: none;
+        transition: none;
+        -webkit-animation: none;
+        animation: none;
+    }
+}
