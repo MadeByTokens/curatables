@@ -249,6 +249,9 @@ class Tour:
     signed_in: bool = True
     prepare: Callable | None = None
     needs: str = ""  # the kid switch this tour shows (see app/services/guides.py)
+    # The templates the tour's pictures show (besides the menu, base.html):
+    # when one changes, tests/test_guides.py asks for the tour to be made again.
+    screens: tuple = ()
 
 
 def L(css, nth=0, text=None):
@@ -265,7 +268,9 @@ def _end_video(page):
 
 
 KID_TOURS = [
-    Tour("sign-in", "\U0001f464", ("Sign in", "Entrar", "Entrar"), "/profiles/switch", signed_in=False, steps=[
+    Tour("sign-in", "\U0001f464", ("Sign in", "Entrar", "Entrar"), "/profiles/switch", signed_in=False,
+         screens=("kid/profiles.html", "kid/pin.html", "kid/my_home.html"),
+         steps=[
         Step(("Tap your picture.", "Toca tu dibujo.", "Toque no seu desenho."),
              L('form[action="/profiles/select"] button', text="Mia")),
         Step(("Tap your secret pictures, one by one.", "Toca tus dibujos secretos, uno a uno.",
@@ -275,7 +280,9 @@ KID_TOURS = [
         Step(("You're in! This is your Home.", "¡Ya entraste! Este es tu Inicio.",
               "Você entrou! Este é o seu Início.")),
     ]),
-    Tour("watch", "\U0001f3ac", ("Watch a video", "Ver un video", "Ver um vídeo"), "/", steps=[
+    Tour("watch", "\U0001f3ac", ("Watch a video", "Ver un video", "Ver um vídeo"), "/",
+         screens=("kid/my_home.html", "kid/watch.html"),
+         steps=[
         Step(("Tap a video to watch it.", "Toca un video para verlo.", "Toque num vídeo para assistir."),
              L('a[href^="/watch/"]')),
         Step(("Tap the video to play it.", "Toca el video para empezar.",
@@ -284,7 +291,9 @@ KID_TOURS = [
               "No fim: De novo, ou Início para outro."), L("#play-again")),
         Step(("It plays again from the start.", "Vuelve a empezar.", "Começa de novo.")),
     ]),
-    Tour("home", "\U0001f3e0", ("Arrange your Home", "Arregla tu Inicio", "Arrume seu Início"), "/", steps=[
+    Tour("home", "\U0001f3e0", ("Arrange your Home", "Arregla tu Inicio", "Arrume seu Início"), "/",
+         screens=("kid/my_home.html", "kid/home_pick.html"),
+         steps=[
         Step(("Tap Change my Home.", "Toca Cambiar mi Inicio.", "Toque em Mudar meu Início."),
              L('a[href="/?edit=1"]')),
         Step(("To move a video, tap Move…", "Para mover un video, toca Mover…",
@@ -298,7 +307,9 @@ KID_TOURS = [
               "Toque em Pronto quando estiver do seu jeito."), L("a.home-done")),
         Step(("Your Home stays just like that.", "Tu Inicio se queda así.", "Seu Início fica assim.")),
     ]),
-    Tour("channels", "\U0001f4fa", ("Channels", "Canales", "Canais"), "/", steps=[
+    Tour("channels", "\U0001f4fa", ("Channels", "Canales", "Canais"), "/",
+         screens=("kid/my_home.html", "kid/channels.html", "kid/home.html", "kid/_channel_avatar.html"),
+         steps=[
         Step(("Tap Channels.", "Toca Canales.", "Toque em Canais."), L('a.header-btn[href="/channels"]')),
         Step(("Tap a channel to see its videos.", "Toca un canal para ver sus videos.",
               "Toque num canal para ver os vídeos."), L("a.channel-card-link", nth=2)),
@@ -307,7 +318,8 @@ KID_TOURS = [
         Step(("The channel keeps your order.", "El canal guarda tu orden.", "O canal guarda a sua ordem.")),
     ]),
     Tour("channel-look", "\u270f\ufe0f", ("Name a channel", "Nombra un canal", "Dê nome a um canal"), "/channels",
-         needs="allow_customize", steps=[
+         needs="allow_customize", screens=("kid/channels.html", "kid/channel_look.html", "kid/_channel_avatar.html"),
+         steps=[
         Step(("Tap Change under a channel.", "Toca Cambiar debajo de un canal.",
               "Toque em Mudar embaixo de um canal."), L("a.channel-card-change", nth=1)),
         Step(("Type your own name for it.", "Escribe tu propio nombre.", "Digite o seu próprio nome."),
@@ -317,7 +329,19 @@ KID_TOURS = [
               "…e toque em Salvar. Só você vê."), L("button.save-btn")),
         Step(("There it is!", "¡Ahí está!", "Aí está!")),
     ]),
-    Tour("search", "\U0001f50d", ("Search", "Buscar", "Buscar"), "/", needs="search", steps=[
+    Tour("new-channel", "\u2795", ("Make a channel", "Crea un canal", "Crie um canal"), "/channels",
+         needs="allow_customize",
+         screens=("kid/channels.html", "kid/channel_new.html", "kid/_channel_avatar.html"), steps=[
+        Step(("Tap New channel.", "Toca Canal nuevo.", "Toque em Novo canal."), L('a[href="/channels/new"]')),
+        Step(("Type its name.", "Escribe su nombre.", "Digite o nome dele."), L("#name"), fill="My trains"),
+        Step(("Tap Create channel.", "Toca Crear canal.", "Toque em Criar canal."), L("button.save-btn")),
+        Step(("It's yours! Put videos in it with Customize under a video.",
+              "¡Es tuyo! Pon videos en él con Personalizar debajo de un video.",
+              "É seu! Coloque vídeos nele com Personalizar embaixo de um vídeo.")),
+    ]),
+    Tour("search", "\U0001f50d", ("Search", "Buscar", "Buscar"), "/", needs="search",
+         screens=("kid/my_home.html", "kid/search.html", "kid/_video_grid.html"),
+         steps=[
         Step(("Tap Search.", "Toca Buscar.", "Toque em Buscar."), L('a.header-btn[href="/search"]')),
         Step(("Type a word, even with a spelling mistake.", "Escribe una palabra, aunque no esté bien escrita.",
               "Digite uma palavra, mesmo escrita errado."), L("#q"), fill="elefant"),
@@ -326,7 +350,8 @@ KID_TOURS = [
               "Ele acha os vídeos que soam parecido.")),
     ]),
     Tour("find-new", "\U0001f52d", ("Ask for a new video", "Pide un video nuevo", "Peça um vídeo novo"), "/",
-         needs="allow_wishlist", steps=[
+         needs="allow_wishlist", screens=("kid/my_home.html", "kid/wishlist.html"),
+         steps=[
         Step(("Tap Find new.", "Toca Buscar nuevos.", "Toque em Achar novos."), L('a.header-btn[href="/wishlist"]')),
         Step(("Type what you'd like to watch.", "Escribe lo que te gustaría ver.",
               "Digite o que você gostaria de ver."), L("#wq"), fill="trains"),
@@ -337,7 +362,9 @@ KID_TOURS = [
               "Un adulto lo revisa y aparece en Lo que pedí.",
               "Um adulto olha e ele aparece em O que eu pedi.")),
     ]),
-    Tour("hide", "\U0001f648", ("Hide a video", "Esconder un video", "Esconder um vídeo"), "/", needs="allow_hide", steps=[
+    Tour("hide", "\U0001f648", ("Hide a video", "Esconder un video", "Esconder um vídeo"), "/", needs="allow_hide",
+         screens=("kid/my_home.html", "kid/watch.html"),
+         steps=[
         Step(("Open a video you don't like.", "Abre un video que no te gusta.", "Abra um vídeo de que você não gosta."),
              L('a[href^="/watch/"]', nth=3)),
         Step(("Tap Hide.", "Toca Esconder.", "Toque em Esconder."), L("details.hide-video summary")),
@@ -352,7 +379,9 @@ KID_TOURS = [
 ]
 
 PARENT_TOURS = [
-    Tour("add-kid", "\U0001f9d2", ("Add a kid",), "/parent/", steps=[
+    Tour("add-kid", "\U0001f9d2", ("Add a kid",), "/parent/",
+         screens=("parent/dashboard.html", "parent/profiles.html", "parent/profile_form.html"),
+         steps=[
         Step(("Open Kids.",), L('header.topnav a[href^="/parent/profiles"]')),
         Step(("Tap Add a kid.",), L('a[href="/parent/profiles/create"]')),
         Step(("Type a name.",), L("#display_name"), fill="Sam"),
@@ -360,7 +389,9 @@ PARENT_TOURS = [
              L('button[type="submit"]', text="Add kid")),
         Step(("Sam is ready. Open the kid address on their tablet.",)),
     ]),
-    Tour("requests", "\U0001f4ec", ("Answer a video request",), "/parent/", prepare=lambda p, base: _kid_asks(p, base), steps=[
+    Tour("requests", "\U0001f4ec", ("Answer a video request",), "/parent/", prepare=lambda p, base: _kid_asks(p, base),
+         screens=("parent/dashboard.html", "parent/requests.html", "parent/content_preview.html"),
+         steps=[
         Step(("Requests from your kids show on the dashboard.",), L('main a[href="/parent/requests"]')),
         Step(("Tap Review & add (or Not this one).",), L('a[href$="/review"]')),
         Step(("Pick the channel it goes into…",), L("#channel_id"), choose=1),
@@ -368,7 +399,9 @@ PARENT_TOURS = [
         Step(("…and Add. It downloads for your kid.",), L("#add-btn")),
         Step(("Done: it's in the library.",)),
     ]),
-    Tour("hidden", "\U0001f648", ("A video your kid hid",), "/parent/", prepare=lambda p, base: _kid_hides(p, base), steps=[
+    Tour("hidden", "\U0001f648", ("A video your kid hid",), "/parent/", prepare=lambda p, base: _kid_hides(p, base),
+         screens=("parent/dashboard.html", "parent/content_detail.html"),
+         steps=[
         Step(("A video a kid hid shows under Needs your attention.",), L('main a[href^="/parent/content/guide_"]')),
         Step(("Delete it for everyone, keep it hidden for that kid, or show it again.",),
              L('button[value="keep"]')),
@@ -510,7 +543,11 @@ def make(guide: str, only_tour: str, keep: Path | None) -> None:
     tours = KID_TOURS if kid else PARENT_TOURS
     langs = KID_LANGS if kid else ("en",)
     view = KID_VIEW if kid else PARENT_VIEW
-    data = {"tours": [{"id": t.id, "icon": t.icon, "needs": t.needs} for t in tours], "langs": {}}
+    from app.services.guides import screen_fingerprint
+    base = "kid/base.html" if kid else "parent/base.html"
+    data = {"tours": [{"id": t.id, "icon": t.icon, "needs": t.needs,
+                       "screens": {s: screen_fingerprint(s) for s in (base, *t.screens)}} for t in tours],
+            "langs": {}}
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         thumbs = draw_thumbnails(browser, [i for items in LIBRARY.values() for i in items] + FOUND)
@@ -541,6 +578,8 @@ def make(guide: str, only_tour: str, keep: Path | None) -> None:
     path = OUT / f"{guide}.json"
     if only_tour and path.exists():
         old = json.loads(path.read_text())
+        kept = {t["id"]: t for t in old.get("tours", [])}
+        data["tours"] = [t if t["id"] == only_tour else kept.get(t["id"], t) for t in data["tours"]]
         for lang, tour_list in data["langs"].items():
             merged = {t["id"]: t for t in old["langs"].get(lang, [])}
             merged.update({t["id"]: t for t in tour_list})

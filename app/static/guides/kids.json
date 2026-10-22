@@ -3,42 +3,98 @@
   {
    "id": "sign-in",
    "icon": "👤",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/profiles.html": "55bb7a07cf8dcdfa",
+    "kid/pin.html": "36adc4f1be4f1305",
+    "kid/my_home.html": "f3e6180dc7c54449"
+   }
   },
   {
    "id": "watch",
    "icon": "🎬",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/watch.html": "0f5401b30ca061f1"
+   }
   },
   {
    "id": "home",
    "icon": "🏠",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/home_pick.html": "babc4b9a1b24d293"
+   }
   },
   {
    "id": "channels",
    "icon": "📺",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/channels.html": "6c7d20085c3372be",
+    "kid/home.html": "37ff4eecff63ff41",
+    "kid/_channel_avatar.html": "1b2d89657b36e8b0"
+   }
   },
   {
    "id": "channel-look",
    "icon": "✏️",
-   "needs": "allow_customize"
+   "needs": "allow_customize",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/channels.html": "6c7d20085c3372be",
+    "kid/channel_look.html": "47509b0ce20844ac",
+    "kid/_channel_avatar.html": "1b2d89657b36e8b0"
+   }
+  },
+  {
+   "id": "new-channel",
+   "icon": "➕",
+   "needs": "allow_customize",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/channels.html": "6c7d20085c3372be",
+    "kid/channel_new.html": "85765401322f51b1",
+    "kid/_channel_avatar.html": "1b2d89657b36e8b0"
+   }
   },
   {
    "id": "search",
    "icon": "🔍",
-   "needs": "search"
+   "needs": "search",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/search.html": "5073c54215ca81b6",
+    "kid/_video_grid.html": "c8eca5623d65de09"
+   }
   },
   {
    "id": "find-new",
    "icon": "🔭",
-   "needs": "allow_wishlist"
+   "needs": "allow_wishlist",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/wishlist.html": "d70abd8b29c09959"
+   }
   },
   {
    "id": "hide",
    "icon": "🙈",
-   "needs": "allow_hide"
+   "needs": "allow_hide",
+   "screens": {
+    "kid/base.html": "e18058b8097c098a",
+    "kid/my_home.html": "f3e6180dc7c54449",
+    "kid/watch.html": "0f5401b30ca061f1"
+   }
   }
  ],
  "langs": {
@@ -295,6 +351,47 @@
       "img": "channel-look-05.webp",
       "box": null,
       "say": "There it is!"
+     }
+    ]
+   },
+   {
+    "id": "new-channel",
+    "title": "Make a channel",
+    "steps": [
+     {
+      "img": "new-channel-01.webp",
+      "box": [
+       0.6695,
+       0.4046,
+       0.267,
+       0.1738
+      ],
+      "say": "Tap New channel."
+     },
+     {
+      "img": "new-channel-02.webp",
+      "box": [
+       0.1094,
+       0.1907,
+       0.7812,
+       0.043
+      ],
+      "say": "Type its name."
+     },
+     {
+      "img": "new-channel-03.webp",
+      "box": [
+       0.1094,
+       0.2796,
+       0.1925,
+       0.043
+      ],
+      "say": "Tap Create channel."
+     },
+     {
+      "img": "new-channel-04.webp",
+      "box": null,
+      "say": "It's yours! Put videos in it with Customize under a video."
      }
     ]
    },
@@ -699,6 +796,47 @@
     ]
    },
    {
+    "id": "new-channel",
+    "title": "Crea un canal",
+    "steps": [
+     {
+      "img": "new-channel-01.webp",
+      "box": [
+       0.6695,
+       0.4046,
+       0.267,
+       0.1738
+      ],
+      "say": "Toca Canal nuevo."
+     },
+     {
+      "img": "new-channel-02.webp",
+      "box": [
+       0.1094,
+       0.1907,
+       0.7812,
+       0.043
+      ],
+      "say": "Escribe su nombre."
+     },
+     {
+      "img": "new-channel-03.webp",
+      "box": [
+       0.1094,
+       0.2796,
+       0.1611,
+       0.043
+      ],
+      "say": "Toca Crear canal."
+     },
+     {
+      "img": "new-channel-04.webp",
+      "box": null,
+      "say": "¡Es tuyo! Pon videos en él con Personalizar debajo de un video."
+     }
+    ]
+   },
+   {
     "id": "search",
     "title": "Buscar",
     "steps": [
@@ -902,7 +1040,7 @@
       "img": "watch-01.webp",
       "box": [
        0.0208,
-       0.1969,
+       0.137,
        0.3073,
        0.1695
       ],
@@ -912,7 +1050,7 @@
       "img": "watch-02.webp",
       "box": [
        0.0208,
-       0.1969,
+       0.137,
        0.9583,
        0.4043
       ],
@@ -922,7 +1060,7 @@
       "img": "watch-03.webp",
       "box": [
        0.2407,
-       0.3678,
+       0.3079,
        0.2322,
        0.0625
       ],
@@ -943,7 +1081,7 @@
       "img": "home-01.webp",
       "box": [
        0.3817,
-       0.9353,
+       0.8755,
        0.2366,
        0.043
       ],
@@ -953,7 +1091,7 @@
       "img": "home-02.webp",
       "box": [
        0.0312,
-       0.4933,
+       0.4334,
        0.123,
        0.043
       ],
@@ -963,7 +1101,7 @@
       "img": "home-03.webp",
       "box": [
        0.6719,
-       0.4835,
+       0.4237,
        0.3073,
        0.1968
       ],
@@ -973,7 +1111,7 @@
       "img": "home-04.webp",
       "box": [
        0.0208,
-       0.4138,
+       0.4136,
        0.3073,
        0.172
       ],
@@ -983,7 +1121,7 @@
       "img": "home-05.webp",
       "box": [
        0.3464,
-       0.7698,
+       0.7861,
        0.3073,
        0.2144
       ],
@@ -993,7 +1131,7 @@
       "img": "home-06.webp",
       "box": [
        0.0404,
-       0.2545,
+       0.1946,
        0.1374,
        0.043
       ],
@@ -1099,13 +1237,54 @@
     ]
    },
    {
+    "id": "new-channel",
+    "title": "Crie um canal",
+    "steps": [
+     {
+      "img": "new-channel-01.webp",
+      "box": [
+       0.6695,
+       0.4046,
+       0.267,
+       0.1738
+      ],
+      "say": "Toque em Novo canal."
+     },
+     {
+      "img": "new-channel-02.webp",
+      "box": [
+       0.1094,
+       0.1907,
+       0.7812,
+       0.043
+      ],
+      "say": "Digite o nome dele."
+     },
+     {
+      "img": "new-channel-03.webp",
+      "box": [
+       0.1094,
+       0.2796,
+       0.1557,
+       0.043
+      ],
+      "say": "Toque em Criar canal."
+     },
+     {
+      "img": "new-channel-04.webp",
+      "box": null,
+      "say": "É seu! Coloque vídeos nele com Personalizar embaixo de um vídeo."
+     }
+    ]
+   },
+   {
     "id": "search",
     "title": "Buscar",
     "steps": [
      {
       "img": "search-01.webp",
       "box": [
-       0.2816,
+       0.2526,
        0.0518,
        0.1008,
        0.056
@@ -1116,7 +1295,7 @@
       "img": "search-02.webp",
       "box": [
        0.1094,
-       0.2584,
+       0.1985,
        0.5078,
        0.0459
       ],
@@ -1126,7 +1305,7 @@
       "img": "search-03.webp",
       "box": [
        0.6224,
-       0.2603,
+       0.2005,
        0.155,
        0.043
       ],
@@ -1146,7 +1325,7 @@
      {
       "img": "find-new-01.webp",
       "box": [
-       0.5344,
+       0.5054,
        0.0518,
        0.1251,
        0.056
@@ -1157,7 +1336,7 @@
       "img": "find-new-02.webp",
       "box": [
        0.1094,
-       0.2584,
+       0.1985,
        0.5078,
        0.0459
       ],
@@ -1167,7 +1346,7 @@
       "img": "find-new-03.webp",
       "box": [
        0.6224,
-       0.2603,
+       0.2005,
        0.155,
        0.043
       ],
@@ -1177,7 +1356,7 @@
       "img": "find-new-04.webp",
       "box": [
        0.0339,
-       0.6447,
+       0.5848,
        0.2812,
        0.0469
       ],
@@ -1198,7 +1377,7 @@
       "img": "hide-01.webp",
       "box": [
        0.0208,
-       0.38,
+       0.3202,
        0.3073,
        0.1695
       ],
@@ -1208,7 +1387,7 @@
       "img": "hide-02.webp",
       "box": [
        0.384,
-       0.6637,
+       0.6038,
        0.1622,
        0.043
       ],
@@ -1218,7 +1397,7 @@
       "img": "hide-03.webp",
       "box": [
        0.0404,
-       0.8072,
+       0.7474,
        0.186,
        0.043
       ],
@@ -1228,7 +1407,7 @@
       "img": "hide-04.webp",
       "box": [
        0.4878,
-       0.2057,
+       0.1458,
        0.1266,
        0.043
       ],

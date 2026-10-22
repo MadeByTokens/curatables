@@ -57,6 +57,8 @@ photo); only you see them, and **Reset to original** puts them back.
 
 ![Change under a channel: your own name and a picture](img/anim/kids-channel-look.webp)
 
+![New channel: a name, then Create channel](img/anim/kids-new-channel.webp)
+
 **On a channel**, pick the order of its videos: **Newest**, **Oldest**,
 **A to Z** or **Z to A**. The channel keeps that order for you. A to Z
 goes by your own names for the videos, so naming them "1 Trains",

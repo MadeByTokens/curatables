@@ -3,17 +3,34 @@
   {
    "id": "add-kid",
    "icon": "🧒",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "parent/base.html": "1ed59f6e8f8fcec4",
+    "parent/dashboard.html": "476752413968db1d",
+    "parent/profiles.html": "a4957a6405f8a3d3",
+    "parent/profile_form.html": "5edd9f50560555b2"
+   }
   },
   {
    "id": "requests",
    "icon": "📬",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "parent/base.html": "1ed59f6e8f8fcec4",
+    "parent/dashboard.html": "476752413968db1d",
+    "parent/requests.html": "669947d67a4d9bd1",
+    "parent/content_preview.html": "e62c7607ae3f10f1"
+   }
   },
   {
    "id": "hidden",
    "icon": "🙈",
-   "needs": ""
+   "needs": "",
+   "screens": {
+    "parent/base.html": "1ed59f6e8f8fcec4",
+    "parent/dashboard.html": "476752413968db1d",
+    "parent/content_detail.html": "9725dedbcd6744fc"
+   }
   }
  ],
  "langs": {

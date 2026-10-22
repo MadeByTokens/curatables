@@ -27,10 +27,12 @@ code already called itself 0.5.0).
   there is only one channel. Home shows only the kid's videos.
 - **Help → Watch how** plays step-by-step guides made from real screens,
   with a finger showing what to tap: signing in, watching, arranging
-  Home, channels, searching, asking for a video, hiding one. In the
-  kid's language (English, Spanish or Portuguese), listing only what
-  that kid can do. It moves on by itself every few seconds, or with the
-  buttons; with Reduce Motion it waits for a tap and nothing glides.
+  Home, channels, naming and making a channel, searching, asking for a
+  video, hiding one. In the kid's language (English, Spanish or
+  Portuguese), listing only what that kid can do. It moves on by itself
+  every few seconds, or with the buttons; with Reduce Motion it waits
+  for a tap and nothing glides. Each guide is checked against the
+  screens it shows, so a changed screen can't leave it out of date.
 - **All videos** has the same **Order** buttons as a channel (Newest,
   Oldest, A to Z, Z to A), kept for each kid apart from each channel's
   order. Adds one database migration.

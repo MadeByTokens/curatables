@@ -206,6 +206,17 @@ Other conventions worth knowing:
   or unused entry. A new language is a new catalog plus a row in
   `app.i18n.LANGUAGES`. The parent dashboard is English only.
 
+- **Help moves with the screens.** A change people can see updates, in
+  the same PR: the in-app Help (`kid/help.html` tiles,
+  `parent/help.html`), the written guides (`docs/guide/kids.md`,
+  `docs/guide/parents.md`), the CHANGELOG, and the animated guides.
+  Each guide records the screens it shows, and
+  `tests/test_guides.py` fails when one of them changed: make that
+  guide again with `python tools/make_guides.py --only kids|parents
+  --tour ID` and look at its pictures and captions. A new kid feature
+  gets a tour when it takes more than one tap (a `Tour` in
+  `tools/make_guides.py`, with `needs` set to its switch).
+
 [`docs/architecture.md`](docs/architecture.md) documents the
 project conventions and layering; if you change one, update the
 docs in the same PR.
