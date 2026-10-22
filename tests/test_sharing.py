@@ -314,6 +314,23 @@ class TestExportRoute:
         payload = json.loads(resp.content)
         assert payload["schema"] == SCHEMA_ID
 
+    def test_export_of_a_channel_named_in_any_language(self, app, authed_client):
+        """A name in another script or with accents can't go into a plain
+        header (the chaos run found a crash): the plain file name drops
+        what doesn't fit, and filename* carries the real name."""
+        from urllib.parse import unquote
+        from app.dependencies import get_db
+        from app.repositories import ChannelRepository
+        conn = next(app.dependency_overrides[get_db]())
+        for name, plain in (("名前の動画", "channel"), ("Canções da Lúcia", "Cancoes-da-Lucia")):
+            cid = ChannelRepository(conn).create(name)
+            for fmt in ("ytc", "txt"):
+                resp = authed_client.get(f"/parent/channels/{cid}/export?format={fmt}")
+                assert resp.status_code == 200, (name, fmt)
+                header = resp.headers["content-disposition"]
+                assert f'filename="{plain}.{fmt}"' in header
+                assert unquote(header.split("filename*=UTF-8''")[1]) == f"{name}.{fmt}".replace(" ", "-")
+
     def test_export_txt(self, app, authed_client):
         from app.dependencies import get_db
         from app.repositories import ChannelRepository

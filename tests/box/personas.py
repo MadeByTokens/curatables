@@ -256,7 +256,7 @@ def order_fiddler(page):
                 btn.click(no_wait_after=bool(i % 3))
         elif what == "place":
             row = rows.nth(random.randrange(n))
-            row.locator("input[name=place]").fill(random.choice(["1", "2", "999", "0", "x"]))
+            row.locator("input[name=place]").fill(random.choice(["1", "2", "999", "0", ""]))
             row.locator('button[value="place"]').click()
         elif what == "undo":
             page.locator('.arrange-bar button[value="undo"]').first.click()
