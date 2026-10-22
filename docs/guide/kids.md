@@ -45,7 +45,8 @@ download first; it plays after a short wait. **Home** always brings
 you back.
 
 **Channels** shows all your channels as big pictures. Tap one to see
-its videos, or **All videos** to see everything. **Change** under a
+its videos, or **All videos** to see everything. Both have **Order**
+buttons, like a channel. **Change** under a
 channel gives it your own name and picture (one of the drawings, or a
 photo); only you see them, and **Reset to original** puts them back.
 

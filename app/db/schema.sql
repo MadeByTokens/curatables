@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     trusted_only TEXT NOT NULL DEFAULT 'family',
     allow_download  INTEGER NOT NULL DEFAULT 1,
     allow_hide      INTEGER NOT NULL DEFAULT 1,
-    home_customized INTEGER NOT NULL DEFAULT 0  -- the kid arranged Home
+    home_customized INTEGER NOT NULL DEFAULT 0, -- the kid arranged Home
+    all_sort        TEXT NOT NULL DEFAULT ''    -- the kid's order for All videos ('' = newest)
 );
 
 CREATE TABLE IF NOT EXISTS profile_channels (

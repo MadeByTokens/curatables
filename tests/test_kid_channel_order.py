@@ -139,3 +139,36 @@ def test_parents_see_no_order_buttons(app, authed_client):
     _conn_, ch = _trains(app)
     assert 'action="/channel/' not in authed_client.get(f"/channel/{ch}").text
     assert authed_client.post(f"/channel/{ch}/sort", data={"sort": "az"}).status_code in (302, 303, 403)
+
+
+def _all(client):
+    html = client.get("/all").text
+    return list(dict.fromkeys(re.findall(r'href="/watch/([\w-]+)"', html)))
+
+
+def test_all_videos_has_its_own_order(app):
+    """All videos takes the same order buttons, across every channel, by
+    the kid's own titles, kept apart from each channel's order."""
+    conn, trains = _trains(app)
+    boats = ChannelRepository(conn).create("Boats")
+    _video(conn, "yt_x", boats, "Xebec", 4)
+    pid, kid = _kid(app, "enzo")
+    assert _all(kid) == ["yt_a", "yt_c", "yt_b", "yt_x"]
+    assert 'action="/all/sort"' in kid.get("/all").text
+    resp = kid.post("/all/sort", data={"sort": "oldest"})
+    assert resp.status_code == 303 and resp.headers["location"] == "/all"
+    assert _all(kid) == ["yt_x", "yt_b", "yt_c", "yt_a"]
+    ProfileVideoOverrideRepository(conn).upsert(pid, "yt_x", title="1 Boat")
+    kid.post("/all/sort", data={"sort": "az"})
+    assert _all(kid) == ["yt_x", "yt_a", "yt_b", "yt_c"]
+    # The channel keeps its own order; another kid keeps newest first.
+    assert _order(kid, trains) == ["yt_a", "yt_c", "yt_b"]
+    _sid, sis = _kid(app, "lia")
+    assert _all(sis) == ["yt_a", "yt_c", "yt_b", "yt_x"]
+    kid.post("/all/sort", data={"sort": "newest"})
+    assert _all(kid) == ["yt_a", "yt_c", "yt_b", "yt_x"]
+
+
+def test_parents_get_no_order_buttons_on_all_videos(app, authed_client):
+    _trains(app)
+    assert 'action="/all/sort"' not in authed_client.get("/all").text

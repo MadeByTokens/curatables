@@ -26,6 +26,9 @@ code already called itself 0.5.0).
   kid's language (English, Spanish or Portuguese), listing only what
   that kid can do. It moves on by itself every few seconds, or with the
   buttons; with Reduce Motion it waits for a tap and nothing glides.
+- **All videos** has the same **Order** buttons as a channel (Newest,
+  Oldest, A to Z, Z to A), kept for each kid apart from each channel's
+  order. Adds one database migration.
 - **Change** under a channel gives it the kid's own name and picture (a
   drawing or a photo from the tablet). Only that kid sees it; the
   channel stays as the parent set it for everyone else. Needs

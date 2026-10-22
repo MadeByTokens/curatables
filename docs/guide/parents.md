@@ -224,10 +224,10 @@ own name and picture (a drawing or a photo). Only that kid sees it; the
 channel stays as you set it for everyone else. Their own channels open
 the full **Edit Channel** instead.
 
-On a channel, **Order** shows its videos newest or oldest first, or A to
-Z or Z to A by the titles that kid sees, so a kid who renames videos
-"1 Trains", "2 Boats" gets that order. Each kid's choice stays for each
-channel. **Search** forgives spelling: when no video has the word typed,
+On a channel, and on **All videos**, **Order** shows the videos newest
+or oldest first, or A to Z or Z to A by the titles that kid sees, so a
+kid who renames videos "1 Trains", "2 Boats" gets that order. Each
+kid's choice stays for each channel and for All videos. **Search** forgives spelling: when no video has the word typed,
 it offers ones with a word close to it ("dinasor" finds the dinosaurs).
 
 When a kid taps **Hide** under a video, it leaves that kid's lists and
