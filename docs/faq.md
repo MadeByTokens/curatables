@@ -194,7 +194,7 @@ or leave the choice to you: then **Add** waits until you pick a channel, or "non
 The child can take a request back, and you can **Remove** one without turning the video
 down. Videos from YouTube channels you trust (Video requests → **Trusted YouTube
 channels**, for the whole family or per kid, matched by channel ID) can skip the review
-and go straight into a channel you pick, and a kid can be limited to finding only those
+and go straight into a channel you pick (or the one your child picked), and a kid can be limited to finding only those
 channels. You watch it, change what you like and add it, or press **Not this one**; either way you are back on the list for the next one. The review page opens instantly: it shows what was
 saved when the child asked, without asking YouTube again. Nothing downloads before you
 add it. See [safety-model.md](safety-model.md) for what the child sees

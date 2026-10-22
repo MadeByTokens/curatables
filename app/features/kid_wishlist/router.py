@@ -269,7 +269,10 @@ def wishlist_choose(request: Request, request_id: int,
         if error:
             return _ask_page(request, viewer, repo.get(request_id), back, content,
                              error=error, new_channel=name, status_code=400)
-        into = service.auto_add_into(profiles.get(viewer.kid_id))
+        # The kid's pick counts only if it is one of the parent's channels;
+        # one of their own gets the video as well (see _auto_add).
+        picked = next((c.id for c in mine if c.id == target and c.owner_profile_id is None), None)
+        into = service.auto_add_target(profiles.get(viewer.kid_id), picked)
         if into is not None and _auto_add(request_id, into, viewer, repo, content,
                                           channels_svc, service, kid_lib):
             how = "auto"
@@ -282,8 +285,9 @@ def wishlist_choose(request: Request, request_id: int,
 def _auto_add(request_id: int, into: int, viewer: ViewerContext, repo: WishlistRepository,
               content: ContentService, channels_svc: ChannelService,
               service: WishlistService, kid_lib: KidLibraryService) -> bool:
-    """Add a sent request to the library straight away, into the channel
-    the parent set for this kid, if its YouTube channel is one of the
+    """Add a sent request to the library straight away, into `into` (the
+    parent's channel for this kid, or the one the kid picked; see
+    WishlistService.auto_add_target), if its YouTube channel is one of the
     kid's trusted channels. YouTube's full details are fetched first when only the search
     result is stored, so the rules see the description too. A kid's own
     channel they picked gets the video as well."""

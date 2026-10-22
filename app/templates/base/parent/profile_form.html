@@ -122,14 +122,15 @@
     </select>
     <label for="auto_add" class="mt-20">Their requests from trusted channels</label>
     <select id="auto_add" name="auto_add">
-      <option value="family"{% if auto_mode not in ("on", "off") %} selected{% endif %}>Family setting (now: {% if family_into %}straight into {{ family_into.name }}{% else %}wait for me{% endif %})</option>
+      <option value="family"{% if auto_mode not in ("on", "off") %} selected{% endif %}>Family setting (now: {% if family_into %}straight into {{ family_into.name }}{% else %}wait for me{% endif %}{% if wishlist_rules.auto_add_kid_choice %}, or the channel they pick{% endif %})</option>
       <option value="off"{% if auto_mode == "off" %} selected{% endif %}>Wait for me, like any other request</option>
       {% for ch in own_channels %}
       <option value="{{ ch.id }}"{% if auto_mode == "on" and profile.auto_add_channel_id == ch.id %} selected{% endif %}>Go straight into {{ ch.name }}</option>
       {% endfor %}
     </select>
     <small class="muted d-block">Only videos that pass all your other rules; everything else waits in
-      Video requests. Pick a channel this kid can see.</small>
+      Video requests. Pick a channel this kid can see.{% if wishlist_rules.auto_add_kid_choice %} When the
+      kid picks one of your channels while asking, it goes there instead (Trusted YouTube channels).{% endif %}</small>
     <p class="fw-normal mt-20 mb-6">Trusted for this kid:</p>
     {% for ch in trusted_family %}
     <input type="hidden" name="trusted_family_shown" value="{{ ch.channel_id }}">

@@ -615,15 +615,52 @@ def test_parent_takes_back_an_auto_added_video(app, client, authed_client, backe
     assert repo.get(other_id).status == "pending"
 
 
-def _ask_and_send(app, client, raw="aaaaaaaaaaa"):
-    """Ask for a video and send it; returns the request as it ends up."""
+def _ask_and_send(app, client, raw="aaaaaaaaaaa", channel_id=None):
+    """Ask for a video and send it (into `channel_id` if given); returns
+    the request as it ends up."""
     from unittest.mock import patch
     repo = WishlistRepository(_conn(app))
     client.post("/wishlist/ask", data={"raw_id": raw})
     item = next(w for w in repo.list_by_status("pending") if w.raw_id == raw)
     with patch("app.services.content.ContentService._start_download"):
-        client.post(f"/wishlist/asked/{item.id}", data={"title": ""})
+        client.post(f"/wishlist/asked/{item.id}",
+                    data={"title": "", "channel_id": str(channel_id) if channel_id else ""})
     return repo.get(item.id)
+
+
+def test_a_request_can_go_into_the_channel_the_kid_picked(app, client, backend):
+    """With the family's "the channel they pick" on, a request from a
+    trusted channel goes straight into the parent's channel the kid
+    picked; with no pick it follows the usual setting (here: wait). A
+    kid set to wait still waits, and with the setting off the pick is
+    only a suggestion."""
+    from app.repositories.channel_repo import ChannelRepository
+    _trust(app)
+    _full_details(backend)
+    songs = ChannelRepository(_conn(app)).create("Songs")
+    rules = app.state.config.wishlist
+    rules.auto_add_kid_choice = True
+    _kid(app, client, "wren")
+    item = _ask_and_send(app, client, channel_id=songs)
+    assert item.status == "approved" and item.auto_added
+    assert VideoRepository(_conn(app)).get(item.video_id).channel_id == songs
+    assert _ask_and_send(app, client, "eeeeeeeeeee").status == "pending"
+
+    _kid(app, client, "otto", auto_add_mode="off")
+    assert _ask_and_send(app, client, "eeeeeeeeeee", channel_id=songs).status == "pending"
+
+    rules.auto_add_kid_choice = False
+    _kid(app, client, "ivy")
+    assert _ask_and_send(app, client, "eeeeeeeeeee", channel_id=songs).status == "pending"
+
+
+def test_the_kid_choice_setting_is_saved(app, authed_client):
+    authed_client.post("/parent/trusted-channels/settings", data={"auto_add_kid_choice": "1"})
+    assert app.state.config.wishlist.auto_add_kid_choice is True
+    page = authed_client.get("/parent/trusted-channels").text
+    assert 'id="auto_add_kid_choice" name="auto_add_kid_choice" value="1" checked' in page
+    authed_client.post("/parent/trusted-channels/settings", data={})
+    assert app.state.config.wishlist.auto_add_kid_choice is False
 
 
 def test_family_setting_adds_requests_unless_the_kid_waits(app, client, backend):
