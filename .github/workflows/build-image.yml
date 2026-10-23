@@ -4,9 +4,15 @@ name: Build Pi image
 # qemu ARM emulation). Heavy job (~30-60 min, several GB) so it does NOT
 # run on every push: trigger it by hand, or it runs automatically when a
 # GitHub Release is published and attaches the image to it as
-# curatables-<version>-raspberry-pi.img.xz plus its .sha256.
+# curatables-<version>-raspberry-pi.img.xz plus its .sha256. A manual run
+# given a tag builds that tag and attaches the image to its release.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and attach the image to, e.g. v0.9.2 (empty: build main, no release)"
+        required: false
+        default: ""
   release:
     types: [published]
 
@@ -21,10 +27,13 @@ permissions:
 jobs:
   build-image:
     name: pi-gen image (arm64)
-    runs-on: ubuntu-latest
+    # Pinned: Ubuntu 26.04 has no qemu-user-static package.
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
       # pi-gen + the rootfs need more space than the runner has free by
       # default. Reclaim the big preinstalled toolchains we don't use.
@@ -70,10 +79,10 @@ jobs:
       # names it after the build date) and add its checksum, so parents
       # can tell which file on the release page to download.
       - name: Name the release image
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         id: release_image
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
           IMG: ${{ steps.artifact.outputs.path }}
         run: |
           out="curatables-${TAG#v}-raspberry-pi.img.xz"
@@ -82,9 +91,10 @@ jobs:
           echo "path=$out" >> "$GITHUB_OUTPUT"
 
       - name: Attach to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
           files: |
             ${{ steps.release_image.outputs.path }}
             ${{ steps.release_image.outputs.path }}.sha256

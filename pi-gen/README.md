@@ -152,8 +152,10 @@ time. Debian and Raspberry Pi OS packages are the mirrors' current ones.
 removing it).
 
 In CI, [`.github/workflows/build-image.yml`](../.github/workflows/build-image.yml)
-runs the same script (manually, or on a published GitHub Release, which
-gets the `.img.xz` attached).
+runs the same script on Ubuntu 24.04, on a published GitHub Release,
+which gets the `.img.xz` attached, or by hand. A manual run given a
+release tag builds that tag and attaches the image to its release
+(`gh workflow run build-image.yml -f tag=v0.9.2`).
 
 ## Trying an image on a laptop (QEMU)
 
