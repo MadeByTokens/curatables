@@ -9,6 +9,18 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**For parents**
+- Raspberry Pi's own updates (kernel, firmware) install by themselves
+  every day, with Debian's security updates. When one needs a restart,
+  the box restarts by itself at 4:00 in the morning; Box → Updates
+  says when a restart is waiting.
+- The box has a firewall: from the network it answers only the web page,
+  SSH (when turned on) and `curatables.local` names; anything else
+  another program might open stays closed. Boxes updated from Box →
+  Updates get it right away.
+
 ## v0.9.1
 
 A Channels page with each kid's own channel names and pictures; a kid's

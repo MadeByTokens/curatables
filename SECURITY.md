@@ -4,7 +4,8 @@ Curatables is a self-hosted family appliance: a single Linux box on a
 home LAN, one parent, one or more kid profiles. The threat surface
 reflects that — see [`docs/threat-model.md`](docs/threat-model.md) for
 the full model, including residual risks the codebase does **not**
-mitigate today.
+mitigate today. [`docs/hardening.md`](docs/hardening.md) lists the
+measures in place and where each lives.
 
 ## Supported versions
 

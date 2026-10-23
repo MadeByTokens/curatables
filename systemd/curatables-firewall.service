@@ -1,0 +1,21 @@
+[Unit]
+Description=Curatables — firewall: only the web page, SSH and .local names come in
+Documentation=https://github.com/MadeByTokens/curatables
+# Up before the network, so the box is never reachable without it. If the
+# rules can't load, the box stays reachable (and Diagnostics says so)
+# rather than locking everyone out.
+DefaultDependencies=no
+Before=network-pre.target shutdown.target
+Wants=network-pre.target
+Conflicts=shutdown.target
+ConditionPathExists=/usr/sbin/nft
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /opt/curatables/systemd/curatables-firewall.nft
+ExecReload=/usr/sbin/nft -f /opt/curatables/systemd/curatables-firewall.nft
+ExecStop=/usr/sbin/nft delete table inet curatables
+
+[Install]
+WantedBy=sysinit.target

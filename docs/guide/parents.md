@@ -327,8 +327,10 @@ back, after asking.
   minutes; you can leave the page, and it shows the result when you come
   back.
 - **Update system packages** installs the operating system's updates.
-  Security updates also install by themselves every day. If the page
-  says a restart is needed, restart the box when nobody is watching.
+  Security updates, and Raspberry Pi's own updates (kernel, firmware),
+  also install by themselves every day. When one needs a restart, the
+  box restarts by itself at 4:00 in the morning; the page says so, and
+  you can restart it sooner when nobody is watching.
 
 ![Box: updates](img/parent-updates.webp)
 

@@ -30,11 +30,15 @@ terminal needed after flashing.
     boot partition (see below).
   - `curatables-mdns-unicast.service` — answers `curatables.local`
     directly for routers that drop multicast to Wi-Fi clients.
+  - `curatables-firewall.service` — lets in only the web page, SSH and
+    `.local` names (see
+    [`../docs/threat-model.md`](../docs/threat-model.md)).
 - mDNS via Avahi → reachable at `curatables.local` on the LAN.
 - A NetworkManager dispatcher hook that keeps Wi-Fi on standby while an
   Ethernet cable is connected.
-- Daily Debian security updates (`unattended-upgrades`, from
-  [`image-packages.txt`](image-packages.txt)).
+- Daily Debian security updates and Raspberry Pi OS updates
+  (`unattended-upgrades`, from [`image-packages.txt`](image-packages.txt)),
+  restarting at 04:00 when an update needs it.
 - All units, the dispatcher hook and the security-update setting are
   installed by [`scripts/apply-system.sh`](../scripts/apply-system.sh),
   which the dashboard's updater runs again after each update, so a new
