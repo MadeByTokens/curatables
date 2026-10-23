@@ -89,6 +89,9 @@ from leaving the browser. On the child's tablet:
 - Curatables is meant for your **home network only**. Don't forward a
   port to it from your router: it has no HTTPS and was not designed to
   face the internet.
+- On the Pi image, the box's firewall lets in only the web page, SSH
+  (when you turn it on) and the `curatables.local` name. Security fixes
+  install by themselves every day.
 - Until you set the parent password the first time, **anyone on your
   network** who opens the dashboard within 30 minutes of the box starting
   can set it. Do that first, right after installing.

@@ -68,7 +68,7 @@ Directory-level only; open the directory for the current file list.
 | `tests/` | Flat: one `test_*.py` per area, `conftest.py` fixtures, `fixtures/` (incl. a fake yt-dlp for the smoke suite). |
 | `syshelper/` | The root system helper for the Pi image: standard library only, one module per area (accounts, Wi-Fi, drives, backups, diagnostics, updates). See [System helper](#system-helper). |
 | `scripts/` | `install.sh`, `apply-system.sh` (installs units and system files; used by the image build and by updates), backup/restore, the root-side `updater.sh` with `ytdlp_update.py` and `ytdlp-check.py`, drive setup, `curatables-helper.py`, Pi `firstboot.sh`, `nm-wired-only.sh`, `mdns-unicast.py`, `seed_demo.py`. |
-| `systemd/` | Units for the server, the system helper, the yt-dlp updater (path + service), the nightly backup (service + timer), and the Pi's first boot, SD-card recovery, SD-card diagnostics and unicast mDNS. |
+| `systemd/` | Units for the server, the system helper, the yt-dlp updater (path + service), the nightly backup (service + timer), the Pi's first boot, SD-card recovery, SD-card diagnostics and unicast mDNS, and the Pi image's firewall (`curatables-firewall.service` + `curatables-firewall.nft`). |
 | `pi-gen/` | Raspberry Pi appliance image build ([`pi-gen/README.md`](../pi-gen/README.md)). |
 | `tools/` | `curatables-cli.py`, a standalone yt-dlp helper; not part of the server. |
 | `docs/` | User and contributor docs; `docs/design/` holds design notes (some built, some future work; [docs/README.md](README.md#design-notes-future-work) says which), `docs/history/` superseded plans and research. |
@@ -767,6 +767,19 @@ installs Debian's security and stable fixes and Raspberry Pi OS updates on its
 own, restarting the box at 04:00 when one needs it. Releases come from
 `.github/workflows/release-source.yml`, which refuses a tag that doesn't
 match the version in the code.
+
+### Firewall
+
+`curatables-firewall.service` loads `systemd/curatables-firewall.nft`
+before the network comes up (`Before=network-pre.target`). It is one
+nftables table of its own, `inet curatables`, with an input chain whose
+policy is drop: TCP 80 and 22, UDP 5353, DHCP/DHCPv6 replies, ICMP and
+replies to the box's own connections get in. Output and forwarding are
+not filtered. The file creates, deletes and redefines the table, so a
+reload replaces it in one step; `apply-system.sh` installs the unit and
+`curatables_update` restarts it, so a release can change the rules.
+The diagnostics report prints the loaded table. Measures and checks for
+the whole box are in [hardening.md](hardening.md).
 
 ---
 

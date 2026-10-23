@@ -24,7 +24,12 @@ reached as `curatables.local`, never published to the internet.
 
 `scripts/apply-system.sh` installs all of the above from the code tree.
 The image build runs it, and so does every **Box → Updates** update, so
-a release can change system settings without re-flashing.
+a release can change system settings without re-flashing. Own installs
+(`scripts/install.sh`) get none of this table: their owners run their
+own firewall and updates ([deployment.md](deployment.md#firewall-on-your-own-install)).
+The diagnostics report (**Box → Diagnostics**, or
+`curatables-diagnose.txt` on the boot partition) prints the loaded
+firewall table and each unit's state.
 
 ## The services
 
