@@ -624,7 +624,8 @@ autoescape like every other field.
 - Hardened systemd unit; root-owned code; updater touches the data dir
   only as the service user.
 - Firewall letting in only the web page, SSH and mDNS; daily Debian
-  security and Raspberry Pi OS updates with a 04:00 restart when needed.
+  security and stable fixes and Raspberry Pi OS updates, with a 04:00
+  restart when needed.
 - Unmounted-drive guards (whole-library and media-only modes); nightly
   0600 backups off the media drive.
 - Imports confined to configured folders; cancellable jobs that clean up
