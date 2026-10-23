@@ -9,7 +9,11 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.9.2
+
+A firewall and fuller automatic updates for the Raspberry Pi image.
+Boxes on v0.9.1 install it from **Box → Updates**, which sets both up;
+no database changes.
 
 **For parents**
 - Raspberry Pi's own updates (kernel, firmware) install by themselves
@@ -20,6 +24,14 @@ code already called itself 0.5.0).
   SSH (when turned on) and `curatables.local` names; anything else
   another program might open stays closed. Boxes updated from Box →
   Updates get it right away.
+
+**Docs and tooling**
+- [docs/hardening.md](docs/hardening.md) lists, for developers, each
+  measure that keeps the box safe, where it lives in the code and how
+  to check it, and what to keep in mind when changing things. The
+  architecture page describes the firewall; the deployment page says
+  what to open on your own install's firewall. The diagnostics report
+  shows the firewall rules.
 
 ## v0.9.1
 

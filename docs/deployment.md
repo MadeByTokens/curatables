@@ -198,6 +198,23 @@ yourself (`iptables-persistent`, `nftables` restore service, etc.).
 
 ---
 
+## Firewall on your own install
+
+`install.sh` leaves the host's firewall and automatic updates alone.
+Curatables needs, coming in: TCP on its port (80, or the port in
+`config.json`) and UDP 5353 for the `.local` name. The Pi image's rules
+are in [`systemd/curatables-firewall.nft`](../systemd/curatables-firewall.nft);
+they let in SSH on port 22 and drop everything else, so adapt them to
+the host (its other services, another SSH port) before loading them
+(`sudo nft -f <file>`). With `ufw`:
+
+```sh
+sudo ufw allow 80/tcp
+sudo ufw allow 5353/udp
+```
+
+---
+
 ## Media on an external drive (Raspberry Pi + USB disk)
 
 An SD card is small and wears out under constant video writes, so on a
