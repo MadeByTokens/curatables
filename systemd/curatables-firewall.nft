@@ -1,0 +1,25 @@
+#!/usr/sbin/nft -f
+# Curatables' firewall: the box answers only what it is for. Loaded by
+# curatables-firewall.service; only this table is touched.
+#
+# In: the web page (80), SSH (22; sshd answers only once it is turned on
+# in setup or Box), .local names (mDNS, 5353: avahi, the server's own
+# announcement, curatables-mdns-unicast), replies to what the box asked
+# for itself, DHCP and ping/IPv6 neighbour messages so the network works.
+# Everything else coming in is dropped. Nothing going out is blocked.
+table inet curatables
+delete table inet curatables
+
+table inet curatables {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ct state invalid drop
+		meta l4proto { icmp, ipv6-icmp } accept
+		tcp dport { 22, 80 } accept
+		udp dport 5353 accept
+		udp sport 67 udp dport 68 accept
+		udp sport 547 udp dport 546 accept
+	}
+}

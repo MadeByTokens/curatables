@@ -18,6 +18,9 @@ def test_installs_every_unit_the_tree_ships_and_the_hooks(tmp_path):
     hook = tmp_path / "NetworkManager" / "dispatcher.d" / "70-curatables-wired-only"
     assert os.access(hook, os.X_OK)
     assert 'Unattended-Upgrade "1"' in (tmp_path / "apt" / "apt.conf.d" / "20auto-upgrades").read_text()
+    unattended = (tmp_path / "apt" / "apt.conf.d" / "52curatables-unattended-upgrades").read_text()
+    assert '"origin=Raspberry Pi Foundation,codename=${distro_codename}";' in unattended
+    assert 'Automatic-Reboot "true"' in unattended and 'Automatic-Reboot-Time "04:00"' in unattended
     # Sorts after Raspberry Pi OS's 40-rpi-volatile-storage.conf, so it wins.
     journald = (tmp_path / "systemd" / "journald.conf.d" / "60-curatables.conf").read_text()
     assert "Storage=persistent" in journald and "SystemMaxUse=" in journald
@@ -36,3 +39,17 @@ def test_refuses_a_tree_without_units(tmp_path):
     proc = subprocess.run(["bash", str(SCRIPT), str(tmp_path)], capture_output=True, text=True,
                           env=dict(os.environ, CURATABLES_ETC=str(tmp_path / "etc")), timeout=30)
     assert proc.returncode != 0 and "no systemd/ folder" in proc.stderr
+
+
+def test_the_firewall_lets_in_what_the_box_is_for():
+    """Dropping by default must never cost the web page, SSH, .local names
+    (avahi and the unicast helper on 5353) or getting an address."""
+    rules = (ROOT / "systemd" / "curatables-firewall.nft").read_text()
+    assert "policy drop;" in rules
+    for rule in ('iif "lo" accept', "ct state established,related accept", "tcp dport { 22, 80 } accept",
+                 "udp dport 5353 accept", "udp sport 67 udp dport 68 accept",
+                 "meta l4proto { icmp, ipv6-icmp } accept"):
+        assert rule in rules
+    assert "chain output" not in rules and "chain forward" not in rules  # nothing going out is blocked
+    unit = (ROOT / "systemd" / "curatables-firewall.service").read_text()
+    assert "/opt/curatables/systemd/curatables-firewall.nft" in unit

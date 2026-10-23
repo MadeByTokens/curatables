@@ -1,8 +1,11 @@
 # Debian packages only the Raspberry Pi image gets, on top of
 # scripts/apt-packages.txt (which scripts/install.sh also uses).
-# unattended-upgrades: daily Debian security updates (enabled by
+# unattended-upgrades: daily Debian security and Raspberry Pi OS updates (set up by
 # scripts/apply-system.sh).
 unattended-upgrades
 # exfatprogs: mkfs.exfat and fsck.exfat for Box, Drives (Format, Check &
 # repair). Raspberry Pi OS already has it; listed so it stays.
 exfatprogs
+# nftables: the nft command for curatables-firewall.service. Raspberry Pi
+# OS already has it; listed so it stays.
+nftables

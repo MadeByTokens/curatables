@@ -333,7 +333,9 @@ def build_report() -> str:
     parts.append(_file("/etc/fstab", SETTINGS.fstab_path))
     parts.append(_section("Services", ["systemctl", "--no-pager", "status", "curatables.service",
                                        "curatables-helper.service", "curatables-mdns-unicast.service",
+                                       "curatables-firewall.service",
                                        "avahi-daemon.service", "NetworkManager.service"]))
+    parts.append(_section("Firewall", ["nft", "list", "table", "inet", "curatables"]))
     parts.append(_section("Failed services", ["systemctl", "--failed", "--no-pager"]))
     parts.append(_file("First-boot log (SD card)", SETTINGS.boot_dir / "curatables-firstboot.log"))
     parts.append(_section("Curatables log (this boot)", ["journalctl", "-b", "-u", "curatables.service",

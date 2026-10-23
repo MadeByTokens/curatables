@@ -5,7 +5,8 @@
 > Curatables does **not** mitigate. It is intentionally honest:
 > "we don't defend against X" is a feature of a threat model, not a bug.
 > The plain-language version for parents is
-> [`safety-model.md`](safety-model.md).
+> [`safety-model.md`](safety-model.md); the measures at a glance, with
+> where they live, are in [`hardening.md`](hardening.md).
 
 ## Deployment shape
 
@@ -56,8 +57,17 @@ kernel filter passes nothing but UDP to 224.0.0.251:5353, and sends one
 A record back to the asker's hardware address. It has no file access
 (`ProtectSystem=strict`, `ProtectHome`, `PrivateDevices`).
 
-The image enables SSH but bakes no login password: the flasher sets the
-login user in Raspberry Pi Imager. Wi-Fi credentials are read from
+`curatables-firewall.service` loads `systemd/curatables-firewall.nft`
+(its own nftables table) before the network comes up. Coming in, it
+accepts only the web page (TCP 80), SSH (TCP 22, answered only once SSH
+is turned on), mDNS (UDP 5353, for avahi, the server's announcement and
+the unicast helper), DHCP and DHCPv6 replies, ICMP/ICMPv6, and replies to
+connections the box opened; everything else is dropped. Outgoing traffic
+is not filtered. If the rules can't load, the box stays reachable and
+Diagnostics lists the unit as stopped with an error.
+
+The image bakes no login password and leaves SSH off: first-run setup
+(or Raspberry Pi Imager) sets the Linux password and can turn SSH on. Wi-Fi credentials are read from
 `curatables-wifi.txt` on the FAT boot partition by
 `curatables-firstboot.service` on every boot. Once the network is
 configured the service blanks `ssid` and `psk` in that file;
@@ -613,6 +623,8 @@ autoescape like every other field.
 - ffmpeg codec allow-list on uploads; comment rate limits.
 - Hardened systemd unit; root-owned code; updater touches the data dir
   only as the service user.
+- Firewall letting in only the web page, SSH and mDNS; daily Debian
+  security and Raspberry Pi OS updates with a 04:00 restart when needed.
 - Unmounted-drive guards (whole-library and media-only modes); nightly
   0600 backups off the media drive.
 - Imports confined to configured folders; cancellable jobs that clean up
@@ -630,7 +642,7 @@ autoescape like every other field.
 | A parent session left open on a shared device is full parent access | Medium | Documented; log out or pick a kid profile |
 | Kid device still has a browser; device lockdown (Guided Access / screen pinning / kiosk) is up to the parent | Medium | Out of scope |
 | `yt-dlp` extractors, Deno and `ffmpeg` parse untrusted media in-process / unsandboxed beyond systemd | Medium | Out of scope (upstream) |
-| Root updater imports a freshly downloaded yt-dlp as root | Low | Documented |
+| A compromised service process can make the root updater fetch the latest yt-dlp (not choose it) | Low | Documented |
 | Re-download check compares length only | Low | Documented; use keep forever for favourites |
 | CSP allows inline style attributes and any https frame | Low | Accepted |
 | Wishlist: kids see titles and thumbnails of unfiltered YouTube search results (word list and trusted channels only) | Medium | Documented; off by default per kid |

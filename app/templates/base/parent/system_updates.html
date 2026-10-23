@@ -44,10 +44,11 @@ Curatables. Installed: <code>{{ update_state.current_version or "unknown" }}</co
 <div class="mt-12">{% include "parent/_downloader_result.html" %}</div>
 
 <h2 class="mt-40">System</h2>
-<p class="fs-14 mw-500">Security updates for the box's operating system install by themselves every day.
+<p class="fs-14 mw-500">Security updates for the box's operating system, and Raspberry Pi's own updates (kernel, firmware),
+install by themselves every day; when one needs a restart, the box restarts by itself at 4:00 in the morning.
 This button installs every available update now.</p>
 {% if info.reboot_required %}<div class="flash warn-bg warn-text mw-500" role="status">Updates were installed that
-need a restart. Restart the box when nobody is watching.
+need a restart. The box restarts by itself at 4:00 in the morning, or restart it now when nobody is watching.
 <form method="POST" action="/parent/system/reboot" class="mt-6" data-confirm="Restart the whole box? It takes one to two minutes.">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="back" value="/parent/system/updates">

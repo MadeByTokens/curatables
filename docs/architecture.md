@@ -763,7 +763,8 @@ compromised app can do whatever the actions allow, and no more; see
 A `pending-update.json` marker in a root-only folder lets the helper
 finish or undo an update interrupted by a power cut when it next starts.
 `system_update` runs `apt` for Debian packages; unattended-upgrades
-installs security updates on its own. Releases come from
+installs Debian security updates and Raspberry Pi OS updates on its
+own, restarting the box at 04:00 when one needs it. Releases come from
 `.github/workflows/release-source.yml`, which refuses a tag that doesn't
 match the version in the code.
 

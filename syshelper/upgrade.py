@@ -341,6 +341,9 @@ def resume_pending() -> None:
 
 
 def _restart_helpers(job: Job) -> None:
+    # The new version's firewall rules (a box updated from a version
+    # without them gets them now, not at the next restart).
+    runner.run(["systemctl", "restart", "curatables-firewall.service"], timeout=60)
     runner.run(["systemctl", "try-restart", "curatables-mdns-unicast.service"], timeout=60)
     job.log("The system helper restarts to finish; this page then shows the result")
     system.later(["systemctl", "restart", "curatables-helper.service"], delay=4)
