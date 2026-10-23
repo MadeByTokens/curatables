@@ -36,7 +36,7 @@ terminal needed after flashing.
 - mDNS via Avahi → reachable at `curatables.local` on the LAN.
 - A NetworkManager dispatcher hook that keeps Wi-Fi on standby while an
   Ethernet cable is connected.
-- Daily Debian security updates and Raspberry Pi OS updates
+- Daily Debian security and stable fixes and Raspberry Pi OS updates
   (`unattended-upgrades`, from [`image-packages.txt`](image-packages.txt)),
   restarting at 04:00 when an update needs it.
 - All units, the dispatcher hook and the security-update setting are

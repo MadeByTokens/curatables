@@ -1,6 +1,6 @@
 # Debian packages only the Raspberry Pi image gets, on top of
 # scripts/apt-packages.txt (which scripts/install.sh also uses).
-# unattended-upgrades: daily Debian security and Raspberry Pi OS updates (set up by
+# unattended-upgrades: daily Debian fixes and Raspberry Pi OS updates (set up by
 # scripts/apply-system.sh).
 unattended-upgrades
 # exfatprogs: mkfs.exfat and fsck.exfat for Box, Drives (Format, Check &

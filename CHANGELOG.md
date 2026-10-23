@@ -13,7 +13,7 @@ code already called itself 0.5.0).
 
 **For parents**
 - Raspberry Pi's own updates (kernel, firmware) install by themselves
-  every day, with Debian's security updates. When one needs a restart,
+  every day, with Debian's security and stable fixes. When one needs a restart,
   the box restarts by itself at 4:00 in the morning; Box → Updates
   says when a restart is waiting.
 - The box has a firewall: from the network it answers only the web page,

@@ -46,7 +46,7 @@ install -d "$ETC/NetworkManager/dispatcher.d"
 install -m 0755 "$ROOT/scripts/nm-wired-only.sh" \
 	"$ETC/NetworkManager/dispatcher.d/70-curatables-wired-only"
 
-# Debian security updates and Raspberry Pi OS's own packages (kernel,
+# Debian's security and stable fixes and Raspberry Pi OS's own packages (kernel,
 # firmware) install by themselves every day (the unattended-upgrades
 # package, part of the image); when one needs a restart, the box
 # restarts at 04:00, when nobody is watching. Everything else waits for
