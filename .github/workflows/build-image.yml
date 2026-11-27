@@ -17,7 +17,7 @@ on:
     types: [published]
 
 concurrency:
-  group: build-image-${{ github.ref }}
+  group: build-image-${{ inputs.tag || github.ref }}
   cancel-in-progress: true
 
 # The release-attach step needs write access to contents.
