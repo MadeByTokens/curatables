@@ -42,6 +42,7 @@ Curatables. Installed: <code>{{ update_state.current_version or "unknown" }}</co
   <button type="submit" class="btn btn-secondary"{% if update_state.pending %} disabled{% endif %}>Update the downloader</button>
 </form>
 <div class="mt-12">{% include "parent/_downloader_result.html" %}</div>
+{% set auto_back = "/parent/system/updates" %}{% include "parent/_downloader_auto.html" %}
 
 <h2 class="mt-40">System</h2>
 <p class="fs-14 mw-500">Security and other fixes for the box's operating system, and Raspberry Pi's own updates (kernel, firmware),

@@ -1,0 +1,13 @@
+{# The nightly downloader update switch (updates.maybe_auto_update). #}
+<form method="POST" action="/parent/settings/downloader-auto" class="mt-16 mw-500">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="back" value="{{ auto_back }}">
+  <div class="form-group">
+    <input type="checkbox" id="auto_update_downloader" name="enabled" value="1" {% if config.server.auto_update_downloader %}checked{% endif %}>
+    <label for="auto_update_downloader" class="inline-label">Update the downloader by itself at night</label>
+    <small class="muted d-block">Between 1 and 3 in the morning, only when a newer version is out. The box tries it
+      first and uses it only if it works; then Curatables restarts, so kids can't watch for about a minute.
+      It waits until the family's time zone is set (Settings).</small>
+  </div>
+  <button type="submit" class="btn btn-secondary">Save</button>
+</form>

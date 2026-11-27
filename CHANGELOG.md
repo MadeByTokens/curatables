@@ -9,6 +9,22 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
+## Unreleased
+
+**For parents**
+- The box updates the downloader (yt-dlp) by itself between 1 and 3 in
+  the morning when a newer version is out. It is tried first and used
+  only if it works, as with the button; Curatables restarts for about a
+  minute. Switch: **Update the downloader by itself at night** on Box →
+  Updates and Settings → Updates (on by default; it waits until the
+  family's time zone is set).
+- When YouTube refuses a video without saying why, the box says
+  "YouTube didn't give the box this video" and points to **Update the
+  downloader**; "private or removed" is kept for videos YouTube says are
+  private, removed, closed or blocked in this country. A kid's request
+  for a refused video keeps waiting for a grown-up.
+- **Details** on a failed download shows YouTube's own words.
+
 ## v0.9.2
 
 A firewall and fuller automatic updates for the Raspberry Pi image.

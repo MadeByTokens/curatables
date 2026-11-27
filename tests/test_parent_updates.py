@@ -84,3 +84,24 @@ def test_shutdown(authed_client, helper):
 
 def test_shutdown_button_is_on_the_box_page(authed_client, helper):
     assert 'action="/parent/system/shutdown"' in authed_client.get("/parent/system").text
+
+
+def test_nightly_downloader_switch_on_box_updates(authed_client, helper, app):
+    page = authed_client.get("/parent/system/updates").text
+    assert "Update the downloader by itself at night" in page and 'name="enabled" value="1" checked' in page
+    resp = authed_client.post("/parent/settings/downloader-auto", data={"back": "/parent/system/updates"})
+    assert resp.status_code == 303 and resp.headers["location"] == "/parent/system/updates#downloader"
+    assert app.state.config.server.auto_update_downloader is False
+    assert 'name="enabled" value="1" checked' not in authed_client.get("/parent/system/updates").text
+    resp = authed_client.post("/parent/settings/downloader-auto", data={"enabled": "1", "back": "//evil"})
+    assert resp.headers["location"] == "/parent/settings#settings-updates"
+    assert app.state.config.server.auto_update_downloader is True
+    assert "Update the downloader by itself at night" in authed_client.get("/parent/settings").text
+
+
+def test_nightly_update_result_says_so(authed_client, helper, app):
+    updates.result_path(app.state.config).write_text(
+        '{"status": "ok", "auto": true, "from_version": "2026.09.01", "to_version": "2026.11.23",'
+        ' "message": "Updated yt-dlp 2026.09.01 to 2026.11.23.", "finished_at": "2026-11-27T06:40:00Z"}')
+    page = authed_client.get("/parent/system/updates").text
+    assert "Nightly update:" in page and "2026.11.23" in page

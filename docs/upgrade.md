@@ -8,7 +8,8 @@ Everything is on **Box → Updates**:
   settings are kept; if the new version doesn't start, the box goes back
   by itself, and **Go back to …** undoes an update.
 - **Update the downloader** when YouTube videos stop downloading (YouTube
-  changes often, so this is needed every few weeks).
+  changes often, so this is needed every few weeks). The box also does
+  it by itself at night when a newer version is out (see below).
 - **Update system packages** installs the operating system's updates.
   Security updates also install by themselves every day.
 
@@ -51,6 +52,33 @@ data dir, so it cannot `pip install` or restart itself. Instead:
    it reads or writes in the data dir it does as the service user, so a
    compromised app can't trick it into touching other files.
 3. The dashboard shows the step while it runs, then the result.
+
+### The nightly update
+
+Every quarter hour the app asks itself whether the nightly update is
+due (`maybe_auto_update` in
+[`app/services/updates.py`](../app/services/updates.py)). It drops the
+same `update-request.json` as the button, marked `"auto": true`, when:
+
+- **Update the downloader by itself at night** is on (Settings → Updates
+  or Box → Updates; `server.auto_update_downloader` in `config.json`, on
+  by default);
+- `/etc/systemd/system/curatables-updater.path` exists, so something
+  will act on the request;
+- the family's time zone is set (Settings; the box itself runs on UTC),
+  it is between 1:00 and 3:00 there, and the box's clock is trusted;
+- no update is already running, and it has not looked in the last 20
+  hours (`update-auto.json` records when it did);
+- GitHub's newest yt-dlp release is newer than the installed one. When
+  GitHub can't be asked, it requests the update anyway if the last one
+  finished more than a week ago; the updater then finds out by itself
+  whether there is anything newer.
+
+The update then runs exactly as from the button: tried first, used only
+if it works, Curatables restarted (about a minute), the previous version
+back if it doesn't come up well. The result says **Nightly update**.
+Each night it looks, the journal says so ("Nightly check: …"), and
+`update-auto.json` in the data dir holds the time.
 
 The updater only ever upgrades yt-dlp, to the newest release
 (`yt-dlp>=2024.0`, no upper bound: yt-dlp changes fast and old versions

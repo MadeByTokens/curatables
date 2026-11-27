@@ -1357,3 +1357,23 @@ def test_a_video_gone_since_it_was_added_can_be_asked_for_again(app, client, bac
     # The grown-up says yes again: the kid gets the video they had hidden back.
     repo.approve_video("youtube_eeeeeeeeeee")
     assert not VideoRepository(conn).is_hidden_for("youtube_eeeeeeeeeee", pid)
+
+
+def test_a_video_youtube_refused_without_a_reason_keeps_waiting(app, client, backend):
+    """A bare "not available" is most often an outdated downloader, so
+    the kid's request stays with the parent instead of being given up."""
+    from app.backends.base import BackendErrorType
+    from app.services.wishlist import WishlistService
+    from app.repositories import VideoRepository
+    pid = _kid(app, client)
+    repo = WishlistRepository(_conn(app))
+    request_id = repo.add(pid, "youtube_xxxxxxxxxxx", _meta("xxxxxxxxxxx", "Shapes song"),
+                          "https://www.youtube.com/watch?v=xxxxxxxxxxx")
+
+    def refused(url):
+        backend.last_error = BackendError(BackendErrorType.REFUSED, "YouTube didn't give it", "")
+        return None
+    backend.fetch_video_info = refused
+    WishlistService(backend, repo, VideoRepository(_conn(app)),
+                    FakeThumbnails(app.state.config.data_dir), app.state.config).fill_details(request_id)
+    assert repo.get(request_id).status == "pending"

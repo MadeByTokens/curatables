@@ -84,3 +84,72 @@ class TestState:
         state = updates.update_state(config)
         assert state["pending"] is not None
         assert state["pending"]["kind"] == "yt-dlp"
+
+
+class TestNightly:
+    """The nightly check drops the same request the button does, at night
+    for the family, when a newer yt-dlp is out."""
+
+    from datetime import datetime, timezone
+    NIGHT = datetime(2026, 11, 27, 6, 30, tzinfo=timezone.utc)   # 01:30 in New York
+    DAY = datetime(2026, 11, 27, 18, 0, tzinfo=timezone.utc)     # 13:00 in New York
+
+    @pytest.fixture
+    def nightly(self, config, tmp_path, monkeypatch):
+        unit = tmp_path / "curatables-updater.path"
+        unit.write_text("")
+        monkeypatch.setattr(updates, "UPDATER_UNIT", unit)
+        monkeypatch.setattr(updates, "ytdlp_version", lambda: "2026.10.21")
+        config.server.timezone = "America/New_York"
+        return config
+
+    def test_asks_at_night_when_a_newer_version_is_out(self, nightly):
+        assert updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.11.23")
+        req = updates.pending_request(nightly)
+        assert req["kind"] == "yt-dlp" and req["auto"] is True
+
+    def test_not_until_the_family_time_zone_is_known(self, nightly):
+        nightly.server.timezone = ""
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.11.23")
+
+    def test_not_in_the_day(self, nightly):
+        assert not updates.maybe_auto_update(nightly, self.DAY, latest=lambda: "2026.11.23")
+        assert updates.pending_request(nightly) is None
+
+    def test_not_when_already_the_newest(self, nightly):
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.10.21")
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.09.01")
+
+    def test_not_when_switched_off(self, nightly):
+        nightly.server.auto_update_downloader = False
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.11.23")
+
+    def test_not_without_the_updater(self, nightly, tmp_path, monkeypatch):
+        monkeypatch.setattr(updates, "UPDATER_UNIT", tmp_path / "missing")
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.11.23")
+
+    def test_not_while_one_is_running(self, nightly):
+        updates.request_update(nightly)
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: "2026.11.23")
+        assert updates.pending_request(nightly)["auto"] is False
+
+    def test_looks_once_a_night(self, nightly):
+        from datetime import timedelta
+        asked = []
+
+        def latest():
+            asked.append(1)
+            return "2026.10.21"
+        updates.maybe_auto_update(nightly, self.NIGHT, latest=latest)
+        updates.maybe_auto_update(nightly, self.NIGHT + timedelta(minutes=15), latest=latest)
+        assert len(asked) == 1
+        updates.maybe_auto_update(nightly, self.NIGHT + timedelta(days=1), latest=latest)
+        assert len(asked) == 2
+
+    def test_without_github_it_tries_once_a_week(self, nightly):
+        from datetime import timedelta
+        result = updates.result_path(nightly)
+        result.write_text(json.dumps({"status": "ok", "finished_at": "2026-11-25T06:40:00Z"}))
+        assert not updates.maybe_auto_update(nightly, self.NIGHT, latest=lambda: None)
+        result.write_text(json.dumps({"status": "ok", "finished_at": "2026-11-18T06:40:00Z"}))
+        assert updates.maybe_auto_update(nightly, self.NIGHT + timedelta(days=1), latest=lambda: None)

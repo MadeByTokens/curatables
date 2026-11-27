@@ -11,6 +11,7 @@
   {% set r = update_state.result %}
   {% if r.status == 'ok' %}
   <div class="flash mw-500" role="status" id="downloader">
+    {% if r.auto %}Nightly update:{% endif %}
     {% if r.from_version == r.to_version %}
     Last check: yt-dlp {{ r.to_version or '?' }} was already the newest.
     {% else %}
@@ -20,12 +21,12 @@
   </div>
   {% elif r.status == 'kept' %}
   <div class="flash flash-warning mw-500" role="status" id="downloader">
-    {{ r.message }}
+    {% if r.auto %}Nightly update:{% endif %} {{ r.message }}
     {% if r.finished_at %}({{ r.finished_at|local_time }}){% endif %}
   </div>
   {% else %}
   <div class="flash flash-error mw-500" role="alert" id="downloader">
-    Last update failed: {{ r.message or 'see server logs' }}
+    {% if r.auto %}The nightly update failed{% else %}Last update failed{% endif %}: {{ r.message or 'see server logs' }}
   </div>
   {% endif %}
 {% endif %}

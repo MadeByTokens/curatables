@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import NoReturn
 
@@ -10,7 +11,7 @@ from app.config import Config
 from app.models import Channel, Video, ViewerContext
 from app.repositories import VideoRepository, SourceRepository, ChannelRepository
 from app.models.source import Source
-from app.backends.base import VideoMetadata
+from app.backends.base import BackendError, VideoMetadata
 from app.services.video_source import VideoSourceService, ParsedURL
 from app.services.thumbnails import ThumbnailService
 from app.services.storage import StorageService, InsufficientDiskSpace
@@ -26,6 +27,22 @@ logger = logging.getLogger(__name__)
 
 # Downloads the parent paused (partial file kept) or stopped.
 PAUSED_OR_STOPPED = ("paused", "stopped")
+
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def stored_error(error: BackendError, limit: int = 400) -> str:
+    """The '[type] message' a failed download keeps, followed by what the
+    source itself said, so Details shows the real reason."""
+    text = f"[{error.error_type.value}] {error.message}"
+    said = " ".join(_ANSI.sub("", error.details or "").split())
+    said = re.sub(r"^ERROR:\s*", "", said)
+    if said and said != error.message:
+        if len(said) > limit:
+            said = said[:limit - 1] + "…"
+        text += f" Source said: {said}"
+    return text
 
 
 class ContentError(Exception):
@@ -448,7 +465,7 @@ class ContentService:
             else:
                 backend_err = storage.backend.last_error if storage.backend else None
                 if backend_err:
-                    error_msg = f"[{backend_err.error_type.value}] {backend_err.message}"
+                    error_msg = stored_error(backend_err)
                 else:
                     error_msg = "Download returned no file"
                 repo.update(video_id, download_status="error",

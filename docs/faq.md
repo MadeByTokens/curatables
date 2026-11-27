@@ -75,7 +75,13 @@ next to it and press **Retry**.
 **Adding from YouTube suddenly fails.**
 YouTube changes often, so the downloader needs updating: **Box → Updates
 → Update the downloader** (own install: **Settings → Updates**). Then
-press **Retry** on the failed videos. If it still fails, turn on
+press **Retry** on the failed videos. "YouTube didn't give the box this
+video" is the usual sign: YouTube said no without a reason, which an
+out-of-date downloader causes far more often than a removed video
+(**Details** shows YouTube's own words). The box also updates the
+downloader by itself between 1 and 3 in the morning, family time, when a
+newer version is out; switch that off with **Update the downloader by
+itself at night** on the same page. If it still fails, turn on
 **Settings → Advanced → Anti-Bot → Browser Impersonation** (makes
 downloads look like a normal browser).
 

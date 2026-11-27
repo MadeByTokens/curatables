@@ -66,6 +66,10 @@ CHECK_NAMES = {"loads": "load", "solver": "solve YouTube's challenge", "settings
                "download": "download videos"}
 
 
+# True when the app's nightly check asked, not a parent: the page says so.
+AUTO = False
+
+
 class Failed(Exception):
     """The update stopped; the message is for the parent."""
 
@@ -110,7 +114,7 @@ def write_result(status: str, message: str, before: dict, after: dict, checks: d
     write_data(RESULT, {"kind": "yt-dlp", "status": status, "message": message,
                         "from_version": before.get("yt-dlp") or None,
                         "to_version": after.get("yt-dlp") or None,
-                        "checks": checks or {}, "finished_at": _now()})
+                        "checks": checks or {}, "auto": AUTO, "finished_at": _now()})
 
 
 # --- versions and wheels -----------------------------------------------------
@@ -355,6 +359,8 @@ def update() -> None:
 
 
 def main() -> int:
+    global AUTO
+    AUTO = False
     if read_data(REQUEST) is None:
         return 0  # the flag vanished between the trigger and now
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -368,7 +374,9 @@ def main() -> int:
             resume(note)
             return 0
         try:
-            kind = json.loads(read_data(REQUEST) or "{}").get("kind", "")
+            request = json.loads(read_data(REQUEST) or "{}")
+            kind = request.get("kind", "")
+            AUTO = request.get("auto") is True
         except (ValueError, AttributeError):
             kind = ""
         if kind != "yt-dlp":

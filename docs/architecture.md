@@ -689,6 +689,13 @@ dashboard's "Update yt-dlp" button cannot pip-install directly. Instead:
    the page shows it and polls `/parent/system/updates/downloader.json`,
    and reads `update-result.json` (`ok`, `kept` or `error`) at the end.
    The work never depends on the page: a parent can leave it.
+5. The app's own nightly check (`downloader_update_loop` in
+   `app/lifecycle.py`, every 15 minutes, calling
+   `updates.maybe_auto_update`) drops the same request with
+   `"auto": true` between 1:00 and 3:00 family time, at most once a
+   night, when GitHub's newest yt-dlp is newer than the installed one
+   and `server.auto_update_downloader` is on. The result carries the
+   flag, so the page says **Nightly update**.
 
 Don't weaken the sandbox to add self-update. The request carries a
 `kind` field (only `yt-dlp` is accepted). Updating Curatables itself

@@ -207,3 +207,13 @@ def test_the_check_counts_running_downloads(tmp_path, busy):
     conn.commit()
     conn.close()
     assert _check(str(tmp_path), "--busy") == (0, {"downloading": busy})
+
+
+def test_the_result_says_when_the_nightly_check_asked(tmp_path, monkeypatch):
+    box = Box(tmp_path, monkeypatch)
+    box.data["update-request.json"] = json.dumps({"kind": "yt-dlp", "auto": True})
+    up.main()
+    assert box.result["status"] == "ok" and box.result["auto"] is True
+    box = Box(tmp_path, monkeypatch, newest="2026.03.17")
+    up.main()
+    assert box.result["auto"] is False

@@ -41,6 +41,7 @@ class BackendErrorType(Enum):
     BOT_BLOCKED = "bot_blocked"         # source blocked the request as a bot
     RATE_LIMITED = "rate_limited"       # source asked us to slow down (HTTP 429)
     VIDEO_UNAVAILABLE = "unavailable"   # video is private, deleted, region-locked
+    REFUSED = "refused"                 # source gave no reason; often an outdated yt-dlp
     NETWORK = "network"                 # connection timeout, DNS failure, etc.
     AGE_RESTRICTED = "age_restricted"   # requires age verification
     FORMAT = "format"                   # no suitable format found

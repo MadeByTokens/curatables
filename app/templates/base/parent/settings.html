@@ -104,6 +104,7 @@
       Update yt-dlp now
     </button>
   </form>
+  {% set auto_back = "/parent/settings" %}{% include "parent/_downloader_auto.html" %}
   {% if not request.app.state.system_helper.available %}
   <small class="muted">
     Requires the <code>curatables-updater</code> background service

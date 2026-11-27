@@ -22,7 +22,7 @@ from app.db.schema import init_schema, recover_from_crash
 from app.repositories import (
     ChannelRepository, EventRepository, SourceRepository, VideoRepository,
 )
-from app.services import mdns
+from app.services import mdns, updates
 from app.services.content import ContentService
 from app.services.download_queue import get_download_queue
 from app.services.imports import build_worker
@@ -157,6 +157,24 @@ async def maintenance_loop(app: FastAPI, config: Config) -> None:
         raise
 
 
+AUTO_UPDATE_TICK = 15 * 60
+
+
+async def downloader_update_loop(app: FastAPI, config: Config) -> None:
+    """Every quarter hour, see whether the nightly downloader update is
+    due (updates.maybe_auto_update). It waits while the clock may be
+    wrong, since "night" depends on it."""
+    while True:
+        await asyncio.sleep(AUTO_UPDATE_TICK)
+        clock = getattr(app.state, "clock", None)
+        if clock is not None and not clock.trusted():
+            continue
+        try:
+            await asyncio.to_thread(updates.maybe_auto_update, config)
+        except Exception:
+            logger.exception("nightly downloader check failed")
+
+
 def make_lifespan(config: Config):
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -183,6 +201,7 @@ def make_lifespan(config: Config):
         else:
             logger.info("cache cleanup disabled (cache_cleanup_interval_minutes=0)")
         app.state.cache_cleanup_task = cleanup_task
+        update_task = asyncio.create_task(downloader_update_loop(app, config))
 
         try:
             yield
@@ -190,6 +209,9 @@ def make_lifespan(config: Config):
             if app.state.import_worker is not None:
                 app.state.import_worker.stop()
                 app.state.import_worker = None
+            update_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await update_task
             if cleanup_task is not None:
                 cleanup_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):

@@ -28,6 +28,10 @@ _SAFE_ENTRY_ID = re.compile(r"^[a-zA-Z0-9._-]+$")
 _YOUTUBE_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 # Titles flat playlist listings give videos that can no longer be watched.
 _GONE_TITLES = {"[Private video]", "[Deleted video]"}
+# Words YouTube uses when a video really can't be had: private, taken
+# down, the account closed, members only, blocked in this country.
+_GONE_WORDS = ("private", "removed", "deleted", "terminated", "copyright", "no longer available",
+               "in your country", "members-only", "members only")
 _SUBTITLE_FAILED = "Unable to download video subtitles"
 _SUBTITLE_OPTS = ("writesubtitles", "writeautomaticsub", "subtitlesformat", "subtitleslangs")
 
@@ -98,11 +102,38 @@ class YtdlpBackend(VideoBackend):
                 suggestion="Set up source authentication in Settings "
                            "(cookie file or browser cookies from a logged-in account).",
             )
-        if any(w in msg.lower() for w in ("unavailable", "not available", "private", "removed")):
+        low = msg.lower()
+        if "service unavailable" in low:  # HTTP 503: the site is down for a while
+            return BackendError(
+                error_type=BackendErrorType.NETWORK,
+                message="The source is not answering right now.",
+                details=details,
+                suggestion="Try again later.",
+            )
+        if "requested format" in low:
+            return BackendError(
+                error_type=BackendErrorType.FORMAT,
+                message="No suitable video format found.",
+                details=details,
+                suggestion="Try a different resolution in Settings.",
+            )
+        if any(w in low for w in _GONE_WORDS):
             return BackendError(
                 error_type=BackendErrorType.VIDEO_UNAVAILABLE,
                 message="This video is unavailable (private, deleted, or region-locked).",
                 details=details,
+            )
+        if any(w in low for w in ("unavailable", "not available", "isn't available", "is not available")):
+            # YouTube said no without a reason. A video that is really
+            # gone comes with one (above); a bare "not available" is most
+            # often a yt-dlp that YouTube's latest change has broken.
+            return BackendError(
+                error_type=BackendErrorType.REFUSED,
+                message="YouTube didn't give the box this video. This usually means "
+                        "the downloader needs updating.",
+                details=details,
+                suggestion="Update the downloader (Box → Updates, or Settings → Updates), "
+                           "then try again.",
             )
         if "connect" in msg.lower() or "timeout" in msg.lower() or "dns" in msg.lower() or "network" in msg.lower():
             return BackendError(
@@ -111,7 +142,7 @@ class YtdlpBackend(VideoBackend):
                 details=details,
                 suggestion="Check your internet connection and try again.",
             )
-        if "no video formats" in msg.lower() or "requested format" in msg.lower():
+        if "no video formats" in low:
             return BackendError(
                 error_type=BackendErrorType.FORMAT,
                 message="No suitable video format found.",

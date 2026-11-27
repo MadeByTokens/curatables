@@ -477,7 +477,7 @@ def _updates_page(request: Request, helper: SystemHelper, config: Config, *,
     info, load_error = _try(helper, "update_info")
     page: Response = request.app.state.templates.TemplateResponse(request, "parent/system_updates.html", {
         "request": request, "info": info or {}, "error": error or load_error,
-        "update_state": updates.update_state(config),
+        "update_state": updates.update_state(config), "config": config,
     }, status_code=status_code)
     return page
 

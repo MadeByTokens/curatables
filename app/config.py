@@ -34,6 +34,9 @@ class ServerConfig:
     # (with .local, .lan, .home ...), localhost and any IP address.
     # Anything else is refused, which stops DNS-rebinding attacks.
     allowed_hosts: list[str] = field(default_factory=list)
+    # Update the downloader (yt-dlp) by itself at night when a newer
+    # version is out; it is tried before it is used (app/services/updates.py).
+    auto_update_downloader: bool = True
 
 
 @dataclass

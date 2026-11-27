@@ -69,6 +69,9 @@ _DOWNLOAD_ERROR_ADVICE = {
     "rate_limited": "The site asked the box to slow down for a while. "
                     "Wait an hour or so, then press Retry.",
     "unavailable": "The video is private, removed, or not available where you live.",
+    "refused": "YouTube didn't give the box this video. That usually means the downloader "
+               "needs updating: Box → Updates → Update the downloader (or Settings → Updates), "
+               "then press Retry. If it still fails after that, the video may really be gone.",
     "age_restricted": "The site wants a logged-in account for this video "
                       "(Settings → Advanced → Anti-Bot → cookies).",
     "network": "Couldn't reach the site. Check the internet connection, then press Retry.",

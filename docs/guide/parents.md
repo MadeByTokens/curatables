@@ -325,7 +325,11 @@ back, after asking.
   search, a channel, the start of a download) and keeps the one it has
   if the new one fails, saying what it couldn't do. It takes a few
   minutes; you can leave the page, and it shows the result when you come
-  back.
+  back. With **Update the downloader by itself at night** on (it is,
+  unless you switch it off), the box does this by itself between 1 and 3
+  in the morning when a newer version is out; Curatables restarts then,
+  for about a minute. A failed video that says "YouTube didn't give the
+  box this video" usually just needs this update, then **Retry**.
 - **Update system packages** installs the operating system's updates.
   Security and other fixes, and Raspberry Pi's own updates (kernel, firmware),
   also install by themselves every day. When one needs a restart, the

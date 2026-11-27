@@ -80,6 +80,18 @@ def settings_update(request: Request,
     })
 
 
+@router.post("/settings/downloader-auto")
+def settings_downloader_auto(enabled: str = Form(""), back: str = Form("/parent/settings"),
+                             viewer: ViewerContext = Depends(require_parent),
+                             config: Config = Depends(get_config)):
+    """The nightly downloader update switch, shown on Settings and Box → Updates."""
+    config.server.auto_update_downloader = enabled == "1"
+    config.save()
+    if back == "/parent/system/updates":
+        return RedirectResponse(url="/parent/system/updates#downloader", status_code=303)
+    return RedirectResponse(url="/parent/settings#settings-updates", status_code=303)
+
+
 @router.post("/settings")
 def settings_save(request: Request,
                   cache_days: int = Form(...),
