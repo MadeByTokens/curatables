@@ -91,8 +91,8 @@ class TestNightly:
     for the family, when a newer yt-dlp is out."""
 
     from datetime import datetime, timezone
-    NIGHT = datetime(2026, 11, 27, 6, 30, tzinfo=timezone.utc)   # 01:30 in New York
-    DAY = datetime(2026, 11, 27, 18, 0, tzinfo=timezone.utc)     # 13:00 in New York
+    NIGHT = datetime(2026, 11, 26, 16, 30, tzinfo=timezone.utc)  # 01:30 in Tokyo
+    DAY = datetime(2026, 11, 27, 4, 0, tzinfo=timezone.utc)      # 13:00 in Tokyo
 
     @pytest.fixture
     def nightly(self, config, tmp_path, monkeypatch):
@@ -100,7 +100,7 @@ class TestNightly:
         unit.write_text("")
         monkeypatch.setattr(updates, "UPDATER_UNIT", unit)
         monkeypatch.setattr(updates, "ytdlp_version", lambda: "2026.10.21")
-        config.server.timezone = "America/New_York"
+        config.server.timezone = "Asia/Tokyo"
         return config
 
     def test_asks_at_night_when_a_newer_version_is_out(self, nightly):

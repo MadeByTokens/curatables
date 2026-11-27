@@ -9,7 +9,11 @@ there is no PyPI or Docker release. The sections below v0.6.0 are the
 development milestones up to the first public release, v0.1.0 (whose
 code already called itself 0.5.0).
 
-## Unreleased
+## v0.9.3
+
+The box keeps its video downloader up to date by itself, and says
+plainly when YouTube refuses a video. Boxes on v0.9.2 install it from
+**Box → Updates**; no database changes.
 
 **For parents**
 - The box updates the downloader (yt-dlp) by itself between 1 and 3 in
